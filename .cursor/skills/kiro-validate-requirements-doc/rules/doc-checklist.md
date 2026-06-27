@@ -6,8 +6,8 @@ Create supplementary materials and link ACs to material IDs. Product Owner docum
 
 ## In Scope
 
-- Glossary, context diagram, use-case diagram (priority order)
-- Additional supplements per complexity (see `../kiro-validate-shared/supplements.md`)
+- Glossary, context diagram, use-case diagram (priority order; templates: `docs/settings/templates/specs/supplements/`)
+- Additional supplements per complexity (see `../kiro-validate-shared/supplements.md`); templates: `state-transition.md`, `error-handling-matrix.md` in `docs/settings/templates/specs/supplements/`
 - Update「関連する補足資料」column in `requirements.md`
 - Write `reviews/requirements-doc.md`
 

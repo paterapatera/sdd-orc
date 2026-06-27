@@ -23,9 +23,10 @@ Third requirements-phase validate. Creates supplements and AC cross-references. 
 1. Read `../kiro-validate-shared/contract.md` if not already loaded this session.
 2. Read `../kiro-validate-shared/supplements.md` (supplement placement and IDs).
 3. Read `rules/doc-checklist.md` from this skill directory.
-4. Create or update supplement files; update「関連する補足資料」column in `requirements.md`.
-5. Write `docs/specs/$1/reviews/requirements-doc.md` per contract format.
-6. Fresh-evidence check before `VERDICT: GO`.
+4. For priority supplements, use `docs/settings/templates/specs/supplements/` (`glossary.md`, `context-diagram.md`, `use-case-diagram.md`) when creating new files; merge into existing `docs/specs/_shared/` files when present. For optional supplements (complexity warrants), use `state-transition.md` and `error-handling-matrix.md` from the same directory.
+5. Create or update supplement files; update「関連する補足資料」column in `requirements.md`.
+6. Write `docs/specs/$1/reviews/requirements-doc.md` per contract format.
+7. Fresh-evidence check before `VERDICT: GO`.
 
 ## Update mode
 

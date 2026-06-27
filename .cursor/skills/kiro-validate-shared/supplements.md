@@ -15,6 +15,18 @@ Support EARS `requirements.md` with reference materials. Link each AC to materia
 | Use-case diagram | Per domain | `docs/specs/<domain>/supplements/use-case-diagram.md` |
 | Other supplements | As needed | `docs/specs/<domain>/supplements/` |
 
+## Templates
+
+Copy from `docs/settings/templates/specs/supplements/` when creating priority supplements (extend existing project-wide files in place when they already exist):
+
+| Material | Template |
+| -------- | -------- |
+| Glossary | `glossary.md` |
+| Context diagram | `context-diagram.md` |
+| Use-case diagram | `use-case-diagram.md` → output under `docs/specs/<feature>/supplements/` |
+| State transition diagram/table | `state-transition.md` → output under `docs/specs/<feature>/supplements/` |
+| Error-handling matrix | `error-handling-matrix.md` → output under `docs/specs/<feature>/supplements/` |
+
 ## Priority (create first)
 
 1. **Glossary** — unify terms in When/While triggers
