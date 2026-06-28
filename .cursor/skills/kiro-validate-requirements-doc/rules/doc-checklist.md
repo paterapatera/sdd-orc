@@ -2,7 +2,7 @@
 
 ## Mission
 
-Create supplementary materials and link ACs to material IDs. Product Owner documentation role.
+Create supplementary materials and link ACs to supplements via relative-path Markdown links. Product Owner documentation role.
 
 ## In Scope
 
@@ -21,8 +21,8 @@ Create supplementary materials and link ACs to material IDs. Product Owner docum
 ## Checks
 
 1. Priority supplements exist or N/A justified in `## Decisions`
-2. Every non-trivial AC references a supplement ID or `-`
-3. Referenced IDs exist in supplement files
+2. Every non-trivial AC has relative-path Markdown link(s) or `-`
+3. Linked paths resolve to existing supplement files; `#` anchors match `## {Material-ID}` headings
 4. Glossary covers terms used in When/While/If clauses
 5. Context diagram matches stated system boundary
 6. Use-case diagram aligns with requirement areas
@@ -30,6 +30,6 @@ Create supplementary materials and link ACs to material IDs. Product Owner docum
 
 ## NO-GO Triggers
 
-- ACs reference missing supplement IDs without creation
+- ACs link to missing supplement files without creation
 - Context boundary contradicts requirements scope
 - Cannot create minimum supplements and no safe N/A rationale

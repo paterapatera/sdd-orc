@@ -5,7 +5,7 @@
 <!-- Template source: docs/settings/templates/specs/supplements/use-case-diagram.md -->
 <!-- Created by /kiro-validate-requirements-doc -->
 
-## Purpose
+## UC-{{DOMAIN}}-01
 
 ドメイン（業務領域）単位でユースケースを整理し、EARS 要求への書き起こしを支援する。
 
@@ -53,6 +53,6 @@ flowchart LR
 
 ## References
 
-- Glossary: `Glossary-01` → `docs/specs/_shared/glossary.md`
-- Context diagram: `Context-01` → `docs/specs/_shared/context-diagram.md`
-- Requirements: `docs/specs/{{FEATURE}}/requirements.md`
+- Glossary: [用語集](../../_shared/glossary.md#glossary-01)
+- Context diagram: [コンテキスト図](../../_shared/context-diagram.md#context-01)
+- Requirements: [要件定義](../requirements.md)

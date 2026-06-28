@@ -26,7 +26,7 @@ On `NOT_VERIFIED`, parse `GAPS` from verify output against `../kiro-validate-sha
 | `requirements` | non-GO or missing `reviews/requirements-sec.md` | `/kiro-spec-requirements` or `requirements.md` | po → sec → doc |
 | `requirements` | non-GO or missing `reviews/requirements-doc.md` | supplements only, or `requirements.md` | doc only, or `spec-requirements` → full validate chain |
 | `requirements` | `approvals.requirements.approved === true` | **[調整者]** re-apply 要求更新 approval invalidation (`flows.md` step 2) | `/kiro-verify-phase-gate` |
-| `requirements` | AC supplement ID inconsistency (optional check) | `/kiro-validate-requirements-doc` | doc → `/kiro-verify-phase-gate` |
+| `requirements` | AC supplement link inconsistency (optional check) | `/kiro-validate-requirements-doc` | doc → `/kiro-verify-phase-gate` |
 | `design` | missing `design.md` | `/kiro-spec-design` | qa → arch → sec → `validate-design-ex` |
 | `design` | `approvals.design.generated !== true` | `/kiro-spec-design` | same design validate chain |
 | `design` | non-GO or missing `reviews/design-qa.md` | `/kiro-spec-design` | qa → arch → sec → `validate-design-ex` |

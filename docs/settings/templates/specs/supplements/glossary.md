@@ -4,9 +4,9 @@
 <!-- Output: docs/specs/_shared/glossary.md (project-wide; extend in place across specs) -->
 <!-- Created by /kiro-validate-requirements-doc from docs/settings/templates/specs/supplements/glossary.md -->
 
-## Purpose
+## Glossary-01
 
-EARS の When / While / If 句で使う用語の定義を統一する。`requirements.md` の「関連する補足資料」列から `Glossary-01` または個別エントリ ID で参照する。
+EARS の When / While / If 句で使う用語の定義を統一する。`requirements.md` の「関連する補足資料」列から相対パスリンク（例: `[用語集](../_shared/glossary.md#glossary-01)`）で参照する。
 
 ## Scope
 
@@ -30,5 +30,5 @@ EARS の When / While / If 句で使う用語の定義を統一する。`require
 
 ## References
 
-- Requirements: `docs/specs/{{FEATURE}}/requirements.md`
-- Context diagram: `Context-01` → `docs/specs/_shared/context-diagram.md`
+- Requirements: [要件定義](../{{FEATURE}}/requirements.md)
+- Context diagram: [コンテキスト図](context-diagram.md#context-01)

@@ -323,7 +323,7 @@ docs/specs/<feature>/reviews/
 
 ## 要求補足資料（`/kiro-validate-requirements-doc`）
 
-`/kiro-validate-requirements-doc` は、EARS 形式の `requirements.md` を書き起こし・検証しやすくするための **補足資料** を作成する。各受け入れ条件（AC）は `requirements.md` の「関連する補足資料」列から、対応する資料 ID へ参照する。本スキルは補足資料の作成に加え、既存 AC への資料 ID 紐づけも行う。
+`/kiro-validate-requirements-doc` は、EARS 形式の `requirements.md` を書き起こし・検証しやすくするための **補足資料** を作成する。各受け入れ条件（AC）は `requirements.md` の「関連する補足資料」列から、**相対パスの Markdown リンク**で対応する補足資料へ参照する（打ち合わせ時にクリックで資料へ遷移できる形式）。本スキルは補足資料の作成に加え、既存 AC へのリンク紐づけも行う。
 
 **成果物の配置（例）**
 
@@ -363,9 +363,17 @@ docs/specs/<feature>/reviews/
 | 6   | UI モック                                       | ユーザーの操作があるシステム                               | ボタン非活性・入力欄の表示/非表示など画面独自の振る舞い要件を視覚的に洗い出す                      | State-driven / Optional     |
 | 7   | データライフサイクル図                          | データ量が膨大、または旧システムからの移行があるシステム   | 作成・更新・削除・アーカイブのタイミングを明確化し、バッチ処理・容量削減要件を EARS で定義         | バッチ処理・非機能要求      |
 
-**資料 ID の命名例**
+**資料 ID とリンク形式**
 
-補足資料には `requirements.md` から参照できる ID を付与する（例: `Glossary-01`, `Context-01`, `UC-Order-01`, `State-02`, `Flow-03`, `ErrMatrix-01`）。
+補足資料には `## {Material-ID}` 見出しで ID を付与する（例: `## Glossary-01`, `## Context-01`, `## UC-Order-01`）。`requirements.md` の「関連する補足資料」列では、`requirements.md` からの相対パス Markdown リンクで参照する。
+
+| 補足資料 | `requirements.md` からの相対パス | リンク例 |
+| -------- | -------------------------------- | -------- |
+| 用語集 | `../_shared/glossary.md` | `[用語集](../_shared/glossary.md#glossary-01)` |
+| コンテキスト図 | `../_shared/context-diagram.md` | `[コンテキスト図](../_shared/context-diagram.md#context-01)` |
+| ユースケース図 | `supplements/use-case-diagram.md` | `[ユースケース図](supplements/use-case-diagram.md#uc-order-01)` |
+
+複数資料はカンマ区切り。該当なしは `-`。
 
 ## 設計 validate の役割分担
 
@@ -397,7 +405,7 @@ docs/specs/<feature>/reviews/
 3. [プロダクトオーナー]: `/kiro-spec-requirements` を実行する（内部で `requirements-review-gate` 通過後に EARS 本文を書き込む）
 4. [プロダクトオーナー]: `/kiro-validate-requirements` を実行する。対話なしで自律的にブラッシュアップし、判断は `reviews/requirements-po.md` の `## Decisions` に記録する
 5. [セキュリティ管理者]: `/kiro-validate-requirements-sec` を実行する。対話なしでレビューし、推奨の採否は `reviews/requirements-sec.md` の `## Decisions` に記録する
-6. [プロダクトオーナー]: `/kiro-validate-requirements-doc` を実行する。補足資料を作成し、AC への資料 ID 紐づけを行う
+6. [プロダクトオーナー]: `/kiro-validate-requirements-doc` を実行する。補足資料を作成し、AC への相対パスリンク紐づけを行う
 7. [調整者]: `/kiro-verify-phase-gate <feature> requirements` を実行する
 8. **[ゲート] 要求フェーズ**: 調整者が validate 3種の GO・成果物・**決定事項サマリー**（各レポートの `## Decisions` 要約）を報告し、ユーザー承認を待つ。承認後 `approvals.requirements.approved: true`
 9. [設計者]: `/kiro-validate-gap` を実行する（brownfield のみ・任意）

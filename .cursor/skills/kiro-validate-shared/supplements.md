@@ -4,7 +4,7 @@ Read only when executing `/kiro-validate-requirements-doc`.
 
 ## Purpose
 
-Support EARS `requirements.md` with reference materials. Link each AC to material IDs in the「関連する補足資料」column.
+Support EARS `requirements.md` with reference materials. Link each AC to supplements via **relative-path Markdown links** in the「関連する補足資料」column.
 
 ## Placement
 
@@ -49,10 +49,28 @@ Copy from `docs/settings/templates/specs/supplements/` when creating priority su
 
 Examples: `Glossary-01`, `Context-01`, `UC-Order-01`, `State-02`, `Flow-03`, `ErrMatrix-01`
 
-Assign IDs in supplement files. Update `requirements.md` AC table references. Use `-` when no supplement applies.
+Assign IDs in supplement files as `## {Material-ID}` headings (stable anchor targets). Update `requirements.md` AC table with relative-path links. Use `-` when no supplement applies.
+
+## AC Reference Link Format
+
+Paths are **relative to** `docs/specs/<feature>/requirements.md`. Use Markdown links with a human-readable label (for stakeholder review).
+
+| Supplement file | Relative path from `requirements.md` | Example link |
+| --------------- | ------------------------------------ | ------------ |
+| Glossary | `../_shared/glossary.md` | `[用語集](../_shared/glossary.md#glossary-01)` |
+| Context diagram | `../_shared/context-diagram.md` | `[コンテキスト図](../_shared/context-diagram.md#context-01)` |
+| Use-case diagram | `supplements/use-case-diagram.md` | `[ユースケース図](supplements/use-case-diagram.md#uc-order-01)` |
+| State transition | `supplements/state-transition.md` | `[状態遷移](supplements/state-transition.md#state-order-01)` |
+| Error-handling matrix | `supplements/error-handling-matrix.md` | `[エラーハンドリング](supplements/error-handling-matrix.md#errmatrix-order-01)` |
+
+Rules:
+
+- Use `#` + lowercase slug of the Material ID as anchor (e.g. `Glossary-01` → `#glossary-01`)
+- Multiple supplements: comma-separated links (e.g. `[用語集](...), [UC図](...)`)
+- Do not use repo-root absolute paths (`docs/specs/...`) in the AC column
 
 ## Doc Skill Outputs
 
-- Create or update supplement files
-- Update「関連する補足資料」column in `requirements.md` (no new ACs outside PO-validated scope)
+- Create or update supplement files (with `## {Material-ID}` heading per material)
+- Update「関連する補足資料」column in `requirements.md` with relative-path links (no new ACs outside PO-validated scope)
 - Write `reviews/requirements-doc.md` per shared contract

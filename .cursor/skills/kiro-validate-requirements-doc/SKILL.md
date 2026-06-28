@@ -1,6 +1,6 @@
 ---
 name: kiro-validate-requirements-doc
-description: Creates requirements supplementary materials (glossary, context diagram, use-case diagrams) and links ACs to material IDs in requirements.md. Use after /kiro-validate-requirements-sec in AI-DLC flow. No user dialogue.
+description: Creates requirements supplementary materials (glossary, context diagram, use-case diagrams) and links ACs via relative-path Markdown links in requirements.md. Use after /kiro-validate-requirements-sec in AI-DLC flow. No user dialogue.
 metadata:
   shared-rules: "../kiro-validate-shared/contract.md, ../kiro-validate-shared/supplements.md"
 ---
@@ -21,7 +21,7 @@ Third requirements-phase validate. Creates supplements and AC cross-references. 
 ## Execution
 
 1. Read `../kiro-validate-shared/contract.md` if not already loaded this session.
-2. Read `../kiro-validate-shared/supplements.md` (supplement placement and IDs).
+2. Read `../kiro-validate-shared/supplements.md` (supplement placement and link format).
 3. Read `rules/doc-checklist.md` from this skill directory.
 4. For priority supplements, use `docs/settings/templates/specs/supplements/` (`glossary.md`, `context-diagram.md`, `use-case-diagram.md`) when creating new files; merge into existing `docs/specs/_shared/` files when present. For optional supplements (complexity warrants), use `state-transition.md` and `error-handling-matrix.md` from the same directory.
 5. Create or update supplement files; update「関連する補足資料」column in `requirements.md`.

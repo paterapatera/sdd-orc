@@ -32,7 +32,7 @@ Read when executing `/kiro-verify-phase-gate` or when the orchestrator needs pre
 | 5 | `reviews/requirements-doc.md` → `VERDICT: GO` |
 | 6 | `approvals.requirements.approved === false` (not yet human-approved; gate is pre-approval) |
 
-Optional consistency: AC「関連する補足資料」列の参照 ID が doc validate で作成された資料と矛盾しないこと。
+Optional consistency: AC「関連する補足資料」列の相対パスリンク先が doc validate で作成された資料と矛盾しないこと。
 
 ## Phase: `design`
 

@@ -5,7 +5,7 @@
 <!-- Template source: docs/settings/templates/specs/supplements/error-handling-matrix.md -->
 <!-- Created by /kiro-validate-requirements-doc when exception patterns are numerous -->
 
-## Purpose
+## ErrMatrix-{{DOMAIN}}-01
 
 例外・エラーパターンとシステム応答を一覧化し、`If <エラー発生時>, then <システム側の対応>` 形式の Unwanted Behavior AC の網羅漏れを防ぐ。
 
@@ -41,6 +41,6 @@
 
 ## References
 
-- Glossary: `Glossary-01` → `docs/specs/_shared/glossary.md`
-- State transition: `State-{{DOMAIN}}-01` → `docs/specs/{{FEATURE}}/supplements/state-transition.md`
-- Requirements: `docs/specs/{{FEATURE}}/requirements.md`
+- Glossary: [用語集](../../_shared/glossary.md#glossary-01)
+- State transition: [状態遷移](state-transition.md#state-{{DOMAIN}}-01)
+- Requirements: [要件定義](../requirements.md)

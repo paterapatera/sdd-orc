@@ -11,8 +11,8 @@
 
 <!-- Supplementary materials are created by /kiro-validate-requirements-doc -->
 ## Supplementary Materials (Optional)
-- See `docs/specs/_shared/` for project-wide materials (glossary, context diagram)
-- See `docs/specs/{{FEATURE}}/supplements/` for domain-specific materials
+- Project-wide: [用語集](../_shared/glossary.md), [コンテキスト図](../_shared/context-diagram.md)
+- Domain-specific: [supplements/](supplements/) 配下
 
 ## Requirements
 
@@ -24,15 +24,17 @@
 
 <!-- Write acceptance criteria in the language specified in spec.json. Keep EARS trigger keywords in English (When, If, While, Where, The [system] shall). -->
 <!-- Pattern values: Event-driven | State-driven | Unwanted Behavior | Optional | Ubiquitous -->
-<!-- Reference supplementary material IDs created by /kiro-validate-requirements-doc (for example: 用語集: Glossary-01, 状態遷移図: State-02, 業務フロー: Flow-03). Use "-" when no supplement applies. -->
+<!-- Reference supplementary materials with relative-path Markdown links (paths from this requirements.md). Created by /kiro-validate-requirements-doc. -->
+<!-- Examples: [用語集](../_shared/glossary.md#glossary-01), [コンテキスト図](../_shared/context-diagram.md#context-01), [ユースケース図](supplements/use-case-diagram.md#uc-order-01) -->
+<!-- Multiple refs: comma-separated links. Use "-" when no supplement applies. -->
 
 | AC ID | パターン | 受け入れ条件 | 関連する補足資料 |
 | :---- | :---- | :---- | :---- |
-| REQ-001 | Event-driven | When [event], the [system] shall [response/action] | {{SUPPLEMENT_REF}} |
-| REQ-002 | State-driven | While [precondition], the [system] shall [response/action] | {{SUPPLEMENT_REF}} |
-| REQ-003 | Unwanted Behavior | If [trigger], the [system] shall [response/action] | {{SUPPLEMENT_REF}} |
-| REQ-004 | Optional | Where [feature is included], the [system] shall [response/action] | {{SUPPLEMENT_REF}} |
-| REQ-005 | Ubiquitous | The [system] shall [response/action] | {{SUPPLEMENT_REF}} |
+| REQ-001 | Event-driven | When [event], the [system] shall [response/action] | [用語集](../_shared/glossary.md#glossary-01), [コンテキスト図](../_shared/context-diagram.md#context-01) |
+| REQ-002 | State-driven | While [precondition], the [system] shall [response/action] | [用語集](../_shared/glossary.md#glossary-01) |
+| REQ-003 | Unwanted Behavior | If [trigger], the [system] shall [response/action] | [エラーハンドリング](supplements/error-handling-matrix.md#errmatrix-order-01) |
+| REQ-004 | Optional | Where [feature is included], the [system] shall [response/action] | [ユースケース図](supplements/use-case-diagram.md#uc-order-01) |
+| REQ-005 | Ubiquitous | The [system] shall [response/action] | - |
 
 ### Requirement 2: {{REQUIREMENT_AREA_2}}
 **Objective:** As a {{ROLE}}, I want {{CAPABILITY}}, so that {{BENEFIT}}
@@ -41,7 +43,7 @@
 
 | AC ID | パターン | 受け入れ条件 | 関連する補足資料 |
 | :---- | :---- | :---- | :---- |
-| REQ-006 | Event-driven | When [event], the [system] shall [response/action] | {{SUPPLEMENT_REF}} |
-| REQ-007 | State-driven | While [precondition], the [system] shall [response/action] | {{SUPPLEMENT_REF}} |
+| REQ-006 | Event-driven | When [event], the [system] shall [response/action] | [ユースケース図](supplements/use-case-diagram.md#uc-order-01) |
+| REQ-007 | State-driven | While [precondition], the [system] shall [response/action] | [状態遷移](supplements/state-transition.md#state-order-01) |
 
 <!-- Additional requirements follow the same pattern -->

@@ -5,7 +5,7 @@
 <!-- Template source: docs/settings/templates/specs/supplements/state-transition.md -->
 <!-- Created by /kiro-validate-requirements-doc when status flows are complex -->
 
-## Purpose
+## State-{{DOMAIN}}-01
 
 エンティティやプロセスの状態と遷移を可視化し、`While <特定の状態>` 定義時の遷移漏れ・矛盾を防ぐ。State-driven の EARS AC を支える。
 
@@ -56,5 +56,5 @@ stateDiagram-v2
 
 ## References
 
-- Glossary: `Glossary-01` → `docs/specs/_shared/glossary.md`
-- Requirements: `docs/specs/{{FEATURE}}/requirements.md`
+- Glossary: [用語集](../../_shared/glossary.md#glossary-01)
+- Requirements: [要件定義](../requirements.md)

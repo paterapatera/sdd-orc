@@ -4,7 +4,7 @@
 <!-- Output: docs/specs/_shared/context-diagram.md (project-wide; one diagram for multi-domain boundary) -->
 <!-- Created by /kiro-validate-requirements-doc from docs/settings/templates/specs/supplements/context-diagram.md -->
 
-## Purpose
+## Context-01
 
 開発対象システムの境界と、外部アクター・外部システムとの関係を 1 枚で示す。スコープの認識ズレを防ぐ。
 
@@ -51,5 +51,5 @@ flowchart TB
 
 ## References
 
-- Glossary: `Glossary-01` → `docs/specs/_shared/glossary.md`
-- Requirements: `docs/specs/{{FEATURE}}/requirements.md`
+- Glossary: [用語集](glossary.md#glossary-01)
+- Requirements: [要件定義](../{{FEATURE}}/requirements.md)
