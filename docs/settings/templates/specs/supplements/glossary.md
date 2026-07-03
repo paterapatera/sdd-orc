@@ -15,18 +15,20 @@
 
 ## 用語
 
-| 用語ID | 用語 | 定義 | 同義語・略語 | 備考 |
-| :------ | :--- | :--- | :----------- | :--- |
-| GLOSS-001 | {{TERM}} | {{DEFINITION}} | {{SYNONYMS}} | {{NOTES}} |
-| GLOSS-002 | {{TERM}} | {{DEFINITION}} | {{SYNONYMS}} | {{NOTES}} |
+<!-- 物理名は必須。プログラミング時の変数名・テーブル名・API 名などに使うため、全用語に記載する -->
+
+| 用語ID | 論理名 | 物理名 | 定義 | 同義語・略語 | 備考 |
+| :------ | :----- | :----- | :--- | :----------- | :--- |
+| GLOSS-001 | {{LOGICAL_NAME}} | {{PHYSICAL_NAME}} | {{DEFINITION}} | {{SYNONYMS}} | {{NOTES}} |
+| GLOSS-002 | {{LOGICAL_NAME}} | {{PHYSICAL_NAME}} | {{DEFINITION}} | {{SYNONYMS}} | {{NOTES}} |
 
 ## ドメイン固有の用語（任意）
 
-<!-- ドメイン固有の用語が多い場合はセクションを分ける -->
+<!-- ドメイン固有の用語が多い場合はセクションを分ける。物理名は必須 -->
 
-| 用語ID | 用語 | 定義 | 関連要件 / AC |
-| :------ | :--- | :--- | :------------ |
-| GLOSS-101 | {{TERM}} | {{DEFINITION}} | {{REQ_OR_AC_REF}} |
+| 用語ID | 論理名 | 物理名 | 定義 | 関連要件 / AC |
+| :------ | :----- | :----- | :--- | :------------ |
+| GLOSS-101 | {{LOGICAL_NAME}} | {{PHYSICAL_NAME}} | {{DEFINITION}} | {{REQ_OR_AC_REF}} |
 
 ## 参照
 

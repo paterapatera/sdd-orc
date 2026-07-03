@@ -16,6 +16,7 @@ Write all generated documents in **Japanese** (matching the Japanese glossary/co
 - Purpose: unify terminology to prevent misunderstanding; give consistent definitions to key terms used in requirements / design.
 - Template: `docs/settings/templates/specs/supplements/glossary.md`
 - One file per project. If `glossary.md` already exists, **append/merge** terms from the target spec (prefer existing definitions on conflict; add only the delta).
+- **Every term MUST include a physical name (物理名)** — an English identifier used at programming time for variable/table/API names. Never leave the「物理名」column blank; if no established name exists, propose a reasonable English one. When merging, backfill missing 物理名 on existing rows.
 
 ## 2. Context diagram
 
