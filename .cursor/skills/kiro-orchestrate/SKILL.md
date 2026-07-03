@@ -49,7 +49,7 @@ For each step in the active flow:
 
 | Role | Skills |
 | ---- | ------ |
-| プロダクトオーナー | discovery, spec-init, spec-requirements, validate-requirements, validate-requirements-doc |
+| プロダクトオーナー | discovery, spec-init, spec-requirements, validate-requirements |
 | セキュリティ管理者 | validate-requirements-sec, validate-design-sec |
 | 設計者 | validate-gap, spec-design, validate-design-ex, spec-tasks |
 | 品質管理者 | validate-design-qa, validate-impl |

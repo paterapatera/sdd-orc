@@ -7,7 +7,7 @@ Read on demand when routing, Path B, spec-init, or impl monitoring needs detail.
 | Role | Responsibility | Key skills |
 | ---- | -------------- | ---------- |
 | 調整者 | Routing, gates, rollback | `/kiro-orchestrate` |
-| プロダクトオーナー | Requirements, brush-up, supplements | discovery, spec-init, spec-requirements, validate-requirements, validate-requirements-doc |
+| プロダクトオーナー | Requirements, brush-up | discovery, spec-init, spec-requirements, validate-requirements |
 | セキュリティ管理者 | Requirements/design security | validate-requirements-sec, validate-design-sec |
 | 設計者 | Design, tasks, AI-DLC design final gate | validate-gap, spec-design, validate-design-ex, spec-tasks |
 | アーキテクト管理者 | SOLID, coupling | validate-design-arch |

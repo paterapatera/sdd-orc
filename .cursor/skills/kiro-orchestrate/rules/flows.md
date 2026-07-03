@@ -13,20 +13,19 @@ Load **only** the section matching the active flow. Before each `[GATE]` (要求
 3. `/kiro-spec-requirements <feature>`
 4. `/kiro-validate-requirements <feature>`
 5. `/kiro-validate-requirements-sec <feature>`
-6. `/kiro-validate-requirements-doc <feature>`
-7. `/kiro-verify-phase-gate <feature> requirements`
-8. **[GATE] 要求**
-9. `/kiro-validate-gap <feature>` (brownfield, optional)
-10. `/kiro-spec-design <feature>`
-11. `/kiro-validate-design-qa <feature>`
-12. `/kiro-validate-design-arch <feature>`
-13. `/kiro-validate-design-sec <feature>`
-14. `/kiro-validate-design-ex <feature>`
-15. `/kiro-verify-phase-gate <feature> design`
-16. **[GATE] 設計**
-17. `/kiro-spec-tasks <feature>`
-18. `/kiro-verify-phase-gate <feature> tasks`
-19. **[GATE] タスク** → end（承認後もオーケストレーションは終了。実装工程には進まない）
+6. `/kiro-verify-phase-gate <feature> requirements`
+7. **[GATE] 要求**
+8. `/kiro-validate-gap <feature>` (brownfield, optional)
+9. `/kiro-spec-design <feature>`
+10. `/kiro-validate-design-qa <feature>`
+11. `/kiro-validate-design-arch <feature>`
+12. `/kiro-validate-design-sec <feature>`
+13. `/kiro-validate-design-ex <feature>`
+14. `/kiro-verify-phase-gate <feature> design`
+15. **[GATE] 設計**
+16. `/kiro-spec-tasks <feature>`
+17. `/kiro-verify-phase-gate <feature> tasks`
+18. **[GATE] タスク** → end（承認後もオーケストレーションは終了。実装工程には進まない）
 
 ## 要求更新
 
@@ -42,19 +41,18 @@ Load **only** the section matching the active flow. Before each `[GATE]` (要求
 4. `/kiro-spec-requirements <feature>` (diff only)
 5. `/kiro-validate-requirements <feature>` (diff only)
 6. `/kiro-validate-requirements-sec <feature>` (diff only)
-7. `/kiro-validate-requirements-doc <feature>` (diff only)
-8. `/kiro-verify-phase-gate <feature> requirements`
-9. **[GATE] 要求**
-10. `/kiro-spec-design <feature>` (requirements diff only)
-11. `/kiro-validate-design-qa <feature>` (diff only)
-12. `/kiro-validate-design-arch <feature>` (diff only)
-13. `/kiro-validate-design-sec <feature>` (diff only)
-14. `/kiro-validate-design-ex <feature>`
-15. `/kiro-verify-phase-gate <feature> design`
-16. **[GATE] 設計**
-17. `/kiro-spec-tasks <feature>` (diff only)
-18. `/kiro-verify-phase-gate <feature> tasks`
-19. **[GATE] タスク** → end（承認後もオーケストレーションは終了。実装工程には進まない）
+7. `/kiro-verify-phase-gate <feature> requirements`
+8. **[GATE] 要求**
+9. `/kiro-spec-design <feature>` (requirements diff only)
+10. `/kiro-validate-design-qa <feature>` (diff only)
+11. `/kiro-validate-design-arch <feature>` (diff only)
+12. `/kiro-validate-design-sec <feature>` (diff only)
+13. `/kiro-validate-design-ex <feature>`
+14. `/kiro-verify-phase-gate <feature> design`
+15. **[GATE] 設計**
+16. `/kiro-spec-tasks <feature>` (diff only)
+17. `/kiro-verify-phase-gate <feature> tasks`
+18. **[GATE] タスク** → end（承認後もオーケストレーションは終了。実装工程には進まない）
 
 ## 設計更新
 

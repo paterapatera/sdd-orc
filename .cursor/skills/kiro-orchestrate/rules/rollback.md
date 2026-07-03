@@ -5,8 +5,7 @@ On `NO-GO` / `REJECTED`, roll back to the **generating step** for the failed che
 | Failed check | Rollback to | Re-run from |
 | ------------ | ----------- | ----------- |
 | `/kiro-validate-requirements` | `/kiro-spec-requirements` | `validate-requirements` |
-| `/kiro-validate-requirements-sec` | `/kiro-spec-requirements` or `requirements.md` | po → sec → doc |
-| `/kiro-validate-requirements-doc` | supplements only, or `requirements.md` | doc only, or `spec-requirements` → full validate chain |
+| `/kiro-validate-requirements-sec` | `/kiro-spec-requirements` or `requirements.md` | po → sec |
 | `/kiro-validate-design-qa` | `/kiro-spec-design` | qa → arch → sec → `validate-design-ex` |
 | `/kiro-validate-design-arch` | `/kiro-spec-design` | same |
 | `/kiro-validate-design-sec` | `/kiro-spec-design` | same |
@@ -20,13 +19,11 @@ On `NOT_VERIFIED`, parse `GAPS` from verify output against `../kiro-validate-sha
 
 | Phase | Gap (checklist item) | Rollback to | Re-run from |
 | ----- | -------------------- | ----------- | ----------- |
-| `requirements` | missing / empty `requirements.md` | `/kiro-spec-requirements` | validate chain: `validate-requirements` → sec → doc |
+| `requirements` | missing / empty `requirements.md` | `/kiro-spec-requirements` | validate chain: `validate-requirements` → sec |
 | `requirements` | `approvals.requirements.generated !== true` | `/kiro-spec-requirements` | same validate chain |
-| `requirements` | non-GO or missing `reviews/requirements-po.md` | `/kiro-spec-requirements` or `requirements.md` fix | `validate-requirements` → sec → doc |
-| `requirements` | non-GO or missing `reviews/requirements-sec.md` | `/kiro-spec-requirements` or `requirements.md` | po → sec → doc |
-| `requirements` | non-GO or missing `reviews/requirements-doc.md` | supplements only, or `requirements.md` | doc only, or `spec-requirements` → full validate chain |
+| `requirements` | non-GO or missing `reviews/requirements-po.md` | `/kiro-spec-requirements` or `requirements.md` fix | `validate-requirements` → sec |
+| `requirements` | non-GO or missing `reviews/requirements-sec.md` | `/kiro-spec-requirements` or `requirements.md` | po → sec |
 | `requirements` | `approvals.requirements.approved === true` | **[調整者]** re-apply 要求更新 approval invalidation (`flows.md` step 2) | `/kiro-verify-phase-gate` |
-| `requirements` | AC supplement link inconsistency (optional check) | `/kiro-validate-requirements-doc` | doc → `/kiro-verify-phase-gate` |
 | `design` | missing `design.md` | `/kiro-spec-design` | qa → arch → sec → `validate-design-ex` |
 | `design` | `approvals.design.generated !== true` | `/kiro-spec-design` | same design validate chain |
 | `design` | non-GO or missing `reviews/design-qa.md` | `/kiro-spec-design` | qa → arch → sec → `validate-design-ex` |
