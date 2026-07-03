@@ -18,22 +18,16 @@
 ## Diagram
 
 ```mermaid
-flowchart LR
-    subgraph Actors
-        A1["{{ACTOR_1}}"]
-        A2["{{ACTOR_2}}"]
-    end
-
-    subgraph System["{{SYSTEM_NAME}}"]
-        UC1(("UC-01: {{USE_CASE_NAME}}"))
-        UC2(("UC-02: {{USE_CASE_NAME}}"))
-        UC3(("UC-03: {{USE_CASE_NAME}}"))
-    end
-
-    A1 --> UC1
-    A1 --> UC2
-    A2 --> UC3
-    UC2 -.->|"<<include>>"| UC1
+graph LR
+  subgraph system["{{SYSTEM_NAME}}"]
+    uc1("{{USE_CASE_NAME_1}}")
+    uc2("{{USE_CASE_NAME_2}}")
+    uc3("{{USE_CASE_NAME_3}}")
+  end
+  user(("{{ACTOR}}"))-->uc1
+  user-->uc2
+  user-->uc3
+  memo["・{{NOTE_LINE_1}}<br>・{{NOTE_LINE_2}}"]-.-uc3
 ```
 
 ## Use case list

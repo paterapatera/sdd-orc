@@ -17,19 +17,15 @@
 
 ```mermaid
 flowchart TB
-    subgraph ExternalActors["外部アクター"]
-        User["{{ACTOR_1}}"]
-        Admin["{{ACTOR_2}}"]
-    end
+    User["{{ACTOR_1}}"]
+    Admin["{{ACTOR_2}}"]
 
     subgraph SystemBoundary["開発対象システム"]
         Core["{{SYSTEM_NAME}}"]
     end
 
-    subgraph ExternalSystems["外部システム"]
-        ExtA["{{EXTERNAL_SYSTEM_1}}"]
-        ExtB["{{EXTERNAL_SYSTEM_2}}"]
-    end
+    ExtA["{{EXTERNAL_SYSTEM_1}}"]
+    ExtB["{{EXTERNAL_SYSTEM_2}}"]
 
     User -->|"{{INTERACTION_1}}"| Core
     Admin -->|"{{INTERACTION_2}}"| Core
