@@ -40,8 +40,8 @@ After all mechanical validates for a phase report `GO`, **before** opening the h
 | ----- | -------------- | ------------------- |
 | 要求 | `requirements.md` + 3 requirement validates GO | `approvals.requirements.approved: true` → `/kiro-spec-design` |
 | 設計 | `design.md` + qa/arch/sec GO + `/kiro-validate-design-ex` GO | `approvals.design.approved: true` → `/kiro-spec-tasks` |
-| タスク | `tasks.md` generated | `approvals.tasks.approved: true`, `ready_for_implementation: true` → `/kiro-impl` |
-| 実装 | all tasks `[x]`, all reviews APPROVED, `/kiro-validate-impl` GO | mark phase complete → end |
+| タスク | `tasks.md` generated | `approvals.tasks.approved: true`, `ready_for_implementation: true` → **end orchestration (do not dispatch `/kiro-impl`)** |
+| 実装 | (out of orchestration scope) | reached only via an explicit `実装のみ` invocation |
 
 Requirements validates (all GO): `validate-requirements` → `sec` → `doc`.
 
@@ -73,6 +73,7 @@ Open only after `/kiro-verify-phase-gate` returns `VERIFIED` (要求 / 設計 / 
 - No next phase without user approval (`-y` only if user explicitly requests fast-track).
 - Path B: no `spec.json` gates — user confirmation at end only.
 - After approval: set `approvals.<phase>.approved: true`, proceed to next flow step.
+- **タスク gate is terminal.** After タスク approval, set `approvals.tasks.approved: true` and `ready_for_implementation: true`, then **end the orchestration**. Do **not** dispatch `/kiro-impl` — even if the user says "承認して次へ". Implementation requires a separate explicit `実装のみ` invocation.
 
 ## Impl Phase Monitoring
 

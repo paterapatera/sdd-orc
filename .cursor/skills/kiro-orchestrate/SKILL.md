@@ -36,6 +36,7 @@ For each step in the active flow:
 
 ## Hard Constraints
 
+- **Orchestration scope ends at task generation.** Generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **[GATE] タスク**. Approving that gate ("承認して次へ") ends the orchestration — never chain into `/kiro-impl`, `/kiro-validate-impl`, `/kiro-verify-completion` (`FEATURE_GO`), or any implementation step. Implementation runs only via an explicit `実装のみ` invocation.
 - No human approval skip unless user explicitly requests `-y` fast-track.
 - Design validates: serial **qa → arch → sec** only; then `/kiro-validate-design-ex`.
 - Path B: no spec flow, no `/kiro-impl`.

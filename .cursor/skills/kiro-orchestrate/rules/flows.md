@@ -1,6 +1,8 @@
 # Flow Step Sequences
 
-Load **only** the section matching the active flow. Before each `[GATE]` (要求/設計/タスク): `/kiro-verify-phase-gate <feature> <phase>` must return `VERIFIED`. `[GATE]` = human approval per `gates.md`. **[GATE] 実装**: `/kiro-verify-completion` (`FEATURE_GO`) after `/kiro-validate-impl` GO.
+**Orchestration scope ends at task generation.** The generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **[GATE] タスク**. Approving that gate ("承認して次へ") finalizes the tasks and **ends the orchestration** — it must **not** dispatch `/kiro-impl` or any implementation step. Implementation is run separately (explicit `実装のみ` invocation only).
+
+Load **only** the section matching the active flow. Before each `[GATE]` (要求/設計/タスク): `/kiro-verify-phase-gate <feature> <phase>` must return `VERIFIED`. `[GATE]` = human approval per `gates.md`.
 
 `[調整者]` steps are orchestrator-only (not skill dispatches). Orchestrator updates `spec.json` directly.
 
@@ -24,11 +26,7 @@ Load **only** the section matching the active flow. Before each `[GATE]` (要求
 16. **[GATE] 設計**
 17. `/kiro-spec-tasks <feature>`
 18. `/kiro-verify-phase-gate <feature> tasks`
-19. **[GATE] タスク**
-20. `/kiro-impl <feature>`
-21. `/kiro-validate-impl <feature>`
-22. `/kiro-verify-completion <feature>` (`FEATURE_GO`)
-23. **[GATE] 実装** → end
+19. **[GATE] タスク** → end（承認後もオーケストレーションは終了。実装工程には進まない）
 
 ## 要求更新
 
@@ -55,11 +53,7 @@ Load **only** the section matching the active flow. Before each `[GATE]` (要求
 15. **[GATE] 設計**
 16. `/kiro-spec-tasks <feature>` (diff only)
 17. `/kiro-verify-phase-gate <feature> tasks`
-18. **[GATE] タスク**
-19. `/kiro-impl <feature>`
-20. `/kiro-validate-impl <feature>`
-21. `/kiro-verify-completion <feature>` (`FEATURE_GO`)
-22. **[GATE] 実装** → end
+18. **[GATE] タスク** → end（承認後もオーケストレーションは終了。実装工程には進まない）
 
 ## 設計更新
 
@@ -73,13 +67,11 @@ Load **only** the section matching the active flow. Before each `[GATE]` (要求
 8. **[GATE] 設計**
 9. `/kiro-spec-tasks <feature>` (diff only)
 10. `/kiro-verify-phase-gate <feature> tasks`
-11. **[GATE] タスク**
-12. `/kiro-impl <feature>`
-13. `/kiro-validate-impl <feature>`
-14. `/kiro-verify-completion <feature>` (`FEATURE_GO`)
-15. **[GATE] 実装** → end
+11. **[GATE] タスク** → end（承認後もオーケストレーションは終了。実装工程には進まない）
 
 ## 実装のみ
+
+**Enter only on an explicit user request for implementation** (e.g.「実装だけ」). This flow is never reached automatically from a task-generation flow — the タスク gate does not chain into it.
 
 1. `/kiro-discovery` (Path A → impl only)
 2. Verify `approvals.tasks.approved: true` — stop if false
