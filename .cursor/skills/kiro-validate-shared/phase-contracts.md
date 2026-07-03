@@ -2,13 +2,14 @@
 
 Per-skill I/O and boundaries. Shared report format: `contract.md`.
 
-## Requirements Phase (serial: po → sec → doc)
+## Requirements Phase (serial: po → sec)
 
 | Skill | Input | Output / side effects | Do not |
 | ----- | ----- | --------------------- | ------ |
 | `/kiro-validate-requirements` | `requirements.md`, `brief.md`, steering | `reviews/requirements-po.md`; fix `requirements.md` if needed; `## Decisions` | EARS mechanical check, security deep-dive, user dialogue |
 | `/kiro-validate-requirements-sec` | `requirements.md`, steering security | `reviews/requirements-sec.md`; adopt/defer in `## Decisions` | Functional scope (PO), user dialogue |
-| `/kiro-validate-requirements-doc` | `requirements.md`, existing supplements | Supplement files; AC column links; `reviews/requirements-doc.md` | New ACs outside PO scope |
+
+> Documentation (glossary, context diagram, acceptance-criteria diagram, functional test cases) is split out of the requirements phase. It is handled post-implementation by `/kiro-docs` (interactive; includes spec cleanup).
 
 ### vs `requirements-review-gate`
 

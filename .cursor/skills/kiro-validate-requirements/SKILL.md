@@ -8,7 +8,7 @@ metadata:
 # Validate Requirements (PO)
 
 <background_information>
-First of three requirements-phase validates (po → sec → doc). Autonomous; no user dialogue. Judgments go to `reviews/requirements-po.md` `## Decisions` for the approval gate.
+First of the requirements-phase validates (po → sec). Autonomous; no user dialogue. Judgments go to `reviews/requirements-po.md` `## Decisions` for the approval gate.
 </background_information>
 
 <instructions>

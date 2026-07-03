@@ -43,7 +43,7 @@ After all mechanical validates for a phase report `GO`, **before** opening the h
 | タスク | `tasks.md` generated | `approvals.tasks.approved: true`, `ready_for_implementation: true` → **end orchestration (do not dispatch `/kiro-impl`)** |
 | 実装 | (out of orchestration scope) | reached only via an explicit `実装のみ` invocation |
 
-Requirements validates (all GO): `validate-requirements` → `sec` → `doc`.
+Requirements validates (all GO): `validate-requirements` → `sec`.
 
 ## Human Approval Gate
 

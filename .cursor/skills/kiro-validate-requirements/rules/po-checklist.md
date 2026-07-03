@@ -18,7 +18,7 @@ Post-generation semantic review and autonomous brush-up of `requirements.md`. Pr
 
 - EARS mechanical syntax checks (`requirements-review-gate` in `/kiro-spec-requirements`)
 - Security deep-dive (`/kiro-validate-requirements-sec`)
-- Supplement creation (`/kiro-validate-requirements-doc`)
+- Supplement / documentation creation (post-implementation `/kiro-docs`)
 - User dialogue
 
 ## Checks

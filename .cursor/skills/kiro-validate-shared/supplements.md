@@ -1,6 +1,6 @@
 # Requirements Supplement Materials
 
-Read only when executing `/kiro-validate-requirements-doc`.
+Legacy reference for EARS requirements supplement materials (glossary, context diagram) and AC link format. Post-implementation documentation is handled by `/kiro-docs`.
 
 ## Purpose
 
@@ -12,7 +12,6 @@ Support EARS `requirements.md` with reference materials. Link each AC to supplem
 | -------- | ----- | ------------ |
 | Glossary / data dictionary | Project-wide | `docs/specs/_shared/glossary.md` |
 | Context diagram | Project-wide | `docs/specs/_shared/context-diagram.md` |
-| Use-case diagram | Per domain | `docs/specs/<domain>/supplements/use-case-diagram.md` |
 | Other supplements | As needed | `docs/specs/<domain>/supplements/` |
 
 ## Templates
@@ -23,15 +22,13 @@ Copy from `docs/settings/templates/specs/supplements/` when creating priority su
 | -------- | -------- |
 | Glossary | `glossary.md` |
 | Context diagram | `context-diagram.md` |
-| Use-case diagram | `use-case-diagram.md` → output under `docs/specs/<feature>/supplements/` |
-| State transition diagram/table | `state-transition.md` → output under `docs/specs/<feature>/supplements/` |
-| Error-handling matrix | `error-handling-matrix.md` → output under `docs/specs/<feature>/supplements/` |
+
+Only `glossary.md` and `context-diagram.md` remain as templates; they are consumed post-implementation by `/kiro-docs`. Other supplement types (use-case diagram, state transition, error-handling matrix, etc.) no longer ship templates — author them manually if needed.
 
 ## Priority (create first)
 
 1. **Glossary** — unify terms in When/While triggers
 2. **Context diagram** — system boundary and external actors/systems
-3. **Use-case diagram** — one per domain to keep readability
 
 ## Add When Complexity Warrants
 
@@ -59,9 +56,6 @@ Paths are **relative to** `docs/specs/<feature>/requirements.md`. Use Markdown l
 | --------------- | ------------------------------------ | ------------ |
 | Glossary | `../_shared/glossary.md` | `[用語集](../_shared/glossary.md#glossary-01)` |
 | Context diagram | `../_shared/context-diagram.md` | `[コンテキスト図](../_shared/context-diagram.md#context-01)` |
-| Use-case diagram | `supplements/use-case-diagram.md` | `[ユースケース図](supplements/use-case-diagram.md#uc-order-01)` |
-| State transition | `supplements/state-transition.md` | `[状態遷移](supplements/state-transition.md#state-order-01)` |
-| Error-handling matrix | `supplements/error-handling-matrix.md` | `[エラーハンドリング](supplements/error-handling-matrix.md#errmatrix-order-01)` |
 
 Rules:
 
@@ -69,8 +63,7 @@ Rules:
 - Multiple supplements: comma-separated links (e.g. `[用語集](...), [UC図](...)`)
 - Do not use repo-root absolute paths (`docs/specs/...`) in the AC column
 
-## Doc Skill Outputs
+## Supplement File Conventions
 
 - Create or update supplement files (with `## {Material-ID}` heading per material)
-- Update「関連する補足資料」column in `requirements.md` with relative-path links (no new ACs outside PO-validated scope)
-- Write `reviews/requirements-doc.md` per shared contract
+- Reference supplements via relative-path links (e.g. from `requirements.md`「関連する補足資料」column) — no new ACs outside PO-validated scope

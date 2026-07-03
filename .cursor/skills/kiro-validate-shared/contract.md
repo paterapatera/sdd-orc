@@ -17,7 +17,6 @@ Write to `docs/specs/<feature>/reviews/<report>.md`:
 | ----- | ----------- |
 | `/kiro-validate-requirements` | `requirements-po.md` |
 | `/kiro-validate-requirements-sec` | `requirements-sec.md` |
-| `/kiro-validate-requirements-doc` | `requirements-doc.md` |
 | `/kiro-validate-design-qa` | `design-qa.md` |
 | `/kiro-validate-design-arch` | `design-arch.md` |
 | `/kiro-validate-design-sec` | `design-sec.md` |
@@ -58,7 +57,9 @@ Before declaring `GO`, confirm fresh evidence: referenced files exist, edits are
 
 ## Phase Execution Order
 
-**Requirements** (serial): `validate-requirements` → `sec` → `doc`
+**Requirements** (serial): `validate-requirements` → `sec`
+
+(Supplement/documentation work is split out of the requirements phase; the post-implementation `/kiro-docs` skill handles it.)
 
 **Design** (serial): `validate-design-qa` → `arch` → `sec` → then `/kiro-validate-design-ex` (AI-DLC final gate). Standalone interactive review: `/kiro-validate-design` (outside orchestrate flow).
 

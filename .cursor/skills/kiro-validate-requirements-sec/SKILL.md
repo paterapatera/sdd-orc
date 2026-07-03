@@ -37,7 +37,7 @@ When `/kiro-orchestrate` runs an update flow (要求更新 — not new creation)
 
 ## On NO-GO
 
-Orchestrator rolls back to `/kiro-spec-requirements` or `requirements.md` fix, then re-runs po → sec → doc.
+Orchestrator rolls back to `/kiro-spec-requirements` or `requirements.md` fix, then re-runs po → sec.
 </instructions>
 
 ## Safety
