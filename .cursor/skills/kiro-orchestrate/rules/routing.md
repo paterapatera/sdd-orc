@@ -25,6 +25,23 @@ When a flow creates a new spec, the orchestrator enforces **domain-level naming*
 - If a spec already owns the domain, route the new action into it (要求更新 / Path A) instead of creating an action-scoped sibling.
 - If discovery proposes an action-scoped name, normalize it to the domain name before dispatching `/kiro-spec-init` / `/kiro-spec-batch` / `/kiro-spec-requirements`.
 
+## Modification Guard (implementation must be complete first)
+
+**The orchestrator must not modify a spec whose implementation is not yet complete.** Before entering any flow that changes an existing spec (要求更新 / 設計更新, or a Path A extension into an existing spec), gate on that spec's implementation state.
+
+Read `docs/specs/<feature>/spec.json` + `tasks.md`:
+
+| State | Meaning | Orchestrator action |
+| ----- | ------- | ------------------- |
+| `ready_for_implementation: true` (or `approvals.tasks.approved: true`) **and** `tasks.md` has any `[ ]` or `_Blocked:_` | implementation-ready but **not** complete | **Stop. Do not modify.** Prompt user to finish implementation first (explicit `実装のみ`). |
+| `ready_for_implementation: true` **and** all `tasks.md` tasks `[x]`, no `_Blocked:_` | implementation complete | Modification allowed — proceed with 要求更新 / 設計更新 |
+| tasks not yet approved (`approvals.tasks.approved: false`) | still in first-pass authoring (requirements/design/tasks not finished) | Not a modification of implemented-ready work — resume the initial flow normally |
+
+- "Implementation complete" = `tasks.md` exists, every task `[x]`, none `_Blocked:_` (confirm via `/kiro-spec-status <feature>`; a prior `/kiro-validate-impl` GO is stronger evidence).
+- On a blocked modification, report: which spec, its outstanding `[ ]` / `_Blocked:_` tasks, and instruct: complete implementation via an explicit `実装のみ` run, then re-request the change.
+- **User override does not bypass this guard** unless the user explicitly acknowledges the incomplete implementation and insists on modifying anyway.
+- Path B (直接実装) is unaffected — it has no spec.
+
 ## Path → Flow
 
 | Path | Route |
