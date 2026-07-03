@@ -14,17 +14,6 @@ After `/kiro-discovery`, combine **Path (A–E)**, **`spec.json` state**, and **
 
 **User override wins** — e.g.「要求だけ更新」「実装だけ」.
 
-## Spec Naming (domain-level)
-
-When a flow creates a new spec, the orchestrator enforces **domain-level naming** on the `<feature>` passed to spec skills — name it after the domain / responsibility area, not a single action.
-
-- Prefer the domain noun: `favorite`, `notification`, `billing`, `auth`.
-- Do **not** encode an action/CRUD verb: avoid `favorite-add`, `favorite-edit`, `notification-send`, `user-login`.
-- E.g.「ユーザーはお気に入り編集をできる」→ spec `favorite` (add/edit/delete all live inside `favorite`).
-- Action-level naming only when the user explicitly asks, or a genuinely distinct domain boundary requires it.
-- If a spec already owns the domain, route the new action into it (要求更新 / Path A) instead of creating an action-scoped sibling.
-- If discovery proposes an action-scoped name, normalize it to the domain name before dispatching `/kiro-spec-init` / `/kiro-spec-batch` / `/kiro-spec-requirements`.
-
 ## Modification Guard (implementation must be complete first)
 
 **The orchestrator must not modify a spec whose implementation is not yet complete.** Before entering any flow that changes an existing spec (要求更新 / 設計更新, or a Path A extension into an existing spec), gate on that spec's implementation state.
