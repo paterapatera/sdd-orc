@@ -73,7 +73,46 @@ Open only after `/kiro-verify-phase-gate` returns `VERIFIED` (要求 / 設計 / 
 - No next phase without user approval (`-y` only if user explicitly requests fast-track).
 - Path B: no `spec.json` gates — user confirmation at end only.
 - After approval: set `approvals.<phase>.approved: true`, proceed to next flow step.
-- **タスク gate is terminal.** After タスク approval, set `approvals.tasks.approved: true` and `ready_for_implementation: true`, then **end the orchestration**. Do **not** dispatch `/kiro-impl` — even if the user says "承認して次へ". Implementation requires a separate explicit `実装のみ` invocation.
+- **タスク gate is terminal.** After タスク approval, set `approvals.tasks.approved: true` and `ready_for_implementation: true`, then emit the **PR Summary Output** (below) and **end the orchestration**. Do **not** dispatch `/kiro-impl` — even if the user says "承認して次へ". Implementation requires a separate explicit `実装のみ` invocation.
+
+## PR Summary Output (タスク生成完了時)
+
+After the **[GATE] タスク** approval (`approvals.tasks.approved: true`, `ready_for_implementation: true`), and **before** ending the orchestration, emit a Pull Request-ready summary so the user can copy & paste it directly into a PR description.
+
+**Format rules**
+
+- Output as a single fenced ` ```markdown ` code block so it copies cleanly into a PR.
+- Language follows the spec artifacts (default Japanese).
+- Content is synthesized from the phase reports (`reviews/*.md` `## Decisions`), `requirements.md`, `design.md`, and `tasks.md` — do not re-run analysis, only parse existing artifacts.
+- Keep it concise; detail stays in the spec files.
+
+**Required content**
+
+1. **概要** — what this spec/feature delivers (scope in a few sentences), spec path `docs/specs/<feature>/`.
+2. **決定事項と理由 一覧** — a table of every key decision with its rationale, aggregated across phases:
+
+   | 決定事項 | 理由 |
+   | -------- | ---- |
+   | <何を決めたか> | <なぜそう決めたか> |
+
+   Aggregate the same topics as the 決定事項サマリー (Scope / Requirements validates / Security validates / Supplements / Design / Tasks). One row per decision.
+
+**Template**
+
+````markdown
+```markdown
+## 概要
+
+<feature が実現すること / スコープ>
+Spec: `docs/specs/<feature>/`
+
+## 決定事項と理由
+
+| 決定事項 | 理由 |
+| -------- | ---- |
+| … | … |
+```
+````
 
 ## Impl Phase Monitoring
 

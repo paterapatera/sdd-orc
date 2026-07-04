@@ -1,6 +1,6 @@
 # Flow Step Sequences
 
-**Orchestration scope ends at task generation.** The generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **[GATE] タスク**. Approving that gate ("承認して次へ") finalizes the tasks and **ends the orchestration** — it must **not** dispatch `/kiro-impl` or any implementation step. Implementation is run separately (explicit `実装のみ` invocation only).
+**Orchestration scope ends at task generation.** The generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **[GATE] タスク**. Approving that gate ("承認して次へ") finalizes the tasks, emits the **PR Summary Output** (`gates.md` § PR Summary Output), and **ends the orchestration** — it must **not** dispatch `/kiro-impl` or any implementation step. Implementation is run separately (explicit `実装のみ` invocation only).
 
 Load **only** the section matching the active flow. Before each `[GATE]` (要求/設計/タスク): `/kiro-verify-phase-gate <feature> <phase>` must return `VERIFIED`. `[GATE]` = human approval per `gates.md`.
 
@@ -26,7 +26,7 @@ Load **only** the section matching the active flow. Before each `[GATE]` (要求
 16. **[GATE] 設計**
 17. `/kiro-spec-tasks <feature>`
 18. `/kiro-verify-phase-gate <feature> tasks`
-19. **[GATE] タスク** → end（承認後もオーケストレーションは終了。実装工程には進まない）
+19. **[GATE] タスク** → PR Summary Output（`gates.md`）を出力 → end（承認後もオーケストレーションは終了。実装工程には進まない）
 
 ## 要求更新
 
@@ -54,7 +54,7 @@ Load **only** the section matching the active flow. Before each `[GATE]` (要求
 16. **[GATE] 設計**
 17. `/kiro-spec-tasks <feature>` (diff only)
 18. `/kiro-verify-phase-gate <feature> tasks`
-19. **[GATE] タスク** → end（承認後もオーケストレーションは終了。実装工程には進まない）
+19. **[GATE] タスク** → PR Summary Output（`gates.md`）を出力 → end（承認後もオーケストレーションは終了。実装工程には進まない）
 
 ## 設計更新
 
@@ -70,7 +70,7 @@ Load **only** the section matching the active flow. Before each `[GATE]` (要求
 10. **[GATE] 設計**
 11. `/kiro-spec-tasks <feature>` (diff only)
 12. `/kiro-verify-phase-gate <feature> tasks`
-13. **[GATE] タスク** → end（承認後もオーケストレーションは終了。実装工程には進まない）
+13. **[GATE] タスク** → PR Summary Output（`gates.md`）を出力 → end（承認後もオーケストレーションは終了。実装工程には進まない）
 
 ## 実装のみ
 
