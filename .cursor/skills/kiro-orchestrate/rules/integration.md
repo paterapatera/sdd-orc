@@ -7,7 +7,7 @@ Read on demand when routing, Path B, spec-init, or impl monitoring needs detail.
 | Role | Responsibility | Key skills |
 | ---- | -------------- | ---------- |
 | 調整者 | Routing, gates, rollback | `/kiro-orchestrate` |
-| プロダクトオーナー | Requirements, brush-up | discovery, spec-init, spec-requirements, validate-requirements |
+| プロダクトオーナー | Requirements, brush-up | spec-init, spec-requirements, validate-requirements (discovery-ex is an external pre-step, not dispatched) |
 | セキュリティ管理者 | Requirements/design security | validate-requirements-sec, validate-design-sec |
 | 設計者 | Design, tasks, AI-DLC design final gate | validate-gap, spec-design, validate-design-ex, spec-tasks |
 | アーキテクト管理者 | SOLID, coupling | validate-design-arch |
@@ -16,19 +16,20 @@ Read on demand when routing, Path B, spec-init, or impl monitoring needs detail.
 
 ## Spec Init
 
-要求新規作成: run `/kiro-spec-init` immediately after discovery (Path C/D/E), even if `brief.md` exists.
+要求新規作成: `/kiro-spec-init` is the **first orchestration step** (discovery-ex already produced `brief.md` standalone). Run it even though `brief.md` exists — it reads the brief to pre-fill the project description.
 
 | Skill | Timing | Output |
 | ----- | ------ | ------ |
-| `/kiro-discovery` | Flow start | Path, `brief.md` (C/D/E) |
-| `/kiro-spec-init` | After discovery | `spec.json`, `requirements.md` (project description) |
+| `/kiro-discovery-ex` | **Standalone pre-step (before orchestration)** | Path, `brief.md` (C/D/E), `roadmap.md` (when spec deps exist) |
+| `/kiro-spec-init` | Orchestration entry (要求新規作成) | `spec.json`, `requirements.md` (project description) |
 | `/kiro-spec-requirements` | After init | EARS `requirements.md` body |
 
 **Skip init** when `docs/specs/<feature>/spec.json` exists and `phase` ≥ `initialized` — resume from requirements.
 
 ## Path B (直接実装)
 
-- No spec create/update; do not enter spec flow after Path B discovery.
+- Decided by `/kiro-discovery-ex` **before** orchestration; Path B work never enters an orchestration flow.
+- No spec create/update; do not enter spec flow.
 - Implement in main context — **no** `/kiro-impl` (no approved tasks).
 - Verify with `/kiro-verify-completion` (`FIX` or `TEST_OR_BUILD`).
 - **Not used**: `spec.json` gates, `/kiro-impl`, `/kiro-validate-impl`, mandatory `/kiro-review`.

@@ -14,7 +14,7 @@ The orchestrator decides **when, which role, and which skill** to run. It does n
 <instructions>
 ## Startup
 
-1. Read `rules/routing.md` — determine active flow from discovery Path, `spec.json`, user override.
+1. Read `rules/routing.md` — determine active flow from `spec.json` state + user override per § Entry Contract (`/kiro-discovery-ex` runs **standalone before** orchestration; discovery is not an orchestration step).
 2. Read **only** the matching section in `rules/flows.md`.
 3. Load `rules/gates.md` or `rules/rollback.md` when a gate or failure occurs.
 4. Load `rules/integration.md` only for spec-init skip, Path B, impl loop, or skill-boundary questions.
@@ -49,19 +49,21 @@ For each step in the active flow:
 
 | Role | Skills |
 | ---- | ------ |
-| プロダクトオーナー | discovery, spec-init, spec-requirements, validate-requirements |
+| プロダクトオーナー | spec-init, spec-requirements, validate-requirements |
 | セキュリティ管理者 | validate-requirements-sec, validate-design-sec |
 | 設計者 | validate-gap, spec-design, validate-design-ex, spec-tasks |
 | 品質管理者 | validate-design-qa, validate-impl |
 | アーキテクト管理者 | validate-design-arch |
 | 実装者 | `/kiro-impl` (or main context for Path B) |
 | 調整者 (self) | routing, gates, rollback, `verify-phase-gate` (要求/設計/タスク), `verify-completion` (impl / Path B) |
+
+`discovery` / `discovery-ex` are **not dispatched** by the orchestrator — `/kiro-discovery-ex` is an external pre-step run standalone before orchestration (`routing.md` § Entry Contract).
 </instructions>
 
 ## Safety
 
 - **Upstream dependency guard**: Do **not** start 要求新規作成 / 要求更新 / 設計更新 for a downstream feature while roadmap upstream deps lack task generation (`routing.md` § Upstream Dependency Guard). Check before init/requirements/design dispatch and before each spec in Path D/E.
 - **Modification guard**: Do **not** modify a spec whose implementation is incomplete. Before 要求更新 / 設計更新 (or a Path A change to an existing spec), check `spec.json` + `tasks.md` (`routing.md` § Modification Guard). If the spec is implementation-ready (`ready_for_implementation: true` / `approvals.tasks.approved: true`) but has `[ ]` / `_Blocked:_` tasks, stop and prompt the user to complete implementation first (explicit `実装のみ`).
-- Missing `spec.json` on spec flows → run discovery + spec-init first.
+- Missing both `brief.md` and `spec.json` on spec flows → **stop**; instruct the user to run `/kiro-discovery-ex` standalone first (do not auto-run discovery). If `brief.md` exists but `spec.json` does not, start 要求新規作成 at `/kiro-spec-init`.
 - `approvals.tasks.approved` false on 実装のみ → stop with message.
 - `_Blocked:_` in tasks.md → stop; report user before validate-impl.
