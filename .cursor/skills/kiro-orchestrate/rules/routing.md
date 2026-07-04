@@ -31,6 +31,58 @@ Read `docs/specs/<feature>/spec.json` + `tasks.md`:
 - **User override does not bypass this guard** unless the user explicitly acknowledges the incomplete implementation and insists on modifying anyway.
 - Path B (直接実装) is unaffected — it has no spec.
 
+## Upstream Dependency Guard (roadmap.md)
+
+**The orchestrator must not start spec authoring for a downstream feature while its roadmap upstream dependencies have not finished task generation.** Before entering 要求新規作成 / 要求更新 / 設計更新 (and before each spec in Path D/E), gate on upstream readiness.
+
+### When to run
+
+| Flow | Timing |
+| ---- | ------ |
+| 要求新規作成 | After `/kiro-discovery` identifies the target feature, before `/kiro-spec-init` or `/kiro-spec-requirements` |
+| 要求更新 / 設計更新 | After Modification Guard passes, before any generation or validate dispatch |
+| Path D/E Multi-Spec | Before starting each spec's applicable flow (in roadmap dependency order) |
+
+**Not applied** to 実装のみ, Path B, or features with no upstream dependencies.
+
+### Parse dependencies
+
+Read `docs/steering/roadmap.md` when it exists:
+
+- `## Specs (dependency order)`
+- `## Existing Spec Updates` (if present)
+
+Find the line for the target feature; parse the `Dependencies:` field (comma-separated spec names; `none` = no deps).
+
+| Condition | Action |
+| --------- | ------ |
+| `roadmap.md` missing | Pass (single-spec / no roadmap context) |
+| Feature not listed in either section | Pass |
+| `Dependencies: none` (or empty) | Pass |
+
+### Upstream readiness (each listed dependency)
+
+A dependency `<dep>` is **ready** if **any** of:
+
+1. Its roadmap line is marked `[x]` (authoring completed for that spec), **or**
+2. `docs/specs/<dep>/spec.json` has `approvals.tasks.generated === true` **and** `docs/specs/<dep>/tasks.md` exists with at least one task entry.
+
+Otherwise **not ready** — including when `docs/specs/<dep>/` is missing or the upstream is still in requirements/design phase.
+
+This matches `/kiro-verify-phase-gate <dep> tasks` generation criteria and aligns with `/kiro-spec-batch` wave ordering (upstream wave must complete before downstream starts).
+
+### On block
+
+**Stop.** Do not dispatch `/kiro-spec-requirements`, `/kiro-spec-design`, `/kiro-spec-tasks`, or phase validates for the downstream feature.
+
+Report to the user:
+
+- Target feature and which upstream dep(s) are not ready
+- Each blocking dep's status (`phase`, `approvals` from `spec.json`; optional `/kiro-spec-status <dep>`)
+- Instruction: complete upstream through `/kiro-orchestrate` or `/kiro-spec-batch` for the blocking spec(s) first, then retry
+
+**User override does not bypass this guard** unless the user explicitly acknowledges incomplete upstream specs and insists on proceeding anyway.
+
 ## Path → Flow
 
 | Path | Route |

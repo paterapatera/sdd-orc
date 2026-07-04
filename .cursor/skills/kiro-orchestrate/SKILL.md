@@ -40,7 +40,7 @@ For each step in the active flow:
 - No human approval skip unless user explicitly requests `-y` fast-track.
 - Design validates: serial **qa → arch → sec** only; then `/kiro-validate-design-ex`.
 - Path B: no spec flow, no `/kiro-impl`.
-- Path D/E: per-spec flows; no `/kiro-spec-batch`.
+- Path D/E: per-spec flows in dependency order with upstream guard; no `/kiro-spec-batch`.
 - Validate steps run without user dialogue; user interaction only at `[GATE]` points.
 - **2 consecutive NO-GO** on the same step → stop; seek user re-alignment (`rules/rollback.md`).
 - Progress check: `/kiro-spec-status <feature>`.
@@ -60,6 +60,7 @@ For each step in the active flow:
 
 ## Safety
 
+- **Upstream dependency guard**: Do **not** start 要求新規作成 / 要求更新 / 設計更新 for a downstream feature while roadmap upstream deps lack task generation (`routing.md` § Upstream Dependency Guard). Check before init/requirements/design dispatch and before each spec in Path D/E.
 - **Modification guard**: Do **not** modify a spec whose implementation is incomplete. Before 要求更新 / 設計更新 (or a Path A change to an existing spec), check `spec.json` + `tasks.md` (`routing.md` § Modification Guard). If the spec is implementation-ready (`ready_for_implementation: true` / `approvals.tasks.approved: true`) but has `[ ]` / `_Blocked:_` tasks, stop and prompt the user to complete implementation first (explicit `実装のみ`).
 - Missing `spec.json` on spec flows → run discovery + spec-init first.
 - `approvals.tasks.approved` false on 実装のみ → stop with message.
