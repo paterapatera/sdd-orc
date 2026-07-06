@@ -1,6 +1,6 @@
 ---
 name: kiro-discovery-ex
-description: Discovery entry point with cross-spec dependency tracking. Runs kiro-discovery, then syncs roadmap.md whenever a spec (even Path C) has upstream spec dependencies. Canonical standalone entry for the AI-DLC workflow; run before /kiro-orchestrate.
+description: Discovery entry point with cross-spec dependency tracking. Runs kiro-discovery, then syncs roadmap.md whenever a spec (even Path C) has a cross-spec dependency, in either direction and regardless of discovery order. Canonical standalone entry for the AI-DLC workflow; run before /kiro-orchestrate.
 ---
 
 # Discovery (Extended)
@@ -10,7 +10,7 @@ description: Discovery entry point with cross-spec dependency tracking. Runs kir
 
 - **Success Criteria**:
   - Base discovery outcome (path, brief.md, next-command suggestion) preserved exactly
-  - Any spec with an upstream **spec** dependency is reflected in `roadmap.md`, regardless of path
+  - Any cross-spec dependency edge is reflected in `roadmap.md`, regardless of path, of which side (upstream/downstream) declared it, and of the order the two specs were discovered in
   - `roadmap.md` is created/updated additively — existing entries and `[x]` status never lost
   - No duplication of base discovery logic (delegate, don't copy)
 </background_information>
@@ -27,21 +27,27 @@ Do not re-implement or alter base behavior. Everything the base skill does still
 
 Run this **after** base discovery has written `brief.md` (and, for D/E, `roadmap.md`). This step only ever **adds or updates** roadmap entries.
 
-1. **Collect upstreams.** For each spec authored or updated in this session, read the `## Upstream / Downstream` section of its `brief.md` and collect the `Upstream` items.
+Dependency detection is **bidirectional**: an edge must be recorded whether it is declared by the dependent spec (via its `Upstream`) or by the dependency spec (via its `Downstream`), and regardless of the order the two specs were discovered in. A dependency edge is always written in the canonical direction `dependent → dependency` (i.e. "dependent has Dependencies: dependency").
 
-2. **Resolve to spec names.** Keep only items that resolve to a **spec**:
+1. **Collect dependency edges.** Build a set of candidate edges, each oriented as `dependent → dependency`:
+   - **From this session's specs.** For each spec authored or updated in this session, read the `## Upstream / Downstream` section of its `brief.md`:
+     - each `Upstream` item yields the edge `thisSpec → upstreamItem`;
+     - each `Downstream` item yields the edge `downstreamItem → thisSpec`.
+   - **Re-scan existing specs (reverse-order catch-up).** Read the `## Upstream / Downstream` section of **every** `docs/specs/<name>/brief.md` and add the edge `<name> → upstreamItem` for each of its `Upstream` items. This is essential: a spec discovered **earlier** may have declared an upstream that did not resolve to a spec at the time, but resolves now because **this** session created that spec. Without this re-scan, discovering the dependency spec *after* its dependent (e.g. `user-edit` first, then `user-list`) would leave the edge unrecorded.
+
+2. **Resolve to spec names.** Keep only edges where **both** endpoints resolve to a **spec**:
    - matches an existing `docs/specs/<name>/` directory, **or**
    - is another new spec produced in this same session.
 
-   Ignore items that are external systems, libraries, frameworks, or infrastructure — those are not ordering dependencies.
+   Drop any edge whose endpoint is an external system, library, framework, or infrastructure — those are not ordering dependencies. De-duplicate edges (the same edge may be declared from both directions).
 
-3. **Trigger.** If any spec has **≥ 1 resolved upstream spec**:
+3. **Trigger.** If **≥ 1 edge** survives resolution:
    1. If `docs/steering/roadmap.md` is missing, create a **minimal** roadmap using the template below.
-   2. Ensure a line for the target spec exists under `## Specs (dependency order)` with `Dependencies: <comma-separated resolved upstream spec names>`. If the line already exists, **update its `Dependencies:` field in place** — never duplicate the line.
-   3. **Back-fill direct upstreams only** (do not recurse into transitive dependencies): for each resolved upstream spec, add a line if absent. Mark it `[x]` if `docs/specs/<upstream>/spec.json` has `approvals.tasks.generated: true` **and** `docs/specs/<upstream>/tasks.md` exists; otherwise `[ ]`.
+   2. For each resolved edge `dependent → dependency`, ensure a line for the **dependent** spec exists under `## Specs (dependency order)` with `Dependencies:` listing all its resolved dependency specs (comma-separated). If the line already exists, **merge the new dependency into its `Dependencies:` field in place** — never duplicate the line, never drop dependencies already listed.
+   3. **Back-fill direct dependency specs only** (do not recurse into transitive dependencies): for each resolved dependency spec, add a line if absent. Mark it `[x]` if `docs/specs/<dependency>/spec.json` has `approvals.tasks.generated: true` **and** `docs/specs/<dependency>/tasks.md` exists; otherwise `[ ]`.
    4. Preserve every existing roadmap line, its `[x]`/`[ ]` status, and all other sections.
 
-4. **No dependency.** If no upstream resolves to a spec (external-only, or no upstream), do **nothing** extra — behavior is identical to base discovery (Path C stays brief-only, no roadmap created).
+4. **No dependency.** If no edge resolves to a spec-to-spec pair (external-only, or genuinely independent), do **nothing** extra — behavior is identical to base discovery (Path C stays brief-only, no roadmap created).
 
 ## Minimal roadmap template (Path C-origin, first creation)
 
