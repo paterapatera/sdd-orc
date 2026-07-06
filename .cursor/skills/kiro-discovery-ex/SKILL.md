@@ -39,7 +39,11 @@ Dependency detection is **bidirectional**: an edge must be recorded whether it i
    - matches an existing `docs/specs/<name>/` directory, **or**
    - is another new spec produced in this same session.
 
-   Drop any edge whose endpoint is an external system, library, framework, or infrastructure — those are not ordering dependencies. De-duplicate edges (the same edge may be declared from both directions).
+   Classify every **unresolved** endpoint before discarding it — never drop silently by default:
+   - **Clearly external** (an external system, library, framework, service, or infrastructure): drop silently. These are not ordering dependencies.
+   - **Spec-like but unresolved** (reads like a feature/spec reference — e.g. a kebab-case concept, a bare number, or a partial name — yet matches no `docs/specs/<name>/` directory and no in-session spec): **do not drop silently. Surface it to the user as a warning** and hold the edge. Report each occurrence with its source, e.g. "`docs/specs/<dependent>/brief.md` の Upstream/Downstream にある『<endpoint>』は spec 依存に見えますが `docs/specs/` のどのディレクトリにも一致しません。正しい spec ディレクトリ名(例 `001-user-edit`)へ直すか、外部依存であることを明示してください。" Ask the user to correct the brief (or confirm it is external) before finalizing the roadmap. Never fabricate or fuzzy-guess a spec name to force a match.
+
+   De-duplicate resolved edges (the same edge may be declared from both directions).
 
 3. **Trigger.** If **≥ 1 edge** survives resolution:
    1. If `docs/steering/roadmap.md` is missing, create a **minimal** roadmap using the template below.

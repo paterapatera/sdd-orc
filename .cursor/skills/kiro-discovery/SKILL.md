@@ -120,6 +120,8 @@ If the viability check reveals issues, present them to the user and revisit the 
 
 **CRITICAL: You MUST write these files to disk BEFORE suggesting any next command. Conversation text does not survive session boundaries. If you skip this step, all discovery analysis is lost when the session ends.**
 
+**Spec naming convention (mandatory)**: Every spec directory `<feature-name>` MUST have the form `NNN-<concept-slug>` — a zero-padded sequence/issue number, a hyphen, then a short kebab-case concept (e.g. `001-user-edit`, `002-user-list`). Choose `NNN` as the next unused number by scanning existing `docs/specs/NNN-*`. The `<concept-slug>` part is **required** so the directory name is self-descriptive and cross-spec dependency references resolve unambiguously. Use this exact name consistently everywhere it appears — `brief.md`, `roadmap.md`, and every `## Upstream / Downstream` reference must cite the full `NNN-<concept-slug>` directory name of the depended-on spec (not the concept alone, not the number alone).
+
 **For Path C (single spec)**:
 
 Write `docs/specs/<feature-name>/brief.md` to disk with this structure:

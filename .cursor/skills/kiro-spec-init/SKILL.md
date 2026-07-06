@@ -10,6 +10,8 @@ description: Initialize a new specification with detailed project description
 ## Core Task
 Generate a unique feature name from the project description ($ARGUMENTS) and initialize the specification structure.
 
+**Naming convention (mandatory)**: The feature name — and thus its `docs/specs/<feature-name>/` directory — MUST follow `NNN-<concept-slug>`: a zero-padded sequence/issue number, a hyphen, then a short kebab-case concept (e.g. `001-user-edit`, `002-user-list`). Scan existing `docs/specs/NNN-*` to pick the next unused `NNN`. The `<concept-slug>` is required so the directory name is self-descriptive and cross-spec dependency references resolve unambiguously. If a `brief.md` already exists for this work (created by discovery), reuse that directory name exactly instead of regenerating one.
+
 ## Execution Steps
 1. **Check for Brief**: If `docs/specs/{feature-name}/brief.md` exists (created by `/kiro-discovery`), read it. The brief contains problem, approach, scope, and constraints from the discovery session. Use this to pre-fill the project description and skip clarification questions that the brief already answers.
 2. **Clarify Intent**: The Project Description in requirements.md must contain three elements: (a) who has the problem, (b) current situation, (c) what should change. If a brief.md exists and covers these, skip to step 3. Otherwise, ask the user to clarify before proceeding. Ask as many questions as needed; do not fill in gaps with your own assumptions.
@@ -46,6 +48,6 @@ Provide output in the language specified in `spec.json` with the following struc
 ## Safety & Fallback
 - **Ambiguous Feature Name**: If feature name generation is unclear, propose 2-3 options and ask user to select
 - **Template Missing**: If template files don't exist in `docs/settings/templates/specs/`, report error with specific missing file path and suggest checking repository setup
-- **Directory Conflict**: If feature name already exists, append numeric suffix (e.g., `feature-name-2`) and notify user of automatic conflict resolution
+- **Directory Conflict**: If the chosen `NNN-<concept-slug>` already exists, advance to the next unused `NNN` (keeping the same concept slug) and notify the user of the automatic conflict resolution
 - **Write Failure**: Report error with specific path and suggest checking permissions or disk space
 
