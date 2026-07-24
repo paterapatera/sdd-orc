@@ -2,14 +2,25 @@
 
 Per-skill I/O and boundaries. Shared report format: `contract.md`.
 
-## Requirements Phase (serial: po → sec)
+## Requirements Phase (serial: po → qa → sec → validate-requirements-ex)
 
 | Skill | Input | Output / side effects | Do not |
 | ----- | ----- | --------------------- | ------ |
-| `/kiro-validate-requirements` | `requirements.md`, `brief.md`, steering | `reviews/requirements-po.md`; fix `requirements.md` if needed; `## Decisions` | EARS mechanical check, security deep-dive, user dialogue |
-| `/kiro-validate-requirements-sec` | `requirements.md`, steering security | `reviews/requirements-sec.md`; adopt/defer in `## Decisions` | Functional scope (PO), user dialogue |
+| `/kiro-validate-requirements` | `requirements.md`, `brief.md`, steering | `reviews/requirements-po.md`; fix `requirements.md` if needed; `## Decisions` | EARS mechanical check, testability deep-dive, security deep-dive, user dialogue |
+| `/kiro-validate-requirements-qa` | **po-updated** `requirements.md`, po report | `reviews/requirements-qa.md`; reflect testability fixes to `requirements.md` | Functional scope (PO), security, EARS mechanical check, user dialogue |
+| `/kiro-validate-requirements-sec` | **qa-updated** `requirements.md`, steering security | `reviews/requirements-sec.md`; adopt/defer in `## Decisions` | Functional scope (PO), testability (QA), user dialogue |
+| `/kiro-validate-requirements-ex` | 3 specialist reports + final `requirements.md`, `brief.md`, steering, roadmap | `reviews/requirements-final.md` (承認ゲートサマリ + brief traceability matrix); gap-domain self-repairs to `requirements.md`; `## Decisions` | Re-run po/qa/sec analysis; edit specialist-domain content |
+
+Serial required: each specialist writes `requirements.md` before the next runs.
 
 > Documentation (glossary, context diagram, acceptance-criteria diagram, functional test cases) is split out of the requirements phase. It is handled post-implementation by `/kiro-docs` (interactive; includes spec cleanup).
+
+### `/kiro-validate-requirements-ex` input contract (AI-DLC)
+
+1. `reviews/requirements-{po,qa,sec}.md` all exist with `VERDICT: GO` — else do not enter final review
+2. Verify specialist reflections landed in `requirements.md`; audit gap domains (brief traceability, cross-spec consistency, NFR completeness, operability expectations, compliance, template conformance, scope fitness, terminology & consistency); no cap on findings
+3. Self-repair `requirements.md` for Minor / unambiguous Major findings only — no specialist deep-dive; rollback to the failing specialist validate (or `/kiro-spec-requirements` for new scope decisions) if a fix needs re-analysis
+4. Output: `reviews/requirements-final.md` per shared contract (`VERDICT`, `## Decisions`, 承認ゲートサマリ)
 
 ### vs `requirements-review-gate`
 

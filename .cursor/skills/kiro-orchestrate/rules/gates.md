@@ -38,12 +38,12 @@ After all mechanical validates for a phase report `GO`, **before** opening the h
 
 | Phase | Pass condition | After user approval |
 | ----- | -------------- | ------------------- |
-| 要求 | `requirements.md` + 3 requirement validates GO | `approvals.requirements.approved: true` → `/kiro-spec-design` |
+| 要求 | `requirements.md` + po/qa/sec GO + `/kiro-validate-requirements-ex` GO | `approvals.requirements.approved: true` → `/kiro-spec-design` |
 | 設計 | `design.md` + qa/arch/sec GO + `/kiro-validate-design-ex` GO | `approvals.design.approved: true` → `/kiro-spec-tasks` |
 | タスク | `tasks.md` generated | `approvals.tasks.approved: true`, `ready_for_implementation: true` → **end orchestration (do not dispatch `/kiro-impl`)** |
 | 実装 | (out of orchestration scope) | reached only via an explicit `実装のみ` invocation |
 
-Requirements validates (all GO): `validate-requirements` → `sec`.
+Requirements validates (all GO): `validate-requirements` → `qa` → `sec` → `validate-requirements-ex`.
 
 ## Human Approval Gate
 
@@ -53,12 +53,14 @@ Open only after `/kiro-verify-phase-gate` returns `VERIFIED` (要求 / 設計 / 
 2. Key artifact paths
 3. **決定事項サマリー** — summarize each report's `## Decisions` as: 何を決めたか / なぜ / 承認で固定されること
 
+   要求 / 設計 gates: the final-gate report (`reviews/requirements-final.md` / `reviews/design-final.md`) already contains the 承認ゲートサマリ (検証済み観点 / 自己修復 / 残リスク / 未決事項) — present it as the primary gate content and ask the user to accept the listed residual risks; do not re-summarize the specialist reports beyond it.
+
    Topics to cover when present:
 
    | Topic | Examples |
    | ----- | -------- |
    | Scope | in/out of scope, implicit assumptions |
-   | Requirements validates | PO defaults, resolved ambiguity |
+   | Requirements validates | PO defaults, resolved ambiguity, testability fixes (`reviews/requirements-*.md`) |
    | Security validates | adopted controls, deferred risks |
    | Supplements | glossary/boundary interpretation |
    | Design | architecture choices, threat-model assumptions (`reviews/design-*.md`) |

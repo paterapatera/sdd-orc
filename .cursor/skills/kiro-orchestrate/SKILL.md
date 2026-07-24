@@ -38,6 +38,7 @@ For each step in the active flow:
 
 - **Orchestration scope ends at task generation.** Generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **[GATE] タスク**. Approving that gate ("承認して次へ") emits the **PR Summary Output** (`rules/gates.md` § PR Summary Output — 概要 + 決定事項と理由 一覧, copy-paste ready) and ends the orchestration — never chain into `/kiro-impl`, `/kiro-validate-impl`, `/kiro-verify-completion` (`FEATURE_GO`), or any implementation step. Implementation runs only via an explicit `実装のみ` invocation.
 - No human approval skip unless user explicitly requests `-y` fast-track.
+- Requirements validates: serial **po → qa → sec** only; then `/kiro-validate-requirements-ex`.
 - Design validates: serial **qa → arch → sec** only; then `/kiro-validate-design-ex`.
 - Path B: no spec flow, no `/kiro-impl`.
 - Path D/E: per-spec flows in dependency order with upstream guard; no `/kiro-spec-batch`.
@@ -49,10 +50,10 @@ For each step in the active flow:
 
 | Role | Skills |
 | ---- | ------ |
-| プロダクトオーナー | spec-init, spec-requirements, validate-requirements |
+| プロダクトオーナー | spec-init, spec-requirements, validate-requirements, validate-requirements-ex |
 | セキュリティ管理者 | validate-requirements-sec, validate-design-sec |
 | 設計者 | validate-gap, spec-design, validate-design-ex, spec-tasks |
-| 品質管理者 | validate-design-qa, validate-impl |
+| 品質管理者 | validate-requirements-qa, validate-design-qa, validate-impl |
 | アーキテクト管理者 | validate-design-arch |
 | 実装者 | `/kiro-impl` (or main context for Path B) |
 | 調整者 (self) | routing, gates, rollback, `verify-phase-gate` (要求/設計/タスク), `verify-completion` (impl / Path B) |

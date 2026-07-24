@@ -8,7 +8,7 @@ metadata:
 # Validate Requirements (PO)
 
 <background_information>
-First of the requirements-phase validates (po → sec). Autonomous; no user dialogue. Judgments go to `reviews/requirements-po.md` `## Decisions` for the approval gate.
+First of the requirements-phase validates (po → qa → sec → ex). Autonomous; no user dialogue. Judgments go to `reviews/requirements-po.md` `## Decisions` for the approval gate.
 </background_information>
 
 <instructions>
@@ -34,12 +34,15 @@ When `/kiro-orchestrate` runs an update flow (要求更新 — not new creation)
 ## Constraints
 
 - Do not run EARS mechanical checks (that is `requirements-review-gate`).
+- Do not perform testability deep-dive (abnormal-flow AC coverage, NFR measurability — `/kiro-validate-requirements-qa`).
 - Do not perform security deep-dive or create supplements.
+- Do not run gap-domain audits (brief traceability, cross-spec consistency — `/kiro-validate-requirements-ex`).
+- Every `requirements.md` edit must appear as a `## Reflected Fixes` row — `/kiro-validate-requirements-ex` mechanically verifies them.
 - Do not ask the user questions.
 
 ## On NO-GO
 
-Orchestrator rolls back to `/kiro-spec-requirements`. Report actionable findings.
+Orchestrator rolls back to `/kiro-spec-requirements`, then re-runs po → qa → sec → `/kiro-validate-requirements-ex`. Report actionable findings.
 </instructions>
 
 ## Safety
