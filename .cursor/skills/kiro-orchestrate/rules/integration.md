@@ -54,7 +54,7 @@ Orchestrator stops if `_Blocked:_` remains or tasks incomplete before `/kiro-val
 | `/kiro-validate-requirements` | Post-write | Semantic brush-up |
 | `/kiro-validate-gap` | Req→design (optional) | Brownfield gap analysis |
 | `/kiro-validate-design-qa/arch/sec` | Design | Specialist checks → `design.md` |
-| `/kiro-validate-design-ex` | Design final (AI-DLC) | Synthesize 3 reports → `design-final.md`; no re-analysis |
+| `/kiro-validate-design-ex` | Design final (AI-DLC) | Verify 3 reports reflected + gap-domain audit + self-repair → `design-final.md`; no specialist re-analysis |
 | `/kiro-validate-design` | Standalone | Interactive review; not used in orchestrate flow |
 | `/kiro-validate-impl` | Post-impl | Cross-task integration |
 | `/kiro-verify-phase-gate` | Pre-approval (要求/設計/タスク) | Artifact + `VERDICT` readiness (`PHASE_GATE`) |

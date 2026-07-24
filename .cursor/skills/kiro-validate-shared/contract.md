@@ -39,11 +39,28 @@ Create `reviews/` if missing.
 ## Decisions
 （自律的に確定した判断・前提・トレードオフ。承認ゲートでユーザーに報告する原文）
 
+## Reflected Fixes
+（対象成果物を編集した validate は必須。編集なしの場合は「なし」と明記）
+| Finding | 対象セクション | 修正概要 |
+| ------- | -------------- | -------- |
+
 ## Evidence
-（参照したファイルパス・チェック項目）
+（参照したファイルパス・チェック項目。各チェック項目に pass / finding / N/A(理由付き) を明示 — 黙殺禁止）
 ```
 
 The orchestrator parses **`VERDICT:`** only for mechanical gate decisions.
+
+## Severity Vocabulary (shared)
+
+All validates classify findings with the same scale:
+
+- **Critical**: blocks the gate — requirement contradiction/traceability break, unreviewed sensitive path, claimed-but-missing fix → `NO-GO`
+- **Major**: concrete deficiency — reflect a fix into the artifact (list in `## Reflected Fixes`) or record explicit risk acceptance in `## Decisions`
+- **Minor**: polish/clarity — fix allowed, note in `## Reflected Fixes`; no gate impact
+
+## Reflected Fixes Verifiability
+
+Every fix a validate applies to `requirements.md` / `design.md` **must** appear as a `## Reflected Fixes` row (finding → target section → summary). `/kiro-validate-design-ex` mechanically verifies these rows against the final `design.md`; unverifiable free-text fix claims are treated as missing.
 
 ## Verdict Rules
 

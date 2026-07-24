@@ -9,7 +9,7 @@ On `NO-GO` / `REJECTED`, roll back to the **generating step** for the failed che
 | `/kiro-validate-design-qa` | `/kiro-spec-design` | qa → arch → sec → `validate-design-ex` |
 | `/kiro-validate-design-arch` | `/kiro-spec-design` | same |
 | `/kiro-validate-design-sec` | `/kiro-spec-design` | same |
-| `/kiro-validate-design-ex` | `/kiro-spec-design` | same |
+| `/kiro-validate-design-ex` | `/kiro-spec-design`; if Findings names a requirements defect → `/kiro-spec-requirements` (apply 要求 rollback-depth rule) | same; requirements cause → po → sec → design chain |
 | `/kiro-impl` task review | that task's implementation | `/kiro-review` |
 | `/kiro-validate-impl` | causing task or design | task → `/kiro-impl`; design cause → `/kiro-spec-design` onward |
 
