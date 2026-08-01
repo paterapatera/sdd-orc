@@ -296,8 +296,14 @@ Concrete error handling patterns and recovery mechanisms for each error type.
 **Process Flow Visualization** (when complex business logic exists):
 Include Mermaid flowchart only for complex error scenarios with business workflows.
 
-### Monitoring
-Error tracking, logging, and health monitoring implementation.
+## Observability
+
+Required section — each item may be `N/A — <reason>` when genuinely not applicable; do not omit the section itself.
+
+- **Logging**: what is logged at which level; explicit PII/secret masking rules (the security validate reviews this)
+- **Metrics**: key health/business metrics this feature emits
+- **Alerts**: notify/page conditions tied to the failure modes in Error Handling
+- **Debuggability**: how an operator diagnoses the failure modes above (correlation IDs, trace points)
 
 ## Testing Strategy
 
@@ -307,6 +313,24 @@ Error tracking, logging, and health monitoring implementation.
 - E2E/UI Tests (if applicable): 3–5 critical user paths (e.g., forms, dashboards)
 - Performance/Load (if applicable): 3–4 items (e.g., concurrency, high-volume ops)
 
+## Operational Readiness
+
+Required section — each subsection may be `N/A — <reason>` when genuinely not applicable; do not omit the section itself.
+
+### Performance & Scalability
+_Record only feature-specific targets or trade-offs and rely on steering documents for general practices._
+- Target metrics and measurement strategies
+- Scaling approaches (horizontal/vertical)
+- Caching strategies and optimization techniques
+
+### Deployment & Rollout
+- Deployment approach; feature-flag or staged-release needs
+- Rollback path — identify any irreversible step explicitly
+
+### Migration
+Include a Mermaid flowchart showing migration phases when schema/data movement is required.
+- Phase breakdown, rollback triggers, validation checkpoints
+
 ## Optional Sections (include when relevant)
 
 ### Security Considerations
@@ -314,16 +338,6 @@ _Use this section for features handling auth, sensitive data, external integrati
 - Threat modeling, security controls, compliance requirements
 - Authentication and authorization patterns
 - Data protection and privacy considerations
-
-### Performance & Scalability
-_Use this section when performance targets, high load, or scaling concerns exist. Record only feature-specific targets or trade-offs and rely on steering documents for general practices._
-- Target metrics and measurement strategies
-- Scaling approaches (horizontal/vertical)
-- Caching strategies and optimization techniques
-
-### Migration Strategy
-Include a Mermaid flowchart showing migration phases when schema/data movement is required.
-- Phase breakdown, rollback triggers, validation checkpoints
 
 ## Supporting References (Optional)
 - Create this section only when keeping the information in the main body would hurt readability (e.g., very long TypeScript definitions, vendor option matrices, exhaustive schema tables). Keep decision-making context in the main sections so the design stays self-contained.

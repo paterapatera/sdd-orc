@@ -18,6 +18,8 @@ Second design-phase validate. Reads QA-updated `design.md`. Records architectura
 - `docs/specs/$1/requirements.md`
 - `docs/specs/$1/design.md` (after QA reflection)
 - Core steering: `docs/steering/tech.md`, `structure.md`
+- `docs/specs/roadmap.md` if present (existing-asset reuse check)
+- `docs/specs/$1/research.md` if present (gap analysis / discovery findings for reuse check)
 
 ## Execution
 

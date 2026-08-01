@@ -120,6 +120,12 @@ If the viability check reveals issues, present them to the user and revisit the 
 
 **CRITICAL: You MUST write these files to disk BEFORE suggesting any next command. Conversation text does not survive session boundaries. If you skip this step, all discovery analysis is lost when the session ends.**
 
+**Spec naming convention (mandatory)**: A spec directory is named `<concept-slug>` — a short kebab-case concept (e.g. `user-edit`, `user-list`) — with an **optional** numeric prefix:
+- **User-specified number** → prefix it as `NNN-<concept-slug>`, zero-padded to at least 3 digits (e.g. issue #42 → `042-user-edit`). If that exact directory already exists, **stop and ask the user** — do not silently renumber, because a user-supplied number is meaningful.
+- **No number given** → use the bare `<concept-slug>` (e.g. `user-edit`). Do **not** invent a number.
+
+The `<concept-slug>` is always **required** so the directory name is self-descriptive and cross-spec dependency references resolve unambiguously. Do not create the same concept both with and without a numeric prefix — if a directory for the same concept already exists (numbered or bare), reuse/reconcile it instead of duplicating. Use the exact chosen directory name consistently everywhere it appears — `brief.md`, `roadmap.md`, and every `## Upstream / Downstream` reference must cite the full directory name of the depended-on spec (not a truncated concept, not the number alone).
+
 **For Path C (single spec)**:
 
 Write `docs/specs/<feature-name>/brief.md` to disk with this structure:

@@ -16,8 +16,9 @@ Write to `docs/specs/<feature>/reviews/<report>.md`:
 | Skill | Report file |
 | ----- | ----------- |
 | `/kiro-validate-requirements` | `requirements-po.md` |
+| `/kiro-validate-requirements-qa` | `requirements-qa.md` |
 | `/kiro-validate-requirements-sec` | `requirements-sec.md` |
-| `/kiro-validate-requirements-doc` | `requirements-doc.md` |
+| `/kiro-validate-requirements-ex` | `requirements-final.md` |
 | `/kiro-validate-design-qa` | `design-qa.md` |
 | `/kiro-validate-design-arch` | `design-arch.md` |
 | `/kiro-validate-design-sec` | `design-sec.md` |
@@ -40,11 +41,28 @@ Create `reviews/` if missing.
 ## Decisions
 （自律的に確定した判断・前提・トレードオフ。承認ゲートでユーザーに報告する原文）
 
+## Reflected Fixes
+（対象成果物を編集した validate は必須。編集なしの場合は「なし」と明記）
+| Finding | 対象セクション | 修正概要 |
+| ------- | -------------- | -------- |
+
 ## Evidence
-（参照したファイルパス・チェック項目）
+（参照したファイルパス・チェック項目。各チェック項目に pass / finding / N/A(理由付き) を明示 — 黙殺禁止）
 ```
 
 The orchestrator parses **`VERDICT:`** only for mechanical gate decisions.
+
+## Severity Vocabulary (shared)
+
+All validates classify findings with the same scale:
+
+- **Critical**: blocks the gate — requirement contradiction/traceability break, unreviewed sensitive path, claimed-but-missing fix → `NO-GO`
+- **Major**: concrete deficiency — reflect a fix into the artifact (list in `## Reflected Fixes`) or record explicit risk acceptance in `## Decisions`
+- **Minor**: polish/clarity — fix allowed, note in `## Reflected Fixes`; no gate impact
+
+## Reflected Fixes Verifiability
+
+Every fix a validate applies to `requirements.md` / `design.md` **must** appear as a `## Reflected Fixes` row (finding → target section → summary). `/kiro-validate-requirements-ex` mechanically verifies these rows against the final `requirements.md`, and `/kiro-validate-design-ex` against the final `design.md`; unverifiable free-text fix claims are treated as missing.
 
 ## Verdict Rules
 
@@ -58,11 +76,13 @@ Before declaring `GO`, confirm fresh evidence: referenced files exist, edits are
 
 ## Phase Execution Order
 
-**Requirements** (serial): `validate-requirements` → `sec` → `doc`
+**Requirements** (serial): `validate-requirements` → `qa` → `sec` → then `/kiro-validate-requirements-ex` (AI-DLC final gate)
+
+(Supplement/documentation work is split out of the requirements phase; the post-implementation `/kiro-docs` skill handles it.)
 
 **Design** (serial): `validate-design-qa` → `arch` → `sec` → then `/kiro-validate-design-ex` (AI-DLC final gate). Standalone interactive review: `/kiro-validate-design` (outside orchestrate flow).
 
-Each design validate reflects findings into `design.md` before the next step. The next validate reads the **updated** `design.md`.
+Each specialist validate reflects findings into its target artifact (`requirements.md` / `design.md`) before the next step. The next validate reads the **updated** artifact.
 
 ## Update Flows
 

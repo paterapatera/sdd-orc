@@ -38,12 +38,12 @@ After all mechanical validates for a phase report `GO`, **before** opening the h
 
 | Phase | Pass condition | After user approval |
 | ----- | -------------- | ------------------- |
-| 要求 | `requirements.md` + 3 requirement validates GO | `approvals.requirements.approved: true` → `/kiro-spec-design` |
+| 要求 | `requirements.md` + po/qa/sec GO + `/kiro-validate-requirements-ex` GO | `approvals.requirements.approved: true` → `/kiro-spec-design` |
 | 設計 | `design.md` + qa/arch/sec GO + `/kiro-validate-design-ex` GO | `approvals.design.approved: true` → `/kiro-spec-tasks` |
 | タスク | `tasks.md` generated | `approvals.tasks.approved: true`, `ready_for_implementation: true` → **end orchestration (do not dispatch `/kiro-impl`)** |
 | 実装 | (out of orchestration scope) | reached only via an explicit `実装のみ` invocation |
 
-Requirements validates (all GO): `validate-requirements` → `sec` → `doc`.
+Requirements validates (all GO): `validate-requirements` → `qa` → `sec` → `validate-requirements-ex`.
 
 ## Human Approval Gate
 
@@ -53,12 +53,14 @@ Open only after `/kiro-verify-phase-gate` returns `VERIFIED` (要求 / 設計 / 
 2. Key artifact paths
 3. **決定事項サマリー** — summarize each report's `## Decisions` as: 何を決めたか / なぜ / 承認で固定されること
 
+   要求 / 設計 gates: the final-gate report (`reviews/requirements-final.md` / `reviews/design-final.md`) already contains the 承認ゲートサマリ (検証済み観点 / 自己修復 / 残リスク / 未決事項) — present it as the primary gate content and ask the user to accept the listed residual risks; do not re-summarize the specialist reports beyond it.
+
    Topics to cover when present:
 
    | Topic | Examples |
    | ----- | -------- |
    | Scope | in/out of scope, implicit assumptions |
-   | Requirements validates | PO defaults, resolved ambiguity |
+   | Requirements validates | PO defaults, resolved ambiguity, testability fixes (`reviews/requirements-*.md`) |
    | Security validates | adopted controls, deferred risks |
    | Supplements | glossary/boundary interpretation |
    | Design | architecture choices, threat-model assumptions (`reviews/design-*.md`) |
@@ -73,7 +75,46 @@ Open only after `/kiro-verify-phase-gate` returns `VERIFIED` (要求 / 設計 / 
 - No next phase without user approval (`-y` only if user explicitly requests fast-track).
 - Path B: no `spec.json` gates — user confirmation at end only.
 - After approval: set `approvals.<phase>.approved: true`, proceed to next flow step.
-- **タスク gate is terminal.** After タスク approval, set `approvals.tasks.approved: true` and `ready_for_implementation: true`, then **end the orchestration**. Do **not** dispatch `/kiro-impl` — even if the user says "承認して次へ". Implementation requires a separate explicit `実装のみ` invocation.
+- **タスク gate is terminal.** After タスク approval, set `approvals.tasks.approved: true` and `ready_for_implementation: true`, then emit the **PR Summary Output** (below) and **end the orchestration**. Do **not** dispatch `/kiro-impl` — even if the user says "承認して次へ". Implementation requires a separate explicit `実装のみ` invocation.
+
+## PR Summary Output (タスク生成完了時)
+
+After the **[GATE] タスク** approval (`approvals.tasks.approved: true`, `ready_for_implementation: true`), and **before** ending the orchestration, emit a Pull Request-ready summary so the user can copy & paste it directly into a PR description.
+
+**Format rules**
+
+- Output as a single fenced ` ```markdown ` code block so it copies cleanly into a PR.
+- Language follows the spec artifacts (default Japanese).
+- Content is synthesized from the phase reports (`reviews/*.md` `## Decisions`), `requirements.md`, `design.md`, and `tasks.md` — do not re-run analysis, only parse existing artifacts.
+- Keep it concise; detail stays in the spec files.
+
+**Required content**
+
+1. **概要** — what this spec/feature delivers (scope in a few sentences), spec path `docs/specs/<feature>/`.
+2. **決定事項と理由 一覧** — a table of every key decision with its rationale, aggregated across phases:
+
+   | 決定事項 | 理由 |
+   | -------- | ---- |
+   | <何を決めたか> | <なぜそう決めたか> |
+
+   Aggregate the same topics as the 決定事項サマリー (Scope / Requirements validates / Security validates / Supplements / Design / Tasks). One row per decision.
+
+**Template**
+
+````markdown
+```markdown
+## 概要
+
+<feature が実現すること / スコープ>
+Spec: `docs/specs/<feature>/`
+
+## 決定事項と理由
+
+| 決定事項 | 理由 |
+| -------- | ---- |
+| … | … |
+```
+````
 
 ## Impl Phase Monitoring
 

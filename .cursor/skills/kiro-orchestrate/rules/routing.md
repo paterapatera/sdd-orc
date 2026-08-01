@@ -1,29 +1,32 @@
 # Flow Routing
 
+## Entry Contract (discovery runs standalone)
+
+`/kiro-discovery` / `/kiro-discovery-ex` is **not** an orchestration step. `/kiro-discovery-ex` is run **standalone before** orchestration and has already produced `brief.md` (new specs), `roadmap.md` (when dependencies exist), and — for existing specs — `spec.json`. Orchestration is invoked with a target `<feature>` (+ optional explicit flow) and selects the active flow without a discovery Path signal:
+
+1. **User-specified flow wins** — e.g.「要求だけ更新」「設計だけ」「実装だけ」.
+2. **Else derive from `spec.json`** via § Spec State Hints:
+   - `brief.md` exists, no `spec.json` → **要求新規作成** (start at `/kiro-spec-init`)
+   - `requirements` not approved → resume requirements / **要求更新**
+   - `requirements` approved, `design` not → **設計更新**
+   - `tasks` approved → **実装のみ** (explicit request only)
+3. **Neither `brief.md` nor `spec.json` exists** for the target → **stop**; instruct the user to run `/kiro-discovery-ex` first. Do **not** auto-run discovery.
+
+Path B (no spec) is decided by discovery-ex **before** orchestration and never enters an orchestration flow (see `flows.md` § Path B).
+
 ## Determine Active Flow
 
-After `/kiro-discovery`, combine **Path (A–E)**, **`spec.json` state**, and **user override** to pick one flow:
+Combine **`spec.json` state** (§ Spec State Hints) and **user override** to pick one flow:
 
 | Condition | Flow |
 | --------- | ---- |
-| New spec / new requirements | 要求新規作成 |
+| New spec / new requirements (`brief.md`, no `spec.json`) | 要求新規作成 |
 | Existing spec, requirements change | 要求更新 |
 | Requirements approved, design-only change | 設計更新 |
 | No spec change, implementation only | 実装のみ |
-| Path B (no spec) | 直接実装 |
+| Path B (no spec, decided by discovery-ex) | 直接実装 (outside orchestration) |
 
 **User override wins** — e.g.「要求だけ更新」「実装だけ」.
-
-## Spec Naming (domain-level)
-
-When a flow creates a new spec, the orchestrator enforces **domain-level naming** on the `<feature>` passed to spec skills — name it after the domain / responsibility area, not a single action.
-
-- Prefer the domain noun: `favorite`, `notification`, `billing`, `auth`.
-- Do **not** encode an action/CRUD verb: avoid `favorite-add`, `favorite-edit`, `notification-send`, `user-login`.
-- E.g.「ユーザーはお気に入り編集をできる」→ spec `favorite` (add/edit/delete all live inside `favorite`).
-- Action-level naming only when the user explicitly asks, or a genuinely distinct domain boundary requires it.
-- If a spec already owns the domain, route the new action into it (要求更新 / Path A) instead of creating an action-scoped sibling.
-- If discovery proposes an action-scoped name, normalize it to the domain name before dispatching `/kiro-spec-init` / `/kiro-spec-batch` / `/kiro-spec-requirements`.
 
 ## Modification Guard (implementation must be complete first)
 
@@ -42,12 +45,66 @@ Read `docs/specs/<feature>/spec.json` + `tasks.md`:
 - **User override does not bypass this guard** unless the user explicitly acknowledges the incomplete implementation and insists on modifying anyway.
 - Path B (直接実装) is unaffected — it has no spec.
 
+## Upstream Dependency Guard (roadmap.md)
+
+**The orchestrator must not start spec authoring for a downstream feature while its roadmap upstream dependencies have not finished task generation.** Before entering 要求新規作成 / 要求更新 / 設計更新 (and before each spec in Path D/E), gate on upstream readiness.
+
+### When to run
+
+| Flow | Timing |
+| ---- | ------ |
+| 要求新規作成 | At flow entry (target feature already identified from the invocation / `brief.md`), before `/kiro-spec-init` or `/kiro-spec-requirements` |
+| 要求更新 / 設計更新 | After Modification Guard passes, before any generation or validate dispatch |
+| Path D/E Multi-Spec | Before starting each spec's applicable flow (in roadmap dependency order) |
+
+**Not applied** to 実装のみ, Path B, or features with no upstream dependencies.
+
+### Parse dependencies
+
+Read `docs/steering/roadmap.md` when it exists:
+
+- `## Specs (dependency order)`
+- `## Existing Spec Updates` (if present)
+
+Find the line for the target feature; parse the `Dependencies:` field (comma-separated spec names; `none` = no deps).
+
+| Condition | Action |
+| --------- | ------ |
+| `roadmap.md` missing | Pass (single-spec / no roadmap context) |
+| Feature not listed in either section | Pass |
+| `Dependencies: none` (or empty) | Pass |
+
+### Upstream readiness (each listed dependency)
+
+A dependency `<dep>` is **ready** if **any** of:
+
+1. Its roadmap line is marked `[x]` (authoring completed for that spec), **or**
+2. `docs/specs/<dep>/spec.json` has `approvals.tasks.generated === true` **and** `docs/specs/<dep>/tasks.md` exists with at least one task entry.
+
+Otherwise **not ready** — including when `docs/specs/<dep>/` is missing or the upstream is still in requirements/design phase.
+
+This matches `/kiro-verify-phase-gate <dep> tasks` generation criteria and aligns with `/kiro-spec-batch` wave ordering (upstream wave must complete before downstream starts).
+
+### On block
+
+**Stop.** Do not dispatch `/kiro-spec-requirements`, `/kiro-spec-design`, `/kiro-spec-tasks`, or phase validates for the downstream feature.
+
+Report to the user:
+
+- Target feature and which upstream dep(s) are not ready
+- Each blocking dep's status (`phase`, `approvals` from `spec.json`; optional `/kiro-spec-status <dep>`)
+- Instruction: complete upstream through `/kiro-orchestrate` or `/kiro-spec-batch` for the blocking spec(s) first, then retry
+
+**User override does not bypass this guard** unless the user explicitly acknowledges incomplete upstream specs and insists on proceeding anyway.
+
 ## Path → Flow
+
+Reference mapping from the Path that `/kiro-discovery-ex` determined **standalone** to the flow orchestration should be invoked with (Path itself is not re-derived inside orchestration — use § Entry Contract):
 
 | Path | Route |
 | ---- | ----- |
 | **A** (existing spec sufficient) | 要求更新 \| 設計更新 \| 実装のみ — pick from user intent + `spec.json` approvals |
-| **B** (no spec) | **直接実装** — never enter spec flow |
+| **B** (no spec) | **直接実装** — never enter spec flow (handled outside orchestration) |
 | **C** (new single spec) | 要求新規作成 |
 | **D/E** (multi / mixed) | **No** `/kiro-spec-batch` — run per-spec flows sequentially by dependency |
 
@@ -75,6 +132,6 @@ Read `docs/specs/<feature>/spec.json` metadata only when routing:
 | | Path B 直接実装 | 実装のみ |
 | - | --------------- | -------- |
 | spec | none | existing |
-| prerequisite | discovery Path B | `approvals.tasks.approved: true` |
+| prerequisite | discovery-ex Path B (standalone; never enters orchestration) | `approvals.tasks.approved: true` |
 | implement | main context direct | `/kiro-impl` |
 | verify | `/kiro-verify-completion` | `/kiro-impl` review + `/kiro-validate-impl` |

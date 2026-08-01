@@ -28,11 +28,10 @@ Read when executing `/kiro-verify-phase-gate` or when the orchestrator needs pre
 | 1 | `docs/specs/<feature>/requirements.md` exists and has requirement / AC content |
 | 2 | `spec.json` → `approvals.requirements.generated === true` |
 | 3 | `reviews/requirements-po.md` → `VERDICT: GO` |
-| 4 | `reviews/requirements-sec.md` → `VERDICT: GO` |
-| 5 | `reviews/requirements-doc.md` → `VERDICT: GO` |
-| 6 | `approvals.requirements.approved === false` (not yet human-approved; gate is pre-approval) |
-
-Optional consistency: AC「関連する補足資料」列の相対パスリンク先が doc validate で作成された資料と矛盾しないこと。
+| 4 | `reviews/requirements-qa.md` → `VERDICT: GO` |
+| 5 | `reviews/requirements-sec.md` → `VERDICT: GO` |
+| 6 | `reviews/requirements-final.md` → `VERDICT: GO` (`/kiro-validate-requirements-ex`) |
+| 7 | `approvals.requirements.approved === false` (not yet human-approved; gate is pre-approval) |
 
 ## Phase: `design`
 

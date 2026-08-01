@@ -12,12 +12,12 @@
 ## 役割
 
 - 調整者: フローのルーティング、フェーズゲート、巻き戻しを制御し、各役割のスキル実行をオーケストレーションする
-- プロダクトオーナー: 要求の作成・自律的ブラッシュアップ、補足資料の整備
+- プロダクトオーナー: 要求の作成・自律的ブラッシュアップ、要求の総合レビュー（最終ゲート）、補足資料の整備
 - セキュリティ管理者: 要求・設計段階の脆弱性、認証情報、個人情報の扱いをチェックする
 - 設計者: 要求をもとに設計する、設計を元にタスクを作成する、設計の総合レビュー（最終ゲート）を行う
 - アーキテクト管理者: SOLID原則、クリーンアーキテクチャの遵守。密結合を徹底排除（保守性の番人）
 - 実装者: タスクを元にTDDする（`/kiro-impl` 内で実装サブエージェントとして動作）
-- 品質管理者: 設計段階の異常系・エッジケース検証、実装完了後の feature 単位統合検証（`/kiro-validate-impl`）
+- 品質管理者: 要求段階のテスト容易性検証、設計段階の異常系・エッジケース検証、実装完了後の feature 単位統合検証（`/kiro-validate-impl`）
 
 ## 調整者の責務
 
@@ -45,7 +45,8 @@
 
 **実行中の制御**
 
-- 各ステップは原則 **直列**。設計フェーズの QA / Arch / Sec は **`design.md` への反映が競合するため並列不可**。順序固定で **qa → arch → sec** とし、3 レポートすべて GO 後に `/kiro-validate-design-ex` を **最終ゲート** として実行する
+- 各ステップは原則 **直列**。要求フェーズの PO / QA / Sec は **`requirements.md` への反映が競合するため並列不可**。順序固定で **po → qa → sec** とし、3 レポートすべて GO 後に `/kiro-validate-requirements-ex` を **最終ゲート** として実行する
+- 設計フェーズの QA / Arch / Sec は **`design.md` への反映が競合するため並列不可**。順序固定で **qa → arch → sec** とし、3 レポートすべて GO 後に `/kiro-validate-design-ex` を **最終ゲート** として実行する
 - フロー途中でユーザーが方針を変更した場合、調整者がルートを再判定し、必要なステップから再開する
 - 進捗確認が必要なときは `/kiro-spec-status` を実行する
 
@@ -57,7 +58,7 @@
 
 | フェーズ | 通過条件 | `spec.json` 更新 | 次に進めるスキル |
 | -------- | -------- | ---------------- | ---------------- |
-| 要求 | `requirements.md` 生成済み + 要求 validate 3種すべて GO + 人間承認 | `approvals.requirements.generated: true` → 承認後 `approved: true` | `/kiro-spec-design` |
+| 要求 | `requirements.md` 生成済み + 専門 validate（po / qa / sec）GO + `/kiro-validate-requirements-ex` GO + 人間承認 | `approvals.requirements.generated: true` → 承認後 `approved: true` | `/kiro-spec-design` |
 | 設計 | `design.md` 生成済み + 専門 validate（qa / arch / sec）GO + `/kiro-validate-design-ex` GO + 人間承認 | `approvals.design.generated: true` → 承認後 `approved: true` | `/kiro-spec-tasks` |
 | タスク | `tasks.md` 生成済み + 人間承認 | `approvals.tasks.generated: true` → 承認後 `approved: true`, `ready_for_implementation: true` | `/kiro-impl` |
 | 実装 | 全タスク `[x]` + 全タスク `/kiro-review` APPROVED + `/kiro-validate-impl` GO + 人間承認 | （phase を完了状態に更新） | 終了 |
@@ -67,8 +68,9 @@
 | スキル | 成果物 |
 | ------ | ------ |
 | `/kiro-validate-requirements` | `reviews/requirements-po.md` |
+| `/kiro-validate-requirements-qa` | `reviews/requirements-qa.md` |
 | `/kiro-validate-requirements-sec` | `reviews/requirements-sec.md` |
-| `/kiro-validate-requirements-doc` | 補足資料 + AC 紐づけ済み `requirements.md` + `reviews/requirements-doc.md` |
+| `/kiro-validate-requirements-ex` | `reviews/requirements-final.md` |
 
 **人間承認の運用**
 
@@ -108,8 +110,8 @@ validate 実行中はユーザーと対話せず自律的に進める。ただ�
 
 - 人間承認なしに次フェーズへ進めない（`-y` による fast-track はユーザーが明示した場合のみ）
 - `GO` 判定の前に各 validate スキル内で fresh-evidence を適用する。要求・設計・タスクの人間承認前は `/kiro-verify-phase-gate`（`PHASE_GATE`）
-- 同一フェーズ内の専門 validate（qa / arch / sec）は、いずれかが `NO-GO` なら `/kiro-validate-design-ex` へ進めない
-- `/kiro-validate-design-ex` は専門 validate の結果を入力として総合 GO/NO-GO を判定する **最終ゲート**（対話型の `/kiro-validate-design` とは別スキル）
+- 同一フェーズ内の専門 validate（要求: po / qa / sec、設計: qa / arch / sec）は、いずれかが `NO-GO` なら最終ゲート（`/kiro-validate-requirements-ex` / `/kiro-validate-design-ex`）へ進めない
+- `/kiro-validate-requirements-ex` / `/kiro-validate-design-ex` は専門 validate の結果を入力として総合 GO/NO-GO を判定する **最終ゲート**（対話型の `/kiro-validate-design` とは別スキル）
 - ゲート通過時、調整者は **現在フェーズ・次ステップ・未解決事項** をユーザーに報告する
 
 ### 巻き戻し
@@ -118,9 +120,10 @@ validate やレビューで `NO-GO` / `REJECTED` となった場合、調整者�
 
 | 失敗した validate                 | 巻き戻し先                        | 再実行                                                               |
 | --------------------------------- | --------------------------------- | -------------------------------------------------------------------- |
-| `/kiro-validate-requirements`     | `/kiro-spec-requirements`         | 修正後 `/kiro-validate-requirements` から                            |
-| `/kiro-validate-requirements-sec` | `/kiro-spec-requirements` または `requirements.md` | 修正後 `validate-requirements` → `sec` → `doc` の順で再 validate |
-| `/kiro-validate-requirements-doc` | 補足資料のみ、または `requirements.md`（AC 文言修正が必要な場合） | 資料のみなら `doc` のみ。AC 修正が必要なら `spec-requirements` から再実行 |
+| `/kiro-validate-requirements`     | `/kiro-spec-requirements`         | 修正後 po → qa → sec → requirements-ex の順で再 validate             |
+| `/kiro-validate-requirements-qa`  | `/kiro-spec-requirements` または `requirements.md` | 同上                                                    |
+| `/kiro-validate-requirements-sec` | `/kiro-spec-requirements` または `requirements.md` | 同上                                                    |
+| `/kiro-validate-requirements-ex`  | `/kiro-spec-requirements`（専門起因なら該当 validate） | 修正後 po → qa → sec → requirements-ex の順で再 validate |
 | `/kiro-validate-design-qa`        | `/kiro-spec-design`               | 修正後 qa → arch → sec → design-ex の順で再 validate                 |
 | `/kiro-validate-design-arch`      | `/kiro-spec-design`               | 同上                                                                 |
 | `/kiro-validate-design-sec`       | `/kiro-spec-design`               | 同上                                                                 |
@@ -213,19 +216,20 @@ spec ベースの実装では、調整者は `/kiro-impl` の内部ループを�
 | ------ | ---- | ---- |
 | `/kiro-orchestrate` | `.cursor/skills/kiro-orchestrate/` | フロールーティング、フェーズゲート、巻き戻し。実行手順は `rules/` に分離（`routing`, `flows`, `gates`, `rollback`） |
 
-### validate スキル（6種 specialist + 1 final gate・実装済み）
+### validate スキル（6種 specialist + 2 final gate・実装済み）
 
 共通契約: `.cursor/skills/kiro-validate-shared/contract.md`（各 validate スキルから参照。重複読込み回避）
 
 | スキル                            | 担当役割           | 概要                                                                          |
 | --------------------------------- | ------------------ | ----------------------------------------------------------------------------- |
 | `/kiro-validate-requirements`     | プロダクトオーナー | 要求の自律的ブラッシュアップ（対話なし）                                      |
+| `/kiro-validate-requirements-qa`  | 品質管理者         | 要求段階のテスト容易性レビュー（AC 検証可能性・異常系網羅・NFR 測定可能性）   |
 | `/kiro-validate-requirements-sec` | セキュリティ管理者 | 要求段階のセキュリティレビュー（対話なし・推奨はレポートに記録）              |
-| `/kiro-validate-requirements-doc` | プロダクトオーナー | EARS 要求を支える補足資料の作成（用語集・コンテキスト図・ユースケース図ほか） |
+| `/kiro-validate-requirements-ex`  | プロダクトオーナー | AI-DLC 要求最終ゲート。3 専門レポートの反映検証 + ギャップ監査 + 自己修復     |
 | `/kiro-validate-design-qa`        | 品質管理者         | 異常系・エッジケースの網羅チェック（チェックリスト出力）                      |
 | `/kiro-validate-design-arch`      | アーキテクト管理者 | SOLID / 疎結合 / 拡張性シミュレーション                                       |
 | `/kiro-validate-design-sec`       | セキュリティ管理者 | 脅威モデル・認証情報・PII                                                     |
-| `/kiro-validate-design-ex`        | 設計者             | AI-DLC 最終ゲート。3 専門レポートの統合 GO/NO-GO（対話なし）                  |
+| `/kiro-validate-design-ex`        | 設計者             | AI-DLC 設計最終ゲート。3 専門レポートの統合 GO/NO-GO（対話なし）              |
 
 ## validate スキル契約
 
@@ -236,8 +240,9 @@ spec ベースの実装では、調整者は `/kiro-impl` の内部ループを�
 ```
 docs/specs/<feature>/reviews/
 ├── requirements-po.md      # /kiro-validate-requirements
+├── requirements-qa.md      # /kiro-validate-requirements-qa
 ├── requirements-sec.md     # /kiro-validate-requirements-sec
-├── requirements-doc.md     # /kiro-validate-requirements-doc
+├── requirements-final.md   # /kiro-validate-requirements-ex
 ├── design-qa.md            # /kiro-validate-design-qa
 ├── design-arch.md          # /kiro-validate-design-arch
 ├── design-sec.md           # /kiro-validate-design-sec
@@ -275,11 +280,14 @@ docs/specs/<feature>/reviews/
 
 | スキル | 入力 | 出力・副作用 | やらないこと |
 | ------ | ---- | ------------ | ------------ |
-| `/kiro-validate-requirements` | `requirements.md`, `brief.md`, steering | `reviews/requirements-po.md`。必要なら `requirements.md` を自律的に修正。**`## Decisions`** に判断・前提・トレードオフを記録 | EARS 機械チェック（`requirements-review-gate` の領域）、セキュリティ深掘り、**ユーザーとの対話** |
-| `/kiro-validate-requirements-sec` | `requirements.md`, steering の security 制約 | `reviews/requirements-sec.md`。推奨と採否・見送り理由を **`## Decisions`** に記録 | 要求の機能スコープ判断（PO の領域）、**ユーザーとの対話** |
-| `/kiro-validate-requirements-doc` | `requirements.md`, 既存補足資料 | 補足資料ファイル、`requirements.md` の「関連する補足資料」列更新、`reviews/requirements-doc.md` | 要求の新規追加（PO validate で確定済みの範囲外の AC 追加はしない） |
+| `/kiro-validate-requirements` | `requirements.md`, `brief.md`, steering | `reviews/requirements-po.md`。必要なら `requirements.md` を自律的に修正。**`## Decisions`** に判断・前提・トレードオフを記録 | EARS 機械チェック（`requirements-review-gate` の領域）、テスト容易性深掘り、セキュリティ深掘り、**ユーザーとの対話** |
+| `/kiro-validate-requirements-qa` | **po 反映後の** `requirements.md`, po レポート | `reviews/requirements-qa.md`。テスト容易性の指摘を `requirements.md` に反映 | 機能スコープ判断（PO の領域）、セキュリティ、**ユーザーとの対話** |
+| `/kiro-validate-requirements-sec` | **qa 反映後の** `requirements.md`, steering の security 制約 | `reviews/requirements-sec.md`。推奨と採否・見送り理由を **`## Decisions`** に記録 | 要求の機能スコープ判断（PO の領域）、テスト容易性（QA の領域）、**ユーザーとの対話** |
+| `/kiro-validate-requirements-ex` | 上記 3 レポート + **最終** `requirements.md`, `brief.md`, roadmap | `reviews/requirements-final.md`（承認ゲートサマリ + brief トレーサビリティ）。ギャップ領域の自己修復を `requirements.md` に反映 | po/qa/sec の分析の **再実行**、専門領域コンテンツの編集 |
 
-**実行順（直列・順序固定）**: `validate-requirements` → `sec` → `doc`
+**実行順（直列・順序固定）**: `validate-requirements` → `qa` → `sec` → `validate-requirements-ex`
+
+**直列必須の理由**: 各専門 validate の指摘は `requirements.md` に反映される。並列だと同一ファイルへの修正が競合する。次の validate は **直前ステップで更新された `requirements.md`** を入力とする。
 
 **自律実行の原則**
 
@@ -321,9 +329,9 @@ docs/specs/<feature>/reviews/
 
 **直列必須の理由**: 各専門 validate の指摘は `design.md` への修正として反映される。並列実行すると同一ファイルへの競合が発生する。次の validate は **直前ステップで更新された `design.md`** を入力とする。
 
-## 要求補足資料（`/kiro-validate-requirements-doc`）
+## 補足資料・ドキュメント（`/kiro-docs`）
 
-`/kiro-validate-requirements-doc` は、EARS 形式の `requirements.md` を書き起こし・検証しやすくするための **補足資料** を作成する。各受け入れ条件（AC）は `requirements.md` の「関連する補足資料」列から、**相対パスの Markdown リンク**で対応する補足資料へ参照する（打ち合わせ時にクリックで資料へ遷移できる形式）。本スキルは補足資料の作成に加え、既存 AC へのリンク紐づけも行う。
+補足資料・ドキュメント化は要求フェーズから分離し、**実装完了後**に `/kiro-docs` が担う。`/kiro-docs` は完了 spec を共有ドキュメント（用語集・コンテキスト図・受け入れ条件図・機能テストのテストケース）へ集約し、ユーザー確認のうえ対象 spec を削除、`roadmap.md` の依存関係を更新する。詳細は `.cursor/skills/kiro-docs/`（`SKILL.md` + `rules/`）を正本とする。以下の配置・ID・リンク形式は用語集／コンテキスト図の参考情報として残す。
 
 **成果物の配置（例）**
 
@@ -331,8 +339,6 @@ docs/specs/<feature>/reviews/
 | -------------------- | --------------------- | --------------------------------------------------------- |
 | 用語集（データ辞書） | プロジェクト全体      | `docs/specs/_shared/glossary.md`                          |
 | コンテキスト図       | 複数ドメイン全体で1枚 | `docs/specs/_shared/context-diagram.md`                   |
-| ユースケース図       | ドメイン単位で1枚     | `docs/specs/<ドメイン名>/supplements/use-case-diagram.md` |
-| その他の補足資料     | 要件の複雑さに応じて  | `docs/specs/<ドメイン名>/supplements/` 配下               |
 
 ### 最優先で作成すべき資料
 
@@ -371,7 +377,6 @@ docs/specs/<feature>/reviews/
 | -------- | -------------------------------- | -------- |
 | 用語集 | `../_shared/glossary.md` | `[用語集](../_shared/glossary.md#glossary-01)` |
 | コンテキスト図 | `../_shared/context-diagram.md` | `[コンテキスト図](../_shared/context-diagram.md#context-01)` |
-| ユースケース図 | `supplements/use-case-diagram.md` | `[ユースケース図](supplements/use-case-diagram.md#uc-order-01)` |
 
 複数資料はカンマ区切り。該当なしは `-`。
 
@@ -404,51 +409,54 @@ docs/specs/<feature>/reviews/
 2. [プロダクトオーナー]: `/kiro-spec-init <ドメイン名>` を実行する。`spec.json` とプロジェクト記述入り `requirements.md` を初期化する
 3. [プロダクトオーナー]: `/kiro-spec-requirements` を実行する（内部で `requirements-review-gate` 通過後に EARS 本文を書き込む）
 4. [プロダクトオーナー]: `/kiro-validate-requirements` を実行する。対話なしで自律的にブラッシュアップし、判断は `reviews/requirements-po.md` の `## Decisions` に記録する
-5. [セキュリティ管理者]: `/kiro-validate-requirements-sec` を実行する。対話なしでレビューし、推奨の採否は `reviews/requirements-sec.md` の `## Decisions` に記録する
-6. [プロダクトオーナー]: `/kiro-validate-requirements-doc` を実行する。補足資料を作成し、AC への相対パスリンク紐づけを行う
-7. [調整者]: `/kiro-verify-phase-gate <feature> requirements` を実行する
-8. **[ゲート] 要求フェーズ**: 調整者が validate 3種の GO・成果物・**決定事項サマリー**（各レポートの `## Decisions` 要約）を報告し、ユーザー承認を待つ。承認後 `approvals.requirements.approved: true`
-9. [設計者]: `/kiro-validate-gap` を実行する（brownfield のみ・任意）
-10. [設計者]: `/kiro-spec-design` を実行する
-11. [品質管理者]: `/kiro-validate-design-qa` を実行する
-12. [アーキテクト管理者]: `/kiro-validate-design-arch` を実行する（qa 通過・`design.md` 反映後）
-13. [セキュリティ管理者]: `/kiro-validate-design-sec` を実行する（arch 通過・`design.md` 反映後）
-14. [設計者]: `/kiro-validate-design-ex` を実行する。qa / arch / sec レポートを入力に総合 GO/NO-GO を判定。**最終ゲート**
-15. [調整者]: `/kiro-verify-phase-gate <feature> design` を実行する
-16. **[ゲート] 設計フェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ。承認後 `approvals.design.approved: true`
-17. [設計者]: `/kiro-spec-tasks` を実行する
-18. [調整者]: `/kiro-verify-phase-gate <feature> tasks` を実行する
-19. **[ゲート] タスクフェーズ**: **決定事項サマリー**（`tasks.md` と spec-tasks サマリーから合成）を含めてユーザー承認を待つ。承認後 `approvals.tasks.approved: true`
-20. [実装者]: `/kiro-impl` を実行する（タスクごとに `/kiro-review` → `/kiro-verify-completion`）
-21. [品質管理者]: `/kiro-validate-impl` を実行する
-22. [調整者]: `/kiro-verify-completion`（`FEATURE_GO`）を実行する
-23. **[ゲート] 実装フェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ
-24. 終了
+5. [品質管理者]: `/kiro-validate-requirements-qa` を実行する（po 通過・`requirements.md` 反映後）。テスト容易性を対話なしでレビューし、`reviews/requirements-qa.md` に記録する
+6. [セキュリティ管理者]: `/kiro-validate-requirements-sec` を実行する（qa 通過・`requirements.md` 反映後）。対話なしでレビューし、推奨の採否は `reviews/requirements-sec.md` の `## Decisions` に記録する
+7. [プロダクトオーナー]: `/kiro-validate-requirements-ex` を実行する。po / qa / sec レポートを入力に反映検証・ギャップ監査・自己修復を行い、総合 GO/NO-GO を判定。**最終ゲート**
+8. [調整者]: `/kiro-verify-phase-gate <feature> requirements` を実行する
+9. **[ゲート] 要求フェーズ**: 調整者が validate 4種の GO・成果物・`reviews/requirements-final.md` の **承認ゲートサマリ**（検証済み観点・自己修復・残リスク・未決事項）を報告し、ユーザー承認を待つ。承認後 `approvals.requirements.approved: true`
+10. [設計者]: `/kiro-validate-gap` を実行する（brownfield のみ・任意）
+11. [設計者]: `/kiro-spec-design` を実行する
+12. [品質管理者]: `/kiro-validate-design-qa` を実行する
+13. [アーキテクト管理者]: `/kiro-validate-design-arch` を実行する（qa 通過・`design.md` 反映後）
+14. [セキュリティ管理者]: `/kiro-validate-design-sec` を実行する（arch 通過・`design.md` 反映後）
+15. [設計者]: `/kiro-validate-design-ex` を実行する。qa / arch / sec レポートを入力に総合 GO/NO-GO を判定。**最終ゲート**
+16. [調整者]: `/kiro-verify-phase-gate <feature> design` を実行する
+17. **[ゲート] 設計フェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ。承認後 `approvals.design.approved: true`
+18. [設計者]: `/kiro-spec-tasks` を実行する
+19. [調整者]: `/kiro-verify-phase-gate <feature> tasks` を実行する
+20. **[ゲート] タスクフェーズ**: **決定事項サマリー**（`tasks.md` と spec-tasks サマリーから合成）を含めてユーザー承認を待つ。承認後 `approvals.tasks.approved: true`
+21. [実装者]: `/kiro-impl` を実行する（タスクごとに `/kiro-review` → `/kiro-verify-completion`）
+22. [品質管理者]: `/kiro-validate-impl` を実行する
+23. [調整者]: `/kiro-verify-completion`（`FEATURE_GO`）を実行する
+24. **[ゲート] 実装フェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ
+25. 実装完了後、必要に応じて `/kiro-docs <feature>` でドキュメント集約・spec 整理を行う（任意・別実行）
+26. 終了
 
 ### 要求更新の場合
 
 1. [プロダクトオーナー]: `/kiro-discovery` を実行する
 2. [プロダクトオーナー]: `/kiro-spec-requirements` を実行する（更新差分のみ）
 3. [プロダクトオーナー]: `/kiro-validate-requirements` を実行する（更新部分のみ・対話なし・判断は `## Decisions` に記録）
-4. [セキュリティ管理者]: `/kiro-validate-requirements-sec` を実行する（更新部分のみ・対話なし・採否は `## Decisions` に記録）
-5. [プロダクトオーナー]: `/kiro-validate-requirements-doc` を実行する（更新部分の補足資料）
-6. [調整者]: `/kiro-verify-phase-gate <feature> requirements` を実行する
-7. **[ゲート] 要求フェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ
-8. [設計者]: `/kiro-spec-design` を実行する（要求差分のみ更新）
-9. [品質管理者]: `/kiro-validate-design-qa` を実行する（更新部分）
-10. [アーキテクト管理者]: `/kiro-validate-design-arch` を実行する（更新部分・qa 反映後）
-11. [セキュリティ管理者]: `/kiro-validate-design-sec` を実行する（更新部分・arch 反映後）
-12. [設計者]: `/kiro-validate-design-ex` を実行する。**最終ゲート**
-13. [調整者]: `/kiro-verify-phase-gate <feature> design` を実行する
-14. **[ゲート] 設計フェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ
-15. [設計者]: `/kiro-spec-tasks` を実行する（更新部分のみタスク追加・上書き）
-16. [調整者]: `/kiro-verify-phase-gate <feature> tasks` を実行する
-17. **[ゲート] タスクフェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ
-18. [実装者]: `/kiro-impl` を実行する
-19. [品質管理者]: `/kiro-validate-impl` を実行する
-20. [調整者]: `/kiro-verify-completion`（`FEATURE_GO`）を実行する
-21. **[ゲート] 実装フェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ
-22. 終了
+4. [品質管理者]: `/kiro-validate-requirements-qa` を実行する（更新部分のみ・po 反映後）
+5. [セキュリティ管理者]: `/kiro-validate-requirements-sec` を実行する（更新部分のみ・qa 反映後・採否は `## Decisions` に記録）
+6. [プロダクトオーナー]: `/kiro-validate-requirements-ex` を実行する。**最終ゲート**
+7. [調整者]: `/kiro-verify-phase-gate <feature> requirements` を実行する
+8. **[ゲート] 要求フェーズ**: `reviews/requirements-final.md` の **承認ゲートサマリ**を含めてユーザー承認を待つ
+9. [設計者]: `/kiro-spec-design` を実行する（要求差分のみ更新）
+10. [品質管理者]: `/kiro-validate-design-qa` を実行する（更新部分）
+11. [アーキテクト管理者]: `/kiro-validate-design-arch` を実行する（更新部分・qa 反映後）
+12. [セキュリティ管理者]: `/kiro-validate-design-sec` を実行する（更新部分・arch 反映後）
+13. [設計者]: `/kiro-validate-design-ex` を実行する。**最終ゲート**
+14. [調整者]: `/kiro-verify-phase-gate <feature> design` を実行する
+15. **[ゲート] 設計フェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ
+16. [設計者]: `/kiro-spec-tasks` を実行する（更新部分のみタスク追加・上書き）
+17. [調整者]: `/kiro-verify-phase-gate <feature> tasks` を実行する
+18. **[ゲート] タスクフェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ
+19. [実装者]: `/kiro-impl` を実行する
+20. [品質管理者]: `/kiro-validate-impl` を実行する
+21. [調整者]: `/kiro-verify-completion`（`FEATURE_GO`）を実行する
+22. **[ゲート] 実装フェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ
+23. 終了
 
 ### 要求更新不要、設計更新の場合
 

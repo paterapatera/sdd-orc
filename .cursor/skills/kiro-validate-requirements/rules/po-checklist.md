@@ -17,25 +17,30 @@ Post-generation semantic review and autonomous brush-up of `requirements.md`. Pr
 ## Out of Scope
 
 - EARS mechanical syntax checks (`requirements-review-gate` in `/kiro-spec-requirements`)
+- Testability deep-dive: abnormal-flow AC coverage, boundary values, NFR measurability (`/kiro-validate-requirements-qa`)
 - Security deep-dive (`/kiro-validate-requirements-sec`)
-- Supplement creation (`/kiro-validate-requirements-doc`)
+- Gap-domain audit: brief traceability matrix, cross-spec consistency, template conformance (`/kiro-validate-requirements-ex`)
+- Supplement / documentation creation (post-implementation `/kiro-docs`)
 - User dialogue
 
 ## Checks
 
-1. Every requirement has testable ACs; no orphan objectives
+1. Every requirement objective is backed by ACs that express it; no orphan objectives, no AC with no parent intent (verifiability deep-dive is qa domain)
 2. No contradictory ACs within or across requirements
 3. Ambiguous terms resolved or flagged (glossary deferred to doc validate)
 4. Scope boundaries explicit where misread risk exists
 5. Non-functional requirements stated at user-observable level (not implementation)
 6. Requirement IDs and AC IDs follow project conventions
 7. Changes to `requirements.md` preserve EARS keyword English (When, If, While, Where, shall)
+8. Every `requirements.md` edit is recorded as a `## Reflected Fixes` row (finding → target section → summary) — free-text fix claims are treated as missing downstream
 
 ## Findings Severity
 
-- **Critical**: Contradiction, untestable core AC, scope hole → likely `NO-GO`
-- **Major**: Ambiguity requiring assumption → fix + record in `## Decisions`
-- **Minor**: Wording improvement → fix inline if safe
+Use the shared scale in `../../kiro-validate-shared/contract.md` (Critical / Major / Minor):
+
+- **Critical**: contradiction, missing core capability, scope hole → `NO-GO`
+- **Major**: ambiguity requiring an assumption → fix into `requirements.md` (list in `## Reflected Fixes`) + record the assumption in `## Decisions`
+- **Minor**: wording improvement → fix inline if safe; note in `## Reflected Fixes`
 
 ## NO-GO Triggers
 
