@@ -140,6 +140,6 @@ Review and customize as needed.
 - Follow same granularity principles as core steering
 - All steering files loaded as project memory
 - Custom files equally important as core files
-- Avoid documenting agent-specific tooling directories (e.g. `.cursor/`, `.gemini/`, `.claude/`)
+- Avoid documenting agent-specific tooling directories (e.g. `.agents/`, `.cursor/`, `.gemini/`, `.claude/`)
 - Light references to `docs/specs/` and `docs/steering/` are acceptable; avoid other `.kiro/` directories
 

@@ -150,7 +150,7 @@ Review and approve as Source of Truth.
 - Templates and principles are external for customization
 - Focus on patterns, not catalogs
 - "Golden Rule": New code following patterns shouldn't require steering updates
-- Avoid documenting agent-specific tooling directories (e.g. `.cursor/`, `.gemini/`, `.claude/`)
+- Avoid documenting agent-specific tooling directories (e.g. `.agents/`, `.cursor/`, `.gemini/`, `.claude/`)
 - `docs/settings/` content should NOT be documented in steering files (settings are metadata, not project knowledge)
 - Light references to `docs/specs/` and `docs/steering/` are acceptable; avoid other `.kiro/` directories
 

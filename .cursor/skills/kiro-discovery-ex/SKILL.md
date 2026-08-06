@@ -19,7 +19,7 @@ description: Discovery entry point with cross-spec dependency tracking. Runs kir
 
 ## Step 0: Delegate to base discovery
 
-Read `.cursor/skills/kiro-discovery/SKILL.md` and execute its **Steps 1–8 in full**: lightweight scan, path determination (A–E), deep context loading, dialogue, approach proposal, refinement, file writes (`brief.md`, and `roadmap.md` for Path D/E), and next-command suggestion.
+Read `.agents/skills/kiro-discovery/SKILL.md` and execute its **Steps 1–8 in full**: lightweight scan, path determination (A–E), deep context loading, dialogue, approach proposal, refinement, file writes (`brief.md`, and `roadmap.md` for Path D/E), and next-command suggestion.
 
 Do not re-implement or alter base behavior. Everything the base skill does still applies.
 

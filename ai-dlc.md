@@ -3,11 +3,11 @@
 > **一時ファイル（削除予定）**  
 > 本ドキュメントは作業用のドラフトです。正本はスキル定義に移行済みのため、**近いうちに削除します**。参照・更新は次を優先してください。
 >
-> - オーケストレーション: `.cursor/skills/kiro-orchestrate/`（`SKILL.md` + `rules/`）
-> - validate 共通契約: `.cursor/skills/kiro-validate-shared/`（`contract.md`, `phase-contracts.md`）
+> - オーケストレーション: `.agents/skills/kiro-orchestrate/`（`SKILL.md` + `rules/`）
+> - validate 共通契約: `.agents/skills/kiro-validate-shared/`（`contract.md`, `phase-contracts.md`）
 > - エントリポイント: `/kiro-orchestrate`
 
-仕様駆動開発に基づいて開発を進めるオーケストレーション。**エントリポイント**: `/kiro-orchestrate`（`.cursor/skills/kiro-orchestrate/`）
+仕様駆動開発に基づいて開発を進めるオーケストレーション。**エントリポイント**: `/kiro-orchestrate`（`.agents/skills/kiro-orchestrate/`）
 
 ## 役割
 
@@ -214,11 +214,11 @@ spec ベースの実装では、調整者は `/kiro-impl` の内部ループを�
 
 | スキル | パス | 概要 |
 | ------ | ---- | ---- |
-| `/kiro-orchestrate` | `.cursor/skills/kiro-orchestrate/` | フロールーティング、フェーズゲート、巻き戻し。実行手順は `rules/` に分離（`routing`, `flows`, `gates`, `rollback`） |
+| `/kiro-orchestrate` | `.agents/skills/kiro-orchestrate/` | フロールーティング、フェーズゲート、巻き戻し。実行手順は `rules/` に分離（`routing`, `flows`, `gates`, `rollback`） |
 
 ### validate スキル（6種 specialist + 2 final gate・実装済み）
 
-共通契約: `.cursor/skills/kiro-validate-shared/contract.md`（各 validate スキルから参照。重複読込み回避）
+共通契約: `.agents/skills/kiro-validate-shared/contract.md`（各 validate スキルから参照。重複読込み回避）
 
 | スキル                            | 担当役割           | 概要                                                                          |
 | --------------------------------- | ------------------ | ----------------------------------------------------------------------------- |
@@ -331,7 +331,7 @@ docs/specs/<feature>/reviews/
 
 ## 補足資料・ドキュメント（`/kiro-docs`）
 
-補足資料・ドキュメント化は要求フェーズから分離し、**実装完了後**に `/kiro-docs` が担う。`/kiro-docs` は完了 spec を共有ドキュメント（用語集・コンテキスト図・受け入れ条件図・機能テストのテストケース）へ集約し、ユーザー確認のうえ対象 spec を削除、`roadmap.md` の依存関係を更新する。詳細は `.cursor/skills/kiro-docs/`（`SKILL.md` + `rules/`）を正本とする。以下の配置・ID・リンク形式は用語集／コンテキスト図の参考情報として残す。
+補足資料・ドキュメント化は要求フェーズから分離し、**実装完了後**に `/kiro-docs` が担う。`/kiro-docs` は完了 spec を共有ドキュメント（用語集・コンテキスト図・受け入れ条件図・機能テストのテストケース）へ集約し、ユーザー確認のうえ対象 spec を削除、`roadmap.md` の依存関係を更新する。詳細は `.agents/skills/kiro-docs/`（`SKILL.md` + `rules/`）を正本とする。以下の配置・ID・リンク形式は用語集／コンテキスト図の参考情報として残す。
 
 **成果物の配置（例）**
 
