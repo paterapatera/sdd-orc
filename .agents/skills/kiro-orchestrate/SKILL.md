@@ -49,7 +49,7 @@ Do **NOT** dispatch individual `spec-requirements`, `validate-*`, `spec-design`,
 
 ## Hard Constraints
 
-- **Orchestration scope ends at task generation.** Generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **Terminal auto-approve** (M/L: tasks; S: 仕様一式). After mechanical readiness, auto-approve, emit the **PR Summary Output** (`rules/gates.md` § PR Summary Output — 概要 + 決定事項と理由 一覧, copy-paste ready), and end the orchestration — never chain into `/kiro-impl`, `/kiro-validate-impl`, `/kiro-verify-completion` (`FEATURE_GO`), or any implementation step. Implementation runs only via an explicit `実装のみ` invocation.
+- **Orchestration scope ends at task generation.** Generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **Terminal auto-approve** (M/L: tasks; S: 仕様一式). After mechanical readiness, auto-approve, emit the **PR Summary Output** (`rules/gates.md` § PR Summary Output — タイトル + 概要 + 決定事項と理由 一覧 + 残リスク, copy-paste ready), and end the orchestration — never chain into `/kiro-impl`, `/kiro-validate-impl`, `/kiro-verify-completion` (`FEATURE_GO`), or any implementation step. Implementation runs only via an explicit `実装のみ` invocation.
 - No human approval skip for **要求 / 設計 / 実装** unless user explicitly requests `-y` fast-track. Terminal タスク / 仕様一式 is **always** auto-approve (no human prompt).
 - **S tier (quick-path):** one dispatch to `/kiro-spec-quick --auto --from-orchestrate`, then **Terminal auto-approve (S)** → PR Summary → end. Do not run L-flow steps individually.
 - Requirements validate: single `/kiro-validate-requirements` (unified po→qa→sec→final+phase-gate). Optional `--only po|qa|sec|final`. (M/L only; S uses quick-path sanity review.)

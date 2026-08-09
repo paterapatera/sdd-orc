@@ -135,30 +135,34 @@ Then: PR Summary Output → orchestration ends. Do **not** dispatch `/kiro-impl`
 
 ## PR Summary Output (タスク生成完了時)
 
-After **terminal auto-approve** (`approvals.tasks.approved: true`, `ready_for_implementation: true`), and **before** ending the orchestration, emit a Pull Request-ready summary so the user can copy & paste it directly into a PR description.
+After **terminal auto-approve** (`approvals.tasks.approved: true`, `ready_for_implementation: true`), and **before** ending the orchestration, emit a Pull Request-ready summary so the user can copy & paste it directly into a PR (title + description).
 
 **Format rules**
 
 - Output as a single fenced ` ```markdown ` code block so it copies cleanly into a PR.
 - Language follows the spec artifacts (default Japanese).
-- Content is synthesized from the phase reports (`reviews/*.md` `## Decisions`), `requirements.md`, `design.md`, and `tasks.md` — do not re-run analysis, only parse existing artifacts.
+- Content is synthesized from the phase reports (`reviews/*.md` — especially `## Decisions` and 承認ゲートサマリ / `### 受容が必要な残リスク`), `brief.md` / `requirements.md`, `design.md`, and `tasks.md` — do not re-run analysis, only parse existing artifacts.
 - Keep it concise; detail stays in the spec files.
 
 **Required content**
 
-1. **概要** — what this spec/feature delivers (scope in a few sentences), spec path `docs/specs/<feature>/`.
-2. **決定事項と理由 一覧** — a table of every key decision with its rationale, aggregated across phases:
+1. **タイトル** — one-line PR title (not a heading inside the body). Synthesize from `<feature>` + brief/requirements scope: short, imperative or noun-phrase, no trailing period. Prefer `<feature>: <要約>` (or repo PR title convention if one exists).
+2. **概要** — what this spec/feature delivers (scope in a few sentences), spec path `docs/specs/<feature>/`.
+3. **決定事項と理由 一覧** — a table of every key decision with its rationale, aggregated across phases:
 
    | 決定事項 | 理由 |
    | -------- | ---- |
    | <何を決めたか> | <なぜそう決めたか> |
 
    Aggregate the same topics as the 決定事項サマリー (Scope / Requirements validates / Security validates / Supplements / Design / Tasks). One row per decision.
+4. **残リスク** — residual risks accepted at 要求/設計 gates (and any still listed at terminal). Aggregate from unified reports' `### 受容が必要な残リスク` (and equivalent Decision bullets on deferred risks) in `reviews/requirements-review.md` / `reviews/design-review.md` (fall back to `*-final.md` / specialist reports if unified file is absent). Include risk + why accepted / deferred. If none: write `なし`.
 
 **Template**
 
 ````markdown
 ```markdown
+タイトル: <feature>: <要約>
+
 ## 概要
 
 <feature が実現すること / スコープ>
@@ -168,6 +172,12 @@ Spec: `docs/specs/<feature>/`
 
 | 決定事項 | 理由 |
 | -------- | ---- |
+| … | … |
+
+## 残リスク
+
+| リスク | 受容 / 延期の理由 |
+| ------ | ---------------- |
 | … | … |
 ```
 ````
