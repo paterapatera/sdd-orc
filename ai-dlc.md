@@ -185,19 +185,23 @@ Path B は spec を作成・更新しない。調整者は discovery が Path B 
 
 spec ベースの実装では、調整者は `/kiro-impl` の内部ループを把握し、feature 検証の前提が満たされているか確認する。
 
-**`/kiro-impl` 内の 1 タスクあたりのループ**（調整者は impl スキルに委譲するが、停止条件を監視する）
+**`/kiro-impl` 内のバッチ／選択ループ**（調整者は impl スキルに委譲するが、停止条件を監視する）
 
-1. 実装サブエージェントが TDD 実装 → `READY_FOR_REVIEW`
-2. レビューサブエージェントが `/kiro-review` プロトコルで検証 → `APPROVED` / `REJECTED`
-3. `APPROVED` 後、`/kiro-verify-completion`（claim type: `TASK`）で fresh evidence 確認
-4. `tasks.md` の当該タスクを `[x]` に更新し、選択的 git commit
-5. `REJECTED` は最大 2 回リトライ → 失敗時 `/kiro-debug` → それでも失敗なら `_Blocked:_` で停止
+実行モードは `spec.json` の `complexity_tier`（またはタスク数フォールバック）で `direct` / `wave` / `strict` を選ぶ（詳細は `kiro-impl` Step 2）。
+
+1. 次 Wave／バッチ（または `direct` 選択）を組み、実装（サブエージェントまたは親）が TDD → `READY_FOR_REVIEW`
+2. 親が機械チェック（テスト / TBD / Secrets / Boundary / RED）→ FAIL なら reviewer を呼ばず差し戻し
+3. 通過後、レビューが `/kiro-review` で判断レビュー（バッチ／選択単位）→ `APPROVED` / `REJECTED`
+4. `APPROVED` 後、`[x]` 直前に `/kiro-verify-completion` を **1 回**（claim type: `BATCH`、単一手動タスクのみ `TASK`）で fresh evidence 確認 — 中間 `APPROVED` ごとには呼ばない
+5. バッチ／選択内タスクをまとめて `[x]` にし、選択的 git commit
+6. `REJECTED` / 機械 FAIL は最大 2 回リトライ → 失敗時 `/kiro-debug`（fresh）→ それでも失敗なら `_Blocked:_` で停止
 
 **調整者の関与**
 
 - 全タスク `[x]` になるまで `/kiro-validate-impl` へ進めない
 - `_Blocked:_` タスクが残ったら停止し、ユーザーに報告
 - autonomous mode では impl 完了後に自動で `/kiro-validate-impl` が走る（手動 mode では調整者が明示 dispatch）
+- feature 終端では `/kiro-validate-impl` GO 後に `/kiro-verify-completion`（`FEATURE_GO`）を適用する
 
 ### 既存 validate との棲み分け
 
@@ -207,8 +211,8 @@ spec ベースの実装では、調整者は `/kiro-impl` の内部ループを�
 | `/kiro-spec-design` | 要求→設計の間（任意） | brownfield のみ。既存コードとのギャップ分析 |
 | `/kiro-validate-design-qa --only final` | 設計 validate **最終（AI-DLC）** | qa/arch/sec のレポートを入力に総合 GO/NO-GO → `reviews/design-final.md`。専門分析は繰り返さない |
 | `/kiro-validate-design` | 設計レビュー（**スタンドアロン**） | 対話型の独立レビュー。オーケストレートフローでは使用しない |
-| `/kiro-validate-impl` | 実装完了後 | タスク横断の統合検証。タスク単位チェックは `/kiro-review` の責務 |
-| `/kiro-verify-completion` | 各 GO 宣言前 | fresh-evidence ゲート。調整者が各フェーズゲートと impl 内で適用 |
+| `/kiro-validate-impl` | 実装完了後 | タスク横断の統合検証。バッチ／選択単位の判断レビューは `/kiro-review` の責務 |
+| `/kiro-verify-completion` | 各 GO 宣言前 | fresh-evidence ゲート。調整者が各フェーズゲートと impl のバッチ／選択完了・`FEATURE_GO` で適用 |
 
 ### brownfield オプション
 
@@ -424,7 +428,7 @@ docs/specs/<feature>/reviews/
 
 1. [プロダクトオーナー]: `/kiro-discovery` を実行する（Path A で実装のみと判定された場合）
 2. [調整者]: `spec.json` で `approvals.tasks.approved: true` を確認する。未承認なら停止
-3. [実装者]: `/kiro-impl` を実行する（タスクごとに `/kiro-review` → `/kiro-verify-completion`）
+3. [実装者]: `/kiro-impl` を実行する（Wave／バッチ単位: 親 mechanical → `/kiro-review` → `/kiro-verify-completion`（`BATCH` / 単一 `TASK`）→ `[x]`。実行モードは `complexity_tier`）
 4. [品質管理者]: `/kiro-validate-impl` を実行する
 5. [調整者]: `/kiro-verify-completion`（`FEATURE_GO`）を実行する
 6. **[ゲート] 実装フェーズ**: **決定事項サマリー**を含めてユーザー承認を待つ

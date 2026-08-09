@@ -101,7 +101,16 @@ After resolving the active flow (`routing.md` § Entry Contract), before the fir
 - Do **not** pick tier **S** for Path D/E multi-spec flows
 - Do **not** vary `実装のみ` by tier
 - Do **not** score from requirements/design bodies
-- Default without `complexity_tier` → **L** (backward compatible)
+- Default without `complexity_tier` → **L** for **orchestration flow path** only (backward compatible)
+
+## Scope note: missing tier vs `/kiro-impl` execution mode
+
+| Layer | Missing `complexity_tier` means | Why |
+| ----- | -------------------------------- | --- |
+| **Orchestration** (this file, `routing.md`, `contract.md`) | Treat as **L** full-path for 要求/設計/タスク flows | Conservative: do not silently take quick-path on legacy specs |
+| **`/kiro-impl` execution mode** | Task-count fallback: ≤3 → `direct`, ≤12 → `wave`, >12 → `strict` | Cost control at implement time; see `kiro-impl` Step 2 |
+
+These are different decisions. Writing `complexity_tier` at orchestration entry (or before `実装のみ`) keeps them aligned; do not assume “missing → L” forces impl `strict`.
 
 ## Link to `/kiro-spec-design` discovery (improvement 08)
 

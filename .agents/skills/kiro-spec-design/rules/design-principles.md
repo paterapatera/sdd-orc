@@ -105,13 +105,15 @@
 ### Requirements Traceability
 - Use the standard table (`Requirement | Summary | Components | Interfaces | Flows`) to prove coverage.
 - Collapse to bullet form only when a single requirement maps 1:1 to a component.
-- Prefer the component summary table for simple mappings; reserve the full traceability table for complex or compliance-sensitive requirements.
+- Prefer the component summary table for simple mappings; reserve the full traceability table for complex or compliance-sensitive requirements. **Simple features: omit Traceability entirely** when the Components summary already covers the mapping — do not keep both as duplicates.
+- Components column may list stable anchor IDs (`D-ComponentName`) for mechanical excerpt lookup.
 - Re-run this mapping whenever requirements or components change to avoid drift.
 
 ### Components & Interfaces Authoring
 - Boundary Commitments should already make the ownership seam explicit before this section begins.
 - Group components by domain/layer and provide one block per component.
-- Begin with a summary table listing Component, Domain, Intent, Requirement coverage, key dependencies, and selected contracts.
+- Begin with a summary table listing Component, optional Anchor (`D-Name`), Domain, Intent, Requirement coverage, key dependencies, and selected contracts.
+- **Stable anchors (required)**: Every full detail-block heading MUST use `#### ComponentName {#D-ComponentName}`. Keep a single `design.md`; never split into `design/components/*.md`. Contract source of truth stays in design.md (not research.md).
 - Table fields: Intent (one line), Requirements (`2.1, 2.3`), Owner/Reviewers (optional).
 - Dependencies table must mark each entry as Inbound/Outbound/External and assign Criticality (`P0` blocking, `P1` high-risk, `P2` informational).
 - Summaries of external dependency research stay here; detailed investigation (API signatures, rate limits, migration notes) belongs in `research.md`.

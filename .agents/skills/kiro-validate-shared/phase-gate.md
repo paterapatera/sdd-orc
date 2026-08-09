@@ -7,7 +7,8 @@ Read when executing `/kiro-verify-phase-gate` or when the orchestrator needs pre
 | Situation | Skill | Claim type |
 | --------- | ----- | ---------- |
 | 要求 / 設計 / タスクの機械 validate 完了後（人間承認前） | `/kiro-verify-phase-gate` | `PHASE_GATE` |
-| `/kiro-impl` 内のタスク完了 | `/kiro-verify-completion` | `TASK` |
+| `/kiro-impl` バッチ／複数タスク選択の完了ゲート（`[x]` 直前） | `/kiro-verify-completion` | `BATCH` |
+| `/kiro-impl` 単一手動タスクの完了ゲート | `/kiro-verify-completion` | `TASK` |
 | Path B 直接実装の完了 | `/kiro-verify-completion` | `FIX` or `TEST_OR_BUILD` |
 | 全タスク完了 + `/kiro-validate-impl` GO 後 | `/kiro-verify-completion` | `FEATURE_GO` |
 

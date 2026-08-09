@@ -38,7 +38,7 @@ Report paths: see `../kiro-validate-shared/contract.md` (read only if parsing).
 | `NOT_VERIFIED` | Do **not** auto-approve; rollback per `rollback.md` § Phase gate failures |
 | `MANUAL_VERIFY_REQUIRED` | Stop; report gaps to user |
 
-**Do not** use `/kiro-verify-completion` with `FEATURE_GO` for 要求 / 設計 / タスク — that claim type is for post-impl feature completion only. Use `TASK` inside `/kiro-impl` per-task loop; use `FEATURE_GO` only after `/kiro-validate-impl` GO at **[GATE] 実装**.
+**Do not** use `/kiro-verify-completion` with `FEATURE_GO` for 要求 / 設計 / タスク — that claim type is for post-impl feature completion only. Inside `/kiro-impl`, use `BATCH` at each batch/selection completion gate (or `TASK` only for a single manual task); use `FEATURE_GO` only after `/kiro-validate-impl` GO at **[GATE] 実装**. Do **not** require verify-completion after every intermediate `APPROVED` while batch tasks remain unmarked.
 
 ## Phase Gate Table (`spec.json`)
 
@@ -178,7 +178,7 @@ Delegate to `/kiro-impl`; monitor stop conditions:
 
 - All tasks `[x]` before `/kiro-validate-impl`
 - `_Blocked:_` tasks → stop, report user
-- Per-task loop: impl → `/kiro-review` → `/kiro-verify-completion` (impl skill owns detail)
+- Batch / selection loop: implement → parent mechanical → `/kiro-review` (judgment) → `/kiro-verify-completion` (`BATCH` / single-task `TASK`) before `[x]` (impl skill owns detail; execution mode `direct` / `wave` / `strict` from `complexity_tier`)
 
 ## Brownfield Option
 

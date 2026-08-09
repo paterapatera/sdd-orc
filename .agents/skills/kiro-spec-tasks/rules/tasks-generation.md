@@ -72,12 +72,36 @@ Focus on capabilities and outcomes, not code structure.
 - If work must cross boundaries, make it an explicit integration task rather than a normal implementation task
 - Do not hide cross-boundary coordination inside a task that appears local
 
+### 5.5 Wave Annotation (Execution Batch)
+
+**Every executable sub-task must declare its dispatch wave** in the detail section:
+
+```markdown
+- _Wave: 1_
+```
+
+**Rules**:
+- Same Wave number = same dispatch-batch candidate for `kiro-impl`
+- Waves increase in dependency order (Wave N may depend on completion of Wave < N)
+- Integration and Validation phases get their own Waves — do not mix them with Foundation/Core implementation Waves
+- `(P)` tasks with different `_Boundary:_` values must receive **different** Wave numbers (do not share a Wave) — so `kiro-impl` can parallel-dispatch those Waves when dependencies are ready
+- Tasks in the same Wave share the same `_Boundary:_` (or follow the same-boundary / solo-integration rules used by kiro-impl)
+
+**How to assign Waves** (align with Task Ordering Principle):
+1. Wave(s) for Foundation
+2. Wave(s) for Core (split by boundary / dependency; `(P)` + different boundary → separate Waves)
+3. Separate Wave(s) for Integration
+4. Separate Wave(s) for Validation
+
+**Sizing vs Waves**: Keep human-readable sub-tasks small (1–3 hours). Do **not** coarsen the hierarchy just to match batches — use `_Wave:_` to group fine-grained sub-tasks into execution batches.
+
 ### 6. Flexible Task Sizing
 
 **Guidelines**:
 - **Major tasks**: As many sub-tasks as logically needed (group by cohesion)
 - **Sub-tasks**: 1-3 hours each, 3-10 details per sub-task
 - Balance between too granular and too broad
+- Fine-grained sub-tasks and Wave batching coexist: size for human clarity; annotate `_Wave:_` for dispatch
 
 **Don't force arbitrary numbers** - let logical grouping determine structure.
 
@@ -125,12 +149,15 @@ Before writing `tasks.md`, review the draft task plan and repair local issues un
 - Every sub-task must be executable as written, usually within 1-3 hours.
 - Every sub-task must produce a verifiable deliverable (behavior, artifact, endpoint, UI state, config, migration, test, or integration result).
 - Every executable sub-task must include at least one detail bullet that states the observable completion condition.
+- Every executable sub-task must include a `_Wave: N_` annotation (detect missing Waves and add them before writing `tasks.md`).
 - Split tasks that combine multiple independently verifiable outcomes.
 - Split tasks that combine multiple responsibility boundaries unless they are explicit integration tasks.
 - If many tasks require broad `_Boundary:_` scopes or repeated cross-boundary coordination, stop and return to design or roadmap decomposition instead of forcing the spec through task generation.
 - Merge or collapse tasks that are too small, bookkeeping-only, or not meaningful execution units.
 - Make implicit prerequisites explicit as preceding tasks.
-- Re-check `_Depends:_`, `_Boundary:_`, and `(P)` markers after edits so concurrency claims still match the design boundaries and dependency graph.
+- Re-check `_Depends:_`, `_Boundary:_`, `_Wave:_`, and `(P)` markers after edits so concurrency claims and wave batches still match the design boundaries and dependency graph.
+- Reject plans where Integration/Validation tasks share a Wave with Foundation/Core implementation, or where `(P)` tasks with different `_Boundary:_` share the same Wave number.
+- Reject `(P)` on any task that cannot safely parallel-dispatch at implementation time (shared incomplete Depends with a peer, overlapping `_Boundary:_` / File Structure paths, or missing `_Boundary:_` when peers would run concurrently). Remove the marker or split Waves until the execution contract holds.
 
 ### Review Loop
 
@@ -161,7 +188,8 @@ Before writing `tasks.md`, review the draft task plan and repair local issues un
 
 ### Parallel Analysis (default)
 - Assume parallel analysis is enabled unless explicitly disabled (e.g. `--sequential` flag).
-- `(P)` means: this task has no dependency on its immediately preceding peers and can run concurrently with them.
+- **Policy: `(P)` is an execution contract** — it promises `kiro-impl` may parallel-dispatch this task's Wave/batch with other ready `(P)` peers when boundaries, Depends, and paths are disjoint. Do not mark `(P)` for documentation-only or "looks independent" notes that cannot actually run in parallel.
+- `(P)` means: this task has no dependency on its immediately preceding peers and **may be dispatched concurrently** with them at implementation time.
 - Identify tasks that can run concurrently when **all** conditions hold:
   - No data dependency on other pending tasks
   - No shared file or resource contention
@@ -177,7 +205,7 @@ Before writing `tasks.md`, review the draft task plan and repair local issues un
   - Apply to both major tasks and sub-tasks when appropriate.
 - If sequential mode is requested, omit `(P)` markers entirely.
 - Group parallel tasks logically (same parent when possible) and highlight any ordering caveats in detail bullets.
-- Explicitly call out dependencies that prevent `(P)` even when tasks look similar.
+- Explicitly call out dependencies that prevent `(P)` even when tasks look similar. **Never attach `(P)` when parallel dispatch would be unsafe.**
 
 ### Checkbox Format
 ```markdown
@@ -187,6 +215,7 @@ Before writing `tasks.md`, review the draft task plan and repair local issues un
   - Detail item 2
   - Observable completion condition
   - _Requirements: X.X_
+  - _Wave: 1_
 
 - [ ] 2. Core feature A
 - [ ] 2.1 (P) Sub-task description
@@ -194,12 +223,14 @@ Before writing `tasks.md`, review the draft task plan and repair local issues un
   - Observable completion condition
   - _Requirements: Y.Y_
   - _Boundary: AuthService_
+  - _Wave: 2_
 
 - [ ] 2.2 (P) Sub-task description
   - Detail items...
   - Observable completion condition
   - _Requirements: Z.Z_
   - _Boundary: UserRepository_
+  - _Wave: 3_
 
 - [ ] 3. Integration and wiring
 - [ ] 3.1 Sub-task description
@@ -207,6 +238,7 @@ Before writing `tasks.md`, review the draft task plan and repair local issues un
   - Observable completion condition
   - _Depends: 2.1, 2.2_
   - _Requirements: W.W_
+  - _Wave: 4_
 ```
 
 ## Requirements Coverage

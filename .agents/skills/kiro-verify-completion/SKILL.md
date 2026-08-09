@@ -12,14 +12,21 @@ This skill prevents false completion claims. A task, fix, or feature is only com
 <instructions>
 ## When to Use
 
-- Before saying a task is complete
-- Before saying a bug is fixed
-- Before saying tests pass
-- Before moving to the next task in autonomous execution
-- Before reporting `GO` from feature-level validation
-- Before trusting another subagent's success report
+Call this skill at **completion gates**, not on every intermediate approval:
 
-Do not use this skill for early planning or speculative status updates.
+- **Batch / selection completion** (primary inside `/kiro-impl`): once immediately before marking all tasks in a batch (or all selected manual tasks) `[x]` — claim type `BATCH` (or multi-`TASK`)
+- **Single manual task**: once at that task's end before `[x]` — claim type `TASK`
+- **Feature end**: after `/kiro-validate-impl` returns GO, before reporting feature success — claim type `FEATURE_GO`
+- Before saying a bug is fixed — claim type `FIX`
+- Before saying tests/build alone prove a scoped claim — claim type `TEST_OR_BUILD`
+
+Do **not** require a full run of this skill:
+- After every reviewer `APPROVED` when the batch is not yet being checked off
+- After each individual sub-task checkbox inside a batch
+- After every remediation round (parent mechanical re-run is enough until the batch/selection gate)
+- For early planning or speculative status updates
+
+Subagent self-reports (implementer status, reviewer prose without structured `APPROVED`, or “tests passed” claims without recorded evidence) are **never** sufficient by themselves.
 
 ## Inputs
 
@@ -27,12 +34,14 @@ Provide:
 - The exact claim to verify
 - Claim type:
   - `TASK`
+  - `BATCH` (multi-task / batch completion; may also be expressed as multi-`TASK`)
   - `FIX`
   - `TEST_OR_BUILD`
   - `FEATURE_GO`
 - Validation commands discovered by the controller
 - Fresh command output and exit codes
 - Relevant task IDs, requirement IDs, and design refs where applicable
+- For `BATCH` claims: parent `MECHANICAL_RESULTS` (commands + exit codes) and reviewer `APPROVED` for the batch/selection
 - For feature-level claims:
   - requirements coverage status
   - design alignment status
@@ -70,6 +79,15 @@ Require:
 - task-local verification evidence
 - no unresolved blocking findings from review
 - evidence aligned with the task boundary
+
+### BATCH
+Require:
+- parent `MECHANICAL_RESULTS` for the batch/selection (including test command results and exit codes)
+- reviewer `APPROVED` from the exact structured verdict for that batch/selection
+- evidence covering every task ID in the claim (do not verify a subset and approve the whole batch)
+- no unresolved blocking findings
+
+Do not accept implementer or reviewer self-report prose alone. If `NOT_VERIFIED`, the caller must not mark the batch complete.
 
 ### FIX
 Require:
@@ -112,7 +130,8 @@ Return `NOT_VERIFIED` when:
 | Rationalization | Reality |
 |---|---|
 | “The subagent said it succeeded” | Reported success is not verification evidence. |
-| “Tests passed earlier” | Fresh evidence only. |
+| “Reviewer APPROVED, so skip verify-completion” | `APPROVED` is an input to the batch gate; marking `[x]` still requires `VERIFIED`. |
+| “Tests passed earlier” | Fresh evidence only (parent `MECHANICAL_RESULTS` for `BATCH` must be from the current batch cycle). |
 | “Build should be fine because lint passed” | Lint does not prove build success. |
 | “Tests passed and build succeeded, so it must run” | Type erasure, module loading, native ABI, and boot-time config issues can still fail at runtime. |
 | “The feature is done because all tasks are checked off” | `FEATURE_GO` also requires coverage, integration, and design alignment. |
@@ -122,7 +141,7 @@ Return `NOT_VERIFIED` when:
 ```md
 ## Verification Result
 - STATUS: VERIFIED | NOT_VERIFIED | MANUAL_VERIFY_REQUIRED
-- CLAIM_TYPE: TASK | FIX | TEST_OR_BUILD | FEATURE_GO
+- CLAIM_TYPE: TASK | BATCH | FIX | TEST_OR_BUILD | FEATURE_GO
 - CLAIM: <exact claim>
 - EVIDENCE: <command/checklist and result>
 - GAPS: <scope/evidence mismatch or missing validation>

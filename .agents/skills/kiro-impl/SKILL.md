@@ -7,16 +7,25 @@ description: Implement approved tasks using TDD with subagent dispatch. Runs all
 # kiro-impl Skill
 
 <background_information>
-You operate in two modes:
-- **Autonomous mode** (no task numbers): Dispatch a fresh sub-agent per task, with independent review after each
-- **Manual mode** (task numbers provided): Execute selected tasks directly in the main context
+You operate with two layers of mode:
+
+**Invocation** (from arguments):
+- **Autonomous** (no task numbers): Run all pending tasks under the selected execution mode below
+- **Manual** (task numbers provided): Execute selected tasks in the main context (`direct`-leaning; see Execution Mode Selection)
+
+**Execution mode** (from `complexity_tier` / task-count / user override — see Step 2):
+- **`direct`**: Parent (or a single agent) implements sequentially; reviewer once at selection/feature end — do not spawn per-task implementer×reviewer pairs
+- **`wave`**: Default for tier M — dependency/boundary Wave batches, sticky on happy path, two-tier review per batch; `(P)` may run ready Waves concurrently
+- **`strict`**: Tier L / user-forced — same as `wave`, plus smaller Integration/Validation batches and more aggressive splits; failure-path fresh agents stay mandatory
 
 - **Success Criteria**:
   - All tests written before implementation code
   - Code passes all tests with no regressions
-  - Tasks marked as completed in tasks.md
+  - Tasks marked as completed in tasks.md only after batch/selection `kiro-verify-completion` returns `VERIFIED`
   - Implementation aligns with design and requirements
-  - Independent reviewer approves each task before completion
+  - Independent reviewer approves each batch (or selection/feature end under `direct`) before the completion gate
+  - Feature success reported only after Step 4 `FEATURE_GO` verification
+  - Terminal `/kiro-validate-impl` + `FEATURE_GO` remain for all execution modes (including `direct` / tier S)
 </background_information>
 
 <instructions>
@@ -57,8 +66,8 @@ After all parallel research completes, synthesize implementation brief before st
 
 **Parse arguments**:
 - Extract feature name from `$1`
-- If task numbers provided in `$2` (e.g., "1.1" or "1,2,3"): **manual mode**
-- If no task numbers: **autonomous mode** (all pending tasks)
+- If task numbers provided in `$2` (e.g., "1.1" or "1,2,3"): **manual invocation** (`direct`-leaning)
+- If no task numbers: **autonomous invocation** (all pending tasks; execution mode from selection below)
 
 **Build task queue**:
 - Read tasks.md, identify actionable sub-tasks (X.Y numbering like 1.1, 2.3)
@@ -67,64 +76,206 @@ After all parallel research completes, synthesize implementation brief before st
 - For each selected task, check `_Depends:_` annotations -- verify referenced tasks are `[x]`
 - If prerequisites incomplete, execute them first or warn the user
 - Use `_Boundary:_` annotations to understand the task's component scope
+- Count **executable sub-tasks** in the queue (incomplete `X.Y` that are not `_Blocked:_` and whose `_Depends:_` are satisfied or will be run in this invocation) — used for mode fallback
+
+### Execution Mode Selection
+
+Do **not** reinvent tier scoring. Prefer `spec.json` `complexity_tier` written by `kiro-orchestrate` (`rules/complexity-tier.md`). Key name: **`complexity_tier`** (`"S"` | `"M"` | `"L"`).
+
+**Default selection** (first match wins after overrides):
+
+1. **User override** (highest priority): explicit requests → force that execution mode; do not recompute from tier.
+   - 「strict で」/ `strict` / `full` → **`strict`**
+   - 「全部サブエージェントで」/ `wave` / 「wave で」 → **`wave`** (unless they also said strict)
+   - 「direct で」/ `direct` / 「親だけで」 → **`direct`**
+2. **Manual invocation** (task numbers in `$2`) → **`direct`** (main-context sequential; same as Manual Mode below).
+3. Read `docs/specs/{feature}/spec.json` → `complexity_tier`:
+   - `"S"` → **`direct`**
+   - `"M"` → **`wave`**
+   - `"L"` → **`strict`**
+4. **Missing `complexity_tier`**: estimate from executable sub-task count in the queue (this is **impl execution mode only** — distinct from orchestration treating missing tier as flow-path **L**; see `kiro-orchestrate/rules/complexity-tier.md` § Scope note):
+   - ≤ 3 → **`direct`**
+   - ≤ 12 → **`wave`**
+   - \> 12 → **`strict`**
+
+**Do not break existing short-circuits**: Path B direct implementation (no `/kiro-impl`) stays outside this skill. Quality gates are **not** dropped for tier S / `direct` — selection/feature-end review + Step 4 terminal validate remain.
+
+**Report** (exactly one line at run start, before first implementer dispatch):
+`Execution mode: <direct|wave|strict> (reason: <tier S|M|L | task-count=N | manual | user override>)`
+
+### Mode behavior summary
+
+| Mode | When (default) | Behavior |
+|------|----------------|----------|
+| `direct` | tier **S**, or executable sub-tasks ≤ 3, or manual invocation | Parent (or single agent) implements sequentially. No per-task fresh implementer×reviewer pairs. Reviewer **once** at selection end (manual) or after all pending tasks / feature end (autonomous `direct`). Then deferred `kiro-verify-completion` + Step 4 validate. |
+| `wave` | tier **M**, or missing-tier with 4–12 tasks | Full Wave batch dispatch (01–06): sticky happy path, parent mechanical + judgment reviewer per batch, `(P)` parallel when contract holds. |
+| `strict` | tier **L**, or missing-tier with \> 12 tasks, or user「strict」 | Same as `wave`, plus: Integration / Validation stay solo and prefer **smaller** batches (size cap **2** for non-solo batches); split earlier when change-set or Spec Excerpts budget is tight. Failure-path **fresh** debugger / post-debug implementer stays mandatory (unchanged). Terminal validate unchanged. |
 
 ## Step 3: Execute Implementation
 
-### Autonomous Mode (sub-agent dispatch)
+If execution mode is **`direct`**, use **Manual Mode** below (even when invocation was autonomous — treat the full pending queue as the selection). If **`wave`** or **`strict`**, use **Autonomous Mode** with the batch-definition deltas noted under `strict`.
 
-**Iteration discipline**: Process exactly ONE sub-task (e.g., 1.1) per iteration. Do NOT batch multiple sub-tasks into a single sub-agent dispatch. Each iteration follows the full cycle: dispatch implementer → review → commit → re-read tasks.md → next.
+### Autonomous Mode (sub-agent dispatch — `wave` / `strict`)
 
-**Context management**: At the start of each iteration, re-read `tasks.md` to determine the next actionable sub-task. Do NOT rely on accumulated memory of previous iterations. After completing each iteration, retain only a one-line summary (e.g., "1.1: READY_FOR_REVIEW, 3 files changed") and discard the full status report and reviewer details.
+**Batch definition rules** (parent builds the next batch from `tasks.md`):
 
-If multi-agent capability is available, for each task (one at a time):
+1. Consider only incomplete executable sub-tasks (`X.Y`, or an executable major when applicable).
+2. Skip tasks with `_Blocked:_`.
+3. Do not include tasks whose `_Depends:_` are unsatisfied.
+4. **`_Wave:_` is highest priority**: When executable tasks have `_Wave: N_` annotations, form the next batch from the lowest incomplete Wave number whose dependencies are satisfied. Tasks that share the same Wave number are the batch candidates — do not mix different Wave numbers in one batch. Within a Wave, still apply the size cap and do not force `(P)` tasks with different `_Boundary:_` into the same batch (split into sequential batches of the same Wave if needed).
+5. **Legacy heuristics only when `_Wave:_` is absent**: If `tasks.md` has no `_Wave:_` annotations (legacy plans), assemble batches with the rules below — do not invent Wave numbers at runtime.
+6. A task may join the same heuristic batch only when **all** of the following hold:
+   - `_Boundary:_` values are the same, or explicitly empty and clearly the same module
+   - Dependencies close within the batch or already-completed tasks
+   - Intentional Integration / Validation tasks may cross boundaries but must be a **solo batch** (do not mix with other tasks)
+7. Batch size cap: **at most 4** executable sub-tasks under `wave` (**at most 2** under `strict`); split earlier if the estimated change set is too large. README / pure-documentation-only tasks may be included in an adjacent implementation batch. Under `strict`, Integration / Validation remain **solo** batches and non-solo batches should split earlier when Spec Excerpts approach the line budget.
+8. Do **not** force `(P)` tasks with different boundaries into the same batch.
 
-**a) Dispatch implementer**:
+**`(P)` execution contract** (policy: promote markers to conditional parallel dispatch — not informational):
+
+`(P)` means the parent **may** dispatch that task's batch/Wave in parallel with other ready `(P)` batches when **all** of the following hold:
+- **Different `_Boundary:_`** values (non-overlapping component scopes)
+- **Closed dependencies**: no shared incomplete `_Depends:_` between the candidate batches (each batch's Depends are already `[x]` or closed within that batch)
+- **Non-overlapping change paths**: planned paths inferred from File Structure / `_Boundary:_` / task bodies do not overlap
+
+**Parallel dispatch**: When multiple incomplete Waves are dependency-ready, marked `(P)`, and pass the conditions above, the parent may dispatch those batches **concurrently** (one implementer per batch). If any condition fails or collision risk is unclear → fall back to **serial** (lowest ready Wave first). Never unconditional parallel that ignores path/Depends conflicts.
+
+**Merge / commit under parallel**: Parent still owns commits. Prefer selective staging per completed batch, committing in Wave-number order or completion order. On git conflict or overlapping staged paths → **stop and escalate to human**; do not force-merge or `git add -A`.
+
+**Iteration discipline**: Default is ONE batch per iteration (form batch → one implementer → parent mechanical checks → (pass) one batch reviewer → commit → re-read tasks.md → next batch). When the `(P)` execution contract allows parallel Waves, one iteration may run multiple such batch cycles concurrently; each batch still gets its own implementer → mechanical → reviewer → selective commit. After any parallel set finishes (or aborts on conflict), re-read `tasks.md` before forming the next set.
+
+**Context management** (parent vs implementer — keep these distinct):
+- **Parent controller**: At the start of each iteration, re-read `tasks.md` and determine the next batch (or parallel-ready `(P)` batch set) as ordered task-ID list(s). Do NOT rely on accumulated memory of previous iterations for batch selection. After completing each iteration, the parent may discard verbose status/reviewer reports and retain only a one-line summary per batch (e.g., "batch [1.1, 1.2]: APPROVED, 5 files changed").
+- **Sticky implementer**: On the success path, the implementer may retain batch-to-batch implementation knowledge **within that batch lineage**. Parent discarding verbose reports does **not** require discarding sticky implementer context, and does **not** require an unconditional fresh implementer each batch. Concurrent `(P)` batches use separate implementer lineages.
+
+### Agent continuity (sticky vs fresh)
+
+| Situation | Agent | Reason |
+|-----------|-------|--------|
+| Batch success continuation (previous APPROVED → next batch) | **sticky**: resume the same implementer, OR parent re-dispatches with previous-batch one-line summary + Implementation Notes + next-batch excerpt only | Reduce cold start on happy path |
+| In-batch REMEDIATION (reviewer REJECTED rounds 1–2) | Prefer **same implementer** with feedback re-sent (fresh not required) | Keep fix context |
+| BLOCKED / unresolved NEEDS_CONTEXT / REJECTED → debug | **Always fresh** debugger | Cut pollution (unchanged) |
+| RETRY after debug | **Always fresh** implementer (unchanged) | Cut pollution |
+| Reviewer | Independent per batch (judgment-only after parent mechanical). Sticky not required | Independence |
+
+**Sticky fallback** (hosts that cannot resume / continue the same agent): parent must still pass a **pseudo-sticky** payload — never a bare empty fresh start when continuing after APPROVED:
+- File paths changed in the previous batch
+- Related rows from `## Implementation Notes`
+- Next batch task texts and `_Boundary:_` scope
+- Spec excerpts for the next batch (see Pre-dispatch Spec Excerpts below)
+
+### Pre-dispatch Spec Excerpts (parent, before each batch dispatch)
+
+Do **not** rely on subagents reading `requirements.md` / `design.md` in full. Keep those files as single sources of truth in the repo; the parent cuts batch-needed fragments and embeds them in the prompt.
+
+Before each implementer / reviewer / debugger dispatch for a batch, the parent:
+
+1. Aggregate `_Requirements:` IDs from every task in the batch.
+2. From `requirements.md`, extract only the referenced acceptance criteria (e.g., the cited conditions under requirement 3 among 1–7 — not the whole file).
+3. From optional `_Design: D-Name_` annotations and/or `_Boundary:_` / task bodies, extract the matching design component section(s), plus the minimal cross-cutting slices needed for this batch (dependency-direction block, Error mapping for that boundary, File Structure lines for relevant paths). **Prefer stable anchors**: resolve `_Design:` or Boundary name to `{#D-...}` / `D-...` headings first (grep/search); if no hit, fall back to heading-text partial match; if still unresolved → treat as **NEEDS_CONTEXT**. Do **not** include Overview, Non-Goals, or unrelated component sections.
+4. **Line-budget / split trigger**: if the combined excerpts would exceed roughly **150–250 lines**, revisit task boundaries and **split the batch** — do not paste full specs to stay under budget.
+5. Embed excerpts in a fixed prompt section (authoritative for the batch):
+
+```
+## Spec Excerpts (authoritative for this batch)
+### Requirements
+<extracted acceptance criteria with source section numbers>
+### Design
+<extracted component + minimal cross-cutting slices with source section numbers>
+```
+
+**Authority**: Spec Excerpts are the authoritative input for implementer / reviewer / debugger. Spec file paths may be included as repository location only; do **not** instruct subagents to open and read those files as the primary workflow.
+
+**NEEDS_CONTEXT re-excerpt**: If a subagent returns `NEEDS_CONTEXT` / `MISSING` naming a missing heading, the parent may extract that heading and re-dispatch **once** with additional excerpts (same one-shot re-dispatch rule). Do not tell the subagent to load the full file.
+
+Do **not** introduce `design/` multi-file splits or inject steering wholesale — only short task-relevant steering snippets already allowed elsewhere.
+
+If multi-agent capability is available, for each batch:
+
+**a) Dispatch implementer** (one implementer per batch):
 - Read `templates/implementer-prompt.md` from this skill's directory
-- Construct a prompt by combining the template with task-specific context:
-  - Task description and boundary scope
-  - Paths to spec files: requirements.md, design.md, tasks.md
-  - Exact requirement and design section numbers this task must satisfy (using source numbering, NOT invented `REQ-*` aliases)
-  - Task-relevant steering context and parent-discovered validation commands (tests/build/smoke as relevant)
-  - Whether the task is behavioral (Feature Flag Protocol) or non-behavioral
-  - **Previous learnings**: Include any `## Implementation Notes` entries from tasks.md that are relevant to this task's boundary or dependencies (e.g., "better-sqlite3 requires separate rebuild for Electron"). This prevents the same mistakes from recurring.
-- The implementer sub-agent will read the spec files and build its own Task Brief (acceptance criteria, completion definition, design constraints, verification method) before implementation
-- Spawn a fresh sub-agent with this prompt
+- Run **Pre-dispatch Spec Excerpts** for this batch, then construct a prompt by combining the template with batch-specific context:
+  - Ordered list of task IDs/descriptions and shared boundary scope
+  - `## Spec Excerpts (authoritative for this batch)` with `### Requirements` and `### Design` (authoritative; not optional)
+  - Spec file paths as repository location only (not a directive to read them in full)
+  - Exact requirement and design section numbers each task in the batch must satisfy (using source numbering, NOT invented `REQ-*` aliases) — these must match what appears in the excerpts
+  - Task-relevant steering context (short) and parent-discovered validation commands (tests/build/smoke as relevant)
+  - Whether each task is behavioral or non-behavioral
+  - Per task (or batch): `FEATURE_FLAG: required | skipped` — parent judges using the Feature Flag Protocol apply conditions below; if `tasks.md` or design excerpts require a flag → `required`
+  - **Previous learnings**: Include any `## Implementation Notes` entries from tasks.md that are relevant to this batch's boundary or dependencies (e.g., "better-sqlite3 requires separate rebuild for Electron"). This prevents the same mistakes from recurring.
+- The implementer builds Task Briefs from the **Spec Excerpts** (acceptance criteria, completion definition, design constraints, verification method) for the batch tasks, then implements them in order with TDD. Default: do **not** Read `requirements.md` / `design.md` in full.
+- **Continuity**:
+  - First batch of the run, or any dispatch after debug RETRY → spawn a **fresh** implementer
+  - After a previous batch APPROVED → **sticky**: resume the same implementer when the host supports it; otherwise re-dispatch with the sticky-fallback payload above (pseudo-sticky). Do **not** require an unconditional empty fresh implementer on the success path
 
 **b) Handle implementer status**:
 - Parse implementer status only from the exact `## Status Report` block and `- STATUS:` field.
-- If `STATUS` is missing, ambiguous, or replaced with prose, re-dispatch the implementer once requesting the exact structured status block only. Do NOT proceed to review without a parseable `READY_FOR_REVIEW | BLOCKED | NEEDS_CONTEXT` value.
-- **READY_FOR_REVIEW** → proceed to review
+- If `STATUS` is missing, ambiguous, or replaced with prose, re-dispatch the implementer once requesting the exact structured status block only (prefer same implementer / sticky when available). Do NOT proceed to review without a parseable `READY_FOR_REVIEW | BLOCKED | NEEDS_CONTEXT` value.
+- **READY_FOR_REVIEW** → proceed to **parent mechanical checks** (step c), then reviewer only if those pass
 - **BLOCKED** → dispatch debug subagent (see section below); do NOT immediately skip
-- **NEEDS_CONTEXT** → re-dispatch once with the requested additional context; if still unresolved → dispatch debug subagent
+- **NEEDS_CONTEXT** → extract the named missing heading(s) from `MISSING`, append those excerpts once, and re-dispatch (prefer same implementer); if still unresolved → dispatch debug subagent
 
-**c) Dispatch reviewer**:
+**c) Parent mechanical checks** (batch end, **before** reviewer dispatch):
+
+After the implementer returns `READY_FOR_REVIEW`, the parent controller runs these checks itself and records `MECHANICAL_RESULTS`. Do **not** dispatch the reviewer until all pass.
+
+1. **Regression**: Run the parent-held `TEST_COMMANDS` (task-relevant subset is allowed). Record each command, exit code, and a short pass/fail summary.
+2. **TBD/TODO/FIXME**: Grep changed files for `TBD|TODO|FIXME|HACK|XXX` (same intent as the reviewer template). Record CLEAN or match count / samples.
+3. **Secrets**: Grep changed files for hardcoded secret patterns (e.g. `password=`, `api_key=`, `secret=`, `token=`, case-insensitive). Record CLEAN or match count / samples.
+4. **Boundary**: Run `git diff --name-only` and compare against every `_Boundary:_` in the batch. Record WITHIN or files outside boundary.
+5. **RED phase**: For behavioral tasks in the batch, confirm the implementer Status Report includes non-empty `RED_PHASE_OUTPUT` (required whether `FEATURE_FLAG` is `required` or `skipped`). Record VERIFIED | MISSING | N/A.
+
+**If any mechanical check FAILs**:
+- Do **not** call the reviewer.
+- Treat as **REJECTED-equivalent remediation**: send the `MECHANICAL_RESULTS` (and concrete failures) back to the implementer (prefer same / sticky implementer).
+- Count this remediations round toward the same **Bounded Review Rounds** limit as reviewer `REJECTED` (max 2 implementer re-dispatch rounds, then debug on the next failure).
+
+**If all mechanical checks PASS** → proceed to step d with the recorded `MECHANICAL_RESULTS`.
+
+**d) Dispatch reviewer** (one judgment review per batch):
+
+- Call the reviewer **once for the whole batch** (not once per task).
 - Read `templates/reviewer-prompt.md` from this skill's directory
 - Construct a review prompt with:
-  - The task description and relevant spec section numbers
-  - Paths to spec files (requirements.md, design.md) so the reviewer can read them directly
-  - The implementer's status report (for reference only — reviewer must verify independently)
-- The reviewer must apply the `kiro-review` protocol to this task-local review.
-- Preserve the existing task-specific context: task text, spec refs, `_Boundary:_` scope, validation commands, implementer report, and the actual `git diff` as the primary source of truth.
-- The reviewer sub-agent will run `git diff` itself to read the actual code changes and verify against the spec
-- Spawn a fresh sub-agent with this prompt
+  - Parent `MECHANICAL_RESULTS` (commands, exit codes, grep summaries) — the reviewer may **trust these as the mechanical baseline and must not re-run the full suite by default**; re-run only if results are missing or look suspicious
+  - The batch task list (ordered IDs) and relevant spec section numbers
+  - The same `## Spec Excerpts (authoritative for this batch)` used for the implementer (Requirements + Design); paths may appear as location only
+  - The implementer's status report (for reference only — reviewer must verify judgment items independently)
+  - Batch `_Boundary:_` scope and task-relevant validation command names (for context; mechanical execution already done by parent)
+  - Per-task `FEATURE_FLAG: required | skipped` (when `skipped`, missing flag-only steps is not a REJECT reason; `RED_PHASE_OUTPUT` for behavioral tasks still required)
+- The reviewer must apply the `kiro-review` protocol for **batch-local judgment review** (spec alignment, test quality, implementation reality), with mechanical checks satisfied via parent `MECHANICAL_RESULTS` unless re-run is warranted. Default: compare judgment against **Spec Excerpts**, not a full Read of `requirements.md` / `design.md`.
+- The reviewer sub-agent runs `git diff` itself as the primary source of truth for judgment.
+- Spawn a reviewer sub-agent with this prompt (independent per batch; sticky not required)
 
-**d) Handle reviewer verdict**:
+**e) Handle reviewer verdict**:
 - Parse reviewer verdict only from the exact `## Review Verdict` block and `- VERDICT:` field.
-- If `VERDICT` is missing, ambiguous, or replaced with prose, re-dispatch the reviewer once requesting the exact structured verdict only. Do NOT mark the task complete, commit, or continue to the next task without a parseable `APPROVED | REJECTED` value.
-- **APPROVED** → before marking the task `[x]` or making any success claim, apply `kiro-verify-completion` using fresh evidence from the current code state; then mark task `[x]` in tasks.md and perform selective git commit
-- **REJECTED (round 1-2)** → re-dispatch implementer with review feedback
+- If `VERDICT` is missing, ambiguous, or replaced with prose, re-dispatch the reviewer once requesting the exact structured verdict only. Do NOT mark batch tasks complete, commit, or continue to the next batch without a parseable `APPROVED | REJECTED` value.
+- **APPROVED** → proceed to **batch completion gate** (step e2). Do **not** call `kiro-verify-completion` on APPROVED alone, and do **not** mark any batch task `[x]` yet.
+- **REJECTED (round 1-2)** → re-send review feedback to the **same** implementer when possible (sticky remediation; fresh not required); otherwise re-dispatch with feedback plus the sticky-fallback payload. After the implementer returns `READY_FOR_REVIEW` again, re-run **parent mechanical checks** before the next reviewer call. Do **not** require a full `kiro-verify-completion` on each remediation — parent mechanical re-run is enough until the batch completion gate.
 - **REJECTED (round 3)** → dispatch debug subagent (see section below)
 
-**e) Commit** (parent-only, selective staging):
-- Stage only the files actually changed for this task, plus tasks.md
+**e2) Batch completion gate** (once per batch, immediately before marking all tasks `[x]`):
+
+Apply `kiro-verify-completion` **exactly once** for the whole batch (claim type: `BATCH` / multi-`TASK`). Do **not** call it per sub-task checkbox, and do **not** treat implementer or reviewer prose as sufficient evidence by itself.
+
+Evidence for this gate:
+- Parent `MECHANICAL_RESULTS` already recorded for this batch (test commands, exit codes, TBD/Secrets/Boundary/RED summaries)
+- Reviewer `APPROVED` from the exact `## Review Verdict` block
+
+**If `VERIFIED`** → mark **all** tasks in the batch `[x]` in tasks.md, then perform one selective git commit for the batch (step f).
+
+**If `NOT_VERIFIED` or `MANUAL_VERIFY_REQUIRED`** → do **not** treat the batch as complete: do not mark any batch task `[x]`, do not commit as success, and either remediate (send gaps back to the implementer; counts toward Bounded Review Rounds) or BLOCK affected task(s) if the gate cannot be satisfied.
+
+**f) Commit** (parent-only, selective staging; one commit per verified batch):
+- Stage only the files actually changed for this batch, plus tasks.md
 - **NEVER** use `git add -A` or `git add .`
 - Use `git add <file1> <file2> ...` with explicit file paths
-- Commit message format: `feat(<feature-name>): <task description>`
+- Commit message format: `feat(<feature-name>): <batch summary spanning task IDs>`
 
-**f) Record learnings**:
-- If this task revealed cross-cutting insights, append a one-line note to the `## Implementation Notes` section at the bottom of tasks.md
+**g) Record learnings**:
+- If this batch revealed cross-cutting insights, append a one-line note to the `## Implementation Notes` section at the bottom of tasks.md
 
-**g) Debug subagent** (triggered by BLOCKED, NEEDS_CONTEXT unresolved, or REJECTED after 2 remediation rounds):
+**h) Debug subagent** (triggered by BLOCKED, NEEDS_CONTEXT unresolved, mechanical FAIL after review-round budget exhausted, or REJECTED after 2 remediation rounds):
 
 The debug subagent runs in a **fresh context** — it receives only the error information, not the failed implementation history. This avoids the context pollution that causes infinite retry loops.
 
@@ -132,8 +283,9 @@ The debug subagent runs in a **fresh context** — it receives only the error in
 - Construct a debug prompt with:
   - The error description / blocker reason / reviewer rejection findings
   - `git diff` of the current uncommitted changes
-  - The task description and relevant spec section numbers
-  - Paths to spec files so the debugger can read them
+  - The batch task descriptions and relevant spec section numbers
+  - `## Spec Excerpts (authoritative for this batch)` (same batch excerpts; plus any one-shot additional excerpts if NEEDS_CONTEXT named missing headings)
+  - Spec paths as repository location only; optional short extra context slices only when needed for the failure (still not full-file dumps)
 - The debugger must apply the `kiro-debug` protocol to this failure investigation.
 - Preserve rich failure context: error output, reviewer findings, current `git diff`, task/spec refs, and any relevant Implementation Notes.
 - When available, the debugger should inspect runtime/config state and use web or official documentation research to validate root-cause hypotheses before proposing a fix plan.
@@ -142,26 +294,32 @@ The debug subagent runs in a **fresh context** — it receives only the error in
 **Handle debug report**:
 - Parse `NEXT_ACTION` from the debug report's exact structured field.
 - If `NEXT_ACTION: STOP_FOR_HUMAN` → append `_Blocked: <ROOT_CAUSE>_` to tasks.md, stop the feature run, and report that human review is required before continuing
-- If `NEXT_ACTION: BLOCK_TASK` → append `_Blocked: <ROOT_CAUSE>_` to tasks.md, skip to next task
-- If `NEXT_ACTION: RETRY_TASK` → preserve the current worktree; do NOT reset or discard unrelated changes. Spawn a **new** implementer sub-agent with the debug report's `FIX_PLAN`, `NOTES`, and the current `git diff`, and require it to repair the task with explicit edits only
-  - If the new implementer succeeds (READY_FOR_REVIEW → reviewer APPROVED) → normal flow
+- If `NEXT_ACTION: BLOCK_TASK` → append `_Blocked: <ROOT_CAUSE>_` to tasks.md, skip to next batch
+- If `NEXT_ACTION: RETRY_TASK` → preserve the current worktree; do NOT reset or discard unrelated changes. Spawn a **new** (fresh) implementer sub-agent with the debug report's `FIX_PLAN`, `NOTES`, and the current `git diff`, and require it to repair the batch with explicit edits only
+  - If the new implementer succeeds (READY_FOR_REVIEW → parent mechanical PASS → reviewer APPROVED) → normal flow
   - If the new implementer also fails → repeat debug cycle (max 2 debug rounds total). After 2 failed debug rounds → append `_Blocked: debug attempted twice, still failing — <ROOT_CAUSE>_` to tasks.md, skip
-- **Max 2 debug rounds per task**. Each round: fresh debug subagent → fresh implementer. If still failing after 2 rounds, the task is blocked.
-- Record debug findings in `## Implementation Notes` (this helps subsequent tasks avoid the same issue)
+- **Max 2 debug rounds per batch**. Each round: fresh debug subagent → fresh implementer. If still failing after 2 rounds, the affected task(s) are blocked.
+- Record debug findings in `## Implementation Notes` (this helps subsequent batches avoid the same issue)
 
-**`(P)` markers**: Tasks marked `(P)` in tasks.md indicate they have no inter-dependencies and could theoretically run in parallel. However, kiro-impl processes them sequentially (one at a time) to avoid git conflicts and simplify review. The `(P)` marker is informational for task planning, not an execution directive.
+**`(P)` markers**: See **`(P)` execution contract** under Batch definition rules. Do not force `(P)` tasks with different `_Boundary:_` values into the same batch. Hosts that cannot run concurrent sub-agents still honor the contract by processing ready `(P)` Waves **serially** (never inventing informational-only semantics).
 
-**Fallback**: If multi-agent is not available, fall back to manual mode execution for all tasks.
+**Fallback**: If multi-agent is not available, fall back to `direct` (Manual Mode) execution for all tasks.
 
-### Manual Mode (main context)
+### Manual Mode / `direct` (main context)
+
+Used for **manual invocation**, execution mode **`direct`** (tier S or ≤3 tasks), and multi-agent fallback. Execute the selected / pending queue with the same TDD + mechanical + judgment loop. Do **not** dispatch a fresh implementer and reviewer per sub-task. `kiro-verify-completion` is **deferred** to selection completion — not required after every remediation, and not required merely because a task was `APPROVED`.
+
+Reviewer cadence under `direct`: run judgment review **once** after all tasks in the selection/queue are implemented (or once if only one task) — not once per sub-task. Parent mechanical checks still run before that reviewer call.
+
+**Spec scoping under `direct`**: The parent *is* the implementer, so there is no subagent prompt — but apply the **same excerpt discipline** as Pre-dispatch Spec Excerpts: for each task (or for the whole selection before coding), extract only the referenced `_Requirements:` criteria and matching design sections (prefer `{#D-...}` / `_Design:` / Boundary anchors). Keep the working brief roughly within the **150–250 line** budget; if larger, implement in smaller slices. Do **not** load entire `requirements.md` / `design.md` as the default. If a subagent reviewer is used at selection end, pass those excerpts as `## Spec Excerpts (authoritative for this batch)`.
 
 For each selected task:
 
 **1. Build Task Brief**:
-Before writing any code, read the relevant sections of requirements.md and design.md for this task and clarify:
+Before writing any code, from the scoped excerpts (not full-file dumps) clarify:
 - What observable behaviors must be true when done (acceptance criteria)
 - What files/functions/tests must exist (completion definition)
-- What technical decisions to follow from design.md (design constraints)
+- What technical decisions to follow from design excerpts (design constraints)
 - How to confirm the task works (verification method)
 
 **2. Execute TDD cycle** (Kent Beck's RED → GREEN → REFACTOR):
@@ -169,48 +327,84 @@ Before writing any code, read the relevant sections of requirements.md and desig
 - **GREEN**: Implement simplest solution to make test pass, following the design constraints.
 - **REFACTOR**: Improve code structure, remove duplication. All tests must still pass.
 - **VERIFY**: All tests pass (new and existing), no regressions. Confirm verification method passes.
-- **REVIEW**: Apply `kiro-review` before marking the task complete. If the host supports fresh subagents in manual mode, use a fresh reviewer; otherwise perform the review in the main context using the `kiro-review` protocol. Do NOT continue until the verdict is parseably `APPROVED`.
-- **MARK COMPLETE**: Only after review returns `APPROVED`, apply `kiro-verify-completion`, then update the checkbox from `- [ ]` to `- [x]` in tasks.md.
+- **Per-task mechanical (lightweight)**: Optionally re-run the task-relevant subset of `TEST_COMMANDS` after each task; remediate in-context on failure. Do **not** spawn a fresh implementer or reviewer per sub-task under `direct`.
+- **Defer mark**: Do **not** mark `[x]` yet if more selected tasks remain; continue to the next selected task.
+
+**2b. Selection / feature-end review** (once after all selected/queued tasks are implemented — not once per sub-task):
+- Run the full **parent mechanical checks** (Regression / TBD / Secrets / Boundary / RED) across the selection's changes. If any FAIL, remediate in-context (count toward the review-round budget) and do not proceed to judgment.
+- When mechanical checks PASS, apply `kiro-review` judgment review **once** for the whole selection: if the host supports fresh subagents, use a fresh reviewer with `MECHANICAL_RESULTS` and the selection's Spec Excerpts; otherwise perform judgment in the main context using the `kiro-review` protocol against the same scoped excerpts. Do NOT proceed to the completion gate until the verdict is parseably `APPROVED`. Do **not** call `kiro-verify-completion` here.
+- Keep recorded `MECHANICAL_RESULTS` + `APPROVED` for the completion gate.
+
+**3. Selection completion gate** (after selection/feature-end review is `APPROVED`):
+- **One selected task**: apply `kiro-verify-completion` once at that task's end (claim type: `TASK`), then mark it `[x]`.
+- **Multiple selected tasks**: apply `kiro-verify-completion` **once** for the whole selection (claim type: `BATCH` / multi-`TASK`) using parent mechanical evidence + reviewer `APPROVED` for those tasks; then mark all selected tasks `[x]`.
+- **If `NOT_VERIFIED` or `MANUAL_VERIFY_REQUIRED`**: do not mark any remaining incomplete selected tasks `[x]`; remediate or stop with gaps.
 
 ## Step 4: Final Validation
 
-**Autonomous mode**:
-- After all tasks complete, run `/kiro-validate-impl $1` as a GO/NO-GO gate
+**Autonomous invocation** (`wave`, `strict`, or autonomous `direct` completing the full pending queue):
+- After all tasks complete, run `/kiro-validate-impl $1` as a GO/NO-GO gate — **required for every execution mode**, including tier S / `direct` (do not skip quality gates for S)
 - If validation returns GO → before reporting feature success, apply `kiro-verify-completion` to the feature-level claim using the validation result and fresh supporting evidence
 - If validation returns NO-GO:
   - Fix only concrete findings from the validation report
   - Cap remediation at 3 rounds; if still NO-GO, stop and report remaining findings
 - If validation returns MANUAL_VERIFY_REQUIRED → stop and report the missing verification step
 
-**Manual mode**:
+**Manual invocation** (task-number selection only):
 - Suggest running `/kiro-validate-impl $1` but do not auto-execute
 
 ## Feature Flag Protocol
 
-For tasks that add or change behavior, enforce RED → GREEN with a feature flag:
+Feature Flag Protocol is **opt-in**. The parent passes `FEATURE_FLAG: required | skipped` per batch / task.
+
+**Required** only when **all** of the following hold (or an explicitly documented equivalent):
+
+- The change is **brownfield**: it alters behavior on an existing production / user-facing path
+- Without a flag, an intermediate state would be exposed to users, **or** the design requires a flag as the rollback unit
+
+If `tasks.md` or design excerpts require a flag → `required`.
+
+**When `FEATURE_FLAG: required`**, enforce RED → GREEN with a feature flag:
 
 1. **Add flag** (OFF by default): Introduce a toggle appropriate to the codebase (env var, config constant, boolean, conditional)
 2. **RED -- flag OFF**: Write tests for the new behavior. Run tests → must FAIL. If tests pass with flag OFF, the tests are not testing the right thing. Rewrite.
 3. **GREEN -- flag ON + implement**: Enable the flag, write implementation. Run tests → must PASS.
 4. **Remove flag**: Make the code unconditional. Run tests → must still PASS.
 
-**Skip this protocol for**: refactoring, configuration, documentation, or tasks with no behavioral change.
+**When `FEATURE_FLAG: skipped`**, use a standard RED → GREEN → REFACTOR cycle (no flag add/toggle/remove). Typical skip cases:
+
+- greenfield (new package / new binary / unpublished feature)
+- pure refactoring, configuration, or documentation
+- internal module additions where design does not require a flag
+- tasks with no behavioral change
+
+**RED evidence**: For behavioral tasks, keep `RED_PHASE_OUTPUT` (failing tests before implementation) whether the flag is `required` or `skipped`. Do not REJECT solely for missing flag-only steps when `skipped`.
 
 </instructions>
 
 ## Critical Constraints
+- **Execution Mode Selection**: Choose `direct` / `wave` / `strict` per Step 2 (user override → manual → `complexity_tier` → task-count fallback). Report the chosen mode and reason in one line at run start. Tier S / `direct` must not default to per-task fresh implementer×reviewer.
 - **Strict Handoff Parsing**: Never infer implementer `STATUS` or reviewer `VERDICT` from surrounding prose; only the exact structured fields count
+- **Parent Spec Excerpts**: Before each batch dispatch, inject `## Spec Excerpts (authoritative for this batch)`; if combined excerpts exceed ~150–250 lines, split the batch. Under `direct`, apply the same excerpt discipline in-context (do not full-file dump). Do not make full-file Read of requirements/design the default for subagents. Do not split design into multi-file layouts under this skill.
+- **`(P)` Execution Contract**: `(P)` authorizes conditional parallel Wave/batch dispatch when boundaries, Depends, and paths are disjoint; otherwise serial. Never treat `(P)` as informational-only. On merge conflict under parallel → stop for human. Applies to `wave` / `strict` only.
+- **Sticky on Happy Path**: Under `wave` / `strict`, after APPROVED prefer sticky / resume (or pseudo-sticky fallback) for the next batch; do not treat unconditional fresh implementer as required on the success path. Under parallel Waves, sticky applies per-batch lineage, not across concurrent batches
+- **Fresh on Failure / Debug**: Under `wave` / `strict` (including `strict` / tier L): debugger is always fresh; implementer after debug RETRY is always fresh; max 2 debug rounds unchanged
+- **Deferred Verify-Completion**: Call `kiro-verify-completion` once per batch (or once per `direct`/manual selection) immediately before marking tasks `[x]`, plus once at feature end for `FEATURE_GO`. Do not require it after every APPROVED, every sub-task checkbox, or every remediation. Subagent self-reports are never sufficient evidence alone.
+- **Terminal Validate Retained**: Autonomous completion always runs Step 4 `/kiro-validate-impl` + `FEATURE_GO` for `direct`, `wave`, and `strict` alike — never drop end gates for tier S
 - **No Destructive Reset**: Never use `git checkout .`, `git reset --hard`, or similar destructive rollback inside the implementation loop
 - **Selective Staging**: NEVER use `git add -A` or `git add .`; always stage explicit file paths
-- **Bounded Review Rounds**: Max 2 implementer re-dispatch rounds per reviewer rejection, then debug
-- **Bounded Debug**: Max 2 debug rounds per task (debug + re-implementation per round); if still failing → BLOCKED
+- **Bounded Review Rounds**: Max 2 implementer re-dispatch rounds per mechanical FAIL or reviewer REJECTED, then debug
+- **Two-Tier Review**: Parent runs mechanical checks before reviewer; on mechanical FAIL skip reviewer and remediate; reviewer focuses on judgment using parent `MECHANICAL_RESULTS`
+- **Bounded Debug**: Max 2 debug rounds per batch (debug + re-implementation per round); if still failing → BLOCKED
 - **Bounded Remediation**: Cap final-validation remediation at 3 rounds
 
 ## Output Description
 
-**Autonomous mode**: For each task, report: task ID, implementer status, reviewer verdict, files changed, commit hash. After all tasks: final validation result.
+**Start of run**: One line — selected execution mode and reason (see Execution Mode Selection).
 
-**Manual mode**: Tasks executed with test results. Status of completed/remaining tasks.
+**`wave` / `strict`**: For each batch (including each batch in a parallel `(P)` set), report: task ID list, implementer status, parent mechanical summary, reviewer verdict, batch verify-completion status, files changed, commit hash. After all batches: final validation result and feature `FEATURE_GO` verification.
+
+**`direct` / manual**: Tasks executed with test results; selection verify-completion status. Status of completed/remaining tasks. Autonomous `direct` also reports Step 4 validation + `FEATURE_GO`.
 
 **Format**: Concise, in the language specified in spec.json.
 

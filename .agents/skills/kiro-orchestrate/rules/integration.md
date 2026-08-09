@@ -35,15 +35,16 @@ Read on demand when routing, Path B, requirements init, or impl monitoring needs
 
 ## Impl Monitoring (`/kiro-impl`)
 
-Per-task loop (delegate to impl skill):
+Batch / selection loop (delegate to impl skill — detail in `kiro-impl`):
 
-1. TDD implement → `READY_FOR_REVIEW`
-2. `/kiro-review` → `APPROVED` / `REJECTED`
-3. On `APPROVED`: `/kiro-verify-completion` (`TASK`)
-4. Mark task `[x]` in `tasks.md`
-5. `REJECTED`: max 2 retries → `/kiro-debug` → `_Blocked:_` on persistent failure
+1. Form next Wave/batch (or `direct` selection) → implementer TDD → `READY_FOR_REVIEW`
+2. Parent mechanical checks → on FAIL, remediate (no reviewer yet)
+3. Judgment `/kiro-review` (batch/selection-local) → `APPROVED` / `REJECTED`
+4. On `APPROVED`: `/kiro-verify-completion` once (`BATCH`, or `TASK` only for a single manual task) — **not** after every APPROVED when more tasks remain unmarked
+5. Mark all batch/selection tasks `[x]` + selective commit
+6. `REJECTED` / mechanical FAIL: max 2 remediation rounds → `/kiro-debug` (fresh) → `_Blocked:_` on persistent failure
 
-Orchestrator stops if `_Blocked:_` remains or tasks incomplete before `/kiro-validate-impl`. Autonomous impl mode auto-runs validate-impl on completion.
+Orchestrator stops if `_Blocked:_` remains or tasks incomplete before `/kiro-validate-impl`. Autonomous impl mode auto-runs validate-impl on completion, then `FEATURE_GO` verify-completion.
 
 ## Validate Skill Boundaries
 
@@ -56,6 +57,6 @@ Orchestrator stops if `_Blocked:_` remains or tasks incomplete before `/kiro-val
 | `/kiro-validate-design` | Standalone | Interactive review; not used in orchestrate flow |
 | `/kiro-validate-impl` | Post-impl | Cross-task integration |
 | `/kiro-verify-phase-gate` | Pre-approval (タスク; 要求/設計は統合内 or standalone debug) | Artifact + `VERDICT` readiness (`PHASE_GATE`) |
-| `/kiro-verify-completion` | Impl loop / Path B / post-impl | Fresh evidence (`TASK`, `FIX`, `TEST_OR_BUILD`, `FEATURE_GO`) |
+| `/kiro-verify-completion` | Impl batch/selection gate / Path B / post-impl | Fresh evidence (`BATCH`, `TASK`, `FIX`, `TEST_OR_BUILD`, `FEATURE_GO`) |
 
 Validate I/O detail: `../kiro-validate-shared/phase-contracts.md`.

@@ -3,9 +3,18 @@
 ## Purpose
 Provide a consistent way to identify implementation tasks that can be safely executed in parallel while generating `tasks.md`.
 
+## Execution Contract
+
+**Policy: `(P)` is an execution contract**, not an informational note. Marking `(P)` promises that `kiro-impl` **may** parallel-dispatch this task's Wave/batch with other ready `(P)` peers when:
+- `_Boundary:_` values differ (non-overlapping components)
+- Dependencies are mutually closed (no shared incomplete `_Depends:_`)
+- Planned change paths (File Structure / Boundary) do not overlap
+
+If those conditions cannot hold, **do not** attach `(P)`.
+
 ## Relationship to Task Ordering
 
-`(P)` means: this task has no dependency on its immediately preceding peers and can run concurrently with them. The Task Ordering Principle (see tasks-generation.md) ensures Foundation-phase tasks run first, making Core-phase tasks the primary `(P)` candidates.
+`(P)` means: this task has no dependency on its immediately preceding peers and **may be dispatched concurrently** with them at implementation time. The Task Ordering Principle (see tasks-generation.md) ensures Foundation-phase tasks run first, making Core-phase tasks the primary `(P)` candidates. Different-boundary `(P)` tasks receive **different Wave numbers** so parallel dispatch is across ready Waves, not inside one mixed batch.
 
 ## When to Consider Tasks Parallel
 Only mark a task as parallel-capable when **all** of the following are true:
@@ -37,5 +46,6 @@ Before marking a task with `(P)`, ensure you have:
 - Captured any shared state expectations in the detail bullets.
 - Confirmed that the implementation can be tested independently.
 - Added `_Depends: X.X_` if this `(P)` task still requires specific prior work from a different major-task group.
+- Assigned a Wave number distinct from other `(P)` peers that have a different `_Boundary:_`.
 
 If any check fails, **do not** mark the task with `(P)` and explain the dependency in the task details.

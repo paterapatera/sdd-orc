@@ -1,12 +1,12 @@
 ---
 name: kiro-review
-description: Review a task implementation against approved specs, task boundaries, and verification evidence. Use after an implementer finishes a task, after remediation, or before accepting a task as complete.
+description: Review a batch or task implementation against approved specs, task boundaries, and verification evidence. Use after an implementer finishes a batch/selection, after remediation, or before the completion gate that marks tasks [x].
 ---
 
 # kiro-review
 
 <background_information>
-This skill performs task-local adversarial review. It verifies that the implementation is real, complete, bounded, aligned with approved requirements and design, and supported by mechanical verification evidence.
+This skill performs adversarial judgment review for a **batch** (kiro-impl autonomous / wave / strict) or a **selection** (direct / manual / standalone). It verifies that the implementation is real, complete, bounded, aligned with approved requirements and design, and supported by mechanical verification evidence.
 
 Boundary terminology continuity:
 - discovery identifies `Boundary Candidates`
@@ -18,23 +18,32 @@ Boundary terminology continuity:
 <instructions>
 ## When to Use
 
-- After an implementer reports `READY_FOR_REVIEW`
+- After an implementer reports `READY_FOR_REVIEW` for a **batch** or **selection** (not once per unmarked sub-task inside an open batch)
 - After remediation for a rejected review
-- Before marking a task `[x]`
-- Before accepting a task into feature-level validation
+- Before the caller runs the completion gate that marks those tasks `[x]`
+- Before accepting a batch/selection into feature-level validation
 
-Do not use this skill to invent missing requirements or silently reinterpret the spec.
+**Batch-local vs selection/standalone:**
+
+- **Batch-local** (`kiro-impl` wave/strict): one verdict for the whole batch. Parent already ran mechanical checks and passes `MECHANICAL_RESULTS` plus `## Spec Excerpts (authoritative for this batch)`. Adopt the mechanical baseline; concentrate on Judgment Checks unless results are missing or suspicious. Judge against **Spec Excerpts** — do **not** default to full-file Read of `requirements.md` / `design.md`.
+- **Selection / direct** (`kiro-impl` direct or manual multi-task): same judgment once at selection end; parent should supply excerpts or the equivalent scoped sections used for Task Briefs.
+- **Standalone task-local** (no parent mechanical / no excerpts): may run mechanical checks in-process and read only the **referenced** requirement/design sections (not the whole files by default).
+
+Do not weaken Judgment Checks in any mode. Do not use this skill to invent missing requirements or silently reinterpret the spec.
 
 ## Inputs
 
 Provide:
-- Task ID and exact task text from `tasks.md`
+- Task ID list (batch/selection) or single task ID, plus exact task text from `tasks.md`
 - Relevant requirement section numbers
 - Relevant design section numbers
-- Spec file paths (`requirements.md`, `design.md`, optionally `tasks.md`)
+- Prefer `## Spec Excerpts (authoritative for this batch)` with `### Requirements` and `### Design` when available (authoritative for judgment)
+- Spec file paths (`requirements.md`, `design.md`, optionally `tasks.md`) as repository location only — **not** a directive to open them in full when excerpts are present
 - The implementer's status report
-- The task `_Boundary:_` scope constraints
+- The task / batch `_Boundary:_` scope constraints
 - Validation commands discovered by the controller
+- Parent `MECHANICAL_RESULTS` when available (two-tier review)
+- Per-task `FEATURE_FLAG: required | skipped` when provided
 - Relevant steering excerpts when applicable
 - Relevant `## Implementation Notes` entries when applicable
 
@@ -58,36 +67,44 @@ Run `git diff` to inspect the actual code changes. If the diff is large or ambig
 
 ## Core Principle
 
-Read the spec yourself. Read the diff yourself. Verify mechanically where possible. Reject on concrete failures rather than interpretive optimism.
+Read the **authoritative spec input** yourself (Spec Excerpts when provided; otherwise only the referenced sections — never default to full-file dumps). Read the diff yourself. Verify mechanically where possible (or adopt parent `MECHANICAL_RESULTS`). Reject on concrete failures rather than interpretive optimism.
 The main review question is not just "does it work?" but "does it stay inside the approved responsibility boundary without hiding new coupling?"
+
+## Spec Excerpts Policy
+
+- **When Spec Excerpts are provided**: they are authoritative. Do **not** Read `requirements.md` or `design.md` in full. If a needed heading is missing, REJECT with REMEDIATION naming the exact missing heading(s) for parent re-excerpt — do not full-file load as recovery.
+- **When Spec Excerpts are absent** (standalone): read only the cited section numbers / headings needed for this review.
 
 ## Mechanical Checks
 
-Run these checks and use the result as primary signal.
+When the caller already provides parent `MECHANICAL_RESULTS` (batch/selection two-tier review), adopt those results as the mechanical baseline and re-run only if missing or suspicious — do not require a mandatory full-suite re-execution. Judgment Checks below remain mandatory either way.
+
+When no parent results are provided, run these checks and use the result as primary signal.
 
 ### 1. Regression Safety
-- Run the project's canonical test suite using the validation commands discovered by the controller.
+- Adopt parent test results when present; otherwise run the project's canonical test suite using the validation commands discovered by the controller.
 - If tests fail, reject.
 
 ### 2. No Residual Placeholder Markers
-- Check changed files for `TBD`, `TODO`, `FIXME`, `HACK`, `XXX`.
+- Adopt parent TBD/TODO/FIXME summary when present; otherwise check changed files for `TBD`, `TODO`, `FIXME`, `HACK`, `XXX`.
 - Reject if new placeholder markers were introduced without explicit task justification.
 
 ### 3. No Hardcoded Secrets
-- Check changed files for hardcoded secrets or credentials.
+- Adopt parent secrets summary when present; otherwise check changed files for hardcoded secrets or credentials.
 - Reject if concrete secret patterns are introduced.
 
 ### 4. Boundary Respect
-- Compare changed files against the task `_Boundary:_` scope.
+- Adopt parent boundary result when present; otherwise compare changed files against the task / batch `_Boundary:_` scope.
 - Reject if the change spills outside the approved boundary without explicit justification.
 - Reject if the implementation introduces hidden cross-boundary coordination inside what should be a local task.
 
 ### 5. RED Phase Evidence
-- For behavioral tasks, verify that the implementer status report includes `RED_PHASE_OUTPUT`.
+- Adopt parent RED-phase result when present; cross-check the implementer status report for `RED_PHASE_OUTPUT` on behavioral tasks.
 - Reject if RED evidence is missing, empty, or unrelated to the task's acceptance criteria.
+- When `FEATURE_FLAG` is `skipped`, do not REJECT solely for missing flag-only protocol steps.
 
 ### 6. Runtime-Sensitive Static Checks
-- If the project already has lint or equivalent static analysis for the touched stack, run the relevant command for the task boundary.
+- If the project already has lint or equivalent static analysis for the touched stack, run the relevant command for the task boundary (or adopt a parent result when provided).
 - Pay attention to patterns that can survive typecheck/build yet fail at runtime: type-only imports used as values, missing namespace value imports for qualified-name access, unresolved globals, and newly introduced runtime-sensitive dependencies without matching boot/runtime handling.
 - If no project lint command exists, perform a targeted diff-based spot check in the changed files for those patterns.
 - Reject on concrete findings that create a realistic boot-time or module-load failure.
@@ -98,20 +115,20 @@ Run these checks and use the result as primary signal.
 - Confirm the implementation is real production code, not a placeholder, stub, fake path, or deferred-work shell.
 
 ### 8. Acceptance Criteria Coverage
-- Read the task description and confirm all aspects are implemented, not only the primary happy path.
+- Read the task description(s) and confirm all aspects are implemented, not only the primary happy path.
 
 ### 9. Requirements Alignment
-- Read the referenced sections in `requirements.md`.
+- Use `### Requirements` in Spec Excerpts when provided; otherwise read only the referenced sections in `requirements.md` (not the whole file by default).
 - Confirm each requirement is satisfied by concrete observable behavior.
 - Use original section numbers only.
 
 ### 10. Design Alignment
-- Read the referenced sections in `design.md`.
+- Use `### Design` in Spec Excerpts when provided; otherwise read only the referenced sections in `design.md` (not the whole file by default).
 - Confirm the implementation uses the prescribed structures, interfaces, and dependency direction.
 - Reject silent substitutions for design-mandated choices.
 
 ### 10.5 Boundary Audit
-- Compare the implementation against the design's boundary commitments and out-of-boundary statements.
+- Compare the implementation against the design's boundary commitments and out-of-boundary statements (from excerpts or referenced sections).
 - Reject if downstream-specific behavior is pushed into an upstream boundary for convenience.
 - Reject if the implementation creates new hidden dependencies, shared ownership, or undeclared coupling across adjacent boundaries.
 - Reject if a task that is not an explicit integration task now behaves like one.
@@ -148,13 +165,14 @@ Escalate instead of papering over the issue when:
 | “The extra behavior is useful” | Extra behavior outside approved scope is still drift. |
 | “The implementer said RED was done” | RED must be evidenced, not asserted. |
 | “This gap is small enough to let through” | Real gaps must be rejected or escalated. |
+| “I should open the whole design.md” | Prefer Spec Excerpts / cited sections; name missing headings instead of full-file load. |
 
 ## Output Format
 
 ```md
 ## Review Verdict
 - VERDICT: APPROVED | REJECTED
-- TASK: <task-id>
+- TASK: <task-id or batch task-id list>
 - MECHANICAL_RESULTS:
   - Tests: PASS | FAIL (command and exit code)
   - TBD/TODO grep: CLEAN | <count> matches
@@ -165,7 +183,9 @@ Escalate instead of papering over the issue when:
   - RED phase: VERIFIED | MISSING | N/A
 - FINDINGS:
   1. <specific finding with exact files/spec refs>
-- REMEDIATION: <mandatory if REJECTED>
+- REMEDIATION: <mandatory if REJECTED; name missing excerpt headings when applicable>
 - SUMMARY: <one sentence>
 ```
+
+When parent `MECHANICAL_RESULTS` were provided, transcribe them into the verdict block; append notes only if you re-ran a check.
 </instructions>

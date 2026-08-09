@@ -60,6 +60,7 @@ After all parallel research completes, synthesize findings before generating tas
 - Keep normal implementation tasks within a single responsibility boundary; if work crosses boundaries, make it an explicit integration task
 - Collapse single-subtask structures by promoting them to major tasks and avoid duplicating details on container-only major tasks (use template patterns accordingly)
 - Apply `(P)` markers to tasks that satisfy parallel criteria (omit markers when sequential mode requested)
+- Annotate every executable sub-task with `_Wave: N_` (Foundation → Core → Integration → Validation; Integration/Validation Waves stay separate from implementation Waves; `(P)` + different `_Boundary:_` → different Wave numbers)
 - Mark optional test coverage subtasks with `- [ ]*` only when they strictly cover acceptance criteria already satisfied by core implementation and can be deferred post-MVP
 - If existing tasks.md found, merge with new content
 
@@ -74,8 +75,9 @@ After all parallel research completes, synthesize findings before generating tas
   - Each sub-task is an executable 1-3 hour work unit
   - Each sub-task has a verifiable deliverable
   - Each executable sub-task includes an observable completion bullet
+  - Each executable sub-task includes `_Wave: N_` (flag and repair any missing Waves)
   - No implicit prerequisites remain hidden
-  - `_Depends:_`, `_Boundary:_`, and `(P)` markers still match the dependency graph and architecture boundaries
+  - `_Depends:_`, `_Boundary:_`, `_Wave:_`, and `(P)` markers still match the dependency graph, architecture boundaries, and wave batch rules
 - If issues are task-plan-local, repair the draft and re-run the review gate before writing
 - Keep the review bounded to at most 2 repair passes
 - If review exposes a real requirements/design gap or contradiction, stop and send the user back to requirements/design instead of inventing filler tasks
@@ -129,6 +131,7 @@ Before writing `tasks.md`, run one lightweight independent sanity review of the 
 ## Critical Constraints
 - **Task Integration**: Every task must connect to the system (no orphaned work)
 - **Boundary annotations**: Required for `(P)` tasks, recommended for all (`_Boundary: ComponentName_`)
+- **Wave annotations**: Required on every executable sub-task (`_Wave: N_`); same Wave = same dispatch-batch candidate
 - **Explicit dependencies**: Cross-boundary non-obvious dependencies declared with `_Depends: X.X_`
 - **Executable deliverable granularity**: Each task must produce a verifiable deliverable (file, endpoint, UI component, config). Infrastructure tasks (project scaffolding, manifest, host integration, build config) must be explicit — never assume they exist
 - **Observable done state**: Each executable sub-task must include at least one detail bullet that makes the completed state visible without adding new bookkeeping fields

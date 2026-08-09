@@ -33,7 +33,7 @@ User override: explicit「フル」「lite」「quick」でティア／経路を
 - 「quick」「lite」→ force S / **quick-path** (regardless of score)
 - 「フル」「full」→ force L / **full-path**
 
-**Do not** change `実装のみ` by tier. Existing specs without `complexity_tier` → treat as **L**. Path D/E → force **L** (never S / never quick-path).
+**Do not** change `実装のみ` by tier. Existing specs without `complexity_tier` → treat as **L** for **orchestration path selection** only (not for `/kiro-impl` execution mode — that uses task-count fallback; see `complexity-tier.md` § Scope note). Path D/E → force **L** (never S / never quick-path).
 
 ## Determine Active Flow
 

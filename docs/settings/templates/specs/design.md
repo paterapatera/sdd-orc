@@ -132,7 +132,7 @@ Skip this section entirely for simple CRUD changes.
 
 ## Requirements Traceability
 
-Use this section for complex or compliance-sensitive features where requirements span multiple domains. Straightforward 1:1 mappings can rely on the Components summary table.
+Use this section for complex or compliance-sensitive features where requirements span multiple domains. Straightforward 1:1 mappings can rely on the Components summary table — **for simple features, omit this section** and keep coverage in that summary only (do not duplicate the same mapping in both places).
 
 Map each requirement ID (e.g., `2.1`) to the design elements that realize it.
 
@@ -141,23 +141,35 @@ Map each requirement ID (e.g., `2.1`) to the design elements that realize it.
 | 1.1 | | | | |
 | 1.2 | | | | |
 
-> Omit this section only when a single component satisfies a single requirement without cross-cutting concerns.
+> **Components column (optional)**: Prefer stable anchor IDs (e.g., `D-ExampleComponent`) alongside or instead of bare names so implementers can resolve excerpts mechanically.
+>
+> Omit this section when a single component satisfies a single requirement without cross-cutting concerns, or whenever the Components summary table already covers the mapping without loss.
 
 ## Components and Interfaces
 
-Provide a quick reference before diving into per-component details.
+Provide a quick reference before diving into per-component details. Keep this as a **single** `design.md` — do not split components into separate files under `design/components/`.
 
 - Summaries can be a table or compact list. Example table:
-  | Component | Domain/Layer | Intent | Req Coverage | Key Dependencies (P0/P1) | Contracts |
-  |-----------|--------------|--------|--------------|--------------------------|-----------|
-  | ExampleComponent | UI | Displays XYZ | 1, 2 | GameProvider (P0), MapPanel (P1) | Service, State |
+  | Component | Anchor | Domain/Layer | Intent | Req Coverage | Key Dependencies (P0/P1) | Contracts |
+  |-----------|--------|--------------|--------|--------------|--------------------------|-----------|
+  | ExampleComponent | D-ExampleComponent | UI | Displays XYZ | 1, 2 | GameProvider (P0), MapPanel (P1) | Service, State |
 - Only components introducing new boundaries (e.g., logic hooks, external integrations, persistence) require full detail blocks. Simple presentation components can rely on the summary row plus a short Implementation Note.
 
 Group detailed blocks by domain or architectural layer. For each detailed component, list requirement IDs as `2.1, 2.3` (omit “Requirement”). When multiple UI components share the same contract, reference a base interface/props definition instead of duplicating code blocks.
 
+**Stable component anchors (required on every detail-block heading)**:
+
+```markdown
+#### ExampleComponent {#D-ExampleComponent}
+```
+
+- Format: `#### <ComponentName> {#D-<ComponentName>}` — one repository-wide form; do not invent alternate ID schemes.
+- ID must be unique within the design; use the component’s Boundary name (PascalCase / as named in `_Boundary:_`).
+- Keep all component detail in this file; research.md holds investigation notes only, not contract source of truth.
+
 ### [Domain / Layer]
 
-#### [Component Name]
+#### [Component Name] {#D-ComponentName}
 
 | Field | Detail |
 |-------|--------|

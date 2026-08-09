@@ -116,5 +116,5 @@ Do **not** re-read this contract or sibling validate skills unless the invoking 
 
 ## spec.json Compatibility
 
-- Missing `complexity_tier` (and related fields) on an existing spec → treat as **L** (full-path). See `kiro-orchestrate/rules/complexity-tier.md`.
+- Missing `complexity_tier` (and related fields) on an existing spec → treat as **L** (**orchestration full-path only**). `/kiro-impl` execution mode still uses its task-count fallback when the field is absent. See `kiro-orchestrate/rules/complexity-tier.md` § Scope note.
 - Do **not** change the existing `approvals` structure for backward compatibility.

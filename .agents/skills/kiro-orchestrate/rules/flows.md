@@ -117,7 +117,7 @@ _Precondition_: `/kiro-discovery` already ran standalone and confirmed this is a
 _Precondition_: `/kiro-discovery` already ran standalone (Path A → impl only); `spec.json` exists.
 
 1. Verify `approvals.tasks.approved: true` — stop if false
-2. `/kiro-impl <feature>`
+2. `/kiro-impl <feature>` — impl selects execution mode `direct` / `wave` / `strict` from `spec.json` `complexity_tier` (or task-count fallback); see `kiro-impl` Step 2
 3. `/kiro-validate-impl <feature>`
 4. `/kiro-verify-completion <feature>` (`FEATURE_GO`)
 5. **[GATE] 実装** → end
