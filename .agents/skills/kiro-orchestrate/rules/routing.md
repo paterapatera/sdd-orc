@@ -9,8 +9,11 @@
    - `brief.md` exists, no `spec.json` → **要求新規作成** (start at `/kiro-spec-requirements`)
    - `requirements` not approved → resume requirements / **要求更新**
    - `requirements` approved, `design` not → **設計更新**
+   - `design` approved, `tasks` not → resume task generation (`/kiro-spec-tasks` … Terminal auto-approve)
    - `tasks` approved → **実装のみ** (explicit request only)
 3. **Neither `brief.md` nor `spec.json` exists** for the target → **stop**; instruct the user to run `/kiro-discovery` first. Do **not** auto-run discovery.
+
+**Resume (new session):** A new chat with `/kiro-orchestrate <feature>` starts from the next incomplete phase based on approved `approvals` (same table as § Spec State Hints). Example: requirements `approved` and design not → start design generation; design `approved` and tasks not → start task generation.
 
 Path B (no spec) is decided by discovery **before** orchestration and never enters an orchestration flow (see `flows.md` § Path B).
 
@@ -26,8 +29,8 @@ After resolving the active flow, before the first skill dispatch:
 | Tier | Path | Flow section |
 | ---- | ---- | ------------ |
 | S | **quick-path** | `要求新規作成 (S)` → `/kiro-spec-quick --auto --from-orchestrate` |
-| M | **standard-path** | `要求新規作成 (M)` → unified validates + 2 human gates（要求・設計）; タスクは自動 |
-| L | **full-path** | `要求新規作成 (L)` → full pipeline + 2 human gates（要求・設計）; タスクは自動 |
+| M | **standard-path** | `要求新規作成 (M)` → unified validates + 2 human gates（要求・設計）; タスクは再開後に自動 |
+| L | **full-path** | `要求新規作成 (L)` → full pipeline + 2 human gates（要求・設計）; タスクは再開後に自動 |
 
 User override: explicit「フル」「lite」「quick」でティア／経路を上書き可。
 - 「quick」「lite」→ force S / **quick-path** (regardless of score)
@@ -138,7 +141,10 @@ Read `docs/specs/<feature>/spec.json` metadata only when routing:
 | No spec / pre-init | 要求新規作成 (Path C+) |
 | requirements not approved | 要求更新 or resume requirements phase |
 | requirements approved, design not | 設計更新 or resume design phase |
+| design approved, tasks not | resume task generation (`/kiro-spec-tasks` … Terminal auto-approve) |
 | tasks approved | 実装のみ |
+
+After a Phase terminal handoff (`gates.md`), the next `/kiro-orchestrate <feature>` in a **new session** is expected to land on the matching row above — no change to the selection algorithm beyond documenting that resume is new-session-first.
 
 ## Execution Control
 

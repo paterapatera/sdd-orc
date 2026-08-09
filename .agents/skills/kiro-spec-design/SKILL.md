@@ -37,6 +37,8 @@ metadata:
 - If `-y` flag provided ($2 == "-y"): Auto-approve requirements in spec.json
 - Otherwise: Verify approval status (stop if unapproved, see Safety & Fallback)
 
+**Artifact-only resume**: 前のチャット履歴・口頭の合意・未書き込みの決定を前提にしない。フェーズの入力は上記 Load Context の成果物（および steering）のみ。チャットにしかない意図が必要なら、生成前に成果物へ書いてから続行する（勝手に補完しない）。要求の曖昧さを会話記憶で埋めない。不足なら `requirements.md` の修正をユーザーに求め、設計を進めない。
+
 ### Step 2: Discovery & Analysis
 
 **Critical: This phase ensures design is based on complete, accurate information.**

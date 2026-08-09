@@ -44,13 +44,23 @@ Report paths: see `../kiro-validate-shared/contract.md` (read only if parsing).
 
 | Phase | Pass condition | After readiness |
 | ----- | -------------- | ------------------- |
-| 要求 | `requirements.md` + `/kiro-validate-requirements` GO + Phase Gate VERIFIED (`requirements-review.md`) | After **user approval**: `approvals.requirements.approved: true` → `/kiro-spec-design` |
-| 設計 | `design.md` + `/kiro-validate-design-qa` GO + Phase Gate VERIFIED (`design-review.md`) | After **user approval**: `approvals.design.approved: true` → `/kiro-spec-tasks` |
+| 要求 | `requirements.md` + `/kiro-validate-requirements` GO + Phase Gate VERIFIED (`requirements-review.md`) | On **`go`**: `approvals.requirements.approved: true` → **Phase Handoff → end**（`/kiro-spec-design` は**次の新規セッション**で） |
+| 設計 | `design.md` + `/kiro-validate-design-qa` GO + Phase Gate VERIFIED (`design-review.md`) | On **`go`**: `approvals.design.approved: true` → **Phase Handoff → end**（`/kiro-spec-tasks` は**次の新規セッション**で） |
 | タスク | `tasks.md` generated + `/kiro-verify-phase-gate` VERIFIED | After **auto-approve**（人間プロンプトなし）: `approvals.tasks.approved: true`, `ready_for_implementation: true` → **end orchestration (do not dispatch `/kiro-impl`)** |
 | 仕様一式 (S) | `requirements`/`design`/`tasks` generated + sanity review (or unified validates GO) | After **auto-approve**（人間プロンプトなし）: all three `approvals.*.approved: true`, `ready_for_implementation: true` → **end orchestration** |
-| 実装 | (out of orchestration scope) | After **user approval** — reached only via an explicit `実装のみ` invocation |
+| 実装 | (out of orchestration scope) | On **`go`**: continue / end per `実装のみ` — reached only via an explicit `実装のみ` invocation（**not** Phase terminal） |
 
 Requirements validate: single `/kiro-validate-requirements` (unified). Design validate: single `/kiro-validate-design-qa` (unified). Interactive `/kiro-validate-design` is outside orchestrate.
+
+## Phase terminal（人間ゲート後）
+
+| 用語 | 意味 |
+|------|------|
+| **Phase terminal** | 要求 or 設計の人間承認直後。`approvals.<phase>.approved: true` を書いたら、**同一 invocation では次フェーズのスキルを dispatch しない**。Phase Handoff を出して終了する |
+| **Resume** | ユーザーが**新しいチャット**で `/kiro-orchestrate <feature>` を実行。Entry Contract / Spec State Hints が次フェーズを選ぶ。**Artifact-only resume**: handoff・`spec.json`・`docs/specs/<feature>/` 成果物（および steering）だけを信頼し、前チャット履歴・口頭合意・未書き込みの決定は前提にしない |
+| **Terminal auto-approve** | 現行どおり（タスク / 仕様一式）。変更しない |
+
+**実装ゲート（`[GATE] 実装`）は Phase terminal にしない**（`実装のみ` フロー内の承認のまま）。
 
 ## Human Approval Gate
 
@@ -58,7 +68,7 @@ Open only for **要求** / **設計** / **実装** — after requirements/design
 
 1. Current phase + completed validates
 2. Key artifact paths
-3. **決定事項サマリー** — summarize each report's `## Decisions` as: 何を決めたか / なぜ / 承認で固定されること
+3. **決定事項サマリー** — summarize each report's `## Decisions` as: 何を決めたか / なぜ / 承認で固定されること。承認で固定する内容は成果物／review に既に書かれているものに限る。チャットだけの決定を承認対象にしない（あるなら先に成果物へ落とす）。
 
    要求 / 設計 gates: the unified report (`reviews/requirements-review.md` / `reviews/design-review.md`) already contains the 承認ゲートサマリ (検証済み観点 / 自己修復 / 残リスク / 未決事項) — present it as the primary gate content and ask the user to accept the listed residual risks; do not re-summarize the specialist summaries beyond it.
 
@@ -74,14 +84,95 @@ Open only for **要求** / **設計** / **実装** — after requirements/design
 
    Detail lives in `reviews/*.md` where present; gate report stays concise.
 4. Open issues (if any)
-5. Approval request（承認して次へ or 修正指示）
+5. Approval request — always include: `Reply: go (approve & end) | fix <notes>`
+   - **要求 / 設計**: `go` = approve & Phase terminal (handoff → end)
+   - **実装**: `go` = approve & continue / end the `実装のみ` flow（**not** Phase terminal; input vocabulary is the same）
 
-**Rules**
+### Gate commands (`go` / `fix`)
 
-- No next phase without user approval for **要求 → 設計 → タスク生成** human gates (`-y` only if user explicitly requests fast-track). **Exception:** terminal タスク / 仕様一式 confirmation is always **auto-approve** (below) — never wait for「承認して次へ」.
+Latin-letter phrases only (IME-free). Japanese phrases are **not** canonical commands.
+
+| User input | Meaning | Action |
+|------------|---------|--------|
+| **`go`** | Approve this phase | **要求 / 設計:** `approvals.<phase>.approved: true` → Phase Handoff → **end**. **実装:** set approval per existing convention → continue / end per flow（**not** Phase terminal） |
+| **`fix`** | Reject / continue editing | Do **not** set `approved`. Follow notes in the same or following message; stay in the same phase |
+
+**Normalization** (apply to 要求 / 設計 / 実装 gates):
+
+- Case-insensitive: `go` / `GO` / `Go` are the same
+- Trim surrounding whitespace. Accept when the whole message is the command, or when the leading token is the command (e.g. `go` / `fix: AC-3 を明確化` / `fix\n...`)
+- **No aliases** (`ok` / `yes` / `承認` / Japanese approval phrases are not commands). On invalid input, prompt: `go` または `fix` を送ってください
+- Gate prompt must include: `Reply: go (approve & end) | fix <notes>`
+
+### On `go` (要求 / 設計)
+
+1. Set `approvals.<phase>.approved: true`（要求 → `requirements`, 設計 → `design`）
+2. Update existing meta such as `phase` if the current convention already does（no new required `spec.json` fields）
+3. Emit **Phase Handoff**（below）
+4. **End orchestration** — do **not** dispatch the next `/kiro-spec-*` in the same conversation
+
+### On `fix` (要求 / 設計 / 実装)
+
+Do not approve. Process correction notes in the same phase (same as today's edit loop).
+
+### Rules
+
+- **No next phase without `go`.** For 要求 / 設計: after `go`, also **do not** continue to the next phase in the **same session** — resume in a new chat. (`-y` fast-track only if user explicitly requests; see § Exceptions.)
+- **設計 → タスク** is Phase terminal the same way as 要求 → 設計. Do **not** keep design→tasks in one conversation while cutting only requirements.
 - Path B: no `spec.json` gates — user confirmation at end only.
-- After human approval (要求 / 設計 / 実装): set `approvals.<phase>.approved: true`, proceed to next flow step.
-- Terminal タスク / 仕様一式: use **Terminal auto-approve** — never ask「承認して次へ」for these steps.
+- Terminal タスク / 仕様一式: use **Terminal auto-approve** — never open a human `go`/`fix` prompt for these steps.
+
+### Phase Handoff（必須フォーマット）
+
+After `go` on 要求 or 設計, emit one copy-friendly block in the chat. Language follows the spec (default ja). Distinct from **PR Summary Output** (tasks terminal).
+
+**Required items:**
+
+1. **終了したフェーズ** — `requirements` | `design`
+2. **feature** — `<feature>`
+3. **次にやること** — 新しいチャットを開き、次を実行: `/kiro-orchestrate <feature>`
+4. **routing が選ぶ次フロー**（例）:
+   - 要求承認後 → 設計フェーズ（`設計更新` or 要求新規作成の設計ステップ相当）
+   - 設計承認後 → タスク生成（`/kiro-spec-tasks` まで）
+5. **読む成果物**（パス列挙）:
+   - 要求終了時: `docs/specs/<feature>/spec.json`, `requirements.md`, `reviews/requirements-review.md`（あれば `brief.md`）
+   - 設計終了時: 上記 + `design.md`, `reviews/design-review.md`（あれば `research.md`）
+6. **残リスク 1〜3 行** — 当該 unified review の受容残リスクから要約（再分析しない）
+7. **禁止** — 「このチャットの続きで設計／タスクを続けないでください」（短い一文）
+
+**Template** — emit as a single fenced ` ```markdown ` block (fill paths for the ended phase; omit N/A lines):
+
+````markdown
+```markdown
+## Phase Handoff
+
+- **終了したフェーズ**: <requirements|design>
+- **feature**: <feature>
+- **次にやること**: 新しいチャットで `/kiro-orchestrate <feature>`
+- **routing が選ぶ次フロー**: <設計フェーズ | タスク生成>
+- **読む成果物**:
+  - `docs/specs/<feature>/spec.json`
+  - `docs/specs/<feature>/requirements.md`
+  - `docs/specs/<feature>/reviews/requirements-review.md`
+  - （要求終了時・あれば）`docs/specs/<feature>/brief.md`
+  - （設計終了時）`docs/specs/<feature>/design.md`
+  - （設計終了時）`docs/specs/<feature>/reviews/design-review.md`
+  - （設計終了時・あれば）`docs/specs/<feature>/research.md`
+- **残リスク**:
+  - <1〜3 lines from unified review>
+- **禁止**: このチャットの続きで設計／タスクを続けないでください
+```
+````
+
+### Exceptions（切断しない）
+
+| ケース | 振る舞い |
+|--------|----------|
+| **S / quick-path** | 現行どおり 1 dispatch で要求+設計+タスク → Terminal auto-approve。Phase terminal なし |
+| **`-y` fast-track** | ユーザー明示時のみ、要求→設計→タスクを**同一会話で連鎖してよい**（コストより速度）。handoff 省略可 |
+| **フェーズ内**（例: requirements 生成 → validate → ゲート前の修正往復） | **同一会話のまま**（切らない） |
+| **validate NO-GO → rollback 再生成** | 同一フェーズ内。切らない |
+| **`[GATE] 実装`** | Phase terminal にしない。入力語彙だけ `go`/`fix` |
 
 ### Terminal auto-approve (タスク / 仕様一式)
 
@@ -101,18 +192,18 @@ After mechanical readiness (below), the orchestrator **auto-approves** without o
 4. Emit **PR Summary Output**
 5. End orchestration (do **not** dispatch `/kiro-impl`)
 
-Do **not** ask「承認して次へ」for these terminal steps. User can still edit `tasks.md` / re-orchestrate later if needed.
+Do **not** open a human `go`/`fix` prompt for these terminal steps. User can still edit `tasks.md` / re-orchestrate later if needed.
 
 ### Complexity tier gate counts
 
 | Tier | Human gates | Notes |
 | ---- | ----------- | ----- |
 | **S** | **0** | quick-path success → Terminal auto-approve (S) + PR Summary |
-| **M** | **2**（要求・設計） | タスクは自動 |
-| **L** | **2**（要求・設計） | タスクは自動 |
+| **M** | **2**（要求・設計） | タスクは再開後に自動; 各ゲート後は Phase terminal |
+| **L** | **2**（要求・設計） | タスクは再開後に自動; 各ゲート後は Phase terminal |
 | missing `complexity_tier` | **2** | Treat as L (backward compatible). |
 
-`実装のみ` is unchanged by tier (one **[GATE] 実装** human gate only).
+`実装のみ` is unchanged by tier (one **[GATE] 実装** human gate only; not Phase terminal).
 
 ## [AUTO] 仕様一式 (S-tier only)
 

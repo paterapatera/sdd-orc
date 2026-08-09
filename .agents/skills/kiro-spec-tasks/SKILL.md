@@ -33,6 +33,8 @@ metadata:
 - Otherwise: Verify both approved (stop if not, see Safety & Fallback)
 - Determine sequential mode based on presence of `--sequential`
 
+**Artifact-only resume**: 前のチャット履歴・口頭の合意・未書き込みの決定を前提にしない。フェーズの入力は上記 Load Context の成果物（および steering）のみ。チャットにしかない意図が必要なら、生成前に成果物へ書いてから続行する（勝手に補完しない）。設計にないコンポーネントや暗黙の実装方針を会話から追加しない。
+
 ### Step 2: Generate Implementation Tasks
 
 **Load generation rules and template**:
