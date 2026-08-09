@@ -1,7 +1,29 @@
 # Full Discovery Process for Technical Design
 
+## When to use (activation)
+
+Run Full discovery **only** when Step 2.1 maps to Full:
+
+| Codebase | Scope scale | Full? |
+| -------- | ----------- | ----- |
+| greenfield | complex | Yes |
+| brownfield | complex | Yes (after Gap 2.0) |
+| greenfield | simple / standard | **No** — use Minimal or Light |
+| brownfield | simple / standard | **No** — Gap + Light |
+| extension | any | **No** — Gap + Light (integration-focused) |
+
+Do **not** activate Full solely because the codebase is greenfield.
+
 ## Objective
 Conduct comprehensive research and analysis to ensure the technical design is based on complete, accurate, and up-to-date information.
+
+## Reuse `research.md` from Step 2.0 (gap analysis)
+
+When `research.md` exists from brownfield gap analysis (Step 2.0 in `/kiro-spec-design`):
+
+- Reuse Research Log / Current State / approach entries; **do not** re-spawn a codebase analysis sub-agent for the same questions.
+- Only run additional **external** research (APIs, versions, patterns) not already covered in `research.md`.
+- Section 2 (Existing Implementation Analysis) may be satisfied by citing gap findings instead of a fresh full codebase survey.
 
 ## Discovery Steps
 

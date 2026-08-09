@@ -2,54 +2,50 @@
 
 Per-skill I/O and boundaries. Shared report format: `contract.md`.
 
-## Requirements Phase (serial: po → qa → sec → validate-requirements-ex)
+## Requirements Phase (unified: `/kiro-validate-requirements`)
 
 | Skill | Input | Output / side effects | Do not |
 | ----- | ----- | --------------------- | ------ |
-| `/kiro-validate-requirements` | `requirements.md`, `brief.md`, steering | `reviews/requirements-po.md`; fix `requirements.md` if needed; `## Decisions` | EARS mechanical check, testability deep-dive, security deep-dive, user dialogue |
-| `/kiro-validate-requirements-qa` | **po-updated** `requirements.md`, po report | `reviews/requirements-qa.md`; reflect testability fixes to `requirements.md` | Functional scope (PO), security, EARS mechanical check, user dialogue |
-| `/kiro-validate-requirements-sec` | **qa-updated** `requirements.md`, steering security | `reviews/requirements-sec.md`; adopt/defer in `## Decisions` | Functional scope (PO), testability (QA), user dialogue |
-| `/kiro-validate-requirements-ex` | 3 specialist reports + final `requirements.md`, `brief.md`, steering, roadmap | `reviews/requirements-final.md` (承認ゲートサマリ + brief traceability matrix); gap-domain self-repairs to `requirements.md`; `## Decisions` | Re-run po/qa/sec analysis; edit specialist-domain content |
+| `/kiro-validate-requirements` | `requirements.md`, `brief.md`, steering, contract, phase-gate | `reviews/requirements-review.md` (PO+QA+Sec summaries, Gap-Domain Audit, 承認ゲートサマリ, Phase Gate); fix `requirements.md` across Pass A/B | EARS mechanical check; merge checklists; specialist self-repair in Pass B; user dialogue |
 
-Serial required: each specialist writes `requirements.md` before the next runs.
+Single invocation: Pass A (po→qa→sec) then Pass B (reflection + gap domains + inline phase-gate) then write one report. Optional `--only po|qa|sec|final`.
 
 > Documentation (glossary, context diagram, acceptance-criteria diagram, functional test cases) is split out of the requirements phase. It is handled post-implementation by `/kiro-docs` (interactive; includes spec cleanup).
 
-### `/kiro-validate-requirements-ex` input contract (AI-DLC)
+### Unified Pass B (final + phase-gate)
 
-1. `reviews/requirements-{po,qa,sec}.md` all exist with `VERDICT: GO` — else do not enter final review
+1. Pass A complete — else do not claim full Phase Gate VERIFIED
 2. Verify specialist reflections landed in `requirements.md`; audit gap domains (brief traceability, cross-spec consistency, NFR completeness, operability expectations, compliance, template conformance, scope fitness, terminology & consistency); no cap on findings
-3. Self-repair `requirements.md` for Minor / unambiguous Major findings only — no specialist deep-dive; rollback to the failing specialist validate (or `/kiro-spec-requirements` for new scope decisions) if a fix needs re-analysis
-4. Output: `reviews/requirements-final.md` per shared contract (`VERDICT`, `## Decisions`, 承認ゲートサマリ)
+3. Self-repair `requirements.md` for Minor / unambiguous Major findings only — no specialist deep-dive; rollback to the failing pass (or `/kiro-spec-requirements` for new scope decisions) if a fix needs re-analysis
+4. Output: `reviews/requirements-review.md` (`VERDICT`, Phase Gate `STATUS`, 承認ゲートサマリ)
 
 ### vs `requirements-review-gate`
 
-| | review-gate (pre-write) | validate-requirements (post-write) |
+| | review-gate (pre-write) | validate-requirements (post-write, unified) |
 | - | ----------------------- | ---------------------------------- |
-| Purpose | Draft quality, EARS mechanical fit | Semantic consistency, ambiguity resolution |
+| Purpose | Draft quality, EARS mechanical fit | Semantic + testability + security + gap audit |
 | Form | Internal loop (max 2 passes) | Autonomous; decisions in report |
-| User report | None | At approval gate via `## Decisions` |
+| User report | None | At approval gate via `## Decisions` / 承認ゲートサマリ |
 
-## Design Phase (serial: qa → arch → sec → validate-design-ex)
+## Design Phase (unified: `/kiro-validate-design-qa`)
 
 | Skill | Input | Output | Do not |
 | ----- | ----- | ------ | ------ |
-| `/kiro-validate-design-qa` | `requirements.md`, `design.md` | `reviews/design-qa.md`; reflect to `design.md` | Architecture, threat model |
-| `/kiro-validate-design-arch` | **qa-updated** `requirements.md`, `design.md`, steering | `reviews/design-arch.md`; reflect to `design.md` | Security, test coverage |
-| `/kiro-validate-design-sec` | **arch-updated** `requirements.md`, `design.md` | `reviews/design-sec.md`; reflect to `design.md` | Architecture, QA checklist |
-| `/kiro-validate-design-ex` | 3 specialist reports + final `design.md`, `requirements.md`, steering, roadmap | `reviews/design-final.md` (承認ゲートサマリ + traceability matrix); gap-domain self-repairs to `design.md`; `## Decisions` | Re-run qa/arch/sec analysis; edit specialist-domain content |
+| `/kiro-validate-design-qa` | `requirements.md`, `design.md`, steering, contract, phase-gate | `reviews/design-review.md` (QA+Arch+Sec summaries, Gap-Domain Audit, 承認ゲートサマリ, Phase Gate); fix `design.md` across Pass A/B | Merge checklists; specialist self-repair in Pass B; user dialogue; replace interactive `/kiro-validate-design` |
 
-Serial required: each specialist writes `design.md` before the next runs.
+Single invocation: Pass A (qa→arch→sec) then Pass B (reflection + gap domains + inline phase-gate) then write one report. Optional `--only qa|arch|sec|final`.
 
-**Standalone** (not AI-DLC): `/kiro-validate-design` — interactive review; does not replace `validate-design-ex` in orchestrate flows.
+**Standalone** (not AI-DLC): `/kiro-validate-design` — interactive review; does **not** replace unified `validate-design-qa` in orchestrate flows.
 
-### `/kiro-validate-design-ex` input contract (AI-DLC)
+### Unified Pass B (final + phase-gate)
 
-1. `reviews/design-{qa,arch,sec}.md` all exist with `VERDICT: GO` — else do not enter final review
+1. Pass A complete — else do not claim full Phase Gate VERIFIED
 2. Verify specialist reflections landed in `design.md`; audit gap domains (traceability, NFR, observability, operability, testability, compatibility, scope, consistency); no cap on findings
-3. Self-repair `design.md` for Minor / unambiguous Major findings only — no specialist deep-dive; rollback to the failing specialist validate if a fix needs specialist re-analysis
-4. Output: `reviews/design-final.md` per shared contract (`VERDICT`, `## Decisions`, 承認ゲートサマリ)
+3. Self-repair `design.md` for Minor / unambiguous Major findings only — no specialist deep-dive; rollback to the failing pass if a fix needs specialist re-analysis
+4. Output: `reviews/design-review.md` (`VERDICT`, Phase Gate `STATUS`, 承認ゲートサマリ)
 
 ## Phase Gate Verification
 
-After mechanical validates for a phase, before human approval: `/kiro-verify-phase-gate` with `PHASE_GATE` (not `FEATURE_GO`). Checklist: `phase-gate.md`.
+- **Requirements:** unified skill embeds phase-gate checks in `requirements-review.md` (`## Phase Gate`). Orchestrator does not dispatch `/kiro-verify-phase-gate` when `STATUS: VERIFIED`.
+- **Design:** unified `/kiro-validate-design-qa` embeds phase-gate checks in `design-review.md`. Orchestrator does not dispatch `/kiro-verify-phase-gate` when `STATUS: VERIFIED`.
+- **Tasks:** after generation, before human approval: `/kiro-verify-phase-gate` with `PHASE_GATE` (not `FEATURE_GO`). Checklist: `phase-gate.md`.

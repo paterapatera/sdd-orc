@@ -11,7 +11,7 @@ Read when executing `/kiro-verify-phase-gate` or when the orchestrator needs pre
 | Path B 直接実装の完了 | `/kiro-verify-completion` | `FIX` or `TEST_OR_BUILD` |
 | 全タスク完了 + `/kiro-validate-impl` GO 後 | `/kiro-verify-completion` | `FEATURE_GO` |
 
-**Override**: 要求・設計・タスクのフェーズゲートでは常に `/kiro-verify-phase-gate`（`PHASE_GATE`）を使う。`kiro-orchestrate/rules/gates.md` と `../kiro-validate-shared/contract.md` が正本。
+**Override**: 要求・設計のフェーズゲートは通常、統合 validate 内の `## Phase Gate` を使う。タスク、および再検証では `/kiro-verify-phase-gate`（`PHASE_GATE`）。`kiro-orchestrate/rules/gates.md` と `../kiro-validate-shared/contract.md` が正本。
 
 `FEATURE_GO` はテストスイート・ランタイム smoke・統合評価が必要なため、実装前フェーズには不適切。
 
@@ -27,11 +27,13 @@ Read when executing `/kiro-verify-phase-gate` or when the orchestrator needs pre
 | - | ----- |
 | 1 | `docs/specs/<feature>/requirements.md` exists and has requirement / AC content |
 | 2 | `spec.json` → `approvals.requirements.generated === true` |
-| 3 | `reviews/requirements-po.md` → `VERDICT: GO` |
-| 4 | `reviews/requirements-qa.md` → `VERDICT: GO` |
-| 5 | `reviews/requirements-sec.md` → `VERDICT: GO` |
-| 6 | `reviews/requirements-final.md` → `VERDICT: GO` (`/kiro-validate-requirements-ex`) |
-| 7 | `approvals.requirements.approved === false` (not yet human-approved; gate is pre-approval) |
+| 3 | `reviews/requirements-review.md` → `VERDICT: GO` |
+| 4 | `reviews/requirements-review.md` → Phase Gate `STATUS: VERIFIED` |
+| 5 | `approvals.requirements.approved === false` (not yet human-approved; gate is pre-approval) |
+
+If `requirements-review.md` is absent (including specs with only old 4-file reports), result is **NOT_VERIFIED** — re-run `/kiro-validate-requirements` to generate the unified report.
+
+Unified `/kiro-validate-requirements` performs these checks **inline** (Pass B step 8) and records results under `## Phase Gate`. Orchestrated 要求 flows do **not** dispatch `/kiro-verify-phase-gate` when the unified report already has `STATUS: VERIFIED`. Standalone `/kiro-verify-phase-gate <feature> requirements` remains available for debug / re-check.
 
 ## Phase: `design`
 
@@ -39,11 +41,13 @@ Read when executing `/kiro-verify-phase-gate` or when the orchestrator needs pre
 | - | ----- |
 | 1 | `docs/specs/<feature>/design.md` exists |
 | 2 | `spec.json` → `approvals.design.generated === true` |
-| 3 | `reviews/design-qa.md` → `VERDICT: GO` |
-| 4 | `reviews/design-arch.md` → `VERDICT: GO` |
-| 5 | `reviews/design-sec.md` → `VERDICT: GO` |
-| 6 | `reviews/design-final.md` → `VERDICT: GO` (`/kiro-validate-design-ex`) |
-| 7 | `approvals.design.approved === false` |
+| 3 | `reviews/design-review.md` → `VERDICT: GO` |
+| 4 | `reviews/design-review.md` → Phase Gate `STATUS: VERIFIED` |
+| 5 | `approvals.design.approved === false` |
+
+If `design-review.md` is absent (including specs with only old 4-file reports), result is **NOT_VERIFIED** — re-run `/kiro-validate-design-qa` to generate the unified report.
+
+Unified `/kiro-validate-design-qa` performs these checks **inline** (Pass B step 8) and records results under `## Phase Gate`. Orchestrated 設計 flows do **not** dispatch `/kiro-verify-phase-gate` when the unified report already has `STATUS: VERIFIED`. Standalone `/kiro-verify-phase-gate <feature> design` remains available for debug / re-check.
 
 ## Phase: `tasks`
 

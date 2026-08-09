@@ -8,6 +8,9 @@ metadata:
 
 # Technical Design Validation
 
+> **Orchestrated flows** use `/kiro-validate-design-qa` (unified autonomous validation: qa+arch+sec+final+phase-gate).
+> This skill is for **standalone interactive** design review only.
+
 <background_information>
 - **Mission**: Conduct interactive quality review of technical design to ensure readiness for implementation
 - **Success Criteria**:

@@ -17,8 +17,8 @@ Severity vocabulary, `## Reflected Fixes`, and per-check evidence discipline: sh
 
 ## Out of Scope
 
-- Architecture/SOLID review (`/kiro-validate-design-arch`)
-- Threat model (`/kiro-validate-design-sec`)
+- Architecture/SOLID review (Pass A Arch / `arch-checklist.md`)
+- Threat model (`/kiro-validate-design-qa --only sec`)
 - User dialogue
 
 ## Edge-Case Derivation (do not rely on requirements alone)

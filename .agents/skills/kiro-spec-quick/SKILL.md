@@ -15,7 +15,8 @@ In Automatic Mode:
 - Display progress after each phase (e.g., "Phase 1/4 complete: spec initialized")
 - IGNORE any "Next Step" messages from Phase 2-4 (they are for standalone usage)
 - After Phase 4, run the final sanity review before exiting
-- Stop ONLY after the sanity review completes or if error occurs
+- If `--from-orchestrate` is also present: follow Flag: `--from-orchestrate` (return for orchestrator Terminal auto-approve (S); no impl chain)
+- Stop ONLY after the sanity review completes (and from-orchestrate extras if applicable) or if error occurs
 
 ---
 
@@ -30,12 +31,14 @@ Before claiming quick generation is complete, run one lightweight sanity review 
 
 Parse `$ARGUMENTS`:
 - If contains `--auto`: **Automatic Mode** (execute all 4 phases)
+- If contains `--from-orchestrate`: **From-Orchestrate Mode** (must be paired with `--auto`; see Flag section below)
 - Otherwise: **Interactive Mode** (prompt at each phase)
-- Extract description (remove `--auto` flag if present)
+- Extract description (remove `--auto` and `--from-orchestrate` flags if present)
 
 Example:
 ```
 "User profile with avatar upload --auto" → mode=automatic, description="User profile with avatar upload"
+"feature-name --auto --from-orchestrate" → mode=from-orchestrate, description="feature-name"
 "User profile feature" → mode=interactive, description="User profile feature"
 ```
 
@@ -47,48 +50,32 @@ Execute these 4 phases in order:
 
 ---
 
-#### Phase 1: Initialize Spec (Direct Implementation)
+#### Phase 1: Initialize Spec (inline — `kiro-spec-requirements` Step 0)
 
-**Core Logic**:
+**Core Logic** (same as `/kiro-spec-requirements` Step 0; do not dispatch a separate init skill):
 
 1. **Check for Brief**:
-   - If `docs/specs/{feature-name}/brief.md` exists (created by `/kiro-discovery`), read it for discovery context (problem, approach, scope, constraints)
+   - If `docs/specs/{feature-name}/brief.md` exists (created by `/kiro-discovery`), read it for discovery context
    - Use brief content as the project description instead of `$ARGUMENTS`
 
 2. **Generate Feature Name**:
-   - Convert description to kebab-case
+   - Convert description to kebab-case (reuse discovery directory when present)
    - Example: "User profile with avatar upload" → "user-profile-avatar-upload"
    - Keep name concise (2-4 words ideally)
 
 3. **Check Uniqueness**:
    - Use Glob to check `docs/specs/*/`
    - If directory exists with only `brief.md` (no `spec.json`), use that directory (discovery created it)
-   - Otherwise if feature name exists, append `-2`, `-3`, etc.
+   - Otherwise if feature name exists, append `-2`, `-3`, etc. (bare slug only; never invent numeric prefixes)
 
 4. **Create Directory**:
    - Use Bash: `mkdir -p docs/specs/{feature-name}` (skip if already exists from discovery)
 
-5. **Initialize Files from Templates**:
+5. **Initialize Files from Templates** (`docs/settings/templates/specs/init.json`, `requirements-init.md`):
 
-   a. Read templates:
-   ```
-   - docs/settings/templates/specs/init.json
-   - docs/settings/templates/specs/requirements-init.md
-   ```
-
-   b. Replace placeholders:
-   ```
-   {{FEATURE_NAME}} → feature-name
-   {{TIMESTAMP}} → current ISO 8601 timestamp (use `date -u +"%Y-%m-%dT%H:%M:%SZ"`)
-   {{PROJECT_DESCRIPTION}} → description
-   ja → language code (detect from user's input language, default to `en`)
-   ```
-
-   c. Write files using Write tool:
-   ```
-   - docs/specs/{feature-name}/spec.json
-   - docs/specs/{feature-name}/requirements.md
-   ```
+   Replace placeholders (`{{FEATURE_NAME}}`, `{{TIMESTAMP}}`, `{{PROJECT_DESCRIPTION}}`, language) and write:
+   - `docs/specs/{feature-name}/spec.json`
+   - `docs/specs/{feature-name}/requirements.md` (stub only — no EARS body)
 
 6. **Output Progress**: "Phase 1/4 complete: Spec initialized at docs/specs/{feature-name}/"
 
@@ -155,11 +142,33 @@ After Phase 4, run a lightweight sanity review before claiming completion.
 
 **All 4 phases plus sanity review complete.**
 
-Output final completion summary (see Output Description section) and exit.
+**If `--from-orchestrate`:** follow Flag: `--from-orchestrate` completion (optional unified validates, set `complexity_tier` if missing, do **not** approve or chain into `kiro-impl`). Return control to orchestrator for **Terminal auto-approve (S)**.
+
+**Otherwise:** Output final completion summary (see Output Description section) and exit.
 
 ---
 
 ## Important Constraints
+
+### Flag: --from-orchestrate
+
+When present with `--auto`:
+
+- Assume `brief.md` exists (discovery already ran).
+- Run Phases 1–4 without interactive prompts.
+- After Phase 4, run **lightweight sanity review** (existing final step).
+- Then run **one** unified validate pass per phase if 05/06 implemented (`/kiro-validate-requirements`, `/kiro-validate-design-qa`); else run sanity review only.
+- Set `spec.json` `complexity_tier` if missing (default `S` when invoked via this flag).
+- Do **NOT** chain into `kiro-impl`.
+- Do **not** set `approvals.*.approved` or `ready_for_implementation` — the orchestrator **[調整者]** owns those updates at Terminal auto-approve (S).
+
+Terminal completion for `--from-orchestrate`:
+
+- Do **not** open `[GATE] 仕様一式` for user approval
+- Return control after artifact generation + sanity review (+ optional unified validates) succeed with all three `approvals.*.generated === true`
+- Orchestrator **[調整者]** auto-sets all three `approvals.*.approved: true` and `ready_for_implementation: true`, emits PR Summary Output (`gates.md`), then ends orchestration
+
+Without `--from-orchestrate`, keep the standalone Next Steps output below — do **not** overwrite with orchestrate PR Summary format.
 
 ### Error Handling
 - Any phase failure stops the workflow
@@ -189,6 +198,14 @@ Note: Skips optional validations (gap analysis, design review) and user approval
 Final sanity review still runs.
 ```
 
+**From-Orchestrate Mode** (`--auto --from-orchestrate`):
+```
+Quick Spec Generation (From Orchestrate / S-tier quick-path)
+
+All phases execute automatically. Sanity review (+ optional unified validates) runs.
+Returns to orchestrator for Terminal auto-approve (S) — does not approve or start implementation.
+```
+
 ### Intermediate Output
 
 After each phase, show brief progress:
@@ -200,7 +217,9 @@ Design generated → Continuing to tasks...
 
 ### Final Completion Summary
 
-Provide output in the language specified in `spec.json`:
+**When `--from-orchestrate`:** note sanity review result and return control for orchestrator Terminal auto-approve (S) + PR Summary. Do **not** approve, do **not** emit PR Summary here, and do **not** suggest `/kiro-impl`.
+
+**Otherwise** — provide output in the language specified in `spec.json`:
 
 ```
 Quick Spec Generation Complete!
@@ -212,7 +231,7 @@ Quick Spec Generation Complete!
 - docs/specs/{feature}/tasks.md ({N} tasks)
 
 Quick generation skipped:
-- `/kiro-validate-gap` - Gap analysis (integration check)
+- Separate gap step (gap is inline in `/kiro-spec-design` on brownfield; quick path skips it)
 - `/kiro-validate-design` - Design review (architecture validation)
 
 Sanity review: PASSED | FOLLOW-UP REQUIRED
@@ -220,8 +239,8 @@ Sanity review: PASSED | FOLLOW-UP REQUIRED
 ## Next Steps:
 1. Review generated specs (especially design.md)
 2. Optional validation:
-   - `/kiro-validate-gap {feature}` - Check integration with existing codebase
-   - `/kiro-validate-design {feature}` - Verify architecture quality
+   - `/kiro-spec-design {feature}` - Re-run design (includes brownfield gap) if integration check needed
+   - `/kiro-validate-design {feature}` - Verify architecture quality (interactive)
 3. Start implementation: `/kiro-impl {feature}`
 
 ```

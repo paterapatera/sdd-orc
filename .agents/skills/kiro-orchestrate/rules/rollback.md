@@ -4,37 +4,27 @@ On `NO-GO` / `REJECTED`, roll back to the **generating step** for the failed che
 
 | Failed check | Rollback to | Re-run from |
 | ------------ | ----------- | ----------- |
-| `/kiro-validate-requirements` | `/kiro-spec-requirements` | po → qa → sec → `validate-requirements-ex` |
-| `/kiro-validate-requirements-qa` | `/kiro-spec-requirements` or `requirements.md` | same |
-| `/kiro-validate-requirements-sec` | `/kiro-spec-requirements` or `requirements.md` | same |
-| `/kiro-validate-requirements-ex` | `/kiro-spec-requirements`; if Findings names a specialist validate → that validate's `requirements.md` scope | same; specialist cause → failing validate → onward chain |
-| `/kiro-validate-design-qa` | `/kiro-spec-design` | qa → arch → sec → `validate-design-ex` |
-| `/kiro-validate-design-arch` | `/kiro-spec-design` | same |
-| `/kiro-validate-design-sec` | `/kiro-spec-design` | same |
-| `/kiro-validate-design-ex` | `/kiro-spec-design`; if Findings names a requirements defect → `/kiro-spec-requirements` (apply 要求 rollback-depth rule) | same; requirements cause → po → qa → sec → `validate-requirements-ex` → design chain |
+| `/kiro-validate-requirements` (unified) | `/kiro-spec-requirements`; if Findings names `po`/`qa`/`sec` → fix `requirements.md` then `--only` that pass or full re-run | `/kiro-validate-requirements` |
+| `/kiro-validate-design-qa` (unified) | `/kiro-spec-design`; if Findings names `qa`/`arch`/`sec` → fix `design.md` then `--only` that pass or full re-run; if Findings names a requirements defect → `/kiro-spec-requirements` (apply 要求 rollback-depth rule) | `/kiro-validate-design-qa`; requirements cause → `/kiro-validate-requirements` → design chain |
 | `/kiro-impl` task review | that task's implementation | `/kiro-review` |
 | `/kiro-validate-impl` | causing task or design | task → `/kiro-impl`; design cause → `/kiro-spec-design` onward |
 
-## Phase gate failures (`/kiro-verify-phase-gate`)
+## Phase gate failures (`/kiro-verify-phase-gate` or unified inline Phase Gate)
 
-On `NOT_VERIFIED`, parse `GAPS` from verify output against `../kiro-validate-shared/phase-gate.md`. Do **not** open the human approval gate. On `MANUAL_VERIFY_REQUIRED`, stop and report gaps — rollback only if the user directs a fix path.
+On `NOT_VERIFIED`, parse `GAPS` / Phase Gate `CHECKS` against `../kiro-validate-shared/phase-gate.md`. Do **not** open the human approval gate. On `MANUAL_VERIFY_REQUIRED`, stop and report gaps — rollback only if the user directs a fix path.
 
 | Phase | Gap (checklist item) | Rollback to | Re-run from |
 | ----- | -------------------- | ----------- | ----------- |
-| `requirements` | missing / empty `requirements.md` | `/kiro-spec-requirements` | validate chain: po → qa → sec → `validate-requirements-ex` |
-| `requirements` | `approvals.requirements.generated !== true` | `/kiro-spec-requirements` | same validate chain |
-| `requirements` | non-GO or missing `reviews/requirements-po.md` | `/kiro-spec-requirements` or `requirements.md` fix | po → qa → sec → `validate-requirements-ex` |
-| `requirements` | non-GO or missing `reviews/requirements-qa.md` | `/kiro-spec-requirements` or `requirements.md` | qa → sec → `validate-requirements-ex` |
-| `requirements` | non-GO or missing `reviews/requirements-sec.md` | `/kiro-spec-requirements` or `requirements.md` | sec → `validate-requirements-ex` |
-| `requirements` | non-GO or missing `reviews/requirements-final.md` | `/kiro-spec-requirements` | full requirements validate chain |
-| `requirements` | `approvals.requirements.approved === true` | **[調整者]** re-apply 要求更新 approval invalidation (`flows.md` step 2) | `/kiro-verify-phase-gate` |
-| `design` | missing `design.md` | `/kiro-spec-design` | qa → arch → sec → `validate-design-ex` |
-| `design` | `approvals.design.generated !== true` | `/kiro-spec-design` | same design validate chain |
-| `design` | non-GO or missing `reviews/design-qa.md` | `/kiro-spec-design` | qa → arch → sec → `validate-design-ex` |
-| `design` | non-GO or missing `reviews/design-arch.md` | `/kiro-spec-design` | arch → sec → `validate-design-ex` |
-| `design` | non-GO or missing `reviews/design-sec.md` | `/kiro-spec-design` | sec → `validate-design-ex` |
-| `design` | non-GO or missing `reviews/design-final.md` | `/kiro-spec-design` | full design validate chain |
-| `design` | `approvals.design.approved === true` | **[調整者]** set `approvals.design.approved: false` (and `approvals.tasks.approved: false`, `ready_for_implementation: false` if tasks were approved) | `/kiro-verify-phase-gate` |
+| `requirements` | missing / empty `requirements.md` | `/kiro-spec-requirements` | `/kiro-validate-requirements` |
+| `requirements` | `approvals.requirements.generated !== true` | `/kiro-spec-requirements` | `/kiro-validate-requirements` |
+| `requirements` | non-GO / missing `reviews/requirements-review.md` | `/kiro-spec-requirements` or `requirements.md` fix | `/kiro-validate-requirements` |
+| `requirements` | Phase Gate not `VERIFIED` | fix gaps named in CHECKS | `/kiro-validate-requirements` or standalone `/kiro-verify-phase-gate` |
+| `requirements` | `approvals.requirements.approved === true` | **[調整者]** re-apply 要求更新 approval invalidation (`flows.md`) | re-check Phase Gate |
+| `design` | missing `design.md` | `/kiro-spec-design` | `/kiro-validate-design-qa` |
+| `design` | `approvals.design.generated !== true` | `/kiro-spec-design` | `/kiro-validate-design-qa` |
+| `design` | non-GO / missing `reviews/design-review.md` | `/kiro-spec-design` or `design.md` fix | `/kiro-validate-design-qa` |
+| `design` | Phase Gate not `VERIFIED` | fix gaps named in CHECKS | `/kiro-validate-design-qa` or standalone `/kiro-verify-phase-gate` |
+| `design` | `approvals.design.approved === true` | **[調整者]** set `approvals.design.approved: false` (and `approvals.tasks.approved: false`, `ready_for_implementation: false` if tasks were approved) | re-check Phase Gate |
 | `tasks` | missing / empty `tasks.md` | `/kiro-spec-tasks` | `/kiro-verify-phase-gate` |
 | `tasks` | `approvals.tasks.generated !== true` | `/kiro-spec-tasks` | `/kiro-verify-phase-gate` |
 | `tasks` | `approvals.tasks.approved === true` | **[調整者]** set `approvals.tasks.approved: false`, `ready_for_implementation: false` | `/kiro-verify-phase-gate` |

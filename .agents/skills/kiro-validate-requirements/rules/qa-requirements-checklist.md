@@ -17,7 +17,7 @@ Requirements-phase testability review. Quality administrator role. Make every re
 ## Out of Scope
 
 - Functional scope decisions and semantic ambiguity resolution (PO validate)
-- Security failure modes and abuse cases (`/kiro-validate-requirements-sec`)
+- Security failure modes and abuse cases (`/kiro-validate-requirements --only sec`)
 - EARS mechanical syntax checks (`requirements-review-gate` in `/kiro-spec-requirements`)
 - Test case authoring (post-implementation `/kiro-docs`) and design-level edge-case analysis (`/kiro-validate-design-qa`)
 - User dialogue
@@ -44,4 +44,4 @@ Use the shared scale in `../../kiro-validate-shared/contract.md` (Critical / Maj
 
 - A core requirement whose ACs cannot be made verifiable without new scope decisions (PO/user territory)
 - Systematic absence of abnormal-flow ACs that cannot be patched locally without regeneration
-- Fixing testability would require contradicting a PO decision in `reviews/requirements-po.md`
+- Fixing testability would require contradicting a PO decision in Pass A PO notes / `## Specialist Summaries` → PO

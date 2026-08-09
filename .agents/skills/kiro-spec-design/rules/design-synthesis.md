@@ -27,3 +27,12 @@ For each component and abstraction layer in the emerging design, ask: is this ne
 - Flatten unnecessary abstraction layers — if an interface has only one implementation with no foreseeable second, it may not need the indirection
 - Prefer fewer, cohesive components over many fine-grained ones
 - The right design is the smallest one that satisfies all requirements and remains extensible at the interface level
+
+## 4. Simple-scope size fitness
+
+When Axis B is **simple** (or `complexity_tier: S`):
+
+- Prefer a design that fits ≤ ~150 lines guidance from Minimal discovery
+- Omit Extension scenarios / extra mermaid / per-file comment trees unless requirements demand them
+- **Never** drop security requirements (PAT, origin verification, auth) to hit the line budget
+- If the draft exceeds ~200 lines without an NFR/compliance driver, cut scope bloat before the review gate

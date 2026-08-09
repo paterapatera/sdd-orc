@@ -12,6 +12,8 @@ Parse report files only — do not re-run analysis:
 
 Report paths: see `../kiro-validate-shared/contract.md` (read only if parsing).
 
+**VERDICT source (要求 / 設計):** unified `reviews/requirements-review.md` / `design-review.md` only — parse `VERDICT:` and `## Phase Gate` → `STATUS:`. Specs without the unified file are not GO (re-validate with the unified skill).
+
 | Verdict | Orchestrator action |
 | ------- | ------------------- |
 | `GO` / `APPROVED` | Continue same-phase validates; when all pass → phase gate verification (below) |
@@ -20,51 +22,55 @@ Report paths: see `../kiro-validate-shared/contract.md` (read only if parsing).
 
 ## Phase Gate Verification (要求 / 設計 / タスク)
 
-After all mechanical validates for a phase report `GO`, **before** opening the human approval gate:
+**要求 (unified):** After `/kiro-validate-requirements` writes `reviews/requirements-review.md` with `VERDICT: GO` and `## Phase Gate` → `STATUS: VERIFIED`, open the human approval gate. Do **not** dispatch `/kiro-verify-phase-gate` for requirements in the orchestrated flow (standalone re-check still allowed).
 
-1. Dispatch `/kiro-verify-phase-gate <feature> <phase>` (`requirements` | `design` | `tasks`)
+**設計 (unified):** After `/kiro-validate-design-qa` writes `reviews/design-review.md` with `VERDICT: GO` and `## Phase Gate` → `STATUS: VERIFIED`, open the human approval gate. Do **not** dispatch `/kiro-verify-phase-gate` for design in the orchestrated flow.
+
+**タスク:** After generation, **before** terminal auto-approve:
+
+1. Dispatch `/kiro-verify-phase-gate <feature> tasks`
 2. Parse `STATUS: VERIFIED` | `NOT_VERIFIED` | `MANUAL_VERIFY_REQUIRED` (claim type `PHASE_GATE`)
 3. Checklist: `../kiro-validate-shared/phase-gate.md`
 
 | Result | Orchestrator action |
 | ------ | ------------------- |
-| `VERIFIED` | Open human approval gate (`[GATE]`) |
-| `NOT_VERIFIED` | Do not open human gate; rollback per `rollback.md` § Phase gate failures |
+| `VERIFIED` | **Terminal auto-approve** (below) — do **not** open a human approval prompt |
+| `NOT_VERIFIED` | Do **not** auto-approve; rollback per `rollback.md` § Phase gate failures |
 | `MANUAL_VERIFY_REQUIRED` | Stop; report gaps to user |
 
 **Do not** use `/kiro-verify-completion` with `FEATURE_GO` for 要求 / 設計 / タスク — that claim type is for post-impl feature completion only. Use `TASK` inside `/kiro-impl` per-task loop; use `FEATURE_GO` only after `/kiro-validate-impl` GO at **[GATE] 実装**.
 
 ## Phase Gate Table (`spec.json`)
 
-| Phase | Pass condition | After user approval |
+| Phase | Pass condition | After readiness |
 | ----- | -------------- | ------------------- |
-| 要求 | `requirements.md` + po/qa/sec GO + `/kiro-validate-requirements-ex` GO | `approvals.requirements.approved: true` → `/kiro-spec-design` |
-| 設計 | `design.md` + qa/arch/sec GO + `/kiro-validate-design-ex` GO | `approvals.design.approved: true` → `/kiro-spec-tasks` |
-| タスク | `tasks.md` generated | `approvals.tasks.approved: true`, `ready_for_implementation: true` → **end orchestration (do not dispatch `/kiro-impl`)** |
-| 実装 | (out of orchestration scope) | reached only via an explicit `実装のみ` invocation |
+| 要求 | `requirements.md` + `/kiro-validate-requirements` GO + Phase Gate VERIFIED (`requirements-review.md`) | After **user approval**: `approvals.requirements.approved: true` → `/kiro-spec-design` |
+| 設計 | `design.md` + `/kiro-validate-design-qa` GO + Phase Gate VERIFIED (`design-review.md`) | After **user approval**: `approvals.design.approved: true` → `/kiro-spec-tasks` |
+| タスク | `tasks.md` generated + `/kiro-verify-phase-gate` VERIFIED | After **auto-approve**（人間プロンプトなし）: `approvals.tasks.approved: true`, `ready_for_implementation: true` → **end orchestration (do not dispatch `/kiro-impl`)** |
+| 仕様一式 (S) | `requirements`/`design`/`tasks` generated + sanity review (or unified validates GO) | After **auto-approve**（人間プロンプトなし）: all three `approvals.*.approved: true`, `ready_for_implementation: true` → **end orchestration** |
+| 実装 | (out of orchestration scope) | After **user approval** — reached only via an explicit `実装のみ` invocation |
 
-Requirements validates (all GO): `validate-requirements` → `qa` → `sec` → `validate-requirements-ex`.
+Requirements validate: single `/kiro-validate-requirements` (unified). Design validate: single `/kiro-validate-design-qa` (unified). Interactive `/kiro-validate-design` is outside orchestrate.
 
 ## Human Approval Gate
 
-Open only after `/kiro-verify-phase-gate` returns `VERIFIED` (要求 / 設計 / タスク) or `/kiro-verify-completion` returns verified (`FEATURE_GO` at **[GATE] 実装** only). Report:
+Open only for **要求** / **設計** / **実装** — after requirements/design unified Phase Gate `VERIFIED`, or `/kiro-verify-completion` returns verified (`FEATURE_GO` at **[GATE] 実装** only). Do **not** open for タスク or 仕様一式 (those use **Terminal auto-approve** below). Report:
 
 1. Current phase + completed validates
 2. Key artifact paths
 3. **決定事項サマリー** — summarize each report's `## Decisions` as: 何を決めたか / なぜ / 承認で固定されること
 
-   要求 / 設計 gates: the final-gate report (`reviews/requirements-final.md` / `reviews/design-final.md`) already contains the 承認ゲートサマリ (検証済み観点 / 自己修復 / 残リスク / 未決事項) — present it as the primary gate content and ask the user to accept the listed residual risks; do not re-summarize the specialist reports beyond it.
+   要求 / 設計 gates: the unified report (`reviews/requirements-review.md` / `reviews/design-review.md`) already contains the 承認ゲートサマリ (検証済み観点 / 自己修復 / 残リスク / 未決事項) — present it as the primary gate content and ask the user to accept the listed residual risks; do not re-summarize the specialist summaries beyond it.
 
    Topics to cover when present:
 
    | Topic | Examples |
    | ----- | -------- |
    | Scope | in/out of scope, implicit assumptions |
-   | Requirements validates | PO defaults, resolved ambiguity, testability fixes (`reviews/requirements-*.md`) |
+   | Requirements validates | PO defaults, resolved ambiguity, testability fixes (`reviews/requirements-review.md`) |
    | Security validates | adopted controls, deferred risks |
    | Supplements | glossary/boundary interpretation |
-   | Design | architecture choices, threat-model assumptions (`reviews/design-*.md`) |
-   | Tasks | task split, parallel `(P)` markers, integration boundaries — synthesize from `/kiro-spec-tasks` summary and `tasks.md` (no `reviews/*.md` for tasks phase) |
+   | Design | architecture choices, threat-model assumptions (`reviews/design-review.md`) |
 
    Detail lives in `reviews/*.md` where present; gate report stays concise.
 4. Open issues (if any)
@@ -72,14 +78,64 @@ Open only after `/kiro-verify-phase-gate` returns `VERIFIED` (要求 / 設計 / 
 
 **Rules**
 
-- No next phase without user approval (`-y` only if user explicitly requests fast-track).
+- No next phase without user approval for **要求 → 設計 → タスク生成** human gates (`-y` only if user explicitly requests fast-track). **Exception:** terminal タスク / 仕様一式 confirmation is always **auto-approve** (below) — never wait for「承認して次へ」.
 - Path B: no `spec.json` gates — user confirmation at end only.
-- After approval: set `approvals.<phase>.approved: true`, proceed to next flow step.
-- **タスク gate is terminal.** After タスク approval, set `approvals.tasks.approved: true` and `ready_for_implementation: true`, then emit the **PR Summary Output** (below) and **end the orchestration**. Do **not** dispatch `/kiro-impl` — even if the user says "承認して次へ". Implementation requires a separate explicit `実装のみ` invocation.
+- After human approval (要求 / 設計 / 実装): set `approvals.<phase>.approved: true`, proceed to next flow step.
+- Terminal タスク / 仕様一式: use **Terminal auto-approve** — never ask「承認して次へ」for these steps.
+
+### Terminal auto-approve (タスク / 仕様一式)
+
+After mechanical readiness (below), the orchestrator **auto-approves** without opening a human approval prompt:
+
+**M/L — after tasks:**
+1. `/kiro-spec-tasks` completed; `approvals.tasks.generated === true`
+2. `/kiro-verify-phase-gate <feature> tasks` → `STATUS: VERIFIED`
+3. **[調整者]** set `approvals.tasks.approved: true`, `ready_for_implementation: true`, `phase: tasks-approved`
+4. Emit **PR Summary Output**
+5. End orchestration (do **not** dispatch `/kiro-impl`)
+
+**S — after quick-path:**
+1. `/kiro-spec-quick --auto --from-orchestrate` succeeded; all three `approvals.*.generated === true`
+2. Sanity review (and optional unified validates) GO as required by quick-path contract
+3. **[調整者]** set all three `approvals.*.approved: true`, `ready_for_implementation: true`, `phase: tasks-approved`
+4. Emit **PR Summary Output**
+5. End orchestration (do **not** dispatch `/kiro-impl`)
+
+Do **not** ask「承認して次へ」for these terminal steps. User can still edit `tasks.md` / re-orchestrate later if needed.
+
+### Complexity tier gate counts
+
+| Tier | Human gates | Notes |
+| ---- | ----------- | ----- |
+| **S** | **0** | quick-path success → Terminal auto-approve (S) + PR Summary |
+| **M** | **2**（要求・設計） | タスクは自動 |
+| **L** | **2**（要求・設計） | タスクは自動 |
+| missing `complexity_tier` | **2** | Treat as L (backward compatible). |
+
+`実装のみ` is unchanged by tier (one **[GATE] 実装** human gate only).
+
+## [AUTO] 仕様一式 (S-tier only)
+
+Terminal auto-approve checklist covering requirements, design, and tasks (no human prompt).
+
+Precondition:
+
+- `spec.json` `approvals.*.generated === true` for all three phases
+- Sanity review or unified validate reports `VERDICT: GO`
+
+On auto-approve (**[調整者]**):
+
+- `approvals.requirements.approved: true`
+- `approvals.design.approved: true`
+- `approvals.tasks.approved: true`
+- `ready_for_implementation: true`
+- `phase: tasks-approved`
+
+Then: PR Summary Output → orchestration ends. Do **not** dispatch `/kiro-impl`.
 
 ## PR Summary Output (タスク生成完了時)
 
-After the **[GATE] タスク** approval (`approvals.tasks.approved: true`, `ready_for_implementation: true`), and **before** ending the orchestration, emit a Pull Request-ready summary so the user can copy & paste it directly into a PR description.
+After **terminal auto-approve** (`approvals.tasks.approved: true`, `ready_for_implementation: true`), and **before** ending the orchestration, emit a Pull Request-ready summary so the user can copy & paste it directly into a PR description.
 
 **Format rules**
 
@@ -126,4 +182,4 @@ Delegate to `/kiro-impl`; monitor stop conditions:
 
 ## Brownfield Option
 
-要求新規/要求更新 flows: optionally insert `/kiro-validate-gap` before `/kiro-spec-design`. Skip for greenfield.
+`/kiro-spec-design` runs inline gap analysis on brownfield only (writes `research.md`). Greenfield skips gap — no separate gap dispatch.

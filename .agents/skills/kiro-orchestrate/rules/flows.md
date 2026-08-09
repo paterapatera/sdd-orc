@@ -1,41 +1,82 @@
 # Flow Step Sequences
 
-**Orchestration scope ends at task generation.** The generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **[GATE] タスク**. Approving that gate ("承認して次へ") finalizes the tasks, emits the **PR Summary Output** (`gates.md` § PR Summary Output), and **ends the orchestration** — it must **not** dispatch `/kiro-impl` or any implementation step. Implementation is run separately (explicit `実装のみ` invocation only).
+**Orchestration scope ends at task generation.** The generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **Terminal auto-approve** (M/L: tasks; S: 仕様一式). After mechanical readiness, the orchestrator auto-approves, emits the **PR Summary Output** (`gates.md` § PR Summary Output), and **ends the orchestration** — it must **not** dispatch `/kiro-impl` or any implementation step. Implementation is run separately (explicit `実装のみ` invocation only).
 
-**Entry precondition (discovery is not an orchestration step).** `/kiro-discovery-ex` is run **standalone before** orchestration and has already produced `brief.md` (for new specs) / `roadmap.md` (when dependencies exist) and, for existing specs, `spec.json`. Orchestration is invoked with a target `<feature>` (+ optional explicit flow) and selects the active flow per `routing.md` § Entry Contract. If neither `brief.md` nor `spec.json` exists for the target, **stop** and instruct the user to run `/kiro-discovery-ex` first (do not auto-run discovery).
+**Entry precondition (discovery is not an orchestration step).** `/kiro-discovery` is run **standalone before** orchestration and has already produced `brief.md` (for new specs) / `roadmap.md` (when dependencies exist) and, for existing specs, `spec.json`. Orchestration is invoked with a target `<feature>` (+ optional explicit flow) and selects the active flow per `routing.md` § Entry Contract. If neither `brief.md` nor `spec.json` exists for the target, **stop** and instruct the user to run `/kiro-discovery` first (do not auto-run discovery).
 
-Load **only** the section matching the active flow. Before each `[GATE]` (要求/設計/タスク): `/kiro-verify-phase-gate <feature> <phase>` must return `VERIFIED`. `[GATE]` = human approval per `gates.md`.
+Load **only** the section matching the active flow and complexity tier (`要求新規作成 (S|M|L)`, etc.). Before each human `[GATE]` (要求 / 設計 only): phase gate must be verified — for **要求**, via unified `/kiro-validate-requirements` (`requirements-review.md`); for **設計**, via unified `/kiro-validate-design-qa` (`design-review.md`). For **タスク** terminal: `/kiro-verify-phase-gate <feature> tasks` then **Terminal auto-approve** (no human prompt). S-tier quick-path uses sanity review (and optional unified validates) then **Terminal auto-approve (S)**. `[GATE]` = human approval for 要求 / 設計 / 実装 only per `gates.md`.
 
-`[調整者]` steps are orchestrator-only (not skill dispatches). Orchestrator updates `spec.json` directly.
+`[調整者]` steps are orchestrator-only (not skill dispatches). Orchestrator updates `spec.json` directly — including `complexity_tier` / `complexity_score` / `complexity_rationale` at flow entry (`routing.md` § Complexity Tier).
 
-## 要求新規作成
+## Orchestration Paths by Tier
 
-_Precondition_: `/kiro-discovery-ex` (Path C/D/E) already ran standalone; `brief.md` exists at `docs/specs/<feature>/`.
+After complexity tier is computed (`routing.md` § Complexity Tier):
 
-1. **[調整者] Upstream dependency guard** — verify roadmap upstream deps are task-generation complete (`routing.md` § Upstream Dependency Guard). If not ready, **stop** before init or requirements.
-2. `/kiro-spec-init <feature>` (skip if `spec.json` exists, phase ≥ initialized)
-3. `/kiro-spec-requirements <feature>`
-4. `/kiro-validate-requirements <feature>`
-5. `/kiro-validate-requirements-qa <feature>`
-6. `/kiro-validate-requirements-sec <feature>`
-7. `/kiro-validate-requirements-ex <feature>`
-8. `/kiro-verify-phase-gate <feature> requirements`
-9. **[GATE] 要求**
-10. `/kiro-validate-gap <feature>` (brownfield, optional)
-11. `/kiro-spec-design <feature>`
-12. `/kiro-validate-design-qa <feature>`
-13. `/kiro-validate-design-arch <feature>`
-14. `/kiro-validate-design-sec <feature>`
-15. `/kiro-validate-design-ex <feature>`
-16. `/kiro-verify-phase-gate <feature> design`
-17. **[GATE] 設計**
-18. `/kiro-spec-tasks <feature>`
-19. `/kiro-verify-phase-gate <feature> tasks`
-20. **[GATE] タスク** → PR Summary Output（`gates.md`）を出力 → end（承認後もオーケストレーションは終了。実装工程には進まない）
+| Tier | Path name | Behavior |
+|------|-----------|----------|
+| S | **quick-path** | Delegate to `/kiro-spec-quick <feature> --auto --from-orchestrate` |
+| M | **standard-path** | Unified validates + 2 human gates（要求・設計）; タスクは自動 |
+| L | **full-path** | Current 要求新規作成 (L) — all steps, 2 human gates（要求・設計）; タスクは自動 |
+
+User override `quick` → force quick-path regardless of score.
+User override `full` → force full-path.
+
+## 要求新規作成 (L)
+
+_Precondition_: `/kiro-discovery` (Path C/D/E) already ran standalone; `brief.md` exists at `docs/specs/<feature>/`. Selected when `complexity_tier` is **L** (score ≥ 5, Path D/E, user「フル」/「full」, or missing `complexity_tier` on resume).
+
+**Path**: full-path. Human gates: **2**（要求・設計）. タスクは Terminal auto-approve.
+
+**Greenfield**: Never run a standalone gap step. spec-design Step 2.0 auto-skips.
+**Brownfield**: Gap runs inside spec-design only (07).
+
+1. **[調整者] Upstream dependency guard** — verify roadmap upstream deps are task-generation complete (`routing.md` § Upstream Dependency Guard). If not ready, **stop** before requirements.
+2. `/kiro-spec-requirements <feature>` (initializes `spec.json` if missing — Step 0)
+3. `/kiro-validate-requirements <feature>` (unified: po+qa+sec+ex+phase-gate → `reviews/requirements-review.md`)
+4. **[GATE] 要求**
+5. `/kiro-spec-design <feature>` (inline brownfield gap analysis; greenfield skips gap)
+6. `/kiro-validate-design-qa <feature>` (unified: qa+arch+sec+ex+phase-gate → `reviews/design-review.md`)
+7. **[GATE] 設計**
+8. `/kiro-spec-tasks <feature>`
+9. `/kiro-verify-phase-gate <feature> tasks`（未実施なら）
+10. **[調整者] Terminal auto-approve** — set `approvals.tasks.approved: true`, `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
+
+## 要求新規作成 (S)
+
+_Precondition_: same as (L); selected when `complexity_tier` is **S** (score ≤ 1, or user「quick」/「lite」). **Never** for Path D/E.
+
+**Path**: quick-path. Human gates: **0**. Terminal auto-approve (S) after quick-path success.
+
+**Greenfield**: Never run a standalone gap step. spec-design Step 2.0 auto-skips.
+**Brownfield**: Gap runs inside spec-design only (07).
+
+1. **[調整者] Upstream dependency guard** — verify roadmap upstream deps are task-generation complete (`routing.md` § Upstream Dependency Guard). If not ready, **stop** before generation.
+2. `/kiro-spec-quick <feature> --auto --from-orchestrate` — generates requirements + design + tasks; runs sanity review (and optional unified validates). Do **not** dispatch individual `spec-requirements` / `validate-*` / `spec-design` / `spec-tasks` separately.
+3. **[調整者] Terminal auto-approve (S)** — set all three `approvals.*.approved: true` + `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
+
+## 要求新規作成 (M)
+
+_Precondition_: same as (L); selected when `complexity_tier` is **M** (score 2–4).
+
+**Path**: standard-path. Human gates: **2**（要求・設計）— same count as L. タスクは Terminal auto-approve.
+
+**Greenfield**: Never run a standalone gap step. spec-design Step 2.0 auto-skips.
+**Brownfield**: Gap runs inside spec-design only (07).
+
+1. **[調整者] Upstream dependency guard** — verify roadmap upstream deps are task-generation complete (`routing.md` § Upstream Dependency Guard). If not ready, **stop** before requirements.
+2. `/kiro-spec-requirements <feature>` (initializes `spec.json` if missing — Step 0)
+3. `/kiro-validate-requirements <feature>` (unified: po+qa+sec+ex+phase-gate)
+4. **[GATE] 要求**
+5. `/kiro-spec-design <feature>` (inline brownfield gap; greenfield skips)
+6. `/kiro-validate-design-qa <feature>` (unified: qa+arch+sec+ex+phase-gate)
+7. **[GATE] 設計**
+8. `/kiro-spec-tasks <feature>`
+9. `/kiro-verify-phase-gate <feature> tasks`（未実施なら）
+10. **[調整者] Terminal auto-approve** — set `approvals.tasks.approved: true`, `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
 
 ## 要求更新
 
-_Precondition_: `/kiro-discovery-ex` already ran standalone and confirmed this is an update to existing spec `<feature>` (`spec.json` exists).
+_Precondition_: `/kiro-discovery` already ran standalone and confirmed this is an update to existing spec `<feature>` (`spec.json` exists).
 
 1. **[調整者] Modification guard** — verify the target spec's implementation is complete (`routing.md` § Modification Guard). If it is implementation-ready but not complete (`ready_for_implementation: true` with `[ ]` / `_Blocked:_` tasks), **stop** and prompt the user to finish implementation first (explicit `実装のみ`). Do not proceed to the next step.
 2. **[調整者] Upstream dependency guard** — verify roadmap upstream deps are task-generation complete (`routing.md` § Upstream Dependency Guard). If not ready, **stop** before generation or validate.
@@ -47,45 +88,33 @@ _Precondition_: `/kiro-discovery-ex` already ran standalone and confirmed this i
    - Update `updated_at`
    - Do **not** clear `generated` flags — existing artifacts remain until regenerated in later steps
 4. `/kiro-spec-requirements <feature>` (diff only)
-5. `/kiro-validate-requirements <feature>` (diff only)
-6. `/kiro-validate-requirements-qa <feature>` (diff only)
-7. `/kiro-validate-requirements-sec <feature>` (diff only)
-8. `/kiro-validate-requirements-ex <feature>`
-9. `/kiro-verify-phase-gate <feature> requirements`
-10. **[GATE] 要求**
-11. `/kiro-spec-design <feature>` (requirements diff only)
-12. `/kiro-validate-design-qa <feature>` (diff only)
-13. `/kiro-validate-design-arch <feature>` (diff only)
-14. `/kiro-validate-design-sec <feature>` (diff only)
-15. `/kiro-validate-design-ex <feature>`
-16. `/kiro-verify-phase-gate <feature> design`
-17. **[GATE] 設計**
-18. `/kiro-spec-tasks <feature>` (diff only)
-19. `/kiro-verify-phase-gate <feature> tasks`
-20. **[GATE] タスク** → PR Summary Output（`gates.md`）を出力 → end（承認後もオーケストレーションは終了。実装工程には進まない）
+5. `/kiro-validate-requirements <feature>` (unified; diff only — optional `--only po|qa|sec|final`)
+6. **[GATE] 要求**
+7. `/kiro-spec-design <feature>` (requirements diff only)
+8. `/kiro-validate-design-qa <feature>` (unified; diff only — optional `--only qa|arch|sec|final`)
+9. **[GATE] 設計**
+10. `/kiro-spec-tasks <feature>` (diff only)
+11. `/kiro-verify-phase-gate <feature> tasks`（未実施なら）
+12. **[調整者] Terminal auto-approve** — set `approvals.tasks.approved: true`, `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
 
 ## 設計更新
 
-_Precondition_: `/kiro-discovery-ex` already ran standalone and confirmed this is a design-only change to existing spec `<feature>` (`spec.json` exists, requirements approved).
+_Precondition_: `/kiro-discovery` already ran standalone and confirmed this is a design-only change to existing spec `<feature>` (`spec.json` exists, requirements approved).
 
 1. **[調整者] Modification guard** — verify the target spec's implementation is complete (`routing.md` § Modification Guard). If it is implementation-ready but not complete, **stop** and prompt the user to finish implementation first (explicit `実装のみ`). Do not proceed.
 2. **[調整者] Upstream dependency guard** — verify roadmap upstream deps are task-generation complete (`routing.md` § Upstream Dependency Guard). If not ready, **stop** before generation or validate.
 3. `/kiro-spec-design <feature>`
-4. `/kiro-validate-design-qa <feature>` (diff only)
-5. `/kiro-validate-design-arch <feature>` (diff only)
-6. `/kiro-validate-design-sec <feature>` (diff only)
-7. `/kiro-validate-design-ex <feature>`
-8. `/kiro-verify-phase-gate <feature> design`
-9. **[GATE] 設計**
-10. `/kiro-spec-tasks <feature>` (diff only)
-11. `/kiro-verify-phase-gate <feature> tasks`
-12. **[GATE] タスク** → PR Summary Output（`gates.md`）を出力 → end（承認後もオーケストレーションは終了。実装工程には進まない）
+4. `/kiro-validate-design-qa <feature>` (unified; diff only — optional `--only qa|arch|sec|final`)
+5. **[GATE] 設計**
+6. `/kiro-spec-tasks <feature>` (diff only)
+7. `/kiro-verify-phase-gate <feature> tasks`（未実施なら）
+8. **[調整者] Terminal auto-approve** — set `approvals.tasks.approved: true`, `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
 
 ## 実装のみ
 
-**Enter only on an explicit user request for implementation** (e.g.「実装だけ」). This flow is never reached automatically from a task-generation flow — the タスク gate does not chain into it.
+**Enter only on an explicit user request for implementation** (e.g.「実装だけ」). This flow is never reached automatically from a task-generation flow — Terminal auto-approve does not chain into it.
 
-_Precondition_: `/kiro-discovery-ex` already ran standalone (Path A → impl only); `spec.json` exists.
+_Precondition_: `/kiro-discovery` already ran standalone (Path A → impl only); `spec.json` exists.
 
 1. Verify `approvals.tasks.approved: true` — stop if false
 2. `/kiro-impl <feature>`
@@ -95,7 +124,7 @@ _Precondition_: `/kiro-discovery-ex` already ran standalone (Path A → impl onl
 
 ## Path B 直接実装
 
-Path B is decided by `/kiro-discovery-ex` **before** orchestration. When discovery-ex returns Path B, the work does **not** enter orchestration at all — it is implemented directly in main context. This section documents that boundary; orchestration itself has no Path B flow to run.
+Path B is decided by `/kiro-discovery` **before** orchestration. When discovery returns Path B, the work does **not** enter orchestration at all — it is implemented directly in main context. This section documents that boundary; orchestration itself has no Path B flow to run.
 
 1. Implement in main context (no `/kiro-impl`)
 2. `/kiro-verify-completion` (claim `FIX` or `TEST_OR_BUILD`)
@@ -105,9 +134,9 @@ Path B is decided by `/kiro-discovery-ex` **before** orchestration. When discove
 
 ## Path D/E Multi-Spec
 
-_Precondition_: `/kiro-discovery-ex` already ran standalone and produced `roadmap.md` + `brief.md` for each spec.
+_Precondition_: `/kiro-discovery` already ran standalone and produced `roadmap.md` + `brief.md` for each spec.
 
 For each spec in roadmap dependency order:
 
 1. **[調整者] Upstream dependency guard** for that spec (`routing.md` § Upstream Dependency Guard). If not ready, **stop** — do not start this spec's flow.
-2. Run the full applicable flow above (要求新規作成 / 要求更新 / 設計更新 as appropriate). No `/kiro-spec-batch`.
+2. Force `complexity_tier: L` for each spec (Path D/E). Run the full applicable flow above (`要求新規作成 (L)` / 要求更新 / 設計更新 as appropriate). No `/kiro-spec-batch`. Never select 要求新規作成 (S) for multi-spec.

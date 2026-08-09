@@ -22,7 +22,7 @@ Severity vocabulary, `## Reflected Fixes`, and per-check evidence discipline: sh
 ## Out of Scope
 
 - QA edge-case checklist (`/kiro-validate-design-qa`)
-- SOLID/architecture review (`/kiro-validate-design-arch`)
+- SOLID/architecture review (Pass A Arch)
 - User dialogue
 
 ## Threat Table (mandatory format)

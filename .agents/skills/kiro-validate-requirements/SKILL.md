@@ -1,51 +1,135 @@
 ---
 name: kiro-validate-requirements
-description: Autonomous post-generation requirements review and brush-up by Product Owner. Semantic consistency, ambiguity resolution, requirements.md fixes. Use after /kiro-spec-requirements in AI-DLC requirements phase. No user dialogue.
+description: Unified autonomous requirements-phase validate (PO + QA + Sec + final gate + phase-gate). Semantic consistency, testability, security, reflection verification, gap-domain audit. Use after /kiro-spec-requirements in AI-DLC. No user dialogue. Supports --only po|qa|sec|final for partial re-runs.
 metadata:
-  shared-rules: "../kiro-validate-shared/contract.md"
+  shared-rules: "../kiro-validate-shared/contract.md, ../kiro-validate-shared/phase-gate.md"
 ---
 
-# Validate Requirements (PO)
+
+# Validate Requirements (Unified)
 
 <background_information>
-First of the requirements-phase validates (po → qa → sec → ex). Autonomous; no user dialogue. Judgments go to `reviews/requirements-po.md` `## Decisions` for the approval gate.
+Single-pass requirements-phase validate for AI-DLC (replaces separate po → qa → sec → ex → verify-phase-gate dispatches). Autonomous; no user dialogue. Writes `reviews/requirements-review.md` with one `VERDICT:` and inline `Phase Gate` status for the human approval gate.
 </background_information>
 
 <instructions>
 ## Inputs
 
 - Feature: `$1`
+- Optional: `--only po|qa|sec|final` (partial re-run; default = full Pass A→B→C)
 - `docs/specs/$1/requirements.md`
 - `docs/specs/$1/brief.md` (if exists)
+- `docs/specs/$1/spec.json`
 - Core steering: `docs/steering/product.md`, `tech.md`, `structure.md`
+- `docs/steering/roadmap.md` if present (gap-domain cross-spec)
+- `docs/settings/templates/specs/requirements.md` (template conformance)
 
-## Execution
+## Execution (unified pass)
 
-1. Read `../kiro-validate-shared/contract.md` (shared contract — once).
-2. Read `rules/po-checklist.md` from this skill directory.
-3. Review requirements per checklist; fix `requirements.md` when local and safe.
-4. Write `docs/specs/$1/reviews/requirements-po.md` per contract format.
-5. Before `VERDICT: GO`, verify files exist and edits are consistent (fresh evidence).
+### Pass A — Specialist reviews (single context load)
+
+Load **once**: `spec.json`, `requirements.md`, `brief.md` (if any), `product.md`, `tech.md`, `structure.md`, `../kiro-validate-shared/contract.md`.
+
+Do **not** dispatch sibling validate skills between sub-passes. Keep checklists separate — read each in order.
+
+1. **PO** — Read `rules/po-checklist.md`. Review & fix `requirements.md` when local and safe. Record working notes (Summary, Findings, Decisions, Reflected Fixes).
+2. **QA** — Read `rules/qa-requirements-checklist.md`. Review & fix on the **updated** `requirements.md`. Append working notes.
+3. **Sec** — Read `rules/sec-requirements-checklist.md`. Review & fix / adopt-defer on the updated `requirements.md`. Append working notes.
+
+After each sub-pass, append rows to an in-memory `## Reflected Fixes` table with a **Pass** column (`PO` | `QA` | `Sec`).
+
+If `--only po|qa|sec`: run only that specialist sub-pass (still load context once), then write `requirements-review.md` with that pass's summary and `VERDICT` for the pass — do not claim full Phase Gate `VERIFIED` unless Pass B also ran.
+
+### Pass B — Final gate (same invocation)
+
+Skip when `--only po|qa|sec` (unless `--only final`).
+
+4. Read `rules/requirements-synthesis.md`.
+5. **Reflection verification** — Verify all Reflected Fixes from Pass A against `requirements.md`; cross-check Decisions for contradictions (synthesis § Step 1). Prefer in-memory Pass A notes.
+6. **Gap-domain audit** — all 8 domains per synthesis § Step 2.
+7. **Self-repair** — Minor / unambiguous Major in **non-specialist** domains only (synthesis § Step 4). Specialist-domain defects → `VERDICT: NO-GO` with rollback target in Findings — do **not** self-repair specialist domains here.
+8. **Phase gate check** — Inline `../kiro-validate-shared/phase-gate.md` § requirements (unified checks). Record results under `## Phase Gate`.
+
+### Pass C — Write outputs
+
+9. Write **only** `docs/specs/$1/reviews/requirements-review.md` (format below).
+10. Do **NOT** write separate per-specialist report files.
+
+### Verdict
+
+- Single `VERDICT: GO | NO-GO | MANUAL_VERIFY_REQUIRED` at the end of `requirements-review.md`
+- On `NO-GO`: name rollback target in Findings (`/kiro-spec-requirements` or specific pass: `po` / `qa` / `sec` / `final`)
+- Orchestrator opens **[GATE] 要求** when `VERDICT: GO` **and** `Phase Gate` → `STATUS: VERIFIED` (no separate `/kiro-verify-phase-gate` dispatch in the flow)
+
+## Report format (`reviews/requirements-review.md`)
+
+```markdown
+## Verdict
+- VERDICT: GO
+
+## Summary
+...
+
+## Findings
+...
+
+## Decisions
+...
+
+## Reflected Fixes
+| Finding | 対象セクション | 修正概要 | Pass |
+| ------- | -------------- | -------- | ---- |
+| PO-1 | ... | ... | PO |
+
+## Specialist Summaries
+### PO
+（Summary + 主要 Decisions）
+### QA
+...
+### Sec
+...
+
+## Gap-Domain Audit
+（8 ドメイン表）
+
+## 承認ゲートサマリ
+### 検証済み観点
+...
+### 自己修復した事項
+...
+### 受容が必要な残リスク
+...
+### 人間判断が必要な未決事項
+...
+
+## Evidence
+...
+
+## Phase Gate
+- STATUS: VERIFIED | NOT_VERIFIED | MANUAL_VERIFY_REQUIRED
+- CHECKS: (inline phase-gate checklist results)
+```
 
 ## Update mode
 
-When `/kiro-orchestrate` runs an update flow (要求更新 — not new creation), scope work to **changed requirements and ACs only** per `../kiro-validate-shared/contract.md` Update Flows. Review, fix, and record `## Decisions` only for the diff; leave unchanged requirements as-is. Do not regenerate or re-audit unrelated sections.
+When `/kiro-orchestrate` runs 要求更新 (not new creation), scope to **changed requirements and ACs only** per contract Update Flows. Prefer `/kiro-validate-requirements $1 --only …` for targeted re-runs after a partial fix.
 
 ## Constraints
 
-- Do not run EARS mechanical checks (that is `requirements-review-gate`).
-- Do not perform testability deep-dive (abnormal-flow AC coverage, NFR measurability — `/kiro-validate-requirements-qa`).
-- Do not perform security deep-dive or create supplements.
-- Do not run gap-domain audits (brief traceability, cross-spec consistency — `/kiro-validate-requirements-ex`).
-- Every `requirements.md` edit must appear as a `## Reflected Fixes` row — `/kiro-validate-requirements-ex` mechanically verifies them.
+- Do not merge po/qa/sec checklists into one list — read them separately in Pass A.
+- Do not insert other skill dispatches between Pass A sub-passes.
+- Do not self-repair specialist-domain content in Pass B.
 - Do not ask the user questions.
+- Every `requirements.md` edit must appear as a `## Reflected Fixes` row with Pass label.
+- Preserve EARS keyword English and numeric requirement/AC IDs.
 
 ## On NO-GO
 
-Orchestrator rolls back to `/kiro-spec-requirements`, then re-runs po → qa → sec → `/kiro-validate-requirements-ex`. Report actionable findings.
+Orchestrator rolls back per Findings (usually `/kiro-spec-requirements`, then re-run this unified skill). Specialist-domain defects may name `po` / `qa` / `sec` for `--only` re-run after a targeted `requirements.md` fix.
 </instructions>
 
 ## Safety
 
 - Missing `requirements.md` → stop: run `/kiro-spec-requirements $1` first.
-- Missing `spec.json` → stop: run `/kiro-spec-init $1` first.
+- Missing `spec.json` → stop: run `/kiro-spec-requirements $1` first (Step 0 initializes).
+- Pass B must not claim `Phase Gate STATUS: VERIFIED` if Pass A did not complete all three specialists.

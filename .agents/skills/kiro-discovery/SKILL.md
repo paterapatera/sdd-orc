@@ -1,19 +1,37 @@
 ---
 name: kiro-discovery
-description: Entry point for new work. Determines the best action path or work decomposition (update existing spec, create new spec, mixed decomposition, or no spec needed) and refines ideas through structured dialogue.
+description: Entry point for new work. Determines action path, refines ideas, writes brief.md, syncs roadmap.md for cross-spec dependencies. Run standalone before /kiro-orchestrate.
 ---
 
 
 # Discovery
 
 <background_information>
+Discovery is **capture and route**, not requirements authoring. Default mode is Capture + Route (minutes: memo → Path → brief on disk). Workshop is exceptional (opt-in). Canonical AI-DLC pre-step before `/kiro-orchestrate` (includes roadmap sync).
+
 - **Success Criteria**:
-  - Correct action path or work decomposition identified based on existing project state
-  - User's intent clarified through questions, not assumptions
-  - Output is an actionable next step (not just a description)
+  - Correct Path (A–E) identified
+  - User intent captured in `brief.md` (or capture log) on disk — not left in chat only
+  - Cross-spec dependency edges reflected in `roadmap.md` when present (additive; never lose `[x]`)
+  - Actionable next command suggested (`/kiro-orchestrate` for Path A/C/D/E)
+  - Total discovery interaction kept minimal unless Workshop mode explicitly triggered
 </background_information>
 
 <instructions>
+
+## Critical Constraints (read first)
+
+- Discovery is **capture and route**, not requirements authoring.
+- Default mode is Capture + Route; Workshop is exceptional.
+- Never write EARS acceptance criteria in discovery.
+- Never spawn viability / research sub-agents in Capture + Route mode.
+- Never skip disk write (`brief.md`) for Path C/D/E.
+- Deep context loading (codebase exploration sub-agents) is deferred to requirements (brownfield) or design — not discovery.
+- Never generate Pros/Cons approach comparison tables in Capture + Route.
+- Do not invent Scope In/Out for vague requests — trigger Workshop instead.
+- **Path classification is independent of roadmap presence.** A single-scope new spec that depends on an existing/other spec **stays Path C** and merely gains a roadmap line. Do **not** promote it to Path D/E — promotion implies multi-spec generation and would mislead `/kiro-spec-batch`.
+- **Never rewrite `roadmap.md` wholesale** — append/update only, preserving completed items and prior phases.
+- **`roadmap.md` is the single dependency source.** Do not add machine-readable dependency fields to `brief.md`; briefs keep their prose `Upstream / Downstream` as human context only.
 
 ## Step 1: Lightweight Scan
 
@@ -26,21 +44,19 @@ Gather **only metadata** to determine the action path. Do NOT read full file con
 
 This step should consume minimal context. If `specs/` is empty and no steering exists, note "greenfield project" and move to Step 2.
 
-## Step 2: Determine Action Path
+## Step 2: Route (core thinking)
 
-Based on the user's request and the metadata from Step 1, determine which path applies:
+Based on the user's request and the metadata from Step 1, determine which path applies. **This is discovery's primary judgment.**
 
 **Path A: Existing spec covers this**
 - The request is an extension, enhancement, or fix within an existing spec's domain
 - Every meaningful part of the request fits that same spec boundary
 - Any remaining small follow-up work can be handled directly without creating a new spec
-- Skip remaining steps
 
 **Path B: No spec needed**
 - The request is a bug fix, config change, simple refactor, or trivial addition
 - No meaningful part of the request needs a new or updated spec boundary
 - The request does not need to update an existing spec either
-- Skip remaining steps
 
 **Path C: New single-scope feature**
 - The request is new, doesn't overlap with existing specs, and fits in one spec
@@ -52,217 +68,256 @@ Based on the user's request and the metadata from Step 1, determine which path a
 - The request contains a mix of: existing spec extensions, one or more new spec candidates, and optional direct-implementation work
 - Use this path only when at least one genuinely new spec boundary is needed
 
-For Path C/D/E, present the determined path (or mixed decomposition) to the user and confirm before proceeding.
-For Path A/B, recommend the next action and stop.
+If Path A vs C is ambiguous, ask the user **one question only** (e.g.「既存 spec X に入れる？新 spec？」). Do not start a question series.
 
-## Step 3: Deep Context Loading
+## Step 3: Select Mode
 
-**Only for Path C, D, and E.** Now load the context needed for discovery.
+Default: **Capture + Route**.
 
-**In main context** (essential for dialogue with user):
-- **Steering documents**: Read product.md and tech.md (if they exist) for project goals, constraints, and tech stack
-- **Relevant specs**: If the request is adjacent to an existing spec, read that spec's requirements.md to understand boundaries and avoid overlap
+Use **Workshop** only when **ANY** of:
 
-**Delegate to sub-agent** (keeps exploration out of main context):
-- **Codebase exploration**: Spawn a sub-agent to explore the codebase and return a structured summary. Ask it to summarize: (1) tech stack and frameworks, (2) directory structure and key modules, (3) patterns and conventions used, (4) areas relevant to the user's request. The sub-agent returns findings under 200 lines.
-- For Path D/E, also ask the sub-agent to identify natural domain boundaries, existing module separation, and which areas look like existing-spec extensions vs new boundaries.
-- Skip sub-agent dispatch for small/obvious requests where the top-level directory listing from Step 1 is sufficient.
+- User explicitly asks for comparison, exploration, or「一緒に考えて」「比較して」
+- Complexity would be L-tier (score ≥ 5 / Path D/E force-L per `kiro-orchestrate` complexity-tier rules) **AND** brief lacks Scope In/Out
+- Path D/E **AND** decomposition / dependency order is not yet stated
+- Contradictions in user input that cannot be resolved with one question
+- Request is too vague to Capture (e.g.「GitLab まわりをなんとかしたい」with no Problem / Outcome / boundary hint)
 
-**Context budget**: Keep total content loaded into main context under ~500 lines. The sub-agent handles the heavy exploration.
+**Otherwise:** stay in Capture + Route — skip Workshop entirely (no sequential question series, no approach comparison, no viability sub-agent).
 
-## Step 4: Understand the Idea
+Completed or concrete briefs (Problem / Approach / Scope present) are the **normal** case for Capture + Route, not a special short-circuit.
 
-Ask clarifying questions **sequentially** (not all at once), prioritizing boundary discovery over feature detail:
+## Step 4: Capture
 
-1. **Who and why**: Who has the problem? What pain does it cause?
-2. **Desired outcome**: What should be true when this is done?
-3. **Boundary candidates**: What are the natural responsibility seams in this work? Where could this be split so implementation can proceed independently?
-4. **Out of boundary**: What should this spec explicitly NOT own, even if related?
-5. **Existing vs new**: Which parts seem like extensions to existing specs, and which parts look like genuinely new boundaries?
-6. **Upstream / downstream**: What existing systems, specs, or components does this depend on? What future work is likely to depend on this?
-7. **Constraints**: Are there technology, timeline, or compatibility constraints?
+**Do NOT spawn codebase sub-agents by default.**
 
-Ask only questions whose answers you cannot infer from the context already loaded. Skip questions that steering documents already answer. If the user already provided a clear description, skip to Step 5.
-The goal is NOT to assign final owners yet. The goal is to discover the cleanest responsibility boundaries that can later become specs, tasks, and review scopes.
+Load only:
 
-## Step 5: Propose Approaches
+- User message / existing `brief.md` draft
+- Step 1 metadata (spec list, steering existence)
+- If Path A: target spec's `brief.md` or `requirements.md` **headings only** (not full read)
+- If user cited a file from 動作確認: read that file / snippet only
 
-Propose **2-3 concrete approaches** with trade-offs:
+Transform into brief sections per **Minimal brief requirements** below.
 
-For each approach:
-- **Approach name**: One-line summary
-- **How it works**: 2-3 sentences on the technical approach
-- **Pros**: What makes this approach good
-- **Cons**: What are the risks or downsides
-- **Scope estimate**: Rough complexity (small / medium / large)
+### Input patterns
 
-If technical research is needed (unfamiliar framework, library evaluation), spawn a sub-agent to research and return a concise summary. Ask it to compare options, check latest versions, and note known issues. Raw search results never enter the main context.
+**A — 動作確認・改善メモ:** Capture Trigger (when / what / what happened), pain (1–2 sentences), Desired Outcome (1–2 sentences), touched files/modules/spec names if any, rough In/Out (~3 bullets).
 
-Recommend one approach and explain why.
+**B — 新規構想が既に具体的:** Transcribe/reshape user text into brief sections. Ask only when there is a **contradiction**.
 
-**After the user selects an approach**, spawn a sub-agent to verify viability before proceeding to Step 6. Ask it to check: (1) Are these technologies still actively maintained? (2) Any license incompatibilities (e.g., GPL contamination)? (3) Do the components actually work together for the use case? (4) Any known showstoppers (critical bugs, security vulnerabilities, platform limitations)? Return only issues found, or "No issues found" if everything checks out.
+**C — 曖昧:** Do not invent detail — enter Workshop (Step 3).
 
-If the viability check reveals issues, present them to the user and revisit the approach selection. If no issues, proceed to Step 6.
+If Approach is obvious from user text, copy 1–2 sentences. **Do NOT** generate alternative approaches.
 
-## Step 6: Refine and Confirm
+Time budget: treat this step as **note-taking**, not analysis.
 
-- Address user's questions or concerns about the approaches
-- Narrow scope if needed: favor smaller, deliverable increments and cleaner responsibility seams
-- For Path D/E: propose work decomposition with dependency ordering
-  - Each new boundary-worthy feature = one spec
-  - Existing spec extensions are explicitly listed with their target spec
-  - Truly small direct-implementation items are listed separately instead of being forced into a spec
-  - Dependencies between specs/workstreams are explicit
-  - Consider vertical slices (end-to-end value) vs horizontal layers (one layer at a time) based on the project needs
-- Confirm the final direction
+### Workshop mode (only when Step 3 selected Workshop)
 
-## Step 7: Write Files to Disk
+Shrink of former deep dialogue — still produce the **minimal** brief template:
 
-**CRITICAL: You MUST write these files to disk BEFORE suggesting any next command. Conversation text does not survive session boundaries. If you skip this step, all discovery analysis is lost when the session ends.**
+- Sequential questions: **max 3** — Problem / Desired Outcome / Boundary candidate (one)
+- Approach comparison: **L-tier only**, max **2** approaches (no full Pros/Cons essay)
+- Viability / research sub-agent: **forbidden** (defer to requirements or design research)
+- Path D/E with unset decomposition: this is the **only** required Workshop thinking — propose dependency-ordered split, then Confirm
 
-**Spec naming convention (mandatory)**: A spec directory is named `<concept-slug>` — a short kebab-case concept (e.g. `user-edit`, `user-list`) — with an **optional** numeric prefix:
-- **User-specified number** → prefix it as `NNN-<concept-slug>`, zero-padded to at least 3 digits (e.g. issue #42 → `042-user-edit`). If that exact directory already exists, **stop and ask the user** — do not silently renumber, because a user-supplied number is meaningful.
-- **No number given** → use the bare `<concept-slug>` (e.g. `user-edit`). Do **not** invent a number.
+### Path early-stop after Capture
 
-The `<concept-slug>` is always **required** so the directory name is self-descriptive and cross-spec dependency references resolve unambiguously. Do not create the same concept both with and without a numeric prefix — if a directory for the same concept already exists (numbered or bare), reuse/reconcile it instead of duplicating. Use the exact chosen directory name consistently everywhere it appears — `brief.md`, `roadmap.md`, and every `## Upstream / Downstream` reference must cite the full directory name of the depended-on spec (not a truncated concept, not the number alone).
+| Path | After Capture |
+| ---- | ------------- |
+| **A** | Update brief or record「既存 spec X に追記」; proceed Confirm → Write as needed → Next: `/kiro-orchestrate <feature>` (要求更新) |
+| **B** | Do **not** force a spec. Optional memo under `docs/captures/` only. Recommend direct implementation |
+| **C** | Confirm → Write `brief.md` → Next: `/kiro-orchestrate <feature>` |
+| **D/E** | If decomposition unset → Workshop first. Else Confirm → Write brief(s) + `roadmap.md` → Next: `/kiro-orchestrate` (per-spec) |
 
-**For Path C (single spec)**:
+## Step 5: Confirm
 
-Write `docs/specs/<feature-name>/brief.md` to disk with this structure:
+Ask **one question**: 「この brief で requirements（`/kiro-orchestrate`）に進めてよいか」
 
-```
+Adjust only if the user corrects Path, Scope In/Out, or naming. Do not reopen Workshop unless they ask to explore/compare.
+
+## Step 6: Write
+
+**CRITICAL: You MUST write these files to disk BEFORE suggesting any next command. Conversation text does not survive session boundaries.**
+
+### Spec naming convention (mandatory)
+
+A spec directory is named `<concept-slug>` — a short kebab-case concept (e.g. `user-edit`, `user-list`) — with an **optional** numeric prefix:
+
+- **User-specified number** → prefix as `NNN-<concept-slug>`, zero-padded to at least 3 digits (e.g. issue #42 → `042-user-edit`). If that exact directory already exists, **stop and ask the user** — do not silently renumber.
+- **No number given** → use bare `<concept-slug>`. Do **not** invent a number.
+
+The `<concept-slug>` is always **required**. Do not create the same concept both with and without a numeric prefix. Cite the full directory name consistently in `brief.md`, `roadmap.md`, and `## Upstream / Downstream`.
+
+Template reference: `docs/settings/templates/specs/brief.md`.
+
+### Minimal brief requirements (all Paths that write a brief)
+
+**Required sections:**
+
+```markdown
 # Brief: <feature-name>
 
-## Problem
-[who has the problem, what pain it causes]
+## Trigger
+[動作確認・依頼・バグ報告など、きっかけを 1–3 文]
 
-## Current State
-[what exists today, what's the gap]
+## Problem
+[誰のどんな痛みか — 1–3 文]
 
 ## Desired Outcome
-[what should be true when done]
-
-## Approach
-[chosen approach and why]
+[完了時に何が真になるか — 1–3 文]
 
 ## Scope
-- **In**: [what this feature includes]
-- **Out**: [what's explicitly excluded]
+- **In**: [箇条書き。詳細でなくてよい]
+- **Out**: [箇条書き。明示的に除外]
 
-## Boundary Candidates
-- [responsibility seam 1]
-- [responsibility seam 2]
-
-## Out of Boundary
-- [explicit non-goals this spec does not own]
-
-## Upstream / Downstream
-- **Upstream**: [existing systems/specs this depends on]
-- **Downstream**: [likely consumers or follow-on specs]
-
-## Existing Spec Touchpoints
-- **Extends**: [existing spec(s) this work updates, if any]
-- **Adjacent**: [neighbor specs or modules to avoid overlapping]
-
-## Constraints
-[technology, compatibility, or other constraints]
+## Route
+- **Path**: A | B | C | D | E
+- **Rationale**: [1 文でなぜその Path か]
 ```
 
-**For Path D (multi-spec decomposition)**:
+**Optional** (write if known; otherwise leave for requirements):
 
-Write these to disk:
-- `docs/steering/roadmap.md`
-- `docs/specs/<feature>/brief.md` for every feature listed under `## Specs (dependency order)`
+```markdown
+## Approach
+[採用方針 1–2 文。複数案の比較表は書かない]
 
-Use this roadmap structure:
+## Current State
+[緑地 / 既存実装 / 関連 spec]
+
+## Upstream / Downstream
+[依存のメモ。roadmap 同期は Step 7 / E1]
+
+## Constraints
+[分かっている制約のみ]
+```
+
+**Do not write in discovery** (defer to requirements): EARS / AC, detailed Boundary Candidates lists, Pros/Cons approach tables, viability findings.
+
+**Path C:** Write `docs/specs/<feature-name>/brief.md`.
+
+**Path D:** Write `docs/steering/roadmap.md` and `docs/specs/<feature>/brief.md` for every feature under `## Specs (dependency order)`.
+
+Roadmap structure:
+
+```markdown
+# Roadmap
+
+## Overview
+[Project goal — 1–2 paragraphs]
+
+## Scope
+- **In**: […]
+- **Out**: […]
+
+## Constraints
+[…]
+
+## Specs (dependency order)
+- [ ] feature-a -- [one-line]. Dependencies: none
+- [ ] feature-b -- [one-line]. Dependencies: feature-a
+```
+
+Do **not** require Approach Decision / Rejected alternatives / Boundary Strategy sections unless Workshop produced them; keep roadmap capture-thin.
+
+**Path E:** Same as Path D, plus:
+
+```markdown
+## Existing Spec Updates
+- [ ] existing-feature-a -- [extension]. Dependencies: none
+
+## Direct Implementation Candidates
+- [ ] small-item-a -- [why direct]
+```
+
+Path E rules:
+
+- `## Specs (dependency order)` = **new specs only**
+- Existing extensions → `## Existing Spec Updates`
+- No-spec work → `## Direct Implementation Candidates`
+- Write `brief.md` only for **new** specs under Specs
+
+**Path A:** Update the existing spec's brief (or append a short Trigger/Problem note) when useful; do not create a duplicate spec directory.
+
+**Path B:** Do not create `docs/specs/<feature>/`. Optional: `docs/captures/<slug>.md` with Trigger/Problem/Outcome only.
+
+**Re-entry** (`roadmap.md` already exists): Write the next new spec's `brief.md`. Update `roadmap.md` if scope/ordering changed; preserve completed items and prior phases.
+
+After writing, verify files exist by reading them back.
+
+## Step 7 / E1: Dependency Resolution & Roadmap Sync
+
+Run this **after** Step 6 has written `brief.md` (and, for D/E, `roadmap.md`), **before** Step 8. This step only ever **adds or updates** roadmap entries.
+
+Dependency detection is **bidirectional**: an edge must be recorded whether it is declared by the dependent spec (via its `Upstream`) or by the dependency spec (via its `Downstream`), and regardless of the order the two specs were discovered in. A dependency edge is always written in the canonical direction `dependent → dependency` (i.e. "dependent has Dependencies: dependency").
+
+1. **Collect dependency edges.** Build a set of candidate edges, each oriented as `dependent → dependency`:
+   - **From this session's specs.** For each spec authored or updated in this session, read the `## Upstream / Downstream` section of its `brief.md`:
+     - each `Upstream` item yields the edge `thisSpec → upstreamItem`;
+     - each `Downstream` item yields the edge `downstreamItem → thisSpec`.
+   - **Re-scan existing specs (reverse-order catch-up).** Read the `## Upstream / Downstream` section of **every** `docs/specs/<name>/brief.md` and add the edge `<name> → upstreamItem` for each of its `Upstream` items. This is essential: a spec discovered **earlier** may have declared an upstream that did not resolve to a spec at the time, but resolves now because **this** session created that spec. Without this re-scan, discovering the dependency spec *after* its dependent (e.g. `user-edit` first, then `user-list`) would leave the edge unrecorded.
+
+2. **Resolve to spec names.** Keep only edges where **both** endpoints resolve to a **spec**:
+   - matches an existing `docs/specs/<name>/` directory, **or**
+   - is another new spec produced in this same session.
+
+   Classify every **unresolved** endpoint before discarding it — never drop silently by default:
+   - **Clearly external** (an external system, library, framework, service, or infrastructure): drop silently. These are not ordering dependencies.
+   - **Spec-like but unresolved** (reads like a feature/spec reference — e.g. a kebab-case concept, a bare number, or a partial name — yet matches no `docs/specs/<name>/` directory and no in-session spec): **do not drop silently. Surface it to the user as a warning** and hold the edge. Report each occurrence with its source, e.g. "`docs/specs/<dependent>/brief.md` の Upstream/Downstream にある『<endpoint>』は spec 依存に見えますが `docs/specs/` のどのディレクトリにも一致しません。正しい spec ディレクトリ名(例 `001-user-edit`)へ直すか、外部依存であることを明示してください。" Ask the user to correct the brief (or confirm it is external) before finalizing the roadmap. Never fabricate or fuzzy-guess a spec name to force a match.
+
+   De-duplicate resolved edges (the same edge may be declared from both directions).
+
+3. **Trigger.** If **≥ 1 edge** survives resolution:
+   1. If `docs/steering/roadmap.md` is missing, create a **minimal** roadmap using the template below.
+   2. For each resolved edge `dependent → dependency`, ensure a line for the **dependent** spec exists under `## Specs (dependency order)` with `Dependencies:` listing all its resolved dependency specs (comma-separated). If the line already exists, **merge the new dependency into its `Dependencies:` field in place** — never duplicate the line, never drop dependencies already listed.
+   3. **Back-fill direct dependency specs only** (do not recurse into transitive dependencies): for each resolved dependency spec, add a line if absent. Mark it `[x]` if `docs/specs/<dependency>/spec.json` has `approvals.tasks.generated: true` **and** `docs/specs/<dependency>/tasks.md` exists; otherwise `[ ]`.
+   4. Preserve every existing roadmap line, its `[x]`/`[ ]` status, and all other sections.
+
+4. **No dependency.** If no edge resolves to a spec-to-spec pair (external-only, or genuinely independent), do **nothing** extra — Path C stays brief-only, no roadmap created.
+
+### Minimal roadmap template (Path C-origin, first creation)
+
+Use this only when `roadmap.md` does not yet exist and a Path C/A dependency triggers creation. Heavier sections (`## Approach Decision`, `## Boundary Strategy`, etc.) are written only when Workshop produced multi-scope planning — do not fabricate them here.
 
 ```
 # Roadmap
 
 ## Overview
-[Project goal and chosen approach -- 1-2 paragraphs]
-
-## Approach Decision
-- **Chosen**: [approach name and summary]
-- **Why**: [key reasoning]
-- **Rejected alternatives**: [what was considered and why it was rejected]
-
-## Scope
-- **In**: [what the overall project includes]
-- **Out**: [what is explicitly excluded]
-
-## Constraints
-[technology, compatibility, timeline, or other project-wide constraints]
-
-## Boundary Strategy
-- **Why this split**: [why these spec boundaries improve independence]
-- **Shared seams to watch**: [cross-spec boundaries needing careful review]
+Incrementally grown from single-spec discovery. Project-level planning: TBD.
 
 ## Specs (dependency order)
-- [ ] feature-a -- [one-line description]. Dependencies: none
-- [ ] feature-b -- [one-line description]. Dependencies: feature-a
-- [ ] feature-c -- [one-line description]. Dependencies: feature-a, feature-b
+- [x] <upstream-spec> -- <one-line description>. Dependencies: none
+- [ ] <target-spec> -- <one-line description>. Dependencies: <upstream-spec>
 ```
 
-Then write `docs/specs/<feature>/brief.md` for **every** feature listed under `## Specs (dependency order)` using the Path C brief format. This enables parallel spec creation via `/kiro-spec-batch`.
+## Step 8 / E2: Next Step
 
-**For Path E (mixed decomposition)**:
+Suggest the next command and **stop**. Do NOT automatically run `/kiro-orchestrate` or spec generation.
 
-Use the same roadmap structure as Path D, plus these additional sections:
+| Path | Next command |
+| ---- | ------------ |
+| **A** | `/kiro-orchestrate <feature>`（要求更新 / 設計更新 as appropriate） |
+| **B** | Direct implementation — no spec; do not force `kiro-spec-*` |
+| **C** | Default: `/kiro-orchestrate <feature-name>` (orchestrator picks S/M/L path). Manual phase control: `/kiro-spec-requirements <feature-name>` (M/L only). Explicit fast: `/kiro-orchestrate <feature-name> quick` or `/kiro-spec-quick <feature-name> --auto` |
+| **D** | `/kiro-orchestrate` per first ready spec in roadmap order (or note multi-spec sequential). Avoid implying `/kiro-spec-batch` as the default AI-DLC entry |
+| **E** | Orchestrate new specs in dependency order; note existing-spec updates separately |
 
-```
-## Existing Spec Updates
-- [ ] existing-feature-a -- [one-line description of the extension]. Dependencies: none
-- [ ] existing-feature-b -- [one-line description of the extension]. Dependencies: feature-a
+If Step 7 / E1 created or updated `roadmap.md`, additionally note that the dependency was recorded so `/kiro-orchestrate` can enforce upstream readiness.
 
-## Direct Implementation Candidates
-- [ ] small-item-a -- [why this stays direct implementation]
-- [ ] small-item-b -- [why this stays direct implementation]
-
-## Specs (dependency order)
-- [ ] new-feature-a -- [one-line description]. Dependencies: none
-- [ ] new-feature-b -- [one-line description]. Dependencies: new-feature-a
-```
-
-Path E rules:
-- Keep `## Specs (dependency order)` reserved for **new specs only** so `/kiro-spec-batch` can still parse it unchanged
-- Record existing-spec extensions under `## Existing Spec Updates`
-- Record true no-spec work under `## Direct Implementation Candidates`
-- Write `brief.md` only for the **new specs** listed under `## Specs (dependency order)`
-
-**Re-entry (roadmap.md already exists)**:
-Write the next new spec's brief.md to disk. Update roadmap.md if scope/ordering changed, preserving completed items and prior phases.
-
-After writing, verify the files exist by reading them back.
-
-## Step 8: Suggest Next Steps
-
-Suggest the next command and stop. Do NOT automatically run downstream spec generation from this skill.
-
-- Path A: `/kiro-spec-requirements {feature}` to update the existing spec
-- Path B: Recommend direct implementation without creating a spec
-- Path C: Default to `/kiro-spec-init <feature-name>`
-  - Optional fast path: `/kiro-spec-quick <feature-name>` when the user explicitly wants to continue immediately
-- Path D: Default to `/kiro-spec-batch` (creates all specs in parallel based on roadmap.md dependency order)
-  - Optional cautious path: `/kiro-spec-init <first-feature-name>` when the user wants to validate the first slice before batching the rest
-- Path E: Choose the next command based on the new-spec portion of the decomposition
-  - If there is exactly one new spec: `/kiro-spec-init <new-feature-name>`
-  - If there are multiple new specs: `/kiro-spec-batch`
-  - Also note which existing specs should be revisited with `/kiro-spec-requirements <feature>`
-- Re-entry: `/kiro-spec-init <next-feature-name>` or `/kiro-spec-batch` if multiple specs remain
-
-If the decomposition contains only existing-spec updates plus direct implementation candidates, do NOT use Path E. Prefer Path A when one existing spec is the clear home, or recommend the existing-spec update plus direct implementation work without creating roadmap entries.
+If the decomposition is only existing-spec updates + direct implementation, do **not** use Path E — prefer Path A or Path B guidance.
 
 </instructions>
-
-## Critical Constraints
-- **Files on disk are the source of continuity**: For Path C/D/E, write brief.md and roadmap.md to disk as needed before suggesting the next command. Do NOT leave discovery results only in conversation text.
 
 ## Safety & Fallback
 
 **Roadmap Already Exists (re-entry)**:
-- Read roadmap.md to restore project context before asking questions
-- Determine next spec based on completed specs' status
-- Write brief.md for the next spec only (just-in-time)
-- Update roadmap.md if scope/ordering changed based on implementation experience
-- Append new specs as a new phase if the request expands the project, don't overwrite existing content
+
+- Read `roadmap.md` to restore project context before Capture
+- Determine next spec from completed status
+- Write `brief.md` for the next spec only (just-in-time)
+- Update `roadmap.md` if scope/ordering changed; append new phases — do not overwrite completed content
+
+**E1 / dependency sync**:
+
+- Path A/B still resolve upstreams: if a Path A extension references another spec as upstream, record it in `roadmap.md` the same way. Path B (no spec) never produces a roadmap line.
+- If `brief.md` was not written (Path A/B skipped file writes), skip Step 7 / E1 unless the request itself resolves to a spec dependency worth recording; when in doubt, prefer recording in `roadmap.md`.
+- Circular dependency detected while updating roadmap (target lists an upstream that transitively depends on the target): stop and report the cycle instead of writing it.

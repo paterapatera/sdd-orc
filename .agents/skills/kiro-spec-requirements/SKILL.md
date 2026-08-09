@@ -1,6 +1,6 @@
 ---
 name: kiro-spec-requirements
-description: Generate comprehensive requirements for a specification
+description: Initialize a spec if needed (Step 0), then generate comprehensive requirements for a specification
 metadata:
   shared-rules: "ears-format.md, requirements-review-gate.md"
 ---
@@ -10,6 +10,7 @@ metadata:
 
 <background_information>
 - **Success Criteria**:
+  - Ensure `spec.json` + stub `requirements.md` exist (Step 0 when missing)
   - Create complete requirements document aligned with steering context
   - Follow the project's EARS patterns and constraints for all acceptance criteria
   - Focus on core functionality without implementation details
@@ -20,9 +21,29 @@ metadata:
 <instructions>
 ## Execution Steps
 
+### Step 0: Initialize (if needed)
+
+Skip this step when `docs/specs/$1/spec.json` already exists.
+
+Otherwise, execute the init Step 0 logic inline:
+
+1. **Check for Brief**: If `docs/specs/$1/brief.md` exists (created by `/kiro-discovery`), read it. Use it to pre-fill the project description and skip clarification questions the brief already answers.
+2. **Clarify Intent**: The Project Description must contain three elements: (a) who has the problem, (b) current situation, (c) what should change. If `brief.md` covers these, continue. Otherwise ask the user before proceeding — do not fill gaps with assumptions. If neither `brief.md` nor `$ARGUMENTS` provides a project description, **stop and ask the user**.
+3. **Naming**: Reuse the discovery directory name `$1` exactly when it already exists. If generating a name from `$ARGUMENTS` (no directory yet): short kebab-case `<concept-slug>` with optional numeric prefix `NNN-` (user-specified only; never invent a number). On user-specified number collision, stop and ask — do not renumber.
+4. **Check Uniqueness**: If the directory already exists with only `brief.md` (no `spec.json`), use that directory.
+5. **Create Directory**: `mkdir -p docs/specs/$1` if needed.
+6. **Initialize from templates** (reuse existing paths — do not move templates):
+   - Read `docs/settings/templates/specs/init.json`
+   - Read `docs/settings/templates/specs/requirements-init.md`
+   - Replace placeholders: `{{FEATURE_NAME}}`, `{{TIMESTAMP}}` (ISO 8601), `{{PROJECT_DESCRIPTION}}` (from brief or `$ARGUMENTS`), language (`ja` / detect from input, default `en`)
+   - Write `spec.json` and stub `requirements.md` (requirements-init template only)
+7. **Do NOT** generate full EARS requirements in this step. Do **NOT** set `approvals.requirements.generated: true`.
+
+Then continue to Step 1 (Load Context).
+
 1. **Load Context**:
    - Read `docs/specs/$1/spec.json` for language and metadata
-   - Read `docs/specs/$1/brief.md` if it exists (discovery context: problem, approach, scope decisions, boundary candidates)
+   - Read `docs/specs/$1/brief.md` if it exists (discovery capture: Trigger, Problem, Desired Outcome, Scope, Route; optional Approach / Current State / deps / Constraints)
    - Read `docs/specs/$1/requirements.md` for project description
    - Core steering context: `product.md`, `tech.md`, `structure.md`
    - Additional steering files only when directly relevant to feature scope, user personas, business/domain rules, compliance/security constraints, operational constraints, or existing product boundaries
@@ -57,7 +78,7 @@ After all research completes, synthesize findings in main context before generat
    - Apply EARS format to all acceptance criteria
    - Use language specified in spec.json
    - Preserve terminology continuity across phases:
-     - discovery = `Boundary Candidates`
+     - discovery = Scope In/Out (+ optional Approach; no EARS)
      - requirements = explicit inclusion/exclusion and adjacent expectations when needed
      - design = `Boundary Commitments`
      - tasks = `_Boundary:_`
@@ -76,6 +97,15 @@ After all research completes, synthesize findings in main context before generat
    - Set `phase: "requirements-generated"`
    - Set `approvals.requirements.generated: true`
    - Update `updated_at` timestamp
+
+## Discovery handoff
+
+`brief.md` is a **capture artifact**, not a requirements substitute.
+
+- If brief lacks detail, expand in requirements — do not send the user back to discovery unless Path or Scope In/Out is fundamentally wrong.
+- Brownfield codebase research: run here (sub-agent), not in discovery.
+- EARS / AC authoring happens only in this skill (after Step 0).
+- Do not expect discovery briefs to contain Boundary Candidates tables, approach Pros/Cons, or viability notes — those were deferred by design.
 
 ## Important Constraints
 
@@ -102,13 +132,14 @@ Requirements describe user-observable behavior, not implementation. Use this to 
 - Each requirement must be testable and unambiguous. If the project description leaves room for multiple interpretations on scope, behavior, or boundary conditions, ask the user to clarify before generating that requirement. Ask as many questions as needed; do not generate requirements that contain your own assumptions.
 - Choose appropriate subject for EARS statements (system/service name for software)
 - Requirement headings in requirements.md MUST include a leading numeric ID only (for example: "Requirement 1", "1.", "2 Feature ..."); do not use alphabetic IDs like "Requirement A".
+- Step 0 must not generate EARS requirement bodies — only `spec.json` + stub `requirements.md` from `requirements-init.md`.
 </instructions>
 
 ## Output Description
 Provide output in the language specified in spec.json with:
 
 1. **Generated Requirements Summary**: Brief overview of major requirement areas (3-5 bullets)
-2. **Document Status**: Confirm requirements.md updated and spec.json metadata updated
+2. **Document Status**: Confirm requirements.md updated and spec.json metadata updated (note if Step 0 initialized the spec)
 3. **Review Gate**: Confirm the requirements review gate passed
 4. **Next Steps**: Guide user on how to proceed (approve and continue, or modify)
 
@@ -120,22 +151,25 @@ Provide output in the language specified in spec.json with:
 ## Safety & Fallback
 
 ### Error Scenarios
-- **Missing Project Description**: If requirements.md lacks project description, ask user for feature details
-- **Template Missing**: If template files don't exist, use inline fallback structure with warning
+- **Missing Project Description**: If neither `brief.md` nor `$ARGUMENTS` provides project description and `spec.json` is missing → stop and ask the user (same as Step 0). If stub `requirements.md` lacks project description after Step 0, ask user for feature details.
+- **Step 0 must not** set `approvals.requirements.generated: true`.
+- **Template Missing**: If template files don't exist, use inline fallback structure with warning; for Step 0 init templates missing, report error with specific path
 - **Language Undefined**: Default to English (`en`) if spec.json doesn't specify language
 - **Incomplete Requirements**: After generation, explicitly ask user if requirements cover all expected functionality
 - **Steering Directory Empty**: Warn user that project context is missing and may affect requirement quality
 - **Non-numeric Requirement Headings**: If existing headings do not include a leading numeric ID (for example, they use "Requirement A"), normalize them to numeric IDs and keep that mapping consistent (never mix numeric and alphabetic labels).
 - **Scope Ambiguity Found During Requirements Review**: Stop execution, do not write a guessed `requirements.md`, and ask the user to clarify the missing or conflicting scope before re-running `/kiro-spec-requirements $1`
+- **Ambiguous Feature Name (Step 0)**: If feature name generation is unclear, propose 2-3 options and ask user to select
+- **Directory Conflict (Step 0)**: User-specified `NNN-<concept-slug>` collision → stop and ask; bare slug collision → reuse when same work, else choose a more specific slug
 
 ### Next Phase: Design Generation
 
 **If Requirements Approved**:
 - Review generated requirements at `docs/specs/$1/requirements.md`
 - **Optional Gap Analysis** (for existing codebases):
-  - Run `/kiro-validate-gap $1` to analyze implementation gap with current code
+  - Gap analysis runs automatically inside `/kiro-spec-design` on brownfield
   - Identifies existing components, integration points, and implementation strategy
-  - Recommended for brownfield projects; skip for greenfield
+  - Greenfield: skipped — do not dispatch a standalone gap step
 - Then `/kiro-spec-design $1 -y` to proceed to design phase
 
 **If Modifications Needed**:

@@ -8,33 +8,31 @@ Goal: after this gate passes, the human approval gate should require only readin
 
 ## In Scope
 
-- **Reflection verification** of `requirements-po.md`, `requirements-qa.md`, `requirements-sec.md` against final `requirements.md`
+- **Reflection verification** of Pass A specialist working notes (PO / QA / Sec) against final `requirements.md`
 - **Gap-domain audit** — all requirements-quality angles outside the po/qa/sec scopes (see § Gap Domains)
 - Brief → requirements traceability matrix (when `brief.md` exists)
 - Self-repair of `requirements.md` for Minor and unambiguous Major findings
 - Recording all decisions, self-repairs, and accepted residual risks in `## Decisions`
-- Writing `reviews/requirements-final.md` per shared contract, with the approval-gate summary
+- Contributing to unified `reviews/requirements-review.md` (Pass B sections: Gap-Domain Audit, 承認ゲートサマリ, Phase Gate)
 
 ## Out of Scope
 
-- Re-running the PO semantic/scope review (`/kiro-validate-requirements`)
-- Re-running the QA testability review (`/kiro-validate-requirements-qa`)
-- Re-running the security review (`/kiro-validate-requirements-sec`)
+- Re-running the PO semantic/scope review (Pass A PO)
+- Re-running the QA testability review (Pass A QA)
+- Re-running the security review (Pass A Sec)
 - EARS mechanical syntax checks (`requirements-review-gate` in `/kiro-spec-requirements`)
 - Design-level audit (architecture, technology) — this gate judges requirements readiness only
 
 ## Preconditions (hard stop if unmet)
 
-1. `reviews/requirements-po.md` exists with `VERDICT: GO`
-2. `reviews/requirements-qa.md` exists with `VERDICT: GO`
-3. `reviews/requirements-sec.md` exists with `VERDICT: GO`
-4. `requirements.md` exists and reflects post-sec state
+1. Pass A PO / QA / Sec completed in this invocation
+2. `requirements.md` exists and reflects post-sec state
 
 ## Step 1 — Reflection Verification
 
-1. From each specialist report, extract: the `## Reflected Fixes` table, open items, deferred risks, and `## Decisions`.
-2. **Verify every `## Reflected Fixes` row mechanically**: for each row (finding → requirements.md section → summary), open the named section of the final `requirements.md` and confirm the fix content exists. A claimed-but-missing fix is a **Critical** finding. A report that edited `requirements.md` but has no `## Reflected Fixes` table (or only free-text fix claims) is itself a **Critical** finding — treat its fixes as unverified.
-3. **Verify later edits did not invalidate earlier verdicts**: qa and sec edit `requirements.md` after PO's GO. Confirm their edits do not contradict a PO `## Decisions` entry, and sec's edits do not undo a qa fix. A contradiction is **Critical**.
+1. From each specialist pass (working notes), extract: the `## Reflected Fixes` table, open items, deferred risks, and `## Decisions`.
+2. **Verify every `## Reflected Fixes` row mechanically**: for each row (finding → requirements.md section → summary), open the named section of the final `requirements.md` and confirm the fix content exists. A claimed-but-missing fix is a **Critical** finding. A pass that edited `requirements.md` but has no `## Reflected Fixes` table (or only free-text fix claims) is itself a **Critical** finding — treat its fixes as unverified.
+3. **Verify later edits did not invalidate earlier verdicts**: QA and Sec edit `requirements.md` after PO. Confirm their edits do not contradict a PO `## Decisions` entry, and Sec's edits do not undo a QA fix. A contradiction is **Critical**.
 4. **Cross-check the three `## Decisions` sections** for contradictions with each other and with the final `requirements.md`. A contradiction is **Critical**.
 5. Carry every deferred risk forward: each must appear in this gate's `## Decisions` as an explicitly accepted residual risk, or be resolved by self-repair.
 
@@ -70,16 +68,16 @@ Fix findings in `requirements.md` directly rather than deferring them to the hum
 
 ## Step 5 — Report
 
-Write `reviews/requirements-final.md` with the shared-contract fields (Verdict, Summary, Findings, Decisions, Reflected Fixes, Evidence) plus a mandatory approval-gate section:
+Contribute Pass B sections to unified `reviews/requirements-review.md` (not a separate `requirements-final.md`): Gap-Domain Audit, 承認ゲートサマリ, Evidence (including brief→requirements matrix), and Phase Gate. Shared-contract fields (Verdict, Summary, Findings, Decisions, Reflected Fixes) are written once for the whole unified skill.
 
 ```markdown
 ## 承認ゲートサマリ
 ### 検証済み観点
 （反映検証 + ギャップドメイン 1–8 の各結果を1行ずつ。N/A は理由付き）
 ### 自己修復した事項
-（ex が requirements.md に加えた修正の一覧。なければ「なし」）
+（Pass B が requirements.md に加えた修正の一覧。なければ「なし」）
 ### 受容が必要な残リスク
-（人間が受容判断すべきリスクのみ。各項目に根拠と却下時の影響。po/qa/sec の deferred リスクを含む）
+（人間が受容判断すべきリスクのみ。各項目に根拠と却下時の影響。PO/QA/Sec の deferred リスクを含む）
 ### 人間判断が必要な未決事項
 （理想は 0 件。0 件ならその旨を明記）
 ```
@@ -88,8 +86,8 @@ Evidence must include the brief→requirements traceability matrix (or its `N/A`
 
 ## GO Criteria
 
-- All three specialist reports `VERDICT: GO` and every claimed fix verified present in `requirements.md`
-- No unresolved cross-report contradiction; later edits did not invalidate earlier verdicts
+- All three specialist passes completed successfully and every claimed fix verified present in `requirements.md`
+- No unresolved cross-pass contradiction; later edits did not invalidate earlier decisions
 - All 8 gap domains checked (pass, N/A with reason, or repaired)
 - Traceability matrix has no uncovered brief scope decision
 - All self-repairs applied, recorded, and re-checked for consistency
@@ -97,9 +95,9 @@ Evidence must include the brief→requirements traceability matrix (or its `N/A`
 
 ## NO-GO Triggers
 
-- Any specialist report missing or not `GO`
+- Any specialist pass incomplete or failing
 - Claimed specialist fix absent from `requirements.md`
-- Finding requires specialist re-analysis → name rollback: `validate-requirements`, `validate-requirements-qa`, or `validate-requirements-sec`
+- Finding requires specialist re-analysis → name rollback: `po`, `qa`, or `sec` (or `/kiro-validate-requirements --only …`)
 - Fix needs a new scope/behavior decision → name `/kiro-spec-requirements` as rollback target
 - `requirements.md` contradicts adopted specialist decisions
 - Cannot decide safely without user input → `MANUAL_VERIFY_REQUIRED`

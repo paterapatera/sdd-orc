@@ -16,8 +16,9 @@ This skill verifies **artifact readiness** only: files exist, `VERDICT: GO` on r
 <instructions>
 ## When to Use
 
-- After all mechanical validates for a phase report `GO`, **before** the human approval gate
-- When `/kiro-orchestrate` reaches `[GATE] 要求` / `[GATE] 設計` / `[GATE] タスク`
+- After all mechanical validates for a phase report `GO`, **before** the human approval gate（要求 / 設計）or **before** Terminal auto-approve（タスク）
+- When `/kiro-orchestrate` reaches the tasks terminal step (`/kiro-verify-phase-gate <feature> tasks` → then auto-approve)
+- **Requirements / design:** normally embedded in `/kiro-validate-requirements` / `/kiro-validate-design-qa` (`*-review.md` ## Phase Gate). Use this skill standalone for those phases only for debug / re-check
 - **Do not** use for: per-task impl loop (`TASK`), Path B end (`FIX` / `TEST_OR_BUILD`), or post-impl feature completion (`FEATURE_GO`)
 
 ## Inputs
@@ -31,6 +32,7 @@ This skill verifies **artifact readiness** only: files exist, `VERDICT: GO` on r
 1. Read `../kiro-validate-shared/phase-gate.md` (checklist for the phase).
 2. Read listed artifacts from disk (**fresh** — do not trust conversation memory).
 3. Run the phase checklist; record pass/fail per item in Evidence.
+   - **要求 / 設計:** Require unified `reviews/*-review.md` (`VERDICT: GO` + Phase Gate `STATUS: VERIFIED`). Absence of the unified file → `NOT_VERIFIED` (re-run the unified validate skill).
 4. Return result per Output Format below.
 
 ## Output

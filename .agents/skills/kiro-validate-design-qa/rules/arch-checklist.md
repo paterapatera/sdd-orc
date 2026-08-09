@@ -20,7 +20,7 @@ Severity vocabulary, `## Reflected Fixes`, and per-check evidence discipline: sh
 ## Out of Scope
 
 - Edge-case checklist (`/kiro-validate-design-qa`)
-- Security threat modeling (`/kiro-validate-design-sec`)
+- Security threat modeling (`/kiro-validate-design-qa --only sec`)
 - User dialogue
 
 ## Anti-Pattern Scan

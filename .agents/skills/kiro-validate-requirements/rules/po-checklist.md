@@ -17,9 +17,9 @@ Post-generation semantic review and autonomous brush-up of `requirements.md`. Pr
 ## Out of Scope
 
 - EARS mechanical syntax checks (`requirements-review-gate` in `/kiro-spec-requirements`)
-- Testability deep-dive: abnormal-flow AC coverage, boundary values, NFR measurability (`/kiro-validate-requirements-qa`)
-- Security deep-dive (`/kiro-validate-requirements-sec`)
-- Gap-domain audit: brief traceability matrix, cross-spec consistency, template conformance (`/kiro-validate-requirements-ex`)
+- Testability deep-dive: abnormal-flow AC coverage, boundary values, NFR measurability (Pass A QA / `qa-requirements-checklist.md`)
+- Security deep-dive (`/kiro-validate-requirements --only sec`)
+- Gap-domain audit: brief traceability matrix, cross-spec consistency, template conformance (`/kiro-validate-requirements --only final`)
 - Supplement / documentation creation (post-implementation `/kiro-docs`)
 - User dialogue
 

@@ -1,8 +1,8 @@
 ---
 name: kiro-spec-design
-description: Create comprehensive technical design for a specification
+description: Create comprehensive technical design for a specification. Runs inline brownfield gap analysis before discovery.
 metadata:
-  shared-rules: "design-principles.md, design-discovery-full.md, design-discovery-light.md, design-synthesis.md, design-review-gate.md"
+  shared-rules: "design-principles.md, design-discovery-full.md, design-discovery-light.md, design-discovery-minimal.md, design-synthesis.md, design-review-gate.md, gap-analysis.md"
 ---
 
 
@@ -12,7 +12,8 @@ metadata:
 - **Success Criteria**:
   - All requirements mapped to technical components with clear interfaces
   - The design makes responsibility boundaries explicit enough to guide task generation and review
-  - Appropriate architecture discovery and research completed
+  - Brownfield gap analysis (`research.md`) completed when needed — skipped on greenfield
+  - Appropriate architecture discovery and research completed without duplicating gap codebase survey
   - Design aligns with steering context and existing patterns
   - Visual diagrams included for complex architectures
 </background_information>
@@ -24,12 +25,13 @@ metadata:
 
 **Read all necessary context**:
 - `docs/specs/$1/spec.json`, `requirements.md`, `design.md` (if exists)
-- `docs/specs/$1/research.md` (if exists, contains gap analysis from `/kiro-validate-gap`)
+- `docs/specs/$1/brief.md` (if exists — Current State / brownfield signals)
+- `docs/specs/$1/research.md` (if exists — prior gap analysis or discovery log)
 - Core steering context: `product.md`, `tech.md`, `structure.md`
 - Additional steering files only when directly relevant to requirement coverage, architecture boundaries, integrations, runtime prerequisites, security/performance constraints, or team conventions that affect implementation readiness
 - `docs/settings/templates/specs/design.md` for document structure
 - Read `rules/design-principles.md` from this skill's directory for design principles
-- `docs/settings/templates/specs/research.md` for discovery log structure
+- `docs/settings/templates/specs/research.md` for discovery / gap log structure
 
 **Validate requirements approval**:
 - If `-y` flag provided ($2 == "-y"): Auto-approve requirements in spec.json
@@ -39,53 +41,114 @@ metadata:
 
 **Critical: This phase ensures design is based on complete, accurate information.**
 
-1. **Classify Feature Type**:
-   - **New Feature** (greenfield) → Full discovery required
-   - **Extension** (existing system) → Integration-focused discovery
-   - **Simple Addition** (CRUD/UI) → Minimal or no discovery
-   - **Complex Integration** → Comprehensive analysis required
+#### Step 2.0: Gap Analysis (brownfield only)
 
-2. **Execute Appropriate Discovery Process**:
-   
-   **For Complex/New Features**:
-   - Read and execute `rules/design-discovery-full.md` from this skill's directory
-   - Conduct thorough research using WebSearch/WebFetch:
-     - Latest architectural patterns and best practices
-     - External dependency verification (APIs, libraries, versions, compatibility)
-     - Official documentation, migration guides, known issues
-     - Performance benchmarks and security considerations
-   
-   **For Extensions**:
-   - Read and execute `rules/design-discovery-light.md` from this skill's directory
-   - Focus on integration points, existing patterns, compatibility
-   - Use Grep to analyze existing codebase patterns
-   
-   **For Simple Additions**:
-   - Skip formal discovery, quick pattern check only
+Read `../kiro-orchestrate/rules/greenfield.md` before any gap or codebase sub-agent dispatch.
+
+Determine **greenfield** per that rule. If ambiguous → treat as **not greenfield** (safer to run gap).
+
+Otherwise determine **brownfield** when **any** of:
+
+- `brief.md` Current State indicates existing implementation / extension, or
+- `requirements.md` describes extending an existing system, or
+- Lightweight Grep finds feature-related code in the codebase
+
+If **greenfield**:
+
+- **Skip gap analysis entirely.** Do **not** spawn gap-analysis / codebase survey sub-agents.
+- Do **not** write `research.md` solely for gap analysis. (Optional later: external API research log only if full discovery needs it.)
+- When writing `design.md` (Step 6), include this one line in Overview:
+  `_Gap analysis: skipped (greenfield per brief Current State)._`
+- Proceed to Step 2.1 Classify Feature Type.
+
+If **brownfield**:
+
+- Read `rules/gap-analysis.md` from this skill's directory.
+- Execute the gap analysis framework (may use sub-agents per gap-analysis rules — codebase analysis, external deps when needed).
+- Write `docs/specs/$1/research.md` following `docs/settings/templates/specs/research.md` (append with `---` if the file already exists).
+- Then proceed to Step 2.1; treat `research.md` as discovery input.
+
+#### Step 2.1: Classify Feature Type (2 axes)
+
+**Do not** treat greenfield as Full discovery by default. Classify on two axes, then select discovery from the mapping table.
+
+**Axis A — Codebase** (from Step 2.0 / brief Current State):
+
+| Label | When |
+| ----- | ---- |
+| **greenfield** | No existing implementation; Step 2.0 skipped |
+| **brownfield** | Extending existing system; Step 2.0 ran |
+| **extension** | Existing *spec* / feature extension (update flow or brief says extend an approved spec) |
+
+**Axis B — Scope scale** (from brief; `spec.json` `complexity_tier` overrides when present):
+
+| Scale | Brief heuristic |
+| ----- | --------------- |
+| **simple** | Scope In bullets ≤ 5 **and** primary external APIs/tools ≤ 3 **and** brief cites a reference implementation **or** fixed stack |
+| **standard** | Scope In 6–10 **or** tools/APIs 4–8 |
+| **complex** | Scope In > 10 **or** tools/APIs > 8 **or** multi-service |
+
+`complexity_tier` priority (never downgrade L to simple): **S → simple**, **M → standard**, **L → complex**.
+
+1. **Map classification → discovery process**:
+
+| Codebase | Scale | Discovery |
+| -------- | ----- | --------- |
+| greenfield | simple | **Minimal** — `rules/design-discovery-minimal.md` |
+| greenfield | standard | **Light** — `rules/design-discovery-light.md` |
+| greenfield | complex | **Full** — `rules/design-discovery-full.md` |
+| brownfield | simple | Gap (2.0) + **Light** |
+| brownfield | standard | Gap + **Light** |
+| brownfield | complex | Gap + **Full** |
+| extension | any | Gap + **Integration-focused** (light) |
+
+**Deleted mapping**: `New Feature (greenfield) → Full discovery required`.
+
+Hard rules:
+- Do **not** drop security requirements (PAT, origin checks, etc.) from design because scale is simple
+- Do **not** reclassify `complexity_tier: L` as simple
+- When brownfield/`research.md` exists: **Do NOT** repeat the same codebase survey in full discovery — reference `research.md`
+
+2. **Execute the selected discovery process**:
+
+   **Minimal** (greenfield + simple):
+   - Read and execute `rules/design-discovery-minimal.md`
+   - No WebSearch; no full sub-agent; optional ≤1 Grep on a cited reference path
+
+   **Light** (greenfield standard; brownfield simple/standard; extension):
+   - Read and execute `rules/design-discovery-light.md`
+   - Prefer `research.md` gap findings for integration points; light Grep only for gaps not already documented
+
+   **Full** (greenfield complex; brownfield complex):
+   - Read and execute `rules/design-discovery-full.md`
+   - When `research.md` exists from Step 2.0: reuse it (see discovery-full reuse rule)
+   - Conduct thorough research using WebSearch/WebFetch for gaps **not** covered in research.md
 
 #### Parallel Research (sub-agent dispatch)
 
 The following research areas are independent and can be dispatched as **sub-agents**. The agent should decide the optimal decomposition based on feature complexity — split, merge, add, or skip sub-agents as needed. Each sub-agent returns a **findings summary** (not raw data) to keep the main context clean for synthesis.
 
 **Typical research areas** (adjust as appropriate):
-- **Codebase analysis**: Existing architecture patterns, integration points, code conventions
-- **External research**: Dependencies, APIs, latest best practices
+- **Codebase analysis**: Skip if Step 2.0 already produced `research.md` covering the same questions; otherwise existing architecture patterns, integration points, code conventions
+- **External research**: Dependencies, APIs, latest best practices (only topics not already in research.md)
 - **Context loading** (usually main context): Steering files, design principles, discovery rules, templates
 
-For simple additions, skip sub-agent dispatch entirely and do a quick pattern check in main context.
+For **Minimal** discovery (and greenfield with gap skipped at simple scale), skip sub-agent dispatch entirely — pattern check in main context only.
 
 After all findings return, synthesize in main context before proceeding.
 
 3. **Retain Discovery Findings for Step 3**:
    - External API contracts and constraints
    - Technology decisions with rationale
-   - Existing patterns to follow or extend
+   - Existing patterns to follow or extend (from gap / research.md when present)
    - Integration points and dependencies
    - Identified risks and mitigation strategies
    - Boundary candidates, out-of-boundary decisions, and likely revalidation triggers
 
 4. **Persist Findings to Research Log**:
    - Create or update `docs/specs/$1/research.md` using the shared template
+   - **Greenfield**: only write/update `research.md` if discovery produced material external research worth logging; do not invent a gap analysis section
+   - **Brownfield**: research.md already has gap analysis from Step 2.0 — append discovery/synthesis topics without wiping gap findings
    - Summarize discovery scope and key findings (Summary section)
    - Record investigations in Research Log topics with sources and implications
    - Document architecture pattern evaluation, design decisions, and risks using the template sections
@@ -97,7 +160,13 @@ After all findings return, synthesize in main context before proceeding.
 
 - Read and apply `rules/design-synthesis.md` from this skill's directory
 - This step requires the full picture from discovery — do not parallelize or delegate to sub-agents
-- Record synthesis outcomes (generalizations found, build-vs-adopt decisions, simplifications) in `research.md`
+- Record synthesis outcomes (generalizations found, build-vs-adopt decisions, simplifications) in `research.md` when a research log exists or is warranted
+
+**Size guards when scope scale is simple**:
+- Omit "Extension scenarios" table unless requirements mention future extension
+- File structure plan: list top-level + `src/` only (no per-file comments)
+- One mermaid diagram maximum
+- Target `design.md` length guidance: ≤ 150 lines (security/auth requirements must still be present)
 
 ### Step 4: Generate Design Draft
 
@@ -108,7 +177,7 @@ After all findings return, synthesize in main context before proceeding.
 2. **Generate Design Draft**:
    - **Follow specs/design.md template structure and generation instructions strictly**
    - **Boundary-first requirement**: Before expanding supporting sections, make the boundary explicit. The draft must clearly define what this spec owns, what it does not own, which dependencies are allowed, and what changes would require downstream revalidation.
-   - **Integrate all discovery findings and synthesis outcomes**: Use researched information (APIs, patterns, technologies) and synthesis decisions (generalizations, build-vs-adopt, simplifications) throughout component definitions, architecture decisions, and integration points
+   - **Integrate all discovery findings and synthesis outcomes**: Use researched information (APIs, patterns, technologies) and synthesis decisions (generalizations, build-vs-adopt, simplifications) throughout component definitions, architecture decisions, and integration points — including Step 2.0 gap findings when present
    - **File Structure Plan** (required): Populate the File Structure Plan section with concrete file paths and responsibilities. Analyze the codebase to determine which files need to be created vs. modified. Each file must have one clear responsibility. This section directly drives task `_Boundary:_` annotations and implementation Task Briefs — vague file structures produce vague implementations.
    - **Testing Strategy**: Derive test items from requirements' acceptance criteria, not generic patterns. Each test item should reference specific components and behaviors from this design. E2E paths must map to the critical user flows identified in requirements. Avoid vague entries like "test login works" -- instead specify what is being verified and why it matters.
    - **Observability & Operational Readiness** (required): Populate logging (with explicit PII/secret masking rules), metrics, alerts, debuggability, and the performance/deployment-rollback/migration subsections. Use explicit `N/A — <reason>` instead of omitting items. These sections are reviewed by the security validate and verified (not generated) by the AI-DLC final design gate — leaving them out forces validate-phase rollbacks.
@@ -129,8 +198,9 @@ After all findings return, synthesize in main context before proceeding.
 
 1. **Write Final Design and Research Log**:
    - Write `docs/specs/$1/design.md` only after the design review gate passes
-   - Write research.md with discovery findings and synthesis outcomes (if not already written)
-   - Persist any `research.md` updates that support the finalized design
+   - On greenfield (Step 2.0 skipped): ensure Overview includes `_Gap analysis: skipped (greenfield per brief Current State)._` and do **not** create gap-only `research.md`
+   - Persist any `research.md` updates that support the finalized design (brownfield gap + discovery; greenfield only if a research log was created)
+   - Do not create empty gap-only `research.md` on greenfield
 
 2. **Update Metadata** in spec.json:
    - Set `phase: "design-generated"`
@@ -146,6 +216,8 @@ After all findings return, synthesize in main context before proceeding.
    - For dynamically typed languages, provide type hints/annotations where available (e.g., Python type hints) and validate inputs at boundaries.
    - Document public interfaces and contracts clearly to ensure cross-component type safety.
 - **Requirements Traceability IDs**: Use numeric requirement IDs only (e.g. "1.1", "1.2", "3.1", "3.3") exactly as defined in requirements.md. Do not invent new IDs or use alphabetic labels.
+- **Greenfield**: never run gap-analysis sub-agents; never invent gap `research.md` content.
+- **Brownfield**: gap runs once in Step 2.0; discovery must reuse `research.md` instead of duplicating codebase survey.
 </instructions>
 
 ## Output Description
@@ -155,11 +227,12 @@ After all findings return, synthesize in main context before proceeding.
 Provide brief summary in the language specified in spec.json:
 
 1. **Status**: Confirm design document generated at `docs/specs/$1/design.md`
-2. **Discovery Type**: Which discovery process was executed (full/light/minimal)
-3. **Key Findings**: 2-3 critical insights from `research.md` that shaped the design
-4. **Review Gate**: Confirm the design review gate passed
-5. **Next Action**: Approval workflow guidance (see Safety & Fallback)
-6. **Research Log**: Confirm `research.md` updated with latest decisions
+2. **Gap Analysis**: brownfield completed / greenfield skipped
+3. **Discovery Type**: Which discovery process was executed (full/light/minimal)
+4. **Key Findings**: 2-3 critical insights from `research.md` (if any) that shaped the design
+5. **Review Gate**: Confirm the design review gate passed
+6. **Next Action**: Approval workflow guidance (see Safety & Fallback)
+7. **Research Log**: Confirm `research.md` updated, or note that none was needed (greenfield)
 
 **Format**: Concise Markdown (under 200 words) - this is the command output, NOT the design document itself
 

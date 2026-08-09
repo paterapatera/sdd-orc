@@ -2,17 +2,38 @@
 
 ## Entry Contract (discovery runs standalone)
 
-`/kiro-discovery` / `/kiro-discovery-ex` is **not** an orchestration step. `/kiro-discovery-ex` is run **standalone before** orchestration and has already produced `brief.md` (new specs), `roadmap.md` (when dependencies exist), and — for existing specs — `spec.json`. Orchestration is invoked with a target `<feature>` (+ optional explicit flow) and selects the active flow without a discovery Path signal:
+`/kiro-discovery` is **not** an orchestration step. It is run **standalone before** orchestration and has already produced `brief.md` (new specs), `roadmap.md` (when dependencies exist), and — for existing specs — `spec.json`. Orchestration is invoked with a target `<feature>` (+ optional explicit flow) and selects the active flow without a discovery Path signal:
 
 1. **User-specified flow wins** — e.g.「要求だけ更新」「設計だけ」「実装だけ」.
 2. **Else derive from `spec.json`** via § Spec State Hints:
-   - `brief.md` exists, no `spec.json` → **要求新規作成** (start at `/kiro-spec-init`)
+   - `brief.md` exists, no `spec.json` → **要求新規作成** (start at `/kiro-spec-requirements`)
    - `requirements` not approved → resume requirements / **要求更新**
    - `requirements` approved, `design` not → **設計更新**
    - `tasks` approved → **実装のみ** (explicit request only)
-3. **Neither `brief.md` nor `spec.json` exists** for the target → **stop**; instruct the user to run `/kiro-discovery-ex` first. Do **not** auto-run discovery.
+3. **Neither `brief.md` nor `spec.json` exists** for the target → **stop**; instruct the user to run `/kiro-discovery` first. Do **not** auto-run discovery.
 
-Path B (no spec) is decided by discovery-ex **before** orchestration and never enters an orchestration flow (see `flows.md` § Path B).
+Path B (no spec) is decided by discovery **before** orchestration and never enters an orchestration flow (see `flows.md` § Path B).
+
+## Complexity Tier (orchestrator inline)
+
+After resolving the active flow, before the first skill dispatch:
+
+1. Read `rules/complexity-tier.md`
+2. Compute tier from `brief.md` (+ roadmap if present)
+3. Write `complexity_tier` / `complexity_score` / `complexity_rationale` to `spec.json`
+4. Map tier → orchestration path (`flows.md` § Orchestration Paths by Tier), then load the matching flow variant (S / M / L suffix)
+
+| Tier | Path | Flow section |
+| ---- | ---- | ------------ |
+| S | **quick-path** | `要求新規作成 (S)` → `/kiro-spec-quick --auto --from-orchestrate` |
+| M | **standard-path** | `要求新規作成 (M)` → unified validates + 2 human gates（要求・設計）; タスクは自動 |
+| L | **full-path** | `要求新規作成 (L)` → full pipeline + 2 human gates（要求・設計）; タスクは自動 |
+
+User override: explicit「フル」「lite」「quick」でティア／経路を上書き可。
+- 「quick」「lite」→ force S / **quick-path** (regardless of score)
+- 「フル」「full」→ force L / **full-path**
+
+**Do not** change `実装のみ` by tier. Existing specs without `complexity_tier` → treat as **L**. Path D/E → force **L** (never S / never quick-path).
 
 ## Determine Active Flow
 
@@ -24,7 +45,7 @@ Combine **`spec.json` state** (§ Spec State Hints) and **user override** to pic
 | Existing spec, requirements change | 要求更新 |
 | Requirements approved, design-only change | 設計更新 |
 | No spec change, implementation only | 実装のみ |
-| Path B (no spec, decided by discovery-ex) | 直接実装 (outside orchestration) |
+| Path B (no spec, decided by discovery) | 直接実装 (outside orchestration) |
 
 **User override wins** — e.g.「要求だけ更新」「実装だけ」.
 
@@ -53,7 +74,7 @@ Read `docs/specs/<feature>/spec.json` + `tasks.md`:
 
 | Flow | Timing |
 | ---- | ------ |
-| 要求新規作成 | At flow entry (target feature already identified from the invocation / `brief.md`), before `/kiro-spec-init` or `/kiro-spec-requirements` |
+| 要求新規作成 | At flow entry (target feature already identified from the invocation / `brief.md`), before first generation dispatch (`/kiro-spec-quick` on S, `/kiro-spec-requirements` on M/L) |
 | 要求更新 / 設計更新 | After Modification Guard passes, before any generation or validate dispatch |
 | Path D/E Multi-Spec | Before starting each spec's applicable flow (in roadmap dependency order) |
 
@@ -87,7 +108,7 @@ This matches `/kiro-verify-phase-gate <dep> tasks` generation criteria and align
 
 ### On block
 
-**Stop.** Do not dispatch `/kiro-spec-requirements`, `/kiro-spec-design`, `/kiro-spec-tasks`, or phase validates for the downstream feature.
+**Stop.** Do not dispatch `/kiro-spec-quick`, `/kiro-spec-requirements`, `/kiro-spec-design`, `/kiro-spec-tasks`, or phase validates for the downstream feature.
 
 Report to the user:
 
@@ -99,7 +120,7 @@ Report to the user:
 
 ## Path → Flow
 
-Reference mapping from the Path that `/kiro-discovery-ex` determined **standalone** to the flow orchestration should be invoked with (Path itself is not re-derived inside orchestration — use § Entry Contract):
+Reference mapping from the Path that `/kiro-discovery` determined **standalone** to the flow orchestration should be invoked with (Path itself is not re-derived inside orchestration — use § Entry Contract):
 
 | Path | Route |
 | ---- | ----- |
@@ -122,8 +143,8 @@ Read `docs/specs/<feature>/spec.json` metadata only when routing:
 ## Execution Control
 
 - Steps run **serial** by default.
-- Design specialist validates: **qa → arch → sec** only (no parallel — `design.md` write conflict).
-- All three `VERDICT: GO` before `/kiro-validate-design-ex`.
+- Design validate: single `/kiro-validate-design-qa` (Pass A qa→arch→sec serial inside one skill — no parallel `design.md` writes).
+- All Pass A GO before Pass B final + inline phase-gate.
 - Mid-flow user pivot → re-route; resume from required step.
 - Status check → `/kiro-spec-status <feature>`.
 
@@ -132,6 +153,6 @@ Read `docs/specs/<feature>/spec.json` metadata only when routing:
 | | Path B 直接実装 | 実装のみ |
 | - | --------------- | -------- |
 | spec | none | existing |
-| prerequisite | discovery-ex Path B (standalone; never enters orchestration) | `approvals.tasks.approved: true` |
+| prerequisite | discovery Path B (standalone; never enters orchestration) | `approvals.tasks.approved: true` |
 | implement | main context direct | `/kiro-impl` |
 | verify | `/kiro-verify-completion` | `/kiro-impl` review + `/kiro-validate-impl` |

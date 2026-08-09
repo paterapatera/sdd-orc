@@ -17,8 +17,8 @@ Requirements-phase security review. Security administrator role. No user dialogu
 ## Out of Scope
 
 - Functional scope decisions (PO validate)
-- Testability review: AC verifiability, NFR measurability (`/kiro-validate-requirements-qa`)
-- Threat model detail at design level (`/kiro-validate-design-sec`)
+- Testability review: AC verifiability, NFR measurability (Pass A QA)
+- Threat model detail at design level (`/kiro-validate-design-qa --only sec`)
 - Implementation-specific controls (design phase)
 - User dialogue
 
@@ -31,7 +31,7 @@ Requirements-phase security review. Security administrator role. No user dialogu
 5. Abuse cases considered: for each capability, what happens when an untrusted actor misuses it (enumeration, injection of hostile input, quota/limit abuse) — expectations stated at user-observable level or explicitly deferred to design threat model with rationale
 6. Steering security constraints reflected or deviation documented in `## Decisions`
 7. Secrets/credentials never required in requirements text as literal values
-8. Every `requirements.md` edit (adopted recommendation) is recorded as a `## Reflected Fixes` row — `/kiro-validate-requirements-ex` mechanically verifies them; free-text fix claims are treated as missing
+8. Every `requirements.md` edit (adopted recommendation) is recorded as a `## Reflected Fixes` row — Pass B (`/kiro-validate-requirements --only final` or full run) mechanically verifies them; free-text fix claims are treated as missing
 
 ## Findings Severity
 
