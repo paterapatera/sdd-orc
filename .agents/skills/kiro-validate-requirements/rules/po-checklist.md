@@ -20,14 +20,13 @@ Post-generation semantic review and autonomous brush-up of `requirements.md`. Pr
 - Testability deep-dive: abnormal-flow AC coverage, boundary values, NFR measurability (Pass A QA / `qa-requirements-checklist.md`)
 - Security deep-dive (`/kiro-validate-requirements --only sec`)
 - Gap-domain audit: brief traceability matrix, cross-spec consistency, template conformance (`/kiro-validate-requirements --only final`)
-- Supplement / documentation creation (post-implementation `/kiro-docs`)
 - User dialogue
 
 ## Checks
 
 1. Every requirement objective is backed by ACs that express it; no orphan objectives, no AC with no parent intent (verifiability deep-dive is qa domain)
 2. No contradictory ACs within or across requirements
-3. Ambiguous terms resolved or flagged (glossary deferred to doc validate)
+3. Ambiguous terms resolved or flagged
 4. Scope boundaries explicit where misread risk exists
 5. Non-functional requirements stated at user-observable level (not implementation)
 6. Requirement IDs and AC IDs follow project conventions

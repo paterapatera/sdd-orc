@@ -36,7 +36,6 @@ Also load (metadata / context, not full-project audit):
 
 - Unlisted files under `docs/contracts/**`
 - All ADRs / full-project architecture audit
-- `_shared` glossary / acceptance / testcase (optional only when terminology must be checked)
 
 ### Load rules (persistent docs)
 
@@ -44,12 +43,10 @@ Also load (metadata / context, not full-project audit):
 |------|--------------|
 | feature req/design/research | **主** |
 | architecture / contracts / ADR | **主（関連）** — Persistent References paths only |
-| glossary / context | 任意（用語確認時のみ） |
-| acceptance / testcase (`_shared`) | — |
 
 - Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**` or all ADRs
 - Procedure: **Persistent References → those files only** (index only if a listed path needs discovery)
-- Do not “read everything just in case”. `_shared` is not a required validate input
+- Do not “read everything just in case”
 - Do **not** run a full-project architecture audit every validate
 
 ### Review depth by change type (guideline)

@@ -19,7 +19,7 @@ Requirements-phase testability review. Quality administrator role. Make every re
 - Functional scope decisions and semantic ambiguity resolution (PO validate)
 - Security failure modes and abuse cases (`/kiro-validate-requirements --only sec`)
 - EARS mechanical syntax checks (`requirements-review-gate` in `/kiro-spec-requirements`)
-- Test case authoring (post-implementation `/kiro-docs`) and design-level edge-case analysis (`/kiro-validate-design-qa`)
+- Design-level edge-case analysis (`/kiro-validate-design-qa`)
 - User dialogue
 
 ## Checks

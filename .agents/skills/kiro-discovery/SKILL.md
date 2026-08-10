@@ -99,10 +99,10 @@ Load only:
 
 ### Load rules (persistent docs)
 
-- Default: do **not** load `docs/architecture/**`, `docs/contracts/**`, ADR, or `docs/specs/_shared/**`
+- Default: do **not** load `docs/architecture/**`, `docs/contracts/**`, or ADR
 - Boundary exploration only: `docs/architecture/README.md` / `docs/contracts/README.md` (index) → **related files only**
 - Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**`. Never “read everything just in case”
-- glossary / context under `_shared` are optional at most; defer deep contract work to design
+- Defer deep contract work to design
 
 Transform into brief sections per **Minimal brief requirements** below.
 

@@ -52,10 +52,9 @@ Then continue to Step 1 (Load Context).
 #### Load rules (persistent docs)
 
 - Primary: this feature's `brief.md` / `requirements.md` (+ steering as above)
-- `docs/specs/_shared/glossary.md`: **optional**, only when terminology drift risks wrong EARS wording
 - `docs/architecture/**` / `docs/contracts/**`: **optional** related files only if needed for scope clarity — never glob-bulk-Read; path is always index → named file
 - Do **not** author or merge contract bodies here; defer public-surface contracts to design
-- Do **not** treat `_shared` acceptance / testcase as required inputs. Do not “read everything just in case”
+- Do not “read everything just in case”
 
 2. **Read Guidelines**:
    - Read `rules/ears-format.md` from this skill's directory for EARS syntax rules

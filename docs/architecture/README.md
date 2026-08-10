@@ -24,7 +24,7 @@
 
 - `docs/specs/{feature}/adr/` や feature 配下を **永続 architecture / ADR の正本にしない**
 - 詳細契約を `boundaries.md` にコピペしない（契約は `docs/contracts/`）
-- glossary / context をここへ移さない（`docs/specs/_shared/` のまま）
+- feature 配下の作業資料をここへ移さない（永続化するのは境界・ADR・contracts のみ）
 
 ## テンプレ
 

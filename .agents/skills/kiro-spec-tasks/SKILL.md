@@ -35,7 +35,6 @@ metadata:
 | feature req/design/tasks | **主** |
 | architecture / contracts | **関連のみ** — Prefer Persistent References / Boundary-related paths; never bulk-Read |
 | ADR | — |
-| glossary / acceptance / testcase (`_shared`) | — |
 
 - Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**`
 - Procedure: **index → Persistent References / named related paths → those files only**

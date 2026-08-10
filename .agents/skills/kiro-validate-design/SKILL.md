@@ -39,7 +39,6 @@ Interactive design quality review for feature **$1** based on approved requireme
 
 - Unlisted files under `docs/contracts/**`
 - All ADRs / full `docs/architecture/**` audit
-- `_shared` glossary / acceptance / testcase (optional only when terminology must be checked)
 
 #### Load rules (persistent docs)
 
@@ -47,8 +46,6 @@ Interactive design quality review for feature **$1** based on approved requireme
 |------|--------------|
 | feature req/design | **主** |
 | architecture / contracts / ADR | **主（関連）** — only paths listed in `design.md` **Persistent References** (`Mode: modify` \| `reference`) |
-| glossary / context | 任意（用語確認時のみ） |
-| acceptance / testcase (`_shared`) | — |
 
 - Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**` or all ADRs
 - Procedure: **index (if needed) → Persistent References paths → those files only**

@@ -94,8 +94,6 @@ Before declaring `GO`, confirm fresh evidence: referenced files exist, edits are
 
 **Requirements** (single skill): `/kiro-validate-requirements` (unified Pass A po→qa→sec + Pass B final + inline phase-gate). Optional `--only po|qa|sec|final` for partial re-runs.
 
-(Supplement/documentation work is split out of the requirements phase; the post-implementation `/kiro-docs` skill handles it.)
-
 **Design** (single skill): `/kiro-validate-design-qa` (unified Pass A qa→arch→sec + Pass B final + inline phase-gate). Optional `--only qa|arch|sec|final`. Standalone interactive review: `/kiro-validate-design` (outside orchestrate flow — **not** merged into this skill).
 
 Each specialist sub-pass reflects findings into its target artifact (`requirements.md` / `design.md`) before the next sub-pass. The next pass reads the **updated** artifact.

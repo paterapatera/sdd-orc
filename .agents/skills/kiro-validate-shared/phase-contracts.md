@@ -10,8 +10,6 @@ Per-skill I/O and boundaries. Shared report format: `contract.md`.
 
 Single invocation: Pass A (po→qa→sec) then Pass B (reflection + gap domains + inline phase-gate) then write one report. Optional `--only po|qa|sec|final`.
 
-> Documentation (glossary, context diagram, acceptance-criteria diagram, functional test cases) is split out of the requirements phase. It is handled post-implementation by `/kiro-docs` (interactive; includes spec cleanup).
-
 ### Unified Pass B (final + phase-gate)
 
 1. Pass A complete — else do not claim full Phase Gate VERIFIED

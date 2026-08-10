@@ -41,8 +41,6 @@ metadata:
 | feature req/design/research | **主** |
 | architecture / contracts | **主（関連のみ）** — Step 4: index → related Read → merge/create |
 | ADR | 関連 **1–2**（境界・破壊的契約・重要判断時）。追記型; 全件禁止 |
-| glossary / context (`_shared`) | 任意 |
-| acceptance / testcase (`_shared`) | — |
 
 - Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**`
 - Procedure: **index → Persistent References / named related paths → those files only**

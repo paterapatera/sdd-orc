@@ -21,7 +21,7 @@ The parent controller already ran mechanical checks and provides `MECHANICAL_RES
 - Per-task `FEATURE_FLAG: required | skipped` when provided by the parent
 
 ## Spec Excerpts Policy
-- **Default**: Judge against the parent-injected Spec Excerpts only. Do **not** Read `requirements.md`, `design.md`, or `docs/architecture/**` in full. Do **not** load `docs/specs/_shared/**` or bulk-scan contracts/architecture trees.
+- **Default**: Judge against the parent-injected Spec Excerpts only. Do **not** Read `requirements.md`, `design.md`, or `docs/architecture/**` in full. Do **not** bulk-scan contracts/architecture trees.
 - Judgment materials are limited to Spec Excerpts (Requirements / Design / Contracts), related named contract paths, and executable contracts in scope for the batch. Architecture unread in full does **not** block drift judgment when those are present.
 - If a needed heading or contract path is absent from the excerpts and you cannot complete a judgment check, do **not** full-file load. State the gap in FINDINGS and set VERDICT to REJECTED with REMEDIATION asking the parent to re-dispatch with the named missing path/heading(s), **or** (when the host surfaces it) signal the same via `NEEDS_CONTEXT` / `MISSING` naming those headings so the parent can re-send excerpts once.
 - Never treat "I should open the whole design.md / architecture tree" as the default recovery path.

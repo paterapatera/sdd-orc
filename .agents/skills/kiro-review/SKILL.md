@@ -73,7 +73,7 @@ The main review question is not just "does it work?" but "does it stay inside th
 
 ## Spec Excerpts Policy
 
-- **When Spec Excerpts are provided**: they are authoritative. Do **not** Read `requirements.md`, `design.md`, or `docs/architecture/**` in full. Do **not** load `docs/specs/_shared/**` or bulk-scan contract/architecture trees. If a needed heading or contract path is missing, REJECT with REMEDIATION naming the exact missing path/heading(s) for parent re-excerpt — do not full-file load as recovery.
+- **When Spec Excerpts are provided**: they are authoritative. Do **not** Read `requirements.md`, `design.md`, or `docs/architecture/**` in full. Do **not** bulk-scan contract/architecture trees. If a needed heading or contract path is missing, REJECT with REMEDIATION naming the exact missing path/heading(s) for parent re-excerpt — do not full-file load as recovery.
 - **When Spec Excerpts are absent** (standalone): read only the cited section numbers / headings / contract paths needed for this review.
 - Drift judgment uses Contracts excerpts + related contracts + executable contracts; architecture unread in full does not block that judgment.
 
