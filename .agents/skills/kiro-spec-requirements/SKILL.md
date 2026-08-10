@@ -49,6 +49,14 @@ Then continue to Step 1 (Load Context).
    - Additional steering files only when directly relevant to feature scope, user personas, business/domain rules, compliance/security constraints, operational constraints, or existing product boundaries
    - Relevant local agent skills or playbooks only when they clearly match the feature's host environment or use case and contain domain terminology or workflow rules that shape user-observable requirements
 
+#### Load rules (persistent docs)
+
+- Primary: this feature's `brief.md` / `requirements.md` (+ steering as above)
+- `docs/specs/_shared/glossary.md`: **optional**, only when terminology drift risks wrong EARS wording
+- `docs/architecture/**` / `docs/contracts/**`: **optional** related files only if needed for scope clarity — never glob-bulk-Read; path is always index → named file
+- Do **not** author or merge contract bodies here; defer public-surface contracts to design
+- Do **not** treat `_shared` acceptance / testcase as required inputs. Do not “read everything just in case”
+
 2. **Read Guidelines**:
    - Read `rules/ears-format.md` from this skill's directory for EARS syntax rules
    - Read `rules/requirements-review-gate.md` from this skill's directory for pre-write review criteria

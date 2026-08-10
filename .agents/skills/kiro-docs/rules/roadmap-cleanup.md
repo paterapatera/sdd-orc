@@ -34,6 +34,29 @@ Before creating documents, confirm all of the following. If any fails, **stop** 
 3. Delete the target spec director(ies) only after the user's explicit approval.
 4. If approval is not given or is unclear, do not delete.
 
+### What may be deleted
+
+Only **`docs/specs/<feature>/`** (the target feature directory). Nothing else.
+
+### Deletion-prohibited paths
+
+Never delete any of the following (feature cleanup must not touch persistent contracts or shared docs):
+
+- `docs/architecture/**`
+- `docs/contracts/**`
+- `docs/architecture/adr/**`
+- `docs/specs/_shared/**` — merge/update of files is allowed; **directory (or wholesale) deletion is forbidden**
+
+Do not "clean up" architecture, contracts, or ADRs as part of spec deletion.
+
+### Pre-deletion check (recommended)
+
+When presenting the deletion notice for user confirmation, if the target feature's `design.md` Persistent References lists any `modify` entries:
+
+1. Lightly verify that the corresponding `docs/contracts/**` or ADR path still exists.
+2. If missing, **warn** the user (do not hide the gap).
+3. After user confirmation, proceed with deletion as usual — the warning does not block deletion.
+
 ## Roadmap update (after deletion)
 
 Once spec deletion is complete, update `docs/steering/roadmap.md`.

@@ -26,13 +26,42 @@ Interactive design quality review for feature **$1** based on approved requireme
 
 ## Execution Steps
 
-1. **Gather Context**:
-   - Read `docs/specs/$1/spec.json` for language and metadata
-   - Read `docs/specs/$1/requirements.md` for requirements
-   - Read `docs/specs/$1/design.md` for design document
-   - Core steering context: `product.md`, `tech.md`, `structure.md`
-   - Additional steering files only when directly relevant to architecture boundaries, integrations, runtime prerequisites, domain rules, security/performance constraints, or team conventions that affect implementation readiness
+1. **Gather Context** — authoritative input set only:
+   1. `docs/specs/$1/spec.json` (language / metadata)
+   2. `docs/specs/$1/requirements.md`
+   3. `docs/specs/$1/design.md`
+   4. Paths listed in `design.md` **Persistent References** only (`Mode: modify` \| `reference`) — contracts / architecture / ADR
+   5. Core steering: `product.md`, `tech.md`, `structure.md` (existing policy; do not broaden)
+   - Additional steering only when directly relevant to architecture boundaries, integrations, runtime prerequisites, domain rules, security/performance constraints, or team conventions that affect implementation readiness
    - Relevant local agent skills or playbooks only when they clearly match the feature's host environment or use case and provide review-relevant context
+
+#### Do **not** include as review inputs
+
+- Unlisted files under `docs/contracts/**`
+- All ADRs / full `docs/architecture/**` audit
+- `_shared` glossary / acceptance / testcase (optional only when terminology must be checked)
+
+#### Load rules (persistent docs)
+
+| 資料 | このフェーズ |
+|------|--------------|
+| feature req/design | **主** |
+| architecture / contracts / ADR | **主（関連）** — only paths listed in `design.md` **Persistent References** (`Mode: modify` \| `reference`) |
+| glossary / context | 任意（用語確認時のみ） |
+| acceptance / testcase (`_shared`) | — |
+
+- Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**` or all ADRs
+- Procedure: **index (if needed) → Persistent References paths → those files only**
+- Do not “read everything just in case”. Unlisted contract/architecture files are out of scope
+- Do **not** run a full-project architecture audit every review
+
+#### Review depth by change type (guideline)
+
+| Change type | Review depth |
+|-------------|--------------|
+| Internal change, no contract surface | `design.md` + confirm **No contract changes**; minimal external contract Read |
+| Non-breaking update to existing contracts | Listed related contracts only + normal validate |
+| Boundary / breaking contract / new public surface | Related contracts + related ADR + Arch/Sec emphasis |
 
 #### Parallel Research
 
@@ -47,12 +76,16 @@ After all parallel research completes, synthesize findings for review.
 2. **Execute Design Review**:
    - Reference conversation history when available: leverage prior requirements discussion and user's stated design intent
    - Follow design-review.md process: Analysis → Critical Issues → Strengths → GO/NO-GO
+   - SOLID / coupling: judge on design boundaries + **referenced contracts only**
+   - External canonical vs design summary contradiction → Critical Issue / NO-GO factor
+   - `Mode: modify` path missing or not reflecting this feature's boundary change → Critical / Major (NO-GO when it blocks implementation readiness)
    - Limit to 3 most important concerns
    - Engage interactively with user — ask clarifying questions, propose alternatives
    - Use language specified in spec.json for output
 
 3. **Decision and Next Steps**:
    - Clear GO/NO-GO decision with rationale
+   - Record **Reviewed contract paths**, **ADR paths** (read), and **Contract sync: OK | MISSING | DRIFT** (see design-review.md)
    - Provide specific actionable next steps (see Next Phase below)
 
 ## Important Constraints
@@ -74,9 +107,10 @@ After all parallel research completes, synthesize findings for review.
 Provide output in the language specified in spec.json with:
 
 1. **Review Summary**: Brief overview (2-3 sentences) of design quality and readiness
-2. **Critical Issues**: Maximum 3, following design-review.md format
-3. **Design Strengths**: 1-2 positive aspects
-4. **Final Assessment**: GO/NO-GO decision with rationale and next steps
+2. **Reviewed Scope**: Reviewed contract paths; ADR paths read; Contract sync: `OK` | `MISSING` | `DRIFT`
+3. **Critical Issues**: Maximum 3, following design-review.md format
+4. **Design Strengths**: 1-2 positive aspects
+5. **Final Assessment**: GO/NO-GO decision with rationale and next steps
 
 **Format Requirements**:
 - Use Markdown headings for clarity

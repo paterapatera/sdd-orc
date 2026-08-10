@@ -12,6 +12,7 @@ metadata:
 - **Success Criteria**:
   - All requirements mapped to technical components with clear interfaces
   - The design makes responsibility boundaries explicit enough to guide task generation and review
+  - Persistent public-surface contracts written/merged under `docs/contracts/**` (and related `docs/architecture/**`) at design time, with Persistent References in `design.md`
   - Brownfield gap analysis (`research.md`) completed when needed — skipped on greenfield
   - Appropriate architecture discovery and research completed without duplicating gap codebase survey
   - Design aligns with steering context and existing patterns
@@ -32,6 +33,21 @@ metadata:
 - `docs/settings/templates/specs/design.md` for document structure
 - Read `rules/design-principles.md` from this skill's directory for design principles
 - `docs/settings/templates/specs/research.md` for discovery / gap log structure
+
+#### Load rules (persistent docs)
+
+| 資料 | このフェーズ |
+|------|--------------|
+| feature req/design/research | **主** |
+| architecture / contracts | **主（関連のみ）** — Step 4: index → related Read → merge/create |
+| ADR | 関連 **1–2**（境界・破壊的契約・重要判断時）。追記型; 全件禁止 |
+| glossary / context (`_shared`) | 任意 |
+| acceptance / testcase (`_shared`) | — |
+
+- Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**`
+- Procedure: **index → Persistent References / named related paths → those files only**
+- Do not “read everything just in case”. Extra persistent excerpts for parent orchestration: aim **~80–150 lines** total; if over, cut paths / shrink scope
+- Whole architecture diagrams only when this feature changes boundaries
 
 **Validate requirements approval**:
 - If `-y` flag provided ($2 == "-y"): Auto-approve requirements in spec.json
@@ -59,7 +75,7 @@ If **greenfield**:
 
 - **Skip gap analysis entirely.** Do **not** spawn gap-analysis / codebase survey sub-agents.
 - Do **not** write `research.md` solely for gap analysis. (Optional later: external API research log only if full discovery needs it.)
-- When writing `design.md` (Step 6), include this one line in Overview:
+- When writing `design.md` (Step 7), include this one line in Overview:
   `_Gap analysis: skipped (greenfield per brief Current State)._`
 - Proceed to Step 2.1 Classify Feature Type.
 
@@ -170,7 +186,44 @@ After all findings return, synthesize in main context before proceeding.
 - One mermaid diagram maximum
 - Target `design.md` length guidance: ≤ 150 lines (security/auth requirements must still be present)
 
-### Step 4: Generate Design Draft
+### Step 4: Persist / Merge External Contracts (required before design draft)
+
+**Do this before drafting `design.md`. Persistent contracts are written at design time — there is no post-implementation contract-creation phase.**
+
+1. **Read indexes only** (mandatory):
+   - `docs/contracts/README.md`
+   - `docs/architecture/README.md`
+   - Do **not** bulk-read every file under those trees
+
+2. **Read only related files**: From the indexes, open existing contract / architecture files that touch this feature's Boundary Commitments or public surfaces. Skip unrelated entries.
+
+3. **Merge or create when the public surface / boundary changes**:
+   - **contracts** (`docs/contracts/`): Diff-merge into existing files; create new `<domain>-<surface>.md` when no file exists. Use `docs/settings/templates/contracts/contract.md` for new files. Update `docs/contracts/README.md` Entries when adding a path.
+   - **architecture/boundaries** (`docs/architecture/boundaries.md` and related): Update **only** related sections. Do not rewrite unrelated sections.
+   - **Important decisions (ADR)**: When any of the following apply, create a **new** ADR under `docs/architecture/adr/` (template: `docs/settings/templates/architecture/adr.md`; numbering in `docs/architecture/adr/README.md`):
+     - Dependency direction or ownership-boundary change
+     - Breaking change to a public contract
+     - Major tech adopt/reject that will need rationale later
+     - Decision that touches Revalidation Triggers
+     - Do **not** ADR local implementation detail or naming that code+tests alone explain
+     - **Append-only**: never merge/overwrite a new decision into an existing ADR body. To reverse a decision → new ADR + set old Status to `Superseded by ADR-XXXX`
+     - **Index update (mandatory)**: Register every new ADR in `docs/architecture/adr/README.md` Entries (path, one-line purpose, owners/domains, Status). When superseding, update the old entry's Status to `Superseded by ADR-XXXX` as well as the old ADR file header. Never leave an ADR file that is missing from the index.
+     - Load only related ADR(s) from the index (**1–2 max**); do not bulk-read all ADR bodies
+   - **Merge rules**:
+
+   | Target | Action |
+   | ------ | ------ |
+   | contracts | Read existing; diff-update. Destructive changes must be explicit via ADR or a **Changelog** section in the contract. New paths must appear in `docs/contracts/README.md` Entries |
+   | architecture diagrams / boundaries | Diff-merge related sections only. Whole-file rewrite forbidden |
+   | ADR | New file only (do not merge bodies; Superseded replaces via new ADR). New/superseded ADRs must update `docs/architecture/adr/README.md` Entries |
+
+   On conflict: do not casually delete prior definitions; record the change rationale in an ADR or the contract's Changelog.
+
+4. **Internal-only / no surface change**: If this is a pure internal refactor with no contract-surface change, skip create/modify. The draft may use `Mode: reference` only and must state **No contract changes** in Persistent References notes.
+
+5. **Prepare Persistent References** for the design draft (required section — see template). Every `Mode: modify` path listed must already be updated on disk before the review gate.
+
+### Step 5: Generate Design Draft
 
 1. **Load Design Template and Rules**:
    - Read `docs/settings/templates/specs/design.md` for structure
@@ -179,6 +232,7 @@ After all findings return, synthesize in main context before proceeding.
 2. **Generate Design Draft**:
    - **Follow specs/design.md template structure and generation instructions strictly**
    - **Boundary-first requirement**: Before expanding supporting sections, make the boundary explicit. The draft must clearly define what this spec owns, what it does not own, which dependencies are allowed, and what changes would require downstream revalidation.
+   - **Persistent References (required)**: Include the Persistent References section (after Architecture or near Boundary Commitments). List every related `docs/contracts/**`, `docs/architecture/**`, and ADR path with `Mode: modify | reference`. New public surfaces without a `docs/contracts/` file are not allowed.
    - **Integrate all discovery findings and synthesis outcomes**: Use researched information (APIs, patterns, technologies) and synthesis decisions (generalizations, build-vs-adopt, simplifications) throughout component definitions, architecture decisions, and integration points — including Step 2.0 gap findings when present
    - **File Structure Plan** (required): Populate the File Structure Plan section with concrete file paths and responsibilities. Analyze the codebase to determine which files need to be created vs. modified. Each file must have one clear responsibility. This section directly drives task `_Boundary:_` annotations and implementation Task Briefs — vague file structures produce vague implementations.
    - **Testing Strategy**: Derive test items from requirements' acceptance criteria, not generic patterns. Each test item should reference specific components and behaviors from this design. E2E paths must map to the critical user flows identified in requirements. Avoid vague entries like "test login works" -- instead specify what is being verified and why it matters.
@@ -188,21 +242,23 @@ After all findings return, synthesize in main context before proceeding.
    - Use language specified in spec.json
    - Keep this as a draft until the review gate passes; do not write `design.md` yet
 
-### Step 5: Review Design Draft
+### Step 6: Review Design Draft
 
 - Read and apply `rules/design-review-gate.md` from this skill's directory
-- Verify requirements coverage, architecture readiness, and implementation executability before finalizing the design
-- If issues are local to the draft, repair the design and review again
+- Verify requirements coverage, architecture readiness, implementation executability, and Persistent References / external contract updates before finalizing the design
+- If issues are local to the draft (or to a `Mode: modify` contract/architecture file from Step 4), repair and review again
 - Keep the review bounded to at most 2 repair passes
 - If the draft exposes a real requirements/design gap, stop and return to requirements clarification instead of papering over it in `design.md`
 
-### Step 6: Finalize Design Document
+### Step 7: Finalize Design Document
 
-1. **Write Final Design and Research Log**:
+1. **Write Final Design, Persistent Artifacts, and Research Log**:
+   - Confirm every `Mode: modify` path from Persistent References is already updated (Step 4)
    - Write `docs/specs/$1/design.md` only after the design review gate passes
    - On greenfield (Step 2.0 skipped): ensure Overview includes `_Gap analysis: skipped (greenfield per brief Current State)._` and do **not** create gap-only `research.md`
    - Persist any `research.md` updates that support the finalized design (brownfield gap + discovery; greenfield only if a research log was created)
    - Do not create empty gap-only `research.md` on greenfield
+   - Do **not** invent a post-implementation "create contracts" skill or phase — contracts/architecture/ADR updates happen here
 
 2. **Update Metadata** in spec.json:
    - Set `phase: "design-generated"`
@@ -216,8 +272,9 @@ After all findings return, synthesize in main context before proceeding.
    - For statically typed languages, define explicit types/interfaces and avoid unsafe casts.
    - For TypeScript, never use `any`; prefer precise types and generics.
    - For dynamically typed languages, provide type hints/annotations where available (e.g., Python type hints) and validate inputs at boundaries.
-   - Document public interfaces and contracts clearly to ensure cross-component type safety.
+   - Document public interfaces and contracts clearly to ensure cross-component type safety. Authoritative long-lived contracts live in `docs/contracts/**`; `design.md` holds excerpts + Persistent References.
 - **Requirements Traceability IDs**: Use numeric requirement IDs only (e.g. "1.1", "1.2", "3.1", "3.3") exactly as defined in requirements.md. Do not invent new IDs or use alphabetic labels.
+- **Persistent contracts at design time**: Index → related Read → merge/create → Persistent References in draft → review gate → write `design.md`. Never defer contract creation to a post-implementation phase. Never bulk-read all of `docs/contracts/` or `docs/architecture/`.
 - **Greenfield**: never run gap-analysis sub-agents; never invent gap `research.md` content.
 - **Brownfield**: gap runs once in Step 2.0; discovery must reuse `research.md` instead of duplicating codebase survey.
 </instructions>
@@ -231,10 +288,11 @@ Provide brief summary in the language specified in spec.json:
 1. **Status**: Confirm design document generated at `docs/specs/$1/design.md`
 2. **Gap Analysis**: brownfield completed / greenfield skipped
 3. **Discovery Type**: Which discovery process was executed (full/light/minimal)
-4. **Key Findings**: 2-3 critical insights from `research.md` (if any) that shaped the design
-5. **Review Gate**: Confirm the design review gate passed
-6. **Next Action**: Approval workflow guidance (see Safety & Fallback)
-7. **Research Log**: Confirm `research.md` updated, or note that none was needed (greenfield)
+4. **Persistent Contracts**: Which `docs/contracts/**` / `docs/architecture/**` / ADR paths were created or modified (or **No contract changes**)
+5. **Key Findings**: 2-3 critical insights from `research.md` (if any) that shaped the design
+6. **Review Gate**: Confirm the design review gate passed
+7. **Next Action**: Approval workflow guidance (see Safety & Fallback)
+8. **Research Log**: Confirm `research.md` updated, or note that none was needed (greenfield)
 
 **Format**: Concise Markdown (under 200 words) - this is the command output, NOT the design document itself
 

@@ -60,9 +60,10 @@ List the kinds of changes that should force dependent specs or consumers to re-c
 
 ## Architecture
 
-> Reference detailed discovery notes in `research.md` only for background; keep design.md self-contained for reviewers by capturing all decisions and contracts here.
+> Reference detailed discovery notes in `research.md` only for background; keep design.md usable for reviewers via decisions, excerpts, and Persistent References.
 > Capture key decisions in text and let diagrams carry structural detail—avoid repeating the same information in prose.
 > Supporting sections below should remain as light as possible unless they materially clarify the responsibility boundary, dependency rules, or integration seams.
+> **Contract authority**: Long-lived public-surface contracts live in `docs/contracts/**`; boundary maps in `docs/architecture/**`. This file is feature implementation-alignment design — not the single long-lived contract body.
 
 ### Existing Architecture Analysis (if applicable)
 When modifying existing systems:
@@ -92,6 +93,27 @@ When modifying existing systems:
 | Infrastructure / Runtime | | | |
 
 > Keep rationale concise here and, when more depth is required (trade-offs, benchmarks), add a short summary plus pointer to the Supporting References section and `research.md` for raw investigation notes.
+
+## Persistent References
+
+Required. Authoritative long-lived contracts and boundaries live outside this feature directory. List every related path; `Mode: modify` files must already be updated at design time. When thick type definitions would duplicate, keep a summary here and point to the external contract path.
+
+For pure internal refactors with no public-surface change: use `reference` only and note **No contract changes**.
+
+### Contracts (authoritative outside this feature dir)
+| Path | Mode | Notes |
+|------|------|-------|
+| docs/contracts/example-api.md | modify \| reference | |
+
+### Architecture
+| Path | Mode | Notes |
+|------|------|-------|
+| docs/architecture/boundaries.md | modify \| reference | |
+
+### ADRs
+| Path | Status |
+|------|--------|
+| docs/architecture/adr/ADR-0001-....md | proposed \| accepted |
 
 ## File Structure Plan
 
@@ -165,7 +187,7 @@ Group detailed blocks by domain or architectural layer. For each detailed compon
 
 - Format: `#### <ComponentName> {#D-<ComponentName>}` — one repository-wide form; do not invent alternate ID schemes.
 - ID must be unique within the design; use the component’s Boundary name (PascalCase / as named in `_Boundary:_`).
-- Keep all component detail in this file; research.md holds investigation notes only, not contract source of truth.
+- Keep all component detail in this file; research.md holds investigation notes only, not contract source of truth. Authoritative public-surface contracts live in `docs/contracts/**` (see Persistent References).
 
 ### [Domain / Layer]
 
@@ -352,6 +374,6 @@ _Use this section for features handling auth, sensitive data, external integrati
 - Data protection and privacy considerations
 
 ## Supporting References (Optional)
-- Create this section only when keeping the information in the main body would hurt readability (e.g., very long TypeScript definitions, vendor option matrices, exhaustive schema tables). Keep decision-making context in the main sections so the design stays self-contained.
+- Create this section only when keeping the information in the main body would hurt readability (e.g., very long TypeScript definitions, vendor option matrices, exhaustive schema tables). Prefer moving authoritative long-lived contract bodies to `docs/contracts/**` and linking them from Persistent References; keep decision-making context in the main sections.
 - Link to the supporting references from the main text instead of inlining large snippets.
 - Background research notes and comparisons continue to live in `research.md`, but their conclusions must be summarized in the main design.

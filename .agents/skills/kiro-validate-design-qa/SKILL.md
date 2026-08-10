@@ -17,26 +17,59 @@ For **standalone interactive** design review, use `/kiro-validate-design` (uncha
 <instructions>
 ## Inputs
 
-- Feature: `$1`
+Authoritative review inputs for feature `$1`:
+
+1. `docs/specs/$1/requirements.md`
+2. `docs/specs/$1/design.md`
+3. Paths listed in `design.md` **Persistent References** only (`Mode: modify` \| `reference`) — contracts / architecture / related ADR
+4. Core steering: `docs/steering/tech.md`, `structure.md` (existing policy; do not broaden)
+
+Also load (metadata / context, not full-project audit):
+
 - Optional: `--only qa|arch|sec|final` (partial re-run; default = full Pass A→B→C)
-- `docs/specs/$1/requirements.md`
-- `docs/specs/$1/design.md`
 - `docs/specs/$1/spec.json`
 - `docs/specs/$1/research.md` if present
-- Core steering: `docs/steering/tech.md`, `structure.md`
 - `docs/steering/roadmap.md` or `docs/specs/roadmap.md` if present
 - Security decisions: `reviews/requirements-review.md` when relevant
+
+### Do **not** include as review inputs
+
+- Unlisted files under `docs/contracts/**`
+- All ADRs / full-project architecture audit
+- `_shared` glossary / acceptance / testcase (optional only when terminology must be checked)
+
+### Load rules (persistent docs)
+
+| 資料 | このフェーズ |
+|------|--------------|
+| feature req/design/research | **主** |
+| architecture / contracts / ADR | **主（関連）** — Persistent References paths only |
+| glossary / context | 任意（用語確認時のみ） |
+| acceptance / testcase (`_shared`) | — |
+
+- Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**` or all ADRs
+- Procedure: **Persistent References → those files only** (index only if a listed path needs discovery)
+- Do not “read everything just in case”. `_shared` is not a required validate input
+- Do **not** run a full-project architecture audit every validate
+
+### Review depth by change type (guideline)
+
+| Change type | Review depth |
+|-------------|--------------|
+| Internal change, no contract surface | `design.md` + confirm **No contract changes**; minimal external contract Read |
+| Non-breaking update to existing contracts | Listed related contracts only + normal validate |
+| Boundary / breaking contract / new public surface | Related contracts + related ADR + Arch/Sec emphasis |
 
 ## Execution (unified pass)
 
 ### Pass A — Specialist reviews (single context load)
 
-Load **once**: `spec.json`, `requirements.md`, `design.md`, `research.md` (if any), `tech.md`, `structure.md`, roadmap (if any), `../kiro-validate-shared/contract.md`.
+Load **once**: `spec.json`, `requirements.md`, `design.md`, `research.md` (if any), `tech.md`, `structure.md`, roadmap (if any), `../kiro-validate-shared/contract.md`, plus Persistent References paths only.
 
 Do **not** dispatch sibling validate skills between sub-passes. Keep checklists separate — read each in order.
 
 1. **QA** — Read `rules/qa-checklist.md`. Review edge cases / abnormal flows; fix `design.md` when local and safe. Record working notes.
-2. **Arch** — Read `rules/arch-checklist.md`. Review SOLID/coupling/extensibility on the **updated** `design.md`. Append working notes.
+2. **Arch** — Read `rules/arch-checklist.md`. Review SOLID/coupling/extensibility on the **updated** `design.md` against **referenced contracts only**. Treat external canonical vs design-summary contradiction as a Finding / NO-GO factor. `Mode: modify` path missing or stale → **NO-GO** or **Major**. Append working notes.
 3. **Sec** — Read `rules/sec-design-checklist.md`. Threat model / data protection on the updated `design.md`. Append working notes.
 
 After each sub-pass, append rows to an in-memory `## Reflected Fixes` table with a **Pass** column (`QA` | `Arch` | `Sec`).
@@ -72,6 +105,11 @@ Skip when `--only qa|arch|sec` (unless `--only final`).
 
 ## Summary
 ...
+
+## Reviewed Scope
+- Reviewed contract paths: (Persistent References contracts read; or `none — No contract changes`)
+- ADR paths: (ADRs read; or `none`)
+- Contract sync: OK | MISSING | DRIFT
 
 ## Findings
 ...
@@ -113,6 +151,16 @@ Skip when `--only qa|arch|sec` (unless `--only final`).
 - CHECKS: (inline phase-gate checklist results)
 ```
 
+**Reviewed Scope** (required, short):
+
+- **Reviewed contract paths** — every contract path actually Read from Persistent References
+- **ADR paths** — every ADR actually Read (empty/`none` if none)
+- **Contract sync**:
+  - `OK` — listed `Mode: modify` files exist and match design boundary/public-surface intent; `reference`-only / **No contract changes** when applicable
+  - `MISSING` — a `Mode: modify` (or required new public-surface) path is absent
+  - `DRIFT` — external canonical text contradicts the design summary / Boundary Commitments
+
+`MISSING` or `DRIFT` is a Finding and may be **NO-GO** or **Major** (see arch-checklist).
 ## Update mode
 
 When `/kiro-orchestrate` runs 要求更新 or 設計更新, scope to **changed design sections and linked requirements only**. Prefer `--only qa|arch|sec|final` for targeted re-runs.

@@ -44,10 +44,10 @@ Audit `design.md` against **every** domain below. Each domain gets an explicit p
 3. **Observability** — The design template requires an `Observability` section (logging with PII masking rules, metrics, alerts, debuggability). **Verify** it covers the failure modes the QA review enumerated. Do not author logging/metrics design here — it is security-reviewed upstream; a wholly missing or placeholder section is a generation defect → NO-GO to `/kiro-spec-design`.
 4. **Operability** — The design template requires `Operational Readiness → Deployment & Rollout / Migration` subsections. **Verify** deployment, migration, rollback, and feature-flag content (or `N/A — reason`); any irreversible step must be identified as such. A wholly missing or placeholder section is a generation defect → NO-GO to `/kiro-spec-design`.
 5. **Testability** — Every AC is verifiable as designed; test strategy covers the design's seams; no component is untestable due to hidden dependencies or missing interfaces.
-6. **Compatibility** — Backward compatibility of APIs, data schemas, file formats, and contracts with other specs; impact of breaking changes stated. Every public contract (API, event, shared schema) has a versioning/evolution policy in the design or an explicit `N/A — <reason>` (e.g. internal-only, single consumer); a public contract with neither is a finding.
+6. **Compatibility** — Backward compatibility of APIs, data schemas, file formats, and contracts with other specs; impact of breaking changes stated. Every public contract (API, event, shared schema) has a versioning/evolution policy in the design or an explicit `N/A — <reason>` (e.g. internal-only, single consumer); a public contract with neither is a finding. Scope contract checks to Persistent References paths only — do not bulk-audit unlisted `docs/contracts/**`.
 7. **Scope fitness** — No over-engineering beyond requirements (YAGNI) and no requirement silently dropped. Uses the traceability matrix from domain 1 in both directions.
    - **Scope fitness (simple)**: when scope scale is simple (`complexity_tier: S`, or greenfield + simple per `/kiro-spec-design` Axis B), `design.md` **> 200 lines** without an NFR/compliance driver for the extra bulk → **Major** finding (scope bloat). Do **not** flag intentional Minimal omissions (no extension-scenarios table, lean file tree, single diagram) as under-design when requirements do not demand them.
-8. **Internal & external consistency** — Terminology used consistently; diagrams match prose; data models match interface definitions; design aligns with steering (`tech.md`, `structure.md`) and with dependent/upstream specs in `docs/specs/roadmap.md` (if present).
+8. **Internal & external consistency** — Terminology used consistently; diagrams match prose; data models match interface definitions; design aligns with steering (`tech.md`, `structure.md`) and with dependent/upstream specs in `docs/specs/roadmap.md` (if present). Confirm Pass A Arch recorded `## Reviewed Scope` (Reviewed contract paths, ADR paths, Contract sync). `MISSING` / `DRIFT` left unresolved is a Critical finding.
 
 ## Step 3 — Findings (no cap)
 
@@ -69,7 +69,7 @@ Fix findings in `design.md` directly rather than deferring them to the human, wi
 
 ## Step 5 — Report
 
-Contribute Pass B sections to unified `reviews/design-review.md` (not a separate `design-final.md`): Gap-Domain Audit, 承認ゲートサマリ, Evidence (including full traceability matrix), and Phase Gate. Shared-contract fields (Verdict, Summary, Findings, Decisions, Reflected Fixes) are written once for the whole unified skill.
+Contribute Pass B sections to unified `reviews/design-review.md` (not a separate `design-final.md`): Gap-Domain Audit, 承認ゲートサマリ, Evidence (including full traceability matrix), and Phase Gate. Shared-contract fields (Verdict, Summary, Findings, Decisions, Reflected Fixes) are written once for the whole unified skill. Ensure `## Reviewed Scope` from Arch (Reviewed contract paths, ADR paths, Contract sync: OK | MISSING | DRIFT) is present in the unified report.
 
 ```markdown
 ## 承認ゲートサマリ

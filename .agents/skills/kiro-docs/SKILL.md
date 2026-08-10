@@ -22,6 +22,18 @@ Generated documents are written in **Japanese** (matching the Japanese glossary/
 - `docs/steering/roadmap.md` — dependency gate and update target
 - Existing shared documents under `docs/specs/_shared/`
 
+### Load rules / generation scope
+
+| 資料 | このフェーズ |
+|------|--------------|
+| feature req/design/tasks | **入力**（consolidate 後に削除） |
+| glossary / context / acceptance / testcase (`_shared`) | **生成・更新のみ**（この skill の出力） |
+| architecture / contracts / ADR | **生成対象外・削除対象外** — do not create, rewrite, or delete |
+
+- Generate/merge **only** the `_shared` four: glossary, context diagram, acceptance-criteria diagram, functional test cases
+- Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**` “just in case”
+- Do not treat architecture/contracts/ADR as docs-cleanup inputs or deletion targets — see `rules/roadmap-cleanup.md` § Deletion
+
 ## Execution
 
 1. **Preconditions check** (`rules/roadmap-cleanup.md` § Preconditions)
@@ -33,9 +45,10 @@ Generated documents are written in **Japanese** (matching the Japanese glossary/
    - Acceptance-criteria diagram → `docs/specs/_shared/requirements/<business>-diagram.md` (`rules/acceptance-diagram.md`)
    - Functional test cases → `docs/specs/_shared/feature-testcase/<domain>/<action>-testcase.md` (`rules/feature-testcase.md`)
    - **Merge** into existing files when present; otherwise create new.
+   - Do **not** generate or modify `docs/architecture/**` or `docs/contracts/**` here.
 3. **User confirmation**: Present the list of created/updated document paths and ask the user to confirm the content is acceptable. Fix any issues before continuing.
-4. **Deletion notice**: **Before** deleting, explicitly tell the user which spec path(s) will be deleted (`rules/roadmap-cleanup.md` § Deletion).
-5. **Delete spec(s)**: Only after the user confirms, delete the target spec director(ies).
+4. **Deletion notice**: **Before** deleting, explicitly tell the user which spec path(s) will be deleted (`rules/roadmap-cleanup.md` § Deletion). If `design.md` Persistent References has `modify` entries, run the recommended pre-deletion check and surface any missing contract/ADR paths as warnings.
+5. **Delete spec(s)**: Only after the user confirms, delete **only** `docs/specs/$1/`. Do **not** delete `docs/architecture/**`, `docs/contracts/**`, `docs/architecture/adr/**`, or `docs/specs/_shared/**`.
 6. **Update roadmap**: Remove the deleted spec from `roadmap.md` and drop it from other specs' `Dependencies:` (`rules/roadmap-cleanup.md` § Roadmap Update). This clears downstream specs' upstream dependencies so the next `/kiro-docs` run becomes possible.
 
 ## Constraints
@@ -44,6 +57,7 @@ Generated documents are written in **Japanese** (matching the Japanese glossary/
 - Delete a spec **only after explicit user confirmation**. Always announce the deletion targets beforehand.
 - Decide new-file vs merge-into-existing per document; never clobber existing content.
 - In the acceptance-criteria diagram, use a **hexagon, not a diamond**, for decision nodes (`rules/acceptance-diagram.md`).
+- Architecture / contracts / ADR are out of generation and deletion scope for this skill. Never delete `docs/specs/_shared/**`.
 </instructions>
 
 ## Safety

@@ -39,6 +39,21 @@ Otherwise, load all necessary context:
 - Additional steering files only when directly relevant to the selected task's boundary, runtime prerequisites, integrations, domain rules, security/performance constraints, or team conventions that affect implementation or validation
 - Relevant local agent skills or playbooks only when they clearly match the task's host environment or use case; read the specific artifact(s) you need, not entire directories
 
+### Load rules (persistent docs)
+
+| 資料 | このフェーズ |
+|------|--------------|
+| feature req/design/tasks | **主（抜粋）** — parent injects batch excerpts; do not default to full-file Read for subagents |
+| contracts | **主（関連）** — task `_Contracts:` paths and/or Persistent References for touched surfaces; include as excerpt |
+| architecture | **関連のみ** — boundary/dependency-direction slices only when the batch changes them |
+| ADR | 境界変更時のみ（関連 1–2） |
+| glossary / acceptance / testcase (`_shared`) | **— 実装必須入力にしない** |
+
+- Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**`
+- Procedure: **index (if needed) → Persistent References / `_Contracts:` / task-declared paths → those files only**
+- Do not “read everything just in case”
+- Extra persistent excerpts (contracts/architecture/ADR beyond feature excerpts): aim **~80–150 lines** total; if over, cut paths or split the batch
+
 ### Parallel Research
 
 The following research areas are independent and can be executed in parallel:
@@ -166,15 +181,16 @@ If execution mode is **`direct`**, use **Manual Mode** below (even when invocati
 
 ### Pre-dispatch Spec Excerpts (parent, before each batch dispatch)
 
-Do **not** rely on subagents reading `requirements.md` / `design.md` in full. Keep those files as single sources of truth in the repo; the parent cuts batch-needed fragments and embeds them in the prompt.
+Do **not** rely on subagents reading `requirements.md` / `design.md` in full. Feature acceptance criteria and feature-local design live in those files; **authoritative long-lived public-surface contracts live in `docs/contracts/**`** (boundaries/ADR in `docs/architecture/**`). The parent cuts batch-needed fragments from the correct authorities and embeds them in the prompt.
 
 Before each implementer / reviewer / debugger dispatch for a batch, the parent:
 
 1. Aggregate `_Requirements:` IDs from every task in the batch.
 2. From `requirements.md`, extract only the referenced acceptance criteria (e.g., the cited conditions under requirement 3 among 1–7 — not the whole file).
 3. From optional `_Design: D-Name_` annotations and/or `_Boundary:_` / task bodies, extract the matching design component section(s), plus the minimal cross-cutting slices needed for this batch (dependency-direction block, Error mapping for that boundary, File Structure lines for relevant paths). **Prefer stable anchors**: resolve `_Design:` or Boundary name to `{#D-...}` / `D-...` headings first (grep/search); if no hit, fall back to heading-text partial match; if still unresolved → treat as **NEEDS_CONTEXT**. Do **not** include Overview, Non-Goals, or unrelated component sections.
-4. **Line-budget / split trigger**: if the combined excerpts would exceed roughly **150–250 lines**, revisit task boundaries and **split the batch** — do not paste full specs to stay under budget.
-5. Embed excerpts in a fixed prompt section (authoritative for the batch):
+4. **Related contracts excerpt** (persistent): Prefer task `_Contracts: docs/contracts/<file>.md_` paths (optional annotation; not required); else Persistent References (`Mode: modify` or Boundary-related `reference`) for surfaces this batch touches. Embed under `### Contracts (authoritative for touched surfaces)`. Do **not** inject `docs/specs/_shared/**` glossary / acceptance / testcase. Architecture/ADR only when the batch changes boundaries or dependency direction (minimal block).
+5. **Line-budget / split trigger**: if feature Spec Excerpts would exceed roughly **150–250 lines**, or added persistent excerpts exceed roughly **80–150 lines**, revisit task boundaries and **split the batch** — do not paste full specs or bulk-read contract trees to stay under budget.
+6. Embed excerpts in a fixed prompt section (authoritative for the batch):
 
 ```
 ## Spec Excerpts (authoritative for this batch)
@@ -182,11 +198,21 @@ Before each implementer / reviewer / debugger dispatch for a batch, the parent:
 <extracted acceptance criteria with source section numbers>
 ### Design
 <extracted component + minimal cross-cutting slices with source section numbers>
+### Contracts (authoritative for touched surfaces)
+<related contract excerpts or short full files, with paths>
 ```
 
 **Authority**: Spec Excerpts are the authoritative input for implementer / reviewer / debugger. Spec file paths may be included as repository location only; do **not** instruct subagents to open and read those files as the primary workflow.
 
-**NEEDS_CONTEXT re-excerpt**: If a subagent returns `NEEDS_CONTEXT` / `MISSING` naming a missing heading, the parent may extract that heading and re-dispatch **once** with additional excerpts (same one-shot re-dispatch rule). Do not tell the subagent to load the full file.
+**Contract drift (ズレ) — parent must enforce via templates**:
+
+"Drifted" means any of: (1) implementation contradicts provided Contracts excerpt I/O / invariants / forbidden dependencies; (2) new public surface / event / data ownership without matching `docs/contracts/` update; (3) executable contract (types / OpenAPI / contract tests) still red while claiming complete. Architecture full Read is **not** required to judge drift when excerpts + related contracts + executable contracts are present.
+
+When the implementer detects drift, it must update in place: align code to contract **or** intentionally update the contract (decide from Task Brief / Requirements excerpts); update `docs/contracts/<file>` (breaking → ADR per append-only rules; record in contract Changelog when applicable); if creating a **new** contract or ADR file, register it in `docs/contracts/README.md` or `docs/architecture/adr/README.md` Entries; append path to `design.md` Persistent References if the feature still exists and the path is missing; report `CONTRACTS_UPDATED: <paths>` in the Status Report (include index README paths when Entries changed). Do not rewrite unrelated contracts. Do not invent a post-implementation "write all contracts" phase.
+
+**Subagent load limits**: Default — do **not** glob-bulk-Read `docs/architecture/**`. On excerpt gaps, subagents must `NEEDS_CONTEXT` / `MISSING` with the missing **path or heading** (not self-load full files). Do **not** inject or instruct `docs/specs/_shared/**` as implementation input.
+
+**NEEDS_CONTEXT re-excerpt**: If a subagent returns `NEEDS_CONTEXT` / `MISSING` naming a missing heading or path, the parent may extract that heading/path and re-dispatch **once** with additional excerpts (same one-shot re-dispatch rule). Do not tell the subagent to load the full file.
 
 Do **not** introduce `design/` multi-file splits or inject steering wholesale — only short task-relevant steering snippets already allowed elsewhere.
 
@@ -196,7 +222,7 @@ If multi-agent capability is available, for each batch:
 - Read `templates/implementer-prompt.md` from this skill's directory
 - Run **Pre-dispatch Spec Excerpts** for this batch, then construct a prompt by combining the template with batch-specific context:
   - Ordered list of task IDs/descriptions and shared boundary scope
-  - `## Spec Excerpts (authoritative for this batch)` with `### Requirements` and `### Design` (authoritative; not optional)
+  - `## Spec Excerpts (authoritative for this batch)` with `### Requirements`, `### Design`, and when related `### Contracts (authoritative for touched surfaces)` (Requirements/Design always; Contracts when related)
   - Spec file paths as repository location only (not a directive to read them in full)
   - Exact requirement and design section numbers each task in the batch must satisfy (using source numbering, NOT invented `REQ-*` aliases) — these must match what appears in the excerpts
   - Task-relevant steering context (short) and parent-discovered validation commands (tests/build/smoke as relevant)
@@ -211,9 +237,10 @@ If multi-agent capability is available, for each batch:
 **b) Handle implementer status**:
 - Parse implementer status only from the exact `## Status Report` block and `- STATUS:` field.
 - If `STATUS` is missing, ambiguous, or replaced with prose, re-dispatch the implementer once requesting the exact structured status block only (prefer same implementer / sticky when available). Do NOT proceed to review without a parseable `READY_FOR_REVIEW | BLOCKED | NEEDS_CONTEXT` value.
+- When present, note `CONTRACTS_UPDATED: <paths>` for the reviewer (intentional contract updates in this batch); stage those paths with the batch commit if APPROVED.
 - **READY_FOR_REVIEW** → proceed to **parent mechanical checks** (step c), then reviewer only if those pass
 - **BLOCKED** → dispatch debug subagent (see section below); do NOT immediately skip
-- **NEEDS_CONTEXT** → extract the named missing heading(s) from `MISSING`, append those excerpts once, and re-dispatch (prefer same implementer); if still unresolved → dispatch debug subagent
+- **NEEDS_CONTEXT** → extract the named missing path(s)/heading(s) from `MISSING`, append those excerpts once, and re-dispatch (prefer same implementer); if still unresolved → dispatch debug subagent
 
 **c) Parent mechanical checks** (batch end, **before** reviewer dispatch):
 
@@ -239,7 +266,7 @@ After the implementer returns `READY_FOR_REVIEW`, the parent controller runs the
 - Construct a review prompt with:
   - Parent `MECHANICAL_RESULTS` (commands, exit codes, grep summaries) — the reviewer may **trust these as the mechanical baseline and must not re-run the full suite by default**; re-run only if results are missing or look suspicious
   - The batch task list (ordered IDs) and relevant spec section numbers
-  - The same `## Spec Excerpts (authoritative for this batch)` used for the implementer (Requirements + Design); paths may appear as location only
+  - The same `## Spec Excerpts (authoritative for this batch)` used for the implementer (Requirements + Design + Contracts when present); paths may appear as location only
   - The implementer's status report (for reference only — reviewer must verify judgment items independently)
   - Batch `_Boundary:_` scope and task-relevant validation command names (for context; mechanical execution already done by parent)
   - Per-task `FEATURE_FLAG: required | skipped` (when `skipped`, missing flag-only steps is not a REJECT reason; `RED_PHASE_OUTPUT` for behavioral tasks still required)
@@ -311,7 +338,7 @@ Used for **manual invocation**, execution mode **`direct`** (tier S or ≤3 task
 
 Reviewer cadence under `direct`: run judgment review **once** after all tasks in the selection/queue are implemented (or once if only one task) — not once per sub-task. Parent mechanical checks still run before that reviewer call.
 
-**Spec scoping under `direct`**: The parent *is* the implementer, so there is no subagent prompt — but apply the **same excerpt discipline** as Pre-dispatch Spec Excerpts: for each task (or for the whole selection before coding), extract only the referenced `_Requirements:` criteria and matching design sections (prefer `{#D-...}` / `_Design:` / Boundary anchors). Keep the working brief roughly within the **150–250 line** budget; if larger, implement in smaller slices. Do **not** load entire `requirements.md` / `design.md` as the default. If a subagent reviewer is used at selection end, pass those excerpts as `## Spec Excerpts (authoritative for this batch)`.
+**Spec scoping under `direct`**: The parent *is* the implementer, so there is no subagent prompt — but apply the **same excerpt discipline** as Pre-dispatch Spec Excerpts: for each task (or for the whole selection before coding), extract only the referenced `_Requirements:` criteria, matching design sections (prefer `{#D-...}` / `_Design:` / Boundary anchors), and related `### Contracts (authoritative for touched surfaces)` via `_Contracts:` or Persistent References. Keep the working brief roughly within the **150–250 line** budget; if larger, implement in smaller slices. Do **not** load entire `requirements.md` / `design.md` / architecture as the default; do **not** use `docs/specs/_shared/**` as implementation input. Apply the same Contract Drift definition and in-place update (including `CONTRACTS_UPDATED` in the status/notes when contracts change). If a subagent reviewer is used at selection end, pass those excerpts as `## Spec Excerpts (authoritative for this batch)`.
 
 For each selected task:
 
@@ -385,7 +412,8 @@ If `tasks.md` or design excerpts require a flag → `required`.
 ## Critical Constraints
 - **Execution Mode Selection**: Choose `direct` / `wave` / `strict` per Step 2 (user override → manual → `complexity_tier` → task-count fallback). Report the chosen mode and reason in one line at run start. Tier S / `direct` must not default to per-task fresh implementer×reviewer.
 - **Strict Handoff Parsing**: Never infer implementer `STATUS` or reviewer `VERDICT` from surrounding prose; only the exact structured fields count
-- **Parent Spec Excerpts**: Before each batch dispatch, inject `## Spec Excerpts (authoritative for this batch)`; if combined excerpts exceed ~150–250 lines, split the batch. Under `direct`, apply the same excerpt discipline in-context (do not full-file dump). Do not make full-file Read of requirements/design the default for subagents. Do not split design into multi-file layouts under this skill.
+- **Parent Spec Excerpts**: Before each batch dispatch, inject `## Spec Excerpts (authoritative for this batch)` with `### Requirements`, `### Design`, and when related `### Contracts (authoritative for touched surfaces)`; if combined excerpts exceed ~150–250 lines, split the batch. Under `direct`, apply the same excerpt discipline in-context (do not full-file dump). Do not make full-file Read of requirements/design/architecture the default for subagents. Do not inject `docs/specs/_shared/**` as implementation input. Do not split design into multi-file layouts under this skill.
+- **Contract Drift**: Detect from Contracts excerpts + related contracts + executable contracts (not architecture full Read). On drift: align code or update contracts intentionally; register new contract/ADR paths in the corresponding README Entries; report `CONTRACTS_UPDATED: <paths>` in the implementer Status Report; stage those paths with the batch commit. Do not rewrite unrelated contracts.
 - **`(P)` Execution Contract**: `(P)` authorizes conditional parallel Wave/batch dispatch when boundaries, Depends, and paths are disjoint; otherwise serial. Never treat `(P)` as informational-only. On merge conflict under parallel → stop for human. Applies to `wave` / `strict` only.
 - **Sticky on Happy Path**: Under `wave` / `strict`, after APPROVED prefer sticky / resume (or pseudo-sticky fallback) for the next batch; do not treat unconditional fresh implementer as required on the success path. Under parallel Waves, sticky applies per-batch lineage, not across concurrent batches
 - **Fresh on Failure / Debug**: Under `wave` / `strict` (including `strict` / tier L): debugger is always fresh; implementer after debug RETRY is always fresh; max 2 debug rounds unchanged

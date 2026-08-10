@@ -4,6 +4,14 @@ After implementation completes, `/kiro-docs` consolidates the target spec's cont
 
 Write all generated documents in **Japanese** (matching the Japanese glossary/context templates). The example blocks in the per-document rules are shown in Japanese for this reason.
 
+## Role of `_shared` documents
+
+These four documents under `docs/specs/_shared/` are **not required inputs for implementer agents**. They exist for humans, follow-on discovery, manual QA, and terminology alignment — explanation material that remains after a feature's `requirements.md` / `design.md` are deleted.
+
+## Generation scope (four only)
+
+Generate or merge **only** the four documents below. Do **not** add generation, regeneration, or "derive from implementation" steps for `docs/architecture/**`, `docs/contracts/**`, or ADRs — contract sync is assumed complete at design time and via impl-drift updates.
+
 | # | Document | Granularity | Source artifact | Location |
 | - | -------- | ----------- | --------------- | -------- |
 | 1 | Glossary (用語集) | One per project | terms in requirements.md / design.md | `docs/specs/_shared/glossary.md` |

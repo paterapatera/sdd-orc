@@ -25,7 +25,7 @@ Boundary terminology continuity:
 
 **Batch-local vs selection/standalone:**
 
-- **Batch-local** (`kiro-impl` wave/strict): one verdict for the whole batch. Parent already ran mechanical checks and passes `MECHANICAL_RESULTS` plus `## Spec Excerpts (authoritative for this batch)`. Adopt the mechanical baseline; concentrate on Judgment Checks unless results are missing or suspicious. Judge against **Spec Excerpts** — do **not** default to full-file Read of `requirements.md` / `design.md`.
+- **Batch-local** (`kiro-impl` wave/strict): one verdict for the whole batch. Parent already ran mechanical checks and passes `MECHANICAL_RESULTS` plus `## Spec Excerpts (authoritative for this batch)`. Adopt the mechanical baseline; concentrate on Judgment Checks unless results are missing or suspicious. Judge against **Spec Excerpts** (Requirements / Design / Contracts when present) — do **not** default to full-file Read of `requirements.md` / `design.md` / architecture.
 - **Selection / direct** (`kiro-impl` direct or manual multi-task): same judgment once at selection end; parent should supply excerpts or the equivalent scoped sections used for Task Briefs.
 - **Standalone task-local** (no parent mechanical / no excerpts): may run mechanical checks in-process and read only the **referenced** requirement/design sections (not the whole files by default).
 
@@ -37,8 +37,8 @@ Provide:
 - Task ID list (batch/selection) or single task ID, plus exact task text from `tasks.md`
 - Relevant requirement section numbers
 - Relevant design section numbers
-- Prefer `## Spec Excerpts (authoritative for this batch)` with `### Requirements` and `### Design` when available (authoritative for judgment)
-- Spec file paths (`requirements.md`, `design.md`, optionally `tasks.md`) as repository location only — **not** a directive to open them in full when excerpts are present
+- Prefer `## Spec Excerpts (authoritative for this batch)` with `### Requirements`, `### Design`, and when related `### Contracts (authoritative for touched surfaces)` when available (authoritative for judgment)
+- Spec file paths (`requirements.md`, `design.md`, optionally `tasks.md`, `docs/contracts/...`) as repository location only — **not** a directive to open them in full when excerpts are present
 - The implementer's status report
 - The task / batch `_Boundary:_` scope constraints
 - Validation commands discovered by the controller
@@ -46,6 +46,7 @@ Provide:
 - Per-task `FEATURE_FLAG: required | skipped` when provided
 - Relevant steering excerpts when applicable
 - Relevant `## Implementation Notes` entries when applicable
+- Note `CONTRACTS_UPDATED` from the implementer Status Report when present (intentional contract path updates)
 
 ## Outputs
 
@@ -72,8 +73,9 @@ The main review question is not just "does it work?" but "does it stay inside th
 
 ## Spec Excerpts Policy
 
-- **When Spec Excerpts are provided**: they are authoritative. Do **not** Read `requirements.md` or `design.md` in full. If a needed heading is missing, REJECT with REMEDIATION naming the exact missing heading(s) for parent re-excerpt — do not full-file load as recovery.
-- **When Spec Excerpts are absent** (standalone): read only the cited section numbers / headings needed for this review.
+- **When Spec Excerpts are provided**: they are authoritative. Do **not** Read `requirements.md`, `design.md`, or `docs/architecture/**` in full. Do **not** load `docs/specs/_shared/**` or bulk-scan contract/architecture trees. If a needed heading or contract path is missing, REJECT with REMEDIATION naming the exact missing path/heading(s) for parent re-excerpt — do not full-file load as recovery.
+- **When Spec Excerpts are absent** (standalone): read only the cited section numbers / headings / contract paths needed for this review.
+- Drift judgment uses Contracts excerpts + related contracts + executable contracts; architecture unread in full does not block that judgment.
 
 ## Mechanical Checks
 
@@ -127,6 +129,10 @@ When no parent results are provided, run these checks and use the result as prim
 - Confirm the implementation uses the prescribed structures, interfaces, and dependency direction.
 - Reject silent substitutions for design-mandated choices.
 
+### 10.25 Contract Drift
+- Use `### Contracts (authoritative for touched surfaces)` in Spec Excerpts when provided. **"Drifted"** = contradicts Contracts excerpt I/O / invariants / forbidden dependencies; **or** new public surface / event / data ownership without matching `docs/contracts/` update; **or** executable contract still red while claiming complete.
+- Treat confirmed contract drift as **Important** (required fix before acceptance). Reject unless the Status Report includes `CONTRACTS_UPDATED` with intentional paths and the diff shows those updates (or code was aligned to the contract). Do not require rewriting unrelated contracts.
+
 ### 10.5 Boundary Audit
 - Compare the implementation against the design's boundary commitments and out-of-boundary statements (from excerpts or referenced sections).
 - Reject if downstream-specific behavior is pushed into an upstream boundary for convenience.
@@ -144,7 +150,7 @@ When no parent results are provided, run these checks and use the result as prim
 
 Use:
 - `Critical` for broken functionality, invalid verification, data loss, security risk, or major scope violation
-- `Important` for required fixes before acceptance
+- `Important` for required fixes before acceptance — including confirmed **contract drift** (Contracts excerpt contradiction, missing `docs/contracts/` update for a new public surface, or red executable contracts while claiming complete)
 - `Suggestion` for non-blocking improvements
 - `FYI` for informational notes
 
@@ -166,6 +172,7 @@ Escalate instead of papering over the issue when:
 | “The implementer said RED was done” | RED must be evidenced, not asserted. |
 | “This gap is small enough to let through” | Real gaps must be rejected or escalated. |
 | “I should open the whole design.md” | Prefer Spec Excerpts / cited sections; name missing headings instead of full-file load. |
+| “Architecture was not fully read, so I cannot judge contracts” | Drift is judged from Contracts excerpts + related contracts + executable contracts. |
 
 ## Output Format
 

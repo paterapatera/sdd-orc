@@ -97,6 +97,13 @@ Load only:
 - If Path A: target spec's `brief.md` or `requirements.md` **headings only** (not full read)
 - If user cited a file from 動作確認: read that file / snippet only
 
+### Load rules (persistent docs)
+
+- Default: do **not** load `docs/architecture/**`, `docs/contracts/**`, ADR, or `docs/specs/_shared/**`
+- Boundary exploration only: `docs/architecture/README.md` / `docs/contracts/README.md` (index) → **related files only**
+- Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**`. Never “read everything just in case”
+- glossary / context under `_shared` are optional at most; defer deep contract work to design
+
 Transform into brief sections per **Minimal brief requirements** below.
 
 ### Input patterns

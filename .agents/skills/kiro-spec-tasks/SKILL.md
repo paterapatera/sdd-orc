@@ -28,6 +28,20 @@ metadata:
 - Core steering context: `product.md`, `tech.md`, `structure.md`
 - Additional steering files only when directly relevant to requirements coverage, design boundaries, runtime prerequisites, or team conventions that affect task executability
 
+#### Load rules (persistent docs)
+
+| 資料 | このフェーズ |
+|------|--------------|
+| feature req/design/tasks | **主** |
+| architecture / contracts | **関連のみ** — Prefer Persistent References / Boundary-related paths; never bulk-Read |
+| ADR | — |
+| glossary / acceptance / testcase (`_shared`) | — |
+
+- Never glob-bulk-Read `docs/contracts/**` or `docs/architecture/**`
+- Procedure: **index → Persistent References / named related paths → those files only**
+- Do not “read everything just in case”
+- **Recommended**: annotate executable sub-tasks that touch a public surface with `_Contracts: docs/contracts/<file>.md_` (path form; optional — Persistent References remain the fallback at impl)
+
 **Validate approvals**:
 - If `-y` flag provided: Auto-approve requirements and design in spec.json. Tasks approval is also handled automatically in Step 4.
 - Otherwise: Verify both approved (stop if not, see Safety & Fallback)
@@ -133,11 +147,13 @@ Before writing `tasks.md`, run one lightweight independent sanity review of the 
 ## Critical Constraints
 - **Task Integration**: Every task must connect to the system (no orphaned work)
 - **Boundary annotations**: Required for `(P)` tasks, recommended for all (`_Boundary: ComponentName_`)
+- **Contracts annotations** (optional, recommended): `_Contracts: docs/contracts/<file>.md_` when the task touches that public surface
 - **Wave annotations**: Required on every executable sub-task (`_Wave: N_`); same Wave = same dispatch-batch candidate
 - **Explicit dependencies**: Cross-boundary non-obvious dependencies declared with `_Depends: X.X_`
 - **Executable deliverable granularity**: Each task must produce a verifiable deliverable (file, endpoint, UI component, config). Infrastructure tasks (project scaffolding, manifest, host integration, build config) must be explicit — never assume they exist
 - **Observable done state**: Each executable sub-task must include at least one detail bullet that makes the completed state visible without adding new bookkeeping fields
 - **No implicit prerequisites**: If a task requires a runtime, SDK, framework setup, or config file, that setup must be a separate preceding task
+- **No persistent bulk load**: Never glob-bulk-Read `docs/contracts/**` / `docs/architecture/**` while generating tasks
 </instructions>
 
 ## Output Description

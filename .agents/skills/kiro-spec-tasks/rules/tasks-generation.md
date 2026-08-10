@@ -39,8 +39,8 @@ Focus on capabilities and outcomes, not code structure.
 - Build on previous outputs (no orphaned code)
 - Connect to the overall system (no hanging features)
 - Progress incrementally (no big jumps in complexity)
-- Respect architecture boundaries defined in design.md (Architecture Pattern & Boundary Map)
-- Honor interface contracts documented in design.md
+- Respect architecture boundaries from design.md Boundary Map / Persistent References (and related `docs/architecture/**` paths when listed)
+- Honor public-surface contracts from `docs/contracts/**` (via design.md Persistent References and task `_Contracts:` paths). Treat `design.md` contract text as excerpts/summaries only — not the long-lived authority
 - Use major task summaries sparingly—omit detail bullets if the work is fully captured by child tasks.
 
 **End with integration tasks** to wire everything together.
@@ -110,7 +110,7 @@ Focus on capabilities and outcomes, not code structure.
 **End each task detail section with**:
 - `_Requirements: X.X, Y.Y_` listing **only numeric requirement IDs** (comma-separated). Never append descriptive text, parentheses, translations, or free-form labels.
 - For cross-cutting requirements, list every relevant requirement ID. All requirements MUST have numeric IDs in requirements.md. If an ID is missing, stop and correct requirements.md before generating tasks.
-- Reference components/interfaces from design.md when helpful (e.g., `_Contracts: AuthService API`)
+- Reference components/interfaces from design.md when helpful; for public surfaces annotate `_Contracts: docs/contracts/<file>.md_` from Persistent References (path form; optional but recommended — authoritative detail lives in that contract file, not in design.md alone)
 
 ### 7.5 Observable Completion
 
@@ -198,7 +198,7 @@ Before writing `tasks.md`, review the draft task plan and repair local issues un
 - Foundation-phase tasks (see Task Ordering Principle) are rarely `(P)` — they establish shared prerequisites.
 - Core-phase tasks are the primary candidates for `(P)` since foundation is already complete.
 - Validate that identified parallel tasks operate within separate boundaries defined in the Architecture Pattern & Boundary Map.
-- Confirm API/event contracts from design.md do not overlap in ways that cause conflicts.
+- Confirm API/event contracts from Persistent References / `_Contracts:` paths (`docs/contracts/**`) do not overlap in ways that cause conflicts; use design.md excerpts only as orientation.
 - `(P)` tasks with cross-boundary dependencies must declare `_Depends: X.X_` explicitly.
 - Append `(P)` immediately after the task number for each parallel-capable task:
   - Example: `- [ ] 2.1 (P) Build background worker`

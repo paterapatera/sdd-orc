@@ -13,7 +13,7 @@ The parent controller already ran mechanical checks and provides `MECHANICAL_RES
 ## You Will Receive
 - Parent `MECHANICAL_RESULTS` (commands, exit codes, grep summaries) — treat as the mechanical baseline; trust and use for the verdict unless missing or suspicious
 - The batch task list (ordered IDs/descriptions) and relevant spec section numbers
-- `## Spec Excerpts (authoritative for this batch)` with `### Requirements` and `### Design` — authoritative for judgment; do **not** default to Reading `requirements.md` / `design.md` in full
+- `## Spec Excerpts (authoritative for this batch)` with `### Requirements`, `### Design`, and when related `### Contracts (authoritative for touched surfaces)` — authoritative for judgment; do **not** default to Reading `requirements.md` / `design.md` / architecture in full
 - Spec file paths as repository location only (not a primary "open and read" directive)
 - The implementer's status report (for reference only — do NOT trust it as source of truth for judgment)
 - The batch `_Boundary:_` scope constraints
@@ -21,9 +21,10 @@ The parent controller already ran mechanical checks and provides `MECHANICAL_RES
 - Per-task `FEATURE_FLAG: required | skipped` when provided by the parent
 
 ## Spec Excerpts Policy
-- **Default**: Judge against the parent-injected Spec Excerpts only. Do **not** Read `requirements.md` or `design.md` in full.
-- If a needed heading is absent from the excerpts and you cannot complete a judgment check, do **not** full-file load. State the gap in FINDINGS and set VERDICT to REJECTED with REMEDIATION asking the parent to re-dispatch with the named missing heading(s), **or** (when the host surfaces it) signal the same via `NEEDS_CONTEXT` / `MISSING` naming those headings so the parent can re-send excerpts once.
-- Never treat "I should open the whole design.md" as the default recovery path.
+- **Default**: Judge against the parent-injected Spec Excerpts only. Do **not** Read `requirements.md`, `design.md`, or `docs/architecture/**` in full. Do **not** load `docs/specs/_shared/**` or bulk-scan contracts/architecture trees.
+- Judgment materials are limited to Spec Excerpts (Requirements / Design / Contracts), related named contract paths, and executable contracts in scope for the batch. Architecture unread in full does **not** block drift judgment when those are present.
+- If a needed heading or contract path is absent from the excerpts and you cannot complete a judgment check, do **not** full-file load. State the gap in FINDINGS and set VERDICT to REJECTED with REMEDIATION asking the parent to re-dispatch with the named missing path/heading(s), **or** (when the host surfaces it) signal the same via `NEEDS_CONTEXT` / `MISSING` naming those headings so the parent can re-send excerpts once.
+- Never treat "I should open the whole design.md / architecture tree" as the default recovery path.
 
 ## First Action
 
@@ -91,6 +92,12 @@ Evaluate each item. If ANY item fails, the verdict is REJECTED.
 - Component structure, interfaces, and data flow match the design excerpts.
 - Dependency direction follows the Architecture dependency-direction block in the excerpts when present (no upward imports).
 
+**9b. Contract Drift (ズレ)**
+- Use `### Contracts (authoritative for touched surfaces)` in Spec Excerpts when present. Drift is detectable from excerpts + related contracts + executable contracts — architecture full Read is not required.
+- **"Drifted"** means any of: (1) code contradicts Contracts excerpt I/O / invariants / forbidden dependencies; (2) new public surface / event / data ownership without matching `docs/contracts/` update; (3) executable contract (types / OpenAPI / contract tests) still red while claiming complete.
+- Treat confirmed contract drift as an **Important** finding (required fix before acceptance). REJECT unless the implementer Status Report includes `CONTRACTS_UPDATED` with the intentional contract paths and the diff shows those updates (or code was aligned to the contract).
+- Do not require rewriting unrelated contracts.
+
 **10. Test Quality**
 - Tests prove the required behavior, not just scaffolding or happy-path shells.
 - Test assertions are meaningful (not `expect(true).toBe(true)` or similar).
@@ -120,7 +127,7 @@ The parent controller parses the exact `- VERDICT:` line. Do NOT rename the head
 - FINDINGS:
   - <numbered list of specific findings, if any>
   - <reference exact file paths, line ranges, and spec section numbers>
-- REMEDIATION: <if REJECTED: specific, actionable steps to fix each finding; if excerpts incomplete, name missing heading(s) for parent re-excerpt>
+- REMEDIATION: <if REJECTED: specific, actionable steps to fix each finding; if excerpts incomplete, name missing path(s)/heading(s) for parent re-excerpt; for contract drift, require code align or CONTRACTS_UPDATED paths>
 - SUMMARY: <one-sentence summary of the review outcome>
 ```
 

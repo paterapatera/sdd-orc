@@ -54,7 +54,7 @@
 - **Contract First**: Define interfaces before implementation
 - **Versioning**: Plan for API evolution
 - **Idempotency**: Design for retry safety
-- **Contract Visibility**: Surface API and event contracts in design.md while linking extended details from `research.md`
+- **Contract Visibility**: Surface enough contract summary in `design.md` for reviewers/implementers, with authoritative detail in `docs/contracts/**` (and boundary maps in `docs/architecture/**`). Link paths via Persistent References; do not treat `research.md` as contract source of truth.
 
 ### 8. Dependency Direction
 - **Define and enforce the dependency direction** in the architecture section of design.md (e.g., Types → Config → Repository → Service → Runtime → UI)
@@ -75,14 +75,22 @@
 - **Traceable**: Requirements to components mapping
 - **Complete**: All aspects covered for implementation
 - **Consistent**: Uniform terminology throughout
-- **Focused**: Keep design.md centered on architecture and contracts; move investigation logs and lengthy comparisons to `research.md`
+- **Focused**: Keep `design.md` as feature implementation-alignment design (boundary, decisions, excerpts, Persistent References). Authoritative long-lived contract text lives in `docs/contracts/**`; boundary maps in `docs/architecture/**`. Move investigation logs and lengthy comparisons to `research.md` (never contract authority).
 
 ## Section Authoring Guidance
 
 ### Global Ordering
-- Default flow: Overview → Goals/Non-Goals → Boundary Commitments → Architecture → File Structure Plan → Components & Interfaces → Optional sections.
+- Default flow: Overview → Goals/Non-Goals → Boundary Commitments → Architecture → Persistent References → File Structure Plan → Components & Interfaces → Optional sections.
 - Teams may swap Traceability earlier or place Data Models nearer Architecture when it improves clarity, but keep section headings intact.
 - Within each section, follow **Summary → Scope → Decisions → Impacts/Risks** so reviewers can scan consistently.
+
+### Persistent Contract Authority
+- **Authoritative long-lived contracts**: `docs/contracts/**`
+- **Authoritative boundary maps**: `docs/architecture/**` (related sections only; never wholesale rewrite)
+- **`design.md`**: feature implementation-alignment design — Persistent References + feature-specific temporary detail / excerpts for reviewers and implementers. Not the single long-lived contract body.
+- **`research.md`**: investigation notes only — never contract authority.
+- Every design MUST include a **Persistent References** section (Contracts / Architecture / ADRs tables). `Mode: modify` paths must already be updated at design time.
+- Merge at design time: update existing contract files by diff; merge related architecture sections only; ADRs are append-only (new file per decision — never merge a new decision into an existing ADR body; reverse via new ADR + `Superseded by ADR-XXXX`). Write an ADR when dependency direction/ownership, breaking public contracts, major tech choice, or Revalidation Triggers are involved — not for local naming/detail. **Index sync is mandatory**: new/changed contract paths → update `docs/contracts/README.md` Entries; new/superseded ADRs → update `docs/architecture/adr/README.md` Entries. On conflict, do not casually delete prior definitions; record rationale in an ADR or a contract **Changelog** section.
 
 ### Requirement IDs
 - Reference requirements as `2.1, 2.3` without prefixes (no “Requirement 2.1”).
@@ -113,13 +121,15 @@
 - Boundary Commitments should already make the ownership seam explicit before this section begins.
 - Group components by domain/layer and provide one block per component.
 - Begin with a summary table listing Component, optional Anchor (`D-Name`), Domain, Intent, Requirement coverage, key dependencies, and selected contracts.
-- **Stable anchors (required)**: Every full detail-block heading MUST use `#### ComponentName {#D-ComponentName}`. Keep a single `design.md`; never split into `design/components/*.md`. Contract source of truth stays in design.md (not research.md).
+- **Stable anchors (required)**: Every full detail-block heading MUST use `#### ComponentName {#D-ComponentName}`. Keep a single `design.md`; never split into `design/components/*.md`.
+- **Contract authority**: Persistent public-surface contracts are authoritative in `docs/contracts/**` (boundaries in `docs/architecture/**`). `design.md` may keep reviewer/implementer excerpts and summaries; it is **not** the single long-lived contract source of truth. `research.md` is investigation notes only — never contract authority.
 - Table fields: Intent (one line), Requirements (`2.1, 2.3`), Owner/Reviewers (optional).
 - Dependencies table must mark each entry as Inbound/Outbound/External and assign Criticality (`P0` blocking, `P1` high-risk, `P2` informational).
 - Summaries of external dependency research stay here; detailed investigation (API signatures, rate limits, migration notes) belongs in `research.md`.
-- design.md must remain a self-contained reviewer artifact. Reference `research.md` only for background, and restate any conclusions or decisions here.
+- When detailed type definitions would bloat `design.md`, put the authoritative text in `docs/contracts/**` and keep a short summary + path here (and in Persistent References).
+- design.md must remain usable for reviewers/implementers via excerpts + Persistent References. Reference `research.md` only for background; restate conclusions/decisions here.
 - Contracts: tick only the relevant types (Service/API/Event/Batch/State). Unchecked types should not appear later in the component section.
-- Service interfaces must declare method signatures, inputs/outputs, and error envelopes. API/Event/Batch contracts require schema tables or bullet lists covering trigger, payload, delivery, idempotency.
+- Service interfaces must declare method signatures, inputs/outputs, and error envelopes (or summarize and point to the authoritative contract path). API/Event/Batch contracts require schema tables or bullet lists covering trigger, payload, delivery, idempotency — duplicate thick definitions into external contracts rather than leaving design.md as the only copy.
 - Use **Integration & Migration Notes**, **Validation Hooks**, and **Open Questions / Risks** to document rollout strategy, observability, and unresolved decisions.
 - Detail density rules:
   - **Full block**: components introducing new boundaries (logic hooks, shared services, external integrations, data layers).
@@ -137,7 +147,7 @@
 - Logical Data Model should articulate structure, indexing, sharding, and storage-specific considerations (event store, KV/wide-column) relevant to the change.
 - Data Contracts & Integration section documents API payloads, event schemas, and cross-service synchronization patterns when the feature crosses boundaries.
 - Lengthy type definitions or vendor-specific option objects should be placed in the Supporting References section within design.md, linked from the relevant section. Investigation notes stay in `research.md`.
-- Supporting References usage is optional; only create it when keeping the content in the main body would reduce readability. All decisions must still appear in the main sections so design.md stands alone.
+- Supporting References usage is optional; only create it when keeping the content in the main body would reduce readability. Prefer authoritative contract bodies in `docs/contracts/**`. Decisions and excerpts must still appear in the main sections so reviewers can implement without opening unrelated trees.
 
 ### Error/Testing/Security/Performance Sections
 - Record only feature-specific decisions or deviations. Link or reference organization-wide standards (steering) for baseline practices instead of restating them.
