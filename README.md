@@ -9,6 +9,16 @@
 
 仕様駆動開発に基づいて開発を進めるオーケストレーション。**エントリポイント**: `/kiro-orchestrate`（`.agents/skills/kiro-orchestrate/`）
 
+## SDD 実施前の推奨（品質ツール）
+
+`/kiro-orchestrate` や仕様作成に入る**前に**、`/propose-quality-tools` の実行を推奨する。言語と規模（`S` / `M` / `L`）に合わせて、フォーマット・型検査・SOLID 近似・依存境界などの **無料/OSS 品質ツールチェーン**を提案し、設計・実装フェーズのアーキテクチャ／品質ゲートの前提を揃える。
+
+```text
+/propose-quality-tools <language> <scale>
+```
+
+例: `/propose-quality-tools typescript M`。提案の採否と設定反映はユーザー判断（依頼がない限り自動インストールしない）。スキル定義: `.agents/skills/propose-quality-tools/`。
+
 ## 役割
 
 - 調整者: フローのルーティング、フェーズゲート、巻き戻しを制御し、各役割のスキル実行をオーケストレーションする
@@ -346,6 +356,8 @@ docs/specs/<feature>/reviews/
 3. `design-review.md` が `VERDICT: GO` かつ Phase Gate `VERIFIED` なら **[ゲート] 設計フェーズ** → `/kiro-spec-tasks` へ進む
 
 ## 基本的な開発フロー
+
+フロー開始前に `/propose-quality-tools` の実行を推奨する（詳細は「SDD 実施前の推奨」）。
 
 [調整者]: 下記のフローをオーケストレーションする。要求・設計の `[ゲート]` は統合レポートの Phase Gate `VERIFIED` 後に開く。タスクは `/kiro-verify-phase-gate` VERIFIED 後に **自動承認**し PR Summary を出してオーケストレーションを終了する（`/kiro-impl` には自動で進まない）。実装は明示的 `実装のみ` で `/kiro-verify-completion`（`FEATURE_GO`）後に **人間承認待ち** とする。
 
