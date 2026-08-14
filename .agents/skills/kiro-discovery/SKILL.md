@@ -13,7 +13,8 @@ Discovery is **capture and route**, not requirements authoring. Default mode is 
   - Correct Path (A–E) identified
   - User intent captured in `brief.md` (or capture log) on disk — not left in chat only
   - Cross-spec dependency edges reflected in `roadmap.md` when present (additive; never lose `[x]`)
-  - Actionable next command suggested (`/kiro-orchestrate` for Path A/C/D/E)
+  - Actionable next command suggested for a **new chat** (`/kiro-orchestrate` for Path A/C/D/E) — never chained in this conversation
+  - User can finish Confirm with **はい** or a correction (no abort-via-いいえ; no “実行しない”)
   - Total discovery interaction kept minimal unless Workshop mode explicitly triggered
 </background_information>
 
@@ -25,13 +26,14 @@ Discovery is **capture and route**, not requirements authoring. Default mode is 
 - Default mode is Capture + Route; Workshop is exceptional.
 - Never write EARS acceptance criteria in discovery.
 - Never spawn viability / research sub-agents in Capture + Route mode.
-- Never skip disk write (`brief.md`) for Path C/D/E.
+- Never skip disk write (`brief.md`) for Path C/D/E after はい.
 - Deep context loading (codebase exploration sub-agents) is deferred to requirements (brownfield) or design — not discovery.
 - Never generate Pros/Cons approach comparison tables in Capture + Route.
 - Do not invent Scope In/Out for vague requests — trigger Workshop instead.
 - **Path classification is independent of roadmap presence.** A single-scope new spec that depends on an existing/other spec **stays Path C** and merely gains a roadmap line. Do **not** promote it to Path D/E — promotion implies multi-spec generation and would mislead `/kiro-spec-batch`.
 - **Never rewrite `roadmap.md` wholesale** — append/update only, preserving completed items and prior phases.
 - **`roadmap.md` is the single dependency source.** Do not add machine-readable dependency fields to `brief.md`; briefs keep their prose `Upstream / Downstream` as human context only.
+- **Confirm is はい or a correction.** Never offer いいえ as abort. Never ask whether to run `/kiro-orchestrate` now. Never chain it after discovery. 「はい」= write artifacts and stop.
 
 ## Step 1: Lightweight Scan
 
@@ -131,16 +133,36 @@ Shrink of former deep dialogue — still produce the **minimal** brief template:
 
 | Path | After Capture |
 | ---- | ------------- |
-| **A** | Update brief or record「既存 spec X に追記」; proceed Confirm → Write as needed → Next: `/kiro-orchestrate <feature>` (要求更新) |
+| **A** | Update brief or record「既存 spec X に追記」; proceed Confirm → Write as needed → Next (new chat): `/kiro-orchestrate <feature>` (要求更新) |
 | **B** | Do **not** force a spec. Optional memo under `docs/captures/` only. Recommend direct implementation |
-| **C** | Confirm → Write `brief.md` → Next: `/kiro-orchestrate <feature>` |
-| **D/E** | If decomposition unset → Workshop first. Else Confirm → Write brief(s) + `roadmap.md` → Next: `/kiro-orchestrate` (per-spec) |
+| **C** | Confirm → Write `brief.md` → Next (new chat): `/kiro-orchestrate <feature>` |
+| **D/E** | If decomposition unset → Workshop first. Else Confirm → Write brief(s) + `roadmap.md` → Next (new chat): `/kiro-orchestrate` (per-spec) |
 
 ## Step 5: Confirm
 
-Ask **one question**: 「この brief で requirements（`/kiro-orchestrate`）に進めてよいか」
+Ask **one question about the brief only**. Do **not** mention `/kiro-orchestrate` in the question. Do **not** ask a second question about starting requirements now. Do **not** offer いいえ as a way to abort without writing.
 
-Adjust only if the user corrects Path, Scope In/Out, or naming. Do not reopen Workshop unless they ask to explore/compare.
+Show Path, feature name, and Scope In/Out so **はい** can be answered without extra typing.
+
+Question (use this wording):
+
+「この brief でよいか？ はい = ファイルに書く。修正があれば内容を書いてください。」
+
+Two valid replies only:
+
+**はい / yes / OK / よい:**
+
+- Proceed to Step 6 Write.
+- 「はい」means **write artifacts and stop**. It does **not** mean run `/kiro-orchestrate` in this conversation.
+
+**修正内容** (Path, Scope In/Out, naming, or other brief fields):
+
+- Apply the correction, re-show the brief, and ask the same question once more.
+- Do not reopen Workshop unless they ask to explore/compare.
+
+If the user says いいえ / no with **no** correction: do **not** abort. Ask once what to change, then wait for はい or a correction.
+
+Orchestrate is never started from discovery.
 
 ## Step 6: Write
 
@@ -298,7 +320,11 @@ Incrementally grown from single-spec discovery. Project-level planning: TBD.
 
 ## Step 8 / E2: Next Step
 
-Suggest the next command and **stop**. Do NOT automatically run `/kiro-orchestrate` or spec generation.
+Suggest the next command for a **new conversation** and **stop**.
+
+- Do NOT automatically run `/kiro-orchestrate` or spec generation.
+- Do NOT ask 「今実行するか」 or any yes/no about chaining. Discovery is finished.
+- Phrase as: 別チャットで次を実行: `/kiro-orchestrate <feature>` (or the Path-specific command below).
 
 | Path | Next command |
 | ---- | ------------ |
