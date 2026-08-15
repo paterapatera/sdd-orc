@@ -1,8 +1,24 @@
 # Flow Routing
 
+## Resolve Target Feature
+
+Resolve `<feature>` **before** routing. Do not guess from chat history.
+
+1. **Explicit `<feature>` wins** — first argument that is not a flow/tier/fast-track override (`実装のみ`, `実装だけ`, `要求だけ更新`, `要求更新`, `設計だけ`, `設計のみ`, `設計更新`, `quick`, `lite`, `フル`, `full`, `-y`).
+2. **Else use the current git branch** as `<feature>`:
+   - `git branch --show-current` (fallback: `git rev-parse --abbrev-ref HEAD`)
+   - Use the branch name as-is (matches `create-feature-worktrees`: branch == `docs/specs/<feature>/`)
+   - If the branch contains `/`, use the last segment only (`feature/001-user-edit` → `001-user-edit`)
+   - Announce: `Using spec: <feature> (from branch)`
+3. **Stop and ask for a spec name** if any of:
+   - Detached HEAD, empty branch, or git unavailable
+   - Branch is a default line: `main`, `master`, `develop`, `dev`, `trunk`
+
+Then continue with § Entry Contract using the resolved `<feature>`.
+
 ## Entry Contract (discovery runs standalone)
 
-`/kiro-discovery` is **not** an orchestration step. It is run **standalone before** orchestration and has already produced `brief.md` (new specs), `roadmap.md` (when dependencies exist), and — for existing specs — `spec.json`. Orchestration is invoked with a target `<feature>` (+ optional explicit flow) and selects the active flow without a discovery Path signal:
+`/kiro-discovery` is **not** an orchestration step. It is run **standalone before** orchestration and has already produced `brief.md` (new specs), `roadmap.md` (when dependencies exist), and — for existing specs — `spec.json`. Orchestration is invoked with a target `<feature>` (explicit, or current git branch per § Resolve Target Feature) plus optional explicit flow, and selects the active flow without a discovery Path signal:
 
 1. **User-specified flow wins** — e.g.「要求だけ更新」「設計だけ」「実装だけ」.
 2. **Else derive from `spec.json`** via § Spec State Hints:
