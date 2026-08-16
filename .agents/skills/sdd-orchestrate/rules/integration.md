@@ -54,7 +54,6 @@ Orchestrator stops if `_Blocked:_` remains or tasks incomplete before `/sdd-vali
 | `/sdd-validate-requirements` | Post-write (unified) | PO+QA+Sec+final+phase-gate → `requirements-review.md` |
 | `/sdd-spec-design` | Design generation | Inline gap (brownfield) + discovery + `design.md` |
 | `/sdd-validate-design-qa` | Design (unified) | QA+Arch+Sec+final+phase-gate → `design-review.md` |
-| `/sdd-validate-design` | Standalone | Interactive review; not used in orchestrate flow |
 | `/sdd-validate-impl` | Post-impl | Cross-task integration |
 | `/sdd-verify-phase-gate` | Pre-approval (タスク; 要求/設計は統合内 or standalone debug) | Artifact + `VERDICT` readiness (`PHASE_GATE`) |
 | `/sdd-verify-completion` | Impl batch/selection gate / Path B / post-impl | Fresh evidence (`BATCH`, `TASK`, `FIX`, `TEST_OR_BUILD`, `FEATURE_GO`) |

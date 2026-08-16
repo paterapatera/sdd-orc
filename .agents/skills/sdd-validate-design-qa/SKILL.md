@@ -1,6 +1,6 @@
 ---
 name: sdd-validate-design-qa
-description: Autonomous unified design validation (qa + arch + sec + final gate + phase-gate). Use in /sdd-orchestrate flows. For interactive review use /sdd-validate-design. Supports --only qa|arch|sec|final.
+description: Autonomous unified design validation (qa + arch + sec + final gate + phase-gate). Use in /sdd-orchestrate flows. Supports --only qa|arch|sec|final.
 metadata:
   shared-rules: "../sdd-validate-shared/contract.md, ../sdd-validate-shared/phase-gate.md"
 ---
@@ -10,8 +10,6 @@ metadata:
 
 <background_information>
 Single-pass design-phase validate for AI-DLC (replaces separate qa → arch → sec → ex → verify-phase-gate dispatches). Autonomous; no user dialogue. Writes `reviews/design-review.md` with one `VERDICT:` and inline `Phase Gate` status.
-
-For **standalone interactive** design review, use `/sdd-validate-design` (unchanged — not this skill).
 </background_information>
 
 <instructions>
@@ -168,7 +166,6 @@ When `/sdd-orchestrate` runs 要求更新 or 設計更新, scope to **changed de
 - Do not insert other skill dispatches between Pass A sub-passes.
 - Do not self-repair specialist-domain content in Pass B.
 - Do not ask the user questions.
-- Do not replace interactive `/sdd-validate-design`.
 - Every `design.md` edit must appear as a `## Reflected Fixes` row with Pass label.
 
 ## On NO-GO

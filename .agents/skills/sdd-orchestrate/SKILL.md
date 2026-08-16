@@ -55,9 +55,9 @@ Do **NOT** dispatch individual `spec-requirements`, `validate-*`, `spec-design`,
 - No human approval skip for **要求 / 設計 / 実装** unless user explicitly requests `-y` fast-track (then same-conversation chain allowed; handoff optional — cost over session hygiene). Terminal タスク / 仕様一式 is **always** auto-approve (no human prompt).
 - **S tier (quick-path):** one dispatch to `/sdd-spec-quick --auto --from-orchestrate`, then **Terminal auto-approve (S)** → PR Summary → end. Do not run L-flow steps individually. No Phase terminal.
 - Requirements validate: single `/sdd-validate-requirements` (unified po→qa→sec→final+phase-gate). Optional `--only po|qa|sec|final`. (M/L only; S uses quick-path sanity review.)
-- Design validate: single `/sdd-validate-design-qa` (unified qa→arch→sec→final+phase-gate). Optional `--only qa|arch|sec|final`. Interactive `/sdd-validate-design` is **not** used in orchestrate. (M/L only.)
+- Design validate: single `/sdd-validate-design-qa` (unified qa→arch→sec→final+phase-gate). Optional `--only qa|arch|sec|final`. (M/L only.)
 - Path B: no spec flow, no `/sdd-impl`.
-- Path D/E: per-spec flows in dependency order with upstream guard; no `/sdd-spec-batch`. Never S / quick-path.
+- Path D/E: per-spec flows in dependency order with upstream guard. Never S / quick-path.
 - Validate steps run without user dialogue; user interaction only at human `[GATE]` points（要求 / 設計 / 実装）.
 - **2 consecutive NO-GO** on the same step → stop; seek user re-alignment (`rules/rollback.md`).
 - Progress check: `/sdd-spec-status <feature>`.

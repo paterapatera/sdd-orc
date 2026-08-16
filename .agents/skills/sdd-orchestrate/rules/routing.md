@@ -123,7 +123,7 @@ A dependency `<dep>` is **ready** if **any** of:
 
 Otherwise **not ready** — including when `docs/specs/<dep>/` is missing or the upstream is still in requirements/design phase.
 
-This matches `/sdd-verify-phase-gate <dep> tasks` generation criteria and aligns with `/sdd-spec-batch` wave ordering (upstream wave must complete before downstream starts).
+This matches `/sdd-verify-phase-gate <dep> tasks` generation criteria (upstream must complete before downstream starts).
 
 ### On block
 
@@ -133,7 +133,7 @@ Report to the user:
 
 - Target feature and which upstream dep(s) are not ready
 - Each blocking dep's status (`phase`, `approvals` from `spec.json`; optional `/sdd-spec-status <dep>`)
-- Instruction: complete upstream through `/sdd-orchestrate` or `/sdd-spec-batch` for the blocking spec(s) first, then retry
+- Instruction: complete upstream through `/sdd-orchestrate` for the blocking spec(s) first, then retry
 
 **User override does not bypass this guard** unless the user explicitly acknowledges incomplete upstream specs and insists on proceeding anyway.
 
@@ -146,7 +146,7 @@ Reference mapping from the Path that `/sdd-discovery` determined **standalone** 
 | **A** (existing spec sufficient) | 要求更新 \| 設計更新 \| 実装のみ — pick from user intent + `spec.json` approvals |
 | **B** (no spec) | **直接実装** — never enter spec flow (handled outside orchestration) |
 | **C** (new single spec) | 要求新規作成 |
-| **D/E** (multi / mixed) | **No** `/sdd-spec-batch` — run per-spec flows sequentially by dependency |
+| **D/E** (multi / mixed) | Run per-spec flows sequentially by dependency |
 
 ## Spec State Hints
 

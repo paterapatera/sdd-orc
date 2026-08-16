@@ -50,7 +50,7 @@
 - Discovery **Path A**（既存 spec で足りる）→ 要求更新 or 設計更新 or 実装のみのいずれかに振り分ける
 - Discovery **Path B**（spec 不要）→ **直接実装フロー**（下記）。spec を経由しない
 - Discovery **Path C**（新規単一 spec）→ 要求新規作成フロー
-- Discovery **Path D/E**（複数 spec・混合分解）→ `/sdd-spec-batch` は使用しないで、 spec 単位でフローを分割実行
+- Discovery **Path D/E**（複数 spec・混合分解）→ spec 単位でフローを分割実行
 - ユーザーが明示した場合（「要求だけ更新」「実装だけ」等）は、その指示を優先する
 
 **実行中の制御**
@@ -130,7 +130,7 @@ validate 実行中はユーザーと対話せず自律的に進める。ただ�
 - 要求・設計・実装は人間承認なしに次フェーズへ進めない（`-y` による fast-track はユーザーが明示した場合のみ）。タスク / 仕様一式は機械的 readiness 後に自動承認
 - `GO` 判定の前に各 validate スキル内で fresh-evidence を適用する。要求・設計の人間承認前、およびタスク自動承認前は phase-gate（要求/設計は統合レポート、タスクは `/sdd-verify-phase-gate`）
 - 同一フェーズ内の専門 validate（要求: po / qa / sec、設計: qa / arch / sec）は、いずれかが `NO-GO` なら最終ゲート（`/sdd-validate-requirements --only final` / `/sdd-validate-design-qa --only final`）へ進めない
-- `/sdd-validate-requirements --only final` / `/sdd-validate-design-qa --only final` は専門 validate の結果を入力として総合 GO/NO-GO を判定する **最終ゲート**（対話型の `/sdd-validate-design` とは別スキル）
+- `/sdd-validate-requirements --only final` / `/sdd-validate-design-qa --only final` は専門 validate の結果を入力として総合 GO/NO-GO を判定する **最終ゲート**
 - 人間ゲート通過時、調整者は **現在フェーズ・次ステップ・未解決事項** をユーザーに報告する。タスク自動承認直後は **PR Summary Output** を出してオーケストレーションを終了する
 
 ### 巻き戻し
@@ -220,7 +220,6 @@ spec ベースの実装では、調整者は `/sdd-impl` の内部ループを�
 | `requirements-review-gate`（`sdd-spec-requirements` 内蔵） | 要求生成**前** | 機械チェック + ドラフト品質。対話的合意は担当しない |
 | `/sdd-spec-design` | 要求→設計の間（任意） | brownfield のみ。既存コードとのギャップ分析 |
 | `/sdd-validate-design-qa --only final` | 設計 validate **最終（AI-DLC）** | qa/arch/sec のレポートを入力に総合 GO/NO-GO → `reviews/design-final.md`。専門分析は繰り返さない |
-| `/sdd-validate-design` | 設計レビュー（**スタンドアロン**） | 対話型の独立レビュー。オーケストレートフローでは使用しない |
 | `/sdd-validate-impl` | 実装完了後 | タスク横断の統合検証。バッチ／選択単位の判断レビューは `/sdd-review` の責務 |
 | `/sdd-verify-completion` | 各 GO 宣言前 | fresh-evidence ゲート。調整者が各フェーズゲートと impl のバッチ／選択完了・`FEATURE_GO` で適用 |
 
@@ -239,7 +238,7 @@ spec ベースの実装では、調整者は `/sdd-impl` の内部ループを�
 | ------ | ---- | ---- |
 | `/sdd-orchestrate` | `.agents/skills/sdd-orchestrate/` | フロールーティング、フェーズゲート、巻き戻し。実行手順は `rules/` に分離（`routing`, `flows`, `gates`, `rollback`） |
 
-### validate スキル（統合 2 本 + 対話版設計・実装済み）
+### validate スキル（統合 2 本）
 
 共通契約: `.agents/skills/sdd-validate-shared/contract.md`（各 validate スキルから参照。重複読込み回避）
 
@@ -247,7 +246,6 @@ spec ベースの実装では、調整者は `/sdd-impl` の内部ループを�
 | ------ | -------- | ---- |
 | `/sdd-validate-requirements` | プロダクトオーナー / 品質 / セキュリティ | 統合 validate（Pass A po→qa→sec + Pass B final + Phase Gate）→ `requirements-review.md`。`--only po\|qa\|sec\|final` 可 |
 | `/sdd-validate-design-qa` | 品質 / アーキテクト / セキュリティ / 設計者 | 統合 validate（Pass A qa→arch→sec + Pass B final + Phase Gate）→ `design-review.md`。`--only qa\|arch\|sec\|final` 可 |
-| `/sdd-validate-design` | — | 対話型スタンドアロンレビュー。AI-DLC オーケストレーションでは使用しない |
 
 ## validate スキル契約
 
@@ -318,13 +316,11 @@ docs/specs/<feature>/reviews/
 
 | スキル | 入力 | 出力 | やらないこと |
 | ------ | ---- | ---- | ------------ |
-| `/sdd-validate-design-qa` | `requirements.md`, `design.md`, steering | `reviews/design-review.md`（Specialist Summaries / Gap-Domain Audit / 承認ゲートサマリ / Phase Gate）。指摘の `design.md` 反映 | 対話型レビュー（`/sdd-validate-design` の領域） |
+| `/sdd-validate-design-qa` | `requirements.md`, `design.md`, steering | `reviews/design-review.md`（Specialist Summaries / Gap-Domain Audit / 承認ゲートサマリ / Phase Gate）。指摘の `design.md` 反映 | ユーザー対話 |
 
 **実行**: 単一スキル内で Pass A（qa→arch→sec）→ Pass B（final + Phase Gate）→ `design-review.md` を書く。部分再実行は `--only qa|arch|sec|final`。
 
 **直列必須の理由**: 各専門サブパスの指摘は `design.md` に反映される。次のサブパスは **直前で更新された `design.md`** を入力とする。
-
-**スタンドアロン**: `/sdd-validate-design` は対話型の独立レビュー用。AI-DLC オーケストレーションでは `/sdd-validate-design-qa` を使用する。
 
 **実行順**: `spec-design` → `validate-design-qa` → `spec-tasks`
 
@@ -347,7 +343,6 @@ docs/specs/<feature>/reviews/
 | スキル | 状態 | 担当役割 | 概要 |
 | ------ | ---- | -------- | ---- |
 | `/sdd-validate-design-qa` | 実装済 | 品質 / アーキテクト / セキュリティ / 設計者 | 統合 Pass A→B→C → `reviews/design-review.md`。`--only` で部分再実行可 |
-| `/sdd-validate-design` | 既存 | — | 対話型スタンドアロンレビュー。AI-DLC では使用しない |
 
 **実行順**
 

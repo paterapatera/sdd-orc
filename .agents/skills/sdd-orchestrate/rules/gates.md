@@ -50,7 +50,7 @@ Report paths: see `../sdd-validate-shared/contract.md` (read only if parsing).
 | 仕様一式 (S) | `requirements`/`design`/`tasks` generated + sanity review (or unified validates GO) | After **auto-approve**（人間プロンプトなし）: all three `approvals.*.approved: true`, `ready_for_implementation: true` → **end orchestration** |
 | 実装 | (out of orchestration scope) | On **`go`**: continue / end per `実装のみ` — reached only via an explicit `実装のみ` invocation（**not** Phase terminal） |
 
-Requirements validate: single `/sdd-validate-requirements` (unified). Design validate: single `/sdd-validate-design-qa` (unified). Interactive `/sdd-validate-design` is outside orchestrate.
+Requirements validate: single `/sdd-validate-requirements` (unified). Design validate: single `/sdd-validate-design-qa` (unified).
 
 ## Phase terminal（人間ゲート後）
 

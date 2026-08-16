@@ -148,4 +148,4 @@ _Precondition_: `/sdd-discovery` already ran standalone and produced `roadmap.md
 For each spec in roadmap dependency order:
 
 1. **[調整者] Upstream dependency guard** for that spec (`routing.md` § Upstream Dependency Guard). If not ready, **stop** — do not start this spec's flow.
-2. Force `complexity_tier: L` for each spec (Path D/E). Run the full applicable flow above (`要求新規作成 (L)` / 要求更新 / 設計更新 as appropriate). No `/sdd-spec-batch`. Never select 要求新規作成 (S) for multi-spec.
+2. Force `complexity_tier: L` for each spec (Path D/E). Run the full applicable flow above (`要求新規作成 (L)` / 要求更新 / 設計更新 as appropriate). Never select 要求新規作成 (S) for multi-spec.

@@ -30,7 +30,7 @@ Discovery is **capture and route**, not requirements authoring. Default mode is 
 - Deep context loading (codebase exploration sub-agents) is deferred to requirements (brownfield) or design — not discovery.
 - Never generate Pros/Cons approach comparison tables in Capture + Route.
 - Do not invent Scope In/Out for vague requests — trigger Workshop instead.
-- **Path classification is independent of roadmap presence.** A single-scope new spec that depends on an existing/other spec **stays Path C** and merely gains a roadmap line. Do **not** promote it to Path D/E — promotion implies multi-spec generation and would mislead `/sdd-spec-batch`.
+- **Path classification is independent of roadmap presence.** A single-scope new spec that depends on an existing/other spec **stays Path C** and merely gains a roadmap line. Do **not** promote it to Path D/E — promotion implies multi-spec generation (per-spec `/sdd-orchestrate` in dependency order).
 - **Never rewrite `roadmap.md` wholesale** — append/update only, preserving completed items and prior phases.
 - **`roadmap.md` is the single dependency source.** Do not add machine-readable dependency fields to `brief.md`; briefs keep their prose `Upstream / Downstream` as human context only.
 - **Confirm is はい or a correction.** Never offer いいえ as abort. Never ask whether to run `/sdd-orchestrate` now. Never chain it after discovery. 「はい」= write artifacts and stop.
@@ -331,7 +331,7 @@ Suggest the next command for a **new conversation** and **stop**.
 | **A** | `/sdd-orchestrate <feature>`（要求更新 / 設計更新 as appropriate） |
 | **B** | Direct implementation — no spec; do not force `sdd-spec-*` |
 | **C** | Default: `/sdd-orchestrate <feature-name>` (orchestrator picks S/M/L path). Manual phase control: `/sdd-spec-requirements <feature-name>` (M/L only). Explicit fast: `/sdd-orchestrate <feature-name> quick` or `/sdd-spec-quick <feature-name> --auto` |
-| **D** | `/sdd-orchestrate` per first ready spec in roadmap order (or note multi-spec sequential). Avoid implying `/sdd-spec-batch` as the default AI-DLC entry |
+| **D** | `/sdd-orchestrate` per first ready spec in roadmap order (or note multi-spec sequential) |
 | **E** | Orchestrate new specs in dependency order; note existing-spec updates separately |
 
 If Step 7 / E1 created or updated `roadmap.md`, additionally note that the dependency was recorded so `/sdd-orchestrate` can enforce upstream readiness.

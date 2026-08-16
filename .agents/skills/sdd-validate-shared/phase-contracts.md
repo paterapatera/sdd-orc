@@ -29,11 +29,9 @@ Single invocation: Pass A (po→qa→sec) then Pass B (reflection + gap domains 
 
 | Skill | Input | Output | Do not |
 | ----- | ----- | ------ | ------ |
-| `/sdd-validate-design-qa` | `requirements.md`, `design.md`, steering, contract, phase-gate | `reviews/design-review.md` (QA+Arch+Sec summaries, Gap-Domain Audit, 承認ゲートサマリ, Phase Gate); fix `design.md` across Pass A/B | Merge checklists; specialist self-repair in Pass B; user dialogue; replace interactive `/sdd-validate-design` |
+| `/sdd-validate-design-qa` | `requirements.md`, `design.md`, steering, contract, phase-gate | `reviews/design-review.md` (QA+Arch+Sec summaries, Gap-Domain Audit, 承認ゲートサマリ, Phase Gate); fix `design.md` across Pass A/B | Merge checklists; specialist self-repair in Pass B; user dialogue |
 
 Single invocation: Pass A (qa→arch→sec) then Pass B (reflection + gap domains + inline phase-gate) then write one report. Optional `--only qa|arch|sec|final`.
-
-**Standalone** (not AI-DLC): `/sdd-validate-design` — interactive review; does **not** replace unified `validate-design-qa` in orchestrate flows.
 
 ### Unified Pass B (final + phase-gate)
 

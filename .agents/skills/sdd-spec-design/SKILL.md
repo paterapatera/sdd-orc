@@ -331,7 +331,6 @@ Provide brief summary in the language specified in spec.json:
 
 **If Design Approved**:
 - Review generated design at `docs/specs/$1/design.md`
-- **Optional**: Run `/sdd-validate-design $1` for interactive quality review
 - Then `/sdd-spec-tasks $1 -y` to generate implementation tasks
 
 **If Modifications Needed**:

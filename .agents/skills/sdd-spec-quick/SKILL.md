@@ -232,7 +232,6 @@ Quick Spec Generation Complete!
 
 Quick generation skipped:
 - Separate gap step (gap is inline in `/sdd-spec-design` on brownfield; quick path skips it)
-- `/sdd-validate-design` - Design review (architecture validation)
 
 Sanity review: PASSED | FOLLOW-UP REQUIRED
 
@@ -240,7 +239,7 @@ Sanity review: PASSED | FOLLOW-UP REQUIRED
 1. Review generated specs (especially design.md)
 2. Optional validation:
    - `/sdd-spec-design {feature}` - Re-run design (includes brownfield gap) if integration check needed
-   - `/sdd-validate-design {feature}` - Verify architecture quality (interactive)
+   - `/sdd-validate-design-qa {feature}` - Verify architecture quality
 3. Start implementation: `/sdd-impl {feature}`
 
 ```

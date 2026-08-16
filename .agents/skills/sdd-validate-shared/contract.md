@@ -94,7 +94,7 @@ Before declaring `GO`, confirm fresh evidence: referenced files exist, edits are
 
 **Requirements** (single skill): `/sdd-validate-requirements` (unified Pass A po→qa→sec + Pass B final + inline phase-gate). Optional `--only po|qa|sec|final` for partial re-runs.
 
-**Design** (single skill): `/sdd-validate-design-qa` (unified Pass A qa→arch→sec + Pass B final + inline phase-gate). Optional `--only qa|arch|sec|final`. Standalone interactive review: `/sdd-validate-design` (outside orchestrate flow — **not** merged into this skill).
+**Design** (single skill): `/sdd-validate-design-qa` (unified Pass A qa→arch→sec + Pass B final + inline phase-gate). Optional `--only qa|arch|sec|final`.
 
 Each specialist sub-pass reflects findings into its target artifact (`requirements.md` / `design.md`) before the next sub-pass. The next pass reads the **updated** artifact.
 

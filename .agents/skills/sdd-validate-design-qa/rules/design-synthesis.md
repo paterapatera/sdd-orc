@@ -20,7 +20,7 @@ Goal: after this gate passes, the human approval gate should require only readin
 - Re-running the QA edge-case checklist (Pass A QA)
 - Re-running the architecture/SOLID review (Pass A Arch)
 - Re-running the security threat model (Pass A Sec)
-- Interactive dialogue (`/sdd-validate-design` standalone path)
+- Interactive dialogue
 - Implementation-level audit (code, tests) — this gate judges design readiness only
 
 ## Preconditions (hard stop if unmet)
