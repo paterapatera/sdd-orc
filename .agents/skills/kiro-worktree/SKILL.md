@@ -1,14 +1,14 @@
 ---
-name: create-feature-worktrees
+name: kiro-worktree
 description: >-
   Creates a Git worktree and feature-named branch for each docs/specs/{feature}
   directory at ../{feature}, then runs worktrees.json setup (Cursor
-  worktrees equivalent). Use when the user invokes /create-feature-worktrees,
+  worktrees equivalent). Use when the user invokes /kiro-worktree,
   asks to batch-create feature worktrees, or wants isolated checkouts per spec.
 disable-model-invocation: true
 ---
 
-# Create Feature Worktrees
+# kiro-worktree
 
 Batch-create Git worktrees for every feature under `docs/specs/{feature}`.
 
@@ -22,7 +22,7 @@ Batch-create Git worktrees for every feature under `docs/specs/{feature}`.
 2. **Execute** (do not reimplement) the script. Request `required_permissions: ["all"]` because destinations are outside the workspace:
 
 ```bash
-python3 .agents/skills/create-feature-worktrees/scripts/create_feature_worktrees.py
+python3 .agents/skills/kiro-worktree/scripts/create_feature_worktrees.py
 ```
 
 Optional args:

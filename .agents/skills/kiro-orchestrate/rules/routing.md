@@ -7,7 +7,7 @@ Resolve `<feature>` **before** routing. Do not guess from chat history.
 1. **Explicit `<feature>` wins** — first argument that is not a flow/tier/fast-track override (`実装のみ`, `実装だけ`, `要求だけ更新`, `要求更新`, `設計だけ`, `設計のみ`, `設計更新`, `quick`, `lite`, `フル`, `full`, `-y`).
 2. **Else use the current git branch** as `<feature>`:
    - `git branch --show-current` (fallback: `git rev-parse --abbrev-ref HEAD`)
-   - Use the branch name as-is (matches `create-feature-worktrees`: branch == `docs/specs/<feature>/`)
+   - Use the branch name as-is (matches `kiro-worktree`: branch == `docs/specs/<feature>/`)
    - If the branch contains `/`, use the last segment only (`feature/001-user-edit` → `001-user-edit`)
    - Announce: `Using spec: <feature> (from branch)`
 3. **Stop and ask for a spec name** if any of:
