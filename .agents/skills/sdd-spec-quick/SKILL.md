@@ -240,7 +240,7 @@ Sanity review: PASSED | FOLLOW-UP REQUIRED
 2. Optional validation:
    - `/sdd-spec-design {feature}` - Re-run design (includes brownfield gap) if integration check needed
    - `/sdd-validate-design-qa {feature}` - Verify architecture quality
-3. Start implementation: `/sdd-impl {feature}`
+3. Start implementation: `/sdd-impl` (feature branch) or `/sdd-impl {feature}`
 
 ```
 

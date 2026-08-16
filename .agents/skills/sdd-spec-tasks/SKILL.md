@@ -132,13 +132,13 @@ Before writing `tasks.md`, run one lightweight independent sanity review of the 
 - If auto-approve flag (`-y`) is provided:
   - Set `approvals.tasks.approved: true` in spec.json
   - Display task summary (task count, major groups, parallel markers)
-  - Respond: "Tasks generated and auto-approved. Start implementation with `/sdd-impl $1`"
+  - Respond: "Tasks generated and auto-approved. Start implementation with `/sdd-impl` (feature branch) or `/sdd-impl $1`"
 - Otherwise (interactive):
   - Display a summary of the generated tasks (task count, major groups, parallel markers)
   - Ask the user: "Tasks generated. Approve and proceed to implementation?"
   - If the user approves:
     - Set `approvals.tasks.approved: true` in spec.json
-    - Respond: "Tasks approved. Start implementation with `/sdd-impl $1`"
+    - Respond: "Tasks approved. Start implementation with `/sdd-impl` (feature branch) or `/sdd-impl $1`"
   - If the user wants changes:
     - Keep `approvals.tasks.approved: false`
     - Respond with guidance on what to adjust and re-run
@@ -208,5 +208,5 @@ Provide brief summary in the language specified in spec.json:
 ### Next Phase: Implementation
 
 Tasks are approved in Step 4 via user confirmation. Once approved:
-- Autonomous implementation: `/sdd-impl $1`
-- Specific tasks only: `/sdd-impl $1 1.1,1.2`
+- Autonomous implementation: `/sdd-impl` (current feature branch) or `/sdd-impl $1`
+- Specific tasks only: `/sdd-impl 1.1,1.2` (feature branch) or `/sdd-impl $1 1.1,1.2`
