@@ -22,7 +22,7 @@ Use whichever pattern fits the work breakdown:
   - _Depends: {{TASK_IDS}}_ *(Only for non-obvious cross-boundary dependencies. Most tasks omit this.)*
   - _Wave: {{N}}_ *(Required on every executable sub-task. Same N = same dispatch-batch candidate.)*
 
-> **Parallel marker (`(P)` execution contract)**: Append ` (P)` only when `kiro-impl` may parallel-dispatch this task's Wave with other ready `(P)` peers (disjoint `_Boundary:_`, closed Depends, non-overlapping paths). Omit when unsafe or when running in `--sequential` mode. Never use `(P)` as an informational-only note.
+> **Parallel marker (`(P)` execution contract)**: Append ` (P)` only when `sdd-impl` may parallel-dispatch this task's Wave with other ready `(P)` peers (disjoint `_Boundary:_`, closed Depends, non-overlapping paths). Omit when unsafe or when running in `--sequential` mode. Never use `(P)` as an informational-only note.
 >
 > **Wave annotation**: Assign `_Wave: N_` so Foundation → Core → Integration → Validation increase by dependency. Keep Integration/Validation Waves separate from implementation Waves. `(P)` tasks with different `_Boundary:_` must not share a Wave number (enables cross-Wave parallel dispatch).
 >

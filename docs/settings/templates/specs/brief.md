@@ -26,7 +26,7 @@
 [緑地 / 既存実装 / 関連 spec]
 
 ## Upstream / Downstream
-[依存のメモ。roadmap 同期は /kiro-discovery Step 7]
+[依存のメモ。roadmap 同期は /sdd-discovery Step 7]
 
 ## Constraints
 [分かっている制約のみ]
