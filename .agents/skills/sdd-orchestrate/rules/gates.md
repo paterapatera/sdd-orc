@@ -233,7 +233,9 @@ After **terminal auto-approve** (`approvals.tasks.approved: true`, `ready_for_im
 - Output as a single fenced ` ```markdown ` code block so it copies cleanly into a PR.
 - Language follows the spec artifacts (default Japanese).
 - Content is synthesized from the phase reports (`reviews/*.md` — especially `## Decisions` and 承認ゲートサマリ / `### 受容が必要な残リスク`), `brief.md` / `requirements.md`, `design.md`, and `tasks.md` — do not re-run analysis, only parse existing artifacts.
-- Keep it concise; detail stays in the spec files.
+- **Two-layer layout:** タイトル / 概要 / 決定事項 / 残リスク are the default (always-visible) scan. 受け入れ確認 is the record layer — full transcription, but **collapsed** so it does not compete with the scan. Do not flatten all four into one long page.
+- Keep the scan layer short. 概要 is a few sentences. 決定事項 / 残リスク cells are **one short sentence each** — do not paste full Decision paragraphs. Detail stays in the spec files.
+- **Exception (record layer):** 受け入れ確認 transcribes every criterion from `requirements.md` — do not summarize or drop criteria (the spec directory may be deleted after implementation; this list is the surviving 物差し). Put it inside a closed `<details>` block. Use a **list**, never a table (EARS sentences wrap poorly in GitHub tables).
 
 **Required content**
 
@@ -243,10 +245,18 @@ After **terminal auto-approve** (`approvals.tasks.approved: true`, `ready_for_im
 
    | 決定事項 | 理由 |
    | -------- | ---- |
-   | <何を決めたか> | <なぜそう決めたか> |
+   | <何を決めたか（短く）> | <なぜ（1文）> |
 
-   Aggregate the same topics as the 決定事項サマリー (Scope / Requirements validates / Security validates / Supplements / Design / Tasks). One row per decision.
-4. **残リスク** — residual risks accepted at 要求/設計 gates (and any still listed at terminal). Aggregate from unified reports' `### 受容が必要な残リスク` (and equivalent Decision bullets on deferred risks) in `reviews/requirements-review.md` / `reviews/design-review.md` (fall back to `*-final.md` / specialist reports if unified file is absent). Include risk + why accepted / deferred. If none: write `なし`.
+   Aggregate the same topics as the 決定事項サマリー (Scope / Requirements validates / Security validates / Supplements / Design / Tasks). One row per decision. Truncate; do not wrap a long EARS sentence or a full `## Decisions` bullet into a cell.
+4. **残リスク** — residual risks accepted at 要求/設計 gates (and any still listed at terminal). Aggregate from unified reports' `### 受容が必要な残リスク` (and equivalent Decision bullets on deferred risks) in `reviews/requirements-review.md` / `reviews/design-review.md` (fall back to `*-final.md` / specialist reports if unified file is absent). Include risk + why accepted / deferred, **one short sentence per cell**. If none: write `なし` (no table).
+5. **受け入れ確認** (collapsed) — wrap the block in `<details>` with `<summary>受け入れ確認（条件の転記。[ ] = 未確認）</summary>`. Default closed. Transcribe every numbered acceptance criterion from `requirements.md` (`#### 受け入れ条件` under each 要件). This is the planned 物差し only; implementation has not run.
+
+   - **確認日 / 確認者 / 確認対象:** write `（実装後に記入）`. Do not invent a date, person, or PR number.
+   - **List item:** `- [ ] **<要件番号>.<条件番号>** <criterion text as-is>` (e.g. `1.1`). Do not invent `REQ-*` aliases. Do not rewrite, merge, or omit. Include every criterion from every 要件.
+   - Status is the checkbox only: `[ ]` = 未確認, `[x]` = 確認済み (filled at 実装後の受け入れ確認). Do **not** add nested `確認方法` / `結果` lines. Do **not** invent verification procedures. Do **not** mark `[x]` at this phase.
+   - Do **not** use a markdown table for this section.
+
+   One-line note after the list (fixed wording): `チェックを入れた項目が確認済み。確認者・確認日は実装後の受け入れ確認で更新する。この一覧は条件の転記のみ。`
 
 **Template**
 
@@ -270,6 +280,18 @@ Spec: `docs/specs/<feature>/`
 | リスク | 受容 / 延期の理由 |
 | ------ | ---------------- |
 | … | … |
+
+<details>
+<summary>受け入れ確認（条件の転記。[ ] = 未確認）</summary>
+
+確認日: （実装後に記入）
+確認者: （実装後に記入）
+確認対象: （実装後に記入）
+
+- [ ] **1.1** …
+
+チェックを入れた項目が確認済み。確認者・確認日は実装後の受け入れ確認で更新する。この一覧は条件の転記のみ。
+</details>
 ```
 ````
 
