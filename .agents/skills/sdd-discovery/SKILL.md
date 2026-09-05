@@ -34,6 +34,7 @@ Discovery is **capture and route**, not requirements authoring. Default mode is 
 - **Never rewrite `roadmap.md` wholesale** — append/update only, preserving completed items and prior phases.
 - **`roadmap.md` is the single dependency source.** Do not add machine-readable dependency fields to `brief.md`; briefs keep their prose `Upstream / Downstream` as human context only.
 - **Confirm is はい or a correction.** Never offer いいえ as abort. Never ask whether to run `/sdd-orchestrate` now. Never chain it after discovery. 「はい」= write artifacts and stop.
+- **Next chat needs the files on disk.** Uncommitted Discovery writes do not appear in a new Git worktree. If the next conversation will use a different checkout, commit first (Step 8). Do not start a downstream spec in a checkout that lacks upstream `tasks.md`.
 
 ## Step 1: Lightweight Scan
 
@@ -136,7 +137,7 @@ Shrink of former deep dialogue — still produce the **minimal** brief template:
 | **A** | Update brief or record「既存 spec X に追記」; proceed Confirm → Write as needed → Next (new chat): `/sdd-orchestrate <feature>` (要求更新) |
 | **B** | Do **not** force a spec. Optional memo under `docs/captures/` only. Recommend direct implementation |
 | **C** | Confirm → Write `brief.md` → Next (new chat): `/sdd-orchestrate <feature>` |
-| **D/E** | If decomposition unset → Workshop first. Else Confirm → Write brief(s) + `roadmap.md` → Next (new chat): `/sdd-orchestrate` (per-spec) |
+| **D/E** | If decomposition unset → Workshop first. Else Confirm → Write brief(s) + `roadmap.md` → Next (new chat): `/sdd-orchestrate <first-ready-feature>` (and other parallel-ready specs by name) |
 
 ## Step 5: Confirm
 
@@ -324,15 +325,29 @@ Suggest the next command for a **new conversation** and **stop**.
 
 - Do NOT automatically run `/sdd-orchestrate` or spec generation.
 - Do NOT ask 「今実行するか」 or any yes/no about chaining. Discovery is finished.
-- Phrase as: 別チャットで次を実行: `/sdd-orchestrate <feature>` (or the Path-specific command below).
+- Phrase as: 別チャットで次を実行: `/sdd-orchestrate <feature>` (or the Path-specific command below). Always include `<feature>`.
+
+### Git / checkout
+
+Uncommitted files do not appear in a new Git worktree. If the next chat will run in a different checkout, **commit before leaving this one**.
+
+| Situation | Where the Discovery commit lands |
+| --------- | -------------------------------- |
+| **Path C / A** (single spec) | Feature branch. Do not put a brief-only commit on the default integration branch (`main` / `develop`) unless the user asks. |
+| **Path D/E** with ≥1 spec whose `Dependencies:` is `none` (parallel-ready) | **One commit on the merge target** (`main` / `develop`). Later checkouts branch from that tip. |
+| **Path D/E** chained only (`a → b`) | One shared branch/checkout is enough until a spec needs its own PR. |
+
+Then start **only specs that are ready in that checkout**: `Dependencies: none`, or every listed upstream already has `tasks.md` + `approvals.tasks.generated` here (usually after those PRs merge). Independent ready specs may use parallel checkouts. Do **not** open a downstream checkout from the Discovery tip and run `/sdd-orchestrate` there — the guard will fail or see stale upstreams.
+
+Keep the same Git checkout across later phase chats for a given spec. Do not create a new worktree per requirements/design/tasks/impl phase.
 
 | Path | Next command |
 | ---- | ------------ |
 | **A** | `/sdd-orchestrate <feature>`（要求更新 / 設計更新 as appropriate） |
 | **B** | Direct implementation — no spec; do not force `sdd-spec-*` |
 | **C** | Default: `/sdd-orchestrate <feature-name>` (orchestrator picks S/M/L path). Manual phase control: `/sdd-spec-requirements <feature-name>` (M/L only). Explicit fast: `/sdd-orchestrate <feature-name> quick` or `/sdd-spec-quick <feature-name> --auto` |
-| **D** | `/sdd-orchestrate` per first ready spec in roadmap order (or note multi-spec sequential) |
-| **E** | Orchestrate new specs in dependency order; note existing-spec updates separately |
+| **D** | `/sdd-orchestrate <first-ready-feature>` — first spec in roadmap order that is ready in this checkout. Name every parallel-ready spec the user may start (`/sdd-orchestrate <a>`, `/sdd-orchestrate <b>`). Downstream waits until upstream is merged into the checkout it will use. |
+| **E** | Same as D for new specs; existing-spec updates: `/sdd-orchestrate <existing-feature>` separately |
 
 If Step 7 / E1 created or updated `roadmap.md`, additionally note that the dependency was recorded so `/sdd-orchestrate` can enforce upstream readiness.
 

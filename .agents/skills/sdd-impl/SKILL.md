@@ -1,6 +1,6 @@
 ---
 name: sdd-impl
-description: Implement approved tasks using TDD with subagent dispatch. Runs all pending tasks autonomously or selected tasks manually. Target spec is the first argument, or the current git branch when omitted.
+description: Implement approved tasks using TDD with subagent dispatch. Runs all pending tasks autonomously or selected tasks manually. Target spec is the required first argument.
 ---
 
 
@@ -43,20 +43,13 @@ Do this **before** Step 1. Do **not** guess from chat history. Do **not** pick a
 
 **Resolve `<feature>`:**
 
-1. **Explicit `<feature>` wins.**
-2. **Else use the current git branch** as `<feature>`:
-   - `git branch --show-current` (fallback: `git rev-parse --abbrev-ref HEAD`)
-   - Use the branch name as-is (matches `sdd-worktree`: branch == `docs/specs/<feature>/`)
-   - If the branch contains `/`, use the last segment only (`feature/001-user-edit` → `001-user-edit`)
-   - Announce: `Using spec: <feature> (from branch)`
-3. **Stop and ask for a spec name** if any of:
-   - Detached HEAD, empty branch, or git unavailable
-   - Branch is a default line: `main`, `master`, `develop`, `dev`, `trunk`
-4. After resolve, if `docs/specs/<feature>/spec.json` is missing → **stop**; report the attempted name and source (argument vs branch). Do not scan other specs.
+1. **Explicit `<feature>` is required.** First remaining token that is not a task-id list.
+2. **Stop and ask for a spec name** if no such token is present. Do not use the git branch. Do not guess from chat history. Do not scan `docs/specs/`.
+3. After resolve, if `docs/specs/<feature>/spec.json` is missing → **stop**; report the attempted name. Do not scan other specs.
 
 Use the resolved `<feature>` for all later steps (context paths, `spec.json`, `/sdd-validate-impl <feature>`). Do **not** pass a task-id list as the feature name.
 
-Examples: `/sdd-impl` and `/sdd-impl 1.1,1.2` resolve from branch; `/sdd-impl 001-login` and `/sdd-impl 001-login 1.1,1.2` use the explicit name.
+Examples: `/sdd-impl 001-login` (autonomous); `/sdd-impl 001-login 1.1,1.2` (manual). `/sdd-impl` and `/sdd-impl 1.1,1.2` (no feature) → stop.
 
 ## Step 1: Gather Context
 
@@ -107,7 +100,7 @@ After all parallel research completes, synthesize implementation brief before st
 ## Step 2: Select Tasks & Determine Mode
 
 **Parse arguments**:
-- `<feature>` is already resolved in Startup (explicit or branch). Do not re-parse `$1` as the feature name.
+- `<feature>` is already resolved in Startup (explicit argument). Do not re-parse `$1` as the feature name.
 - If a task-id list is present in the arguments (see Startup): **manual invocation** (`direct`-leaning)
 - If no task numbers: **autonomous invocation** (all pending tasks; execution mode from selection below)
 
@@ -468,8 +461,8 @@ If `tasks.md` or design excerpts require a flag → `required`.
 ### Error Scenarios
 
 **Cannot Resolve Feature**:
-- **Stop Execution**: No explicit `<feature>`, and branch resolution failed (detached HEAD, default branch, git unavailable) or `docs/specs/<feature>/spec.json` is missing
-- **Suggested Action**: Pass the spec name (`/sdd-impl <feature>`) or switch to the feature branch. Do not infer from chat or scan `docs/specs/`
+- **Stop Execution**: No explicit `<feature>`, or `docs/specs/<feature>/spec.json` is missing
+- **Suggested Action**: Pass the spec name (`/sdd-impl <feature>`). Do not infer from chat, git branch, or scan `docs/specs/`
 
 **Tasks Not Approved or Missing Spec Files**:
 - **Stop Execution**: All spec files must exist and tasks must be approved
@@ -493,5 +486,5 @@ If `tasks.md` or design excerpts require a flag → `required`.
 - If debug returns `NEXT_ACTION: STOP_FOR_HUMAN` because of task ordering, boundary, or decomposition problems, stop and return for human review of `tasks.md` or the approved plan instead of forcing a code workaround
 
 **Session Interrupted**:
-- Safe to re-run `/sdd-impl` (or `/sdd-impl <feature>`) — completed tasks are already `[x]` in tasks.md and committed to git
+- Safe to re-run `/sdd-impl <feature>` — completed tasks are already `[x]` in tasks.md and committed to git
 - The controller re-reads tasks.md on each iteration, so it will pick up where it left off automatically

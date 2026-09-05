@@ -1,6 +1,6 @@
 ---
 name: sdd-orchestrate
-description: AI-DLC orchestrator (調整者). Routes spec-driven development flows, enforces phase gates and rollbacks, dispatches role skills without doing their work. Use for end-to-end feature development, spec/requirements/design updates, implementation-only runs, or when the user invokes the AI-DLC workflow. Target spec is the first argument, or the current git branch when omitted.
+description: AI-DLC orchestrator (調整者). Routes spec-driven development flows, enforces phase gates and rollbacks, dispatches role skills without doing their work. Use for end-to-end feature development, spec/requirements/design updates, implementation-only runs, or when the user invokes the AI-DLC workflow. Target spec is the required first argument.
 metadata:
   shared-rules: "rules/routing.md, rules/flows.md, rules/gates.md, rules/rollback.md, rules/complexity-tier.md, rules/greenfield.md"
 ---
@@ -14,7 +14,7 @@ The orchestrator decides **when, which role, and which skill** to run. It does n
 <instructions>
 ## Startup
 
-1. Read `rules/routing.md` — resolve target `<feature>` per § Resolve Target Feature (explicit arg wins; otherwise current git branch), then determine active flow from `spec.json` state + user override per § Entry Contract (`/sdd-discovery` runs **standalone before** orchestration; discovery is not an orchestration step).
+1. Read `rules/routing.md` — resolve target `<feature>` per § Resolve Target Feature (required explicit arg; do not infer from git branch), then determine active flow from `spec.json` state + user override per § Entry Contract (`/sdd-discovery` runs **standalone before** orchestration; discovery is not an orchestration step).
 2. After routing, compute complexity tier per `rules/complexity-tier.md`, map tier → path (`flows.md` § Orchestration Paths by Tier), and select S/M/L flow variant (write `complexity_tier` / `complexity_score` / `complexity_rationale` to `spec.json`). Skip for `実装のみ`.
 3. Read **only** the matching section in `rules/flows.md` (e.g. `要求新規作成 (S|M|L)`).
 4. Load `rules/gates.md` or `rules/rollback.md` when a gate or failure occurs.
@@ -81,9 +81,9 @@ Do **NOT** dispatch individual `spec-requirements`, `validate-*`, `spec-design`,
 
 ## Safety
 
-- **Upstream dependency guard**: Do **not** start 要求新規作成 / 要求更新 / 設計更新 for a downstream feature while roadmap upstream deps lack task generation (`routing.md` § Upstream Dependency Guard). Check before init/requirements/design dispatch and before each spec in Path D/E.
+- **Upstream dependency guard**: Do **not** start 要求新規作成 / 要求更新 / 設計更新 for a downstream feature while roadmap upstream deps lack task generation **in this checkout** (`routing.md` § Upstream Dependency Guard). Check before init/requirements/design dispatch and before each spec in Path D/E. Another worktree is not visible; merge or rebase onto the integration tip that contains upstream `tasks.md`, then retry.
 - **Modification guard**: Do **not** modify a spec whose implementation is incomplete. Before 要求更新 / 設計更新 (or a Path A change to an existing spec), check `spec.json` + `tasks.md` (`routing.md` § Modification Guard). If the spec is implementation-ready (`ready_for_implementation: true` / `approvals.tasks.approved: true`) but has `[ ]` / `_Blocked:_` tasks, stop and prompt the user to complete implementation first (explicit `実装のみ`).
-- No `<feature>` and cannot resolve from git branch (detached HEAD, default branch, or git unavailable) → **stop**; ask for a spec name.
+- No `<feature>` argument → **stop**; ask for a spec name. Do not resolve from git branch or chat history.
 - Missing both `brief.md` and `spec.json` on spec flows → **stop**; instruct the user to run `/sdd-discovery` standalone first (do not auto-run discovery). If `brief.md` exists but `spec.json` does not: S tier → `/sdd-spec-quick --auto --from-orchestrate`; M/L → start 要求新規作成 at `/sdd-spec-requirements` (initializes if needed).
 - `approvals.tasks.approved` false on 実装のみ → stop with message.
 - `_Blocked:_` in tasks.md → stop; report user before validate-impl.

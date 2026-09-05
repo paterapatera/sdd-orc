@@ -2,11 +2,11 @@
 
 **Orchestration scope ends at task generation.** The generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **Terminal auto-approve** (M/L: tasks; S: 仕様一式). After mechanical readiness, the orchestrator auto-approves, emits the **PR Summary Output** (`gates.md` § PR Summary Output), and **ends the orchestration** — it must **not** dispatch `/sdd-impl` or any implementation step. Implementation is run separately (explicit `実装のみ` invocation only).
 
-**Entry precondition (discovery is not an orchestration step).** `/sdd-discovery` is run **standalone before** orchestration and has already produced `brief.md` (for new specs) / `roadmap.md` (when dependencies exist) and, for existing specs, `spec.json`. Orchestration is invoked with a target `<feature>` (explicit, or current git branch per `routing.md` § Resolve Target Feature) plus optional explicit flow, and selects the active flow per `routing.md` § Entry Contract. If neither `brief.md` nor `spec.json` exists for the target, **stop** and instruct the user to run `/sdd-discovery` first (do not auto-run discovery).
+**Entry precondition (discovery is not an orchestration step).** `/sdd-discovery` is run **standalone before** orchestration and has already produced `brief.md` (for new specs) / `roadmap.md` (when dependencies exist) and, for existing specs, `spec.json`. Orchestration is invoked with a required target `<feature>` plus optional explicit flow, and selects the active flow per `routing.md` § Entry Contract. If neither `brief.md` nor `spec.json` exists for the target, **stop** and instruct the user to run `/sdd-discovery` first (do not auto-run discovery).
 
 Load **only** the section matching the active flow and complexity tier (`要求新規作成 (S|M|L)`, etc.). Before each human `[GATE]` (要求 / 設計 only): phase gate must be verified — for **要求**, via unified `/sdd-validate-requirements` (`requirements-review.md`); for **設計**, via unified `/sdd-validate-design-qa` (`design-review.md`). For **タスク** terminal: `/sdd-verify-phase-gate <feature> tasks` then **Terminal auto-approve** (no human prompt). S-tier quick-path uses sanity review (and optional unified validates) then **Terminal auto-approve (S)**. `[GATE]` = human approval for 要求 / 設計 / 実装 only per `gates.md` (`go` / `fix`).
 
-**Session boundary (M/L):** After **`go`** at `[GATE] 要求` or `[GATE] 設計`, the flow is **Phase terminal** — emit Phase Handoff and **end**. Do **not** continue the numbered steps below the gate in the same conversation. Resume in a **new chat** with `/sdd-orchestrate <feature>`; routing picks up at the next incomplete phase. (`-y` fast-track and S quick-path are exceptions per `gates.md` § Exceptions.)
+**Session boundary (M/L):** After **`go`** at `[GATE] 要求` or `[GATE] 設計`, the flow is **Phase terminal** — emit Phase Handoff and **end**. Do **not** continue the numbered steps below the gate in the same conversation. Resume in a **new chat** on the **same Git checkout** with `/sdd-orchestrate <feature>`; routing picks up at the next incomplete phase. Do not create a new worktree per phase. (`-y` fast-track and S quick-path are exceptions per `gates.md` § Exceptions.)
 
 `[調整者]` steps are orchestrator-only (not skill dispatches). Orchestrator updates `spec.json` directly — including `complexity_tier` / `complexity_score` / `complexity_rationale` at flow entry (`routing.md` § Complexity Tier).
 
@@ -145,7 +145,9 @@ Path B is decided by `/sdd-discovery` **before** orchestration. When discovery r
 
 _Precondition_: `/sdd-discovery` already ran standalone and produced `roadmap.md` + `brief.md` for each spec.
 
-For each spec in roadmap dependency order:
+Each conversation still takes **one** `<feature>`. Independent specs (`Dependencies: none`) may run in **parallel checkouts**. A downstream spec must run in a checkout that already contains upstream task-generation artifacts (typically after those PRs merge to the integration branch). Do not start `/sdd-orchestrate <downstream>` from a Discovery-only tip.
 
-1. **[調整者] Upstream dependency guard** for that spec (`routing.md` § Upstream Dependency Guard). If not ready, **stop** — do not start this spec's flow.
+For each spec in roadmap dependency order (when its checkout is ready):
+
+1. **[調整者] Upstream dependency guard** for that spec (`routing.md` § Upstream Dependency Guard). If not ready, **stop** — do not start this spec's flow. Readiness is this checkout only.
 2. Force `complexity_tier: L` for each spec (Path D/E). Run the full applicable flow above (`要求新規作成 (L)` / 要求更新 / 設計更新 as appropriate). Never select 要求新規作成 (S) for multi-spec.

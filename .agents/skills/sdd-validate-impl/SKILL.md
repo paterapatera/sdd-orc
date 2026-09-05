@@ -33,12 +33,10 @@ This skill's main question is: when the completed tasks are viewed together, do 
 
 ### 1. Detect Validation Target
 
+**`<feature>` (`$1`) is required.** Do not parse chat history. Do not scan `docs/specs/` for a target. Do not use the git branch.
+
 **If no arguments provided** (`$1` empty):
-- Parse conversation history for `/sdd-impl <feature> [tasks]` commands
-- Extract feature names and task numbers from each execution
-- Aggregate all implemented tasks by feature
-- Report detected implementations (e.g., "user-auth: 1.1, 1.2, 1.3")
-- If no history found, scan `docs/specs/` for features with completed tasks `[x]`
+- **Stop** and ask for a spec name (`/sdd-validate-impl <feature>`).
 
 **If feature provided** (`$1` present, `$2` empty):
 - Use specified feature
@@ -63,7 +61,7 @@ After all checks complete, synthesize findings for GO/NO-GO/MANUAL_VERIFY_REQUIR
 
 ### 2. Load Context
 
-For each detected feature:
+For the specified feature:
 - Read `docs/specs/<feature>/spec.json` for metadata
 - Read `docs/specs/<feature>/requirements.md` for requirements
 - Read `docs/specs/<feature>/design.md` for design structure
@@ -183,7 +181,8 @@ If NO-GO, REMEDIATION is mandatory — identify the exact issue and what needs t
 ## Safety & Fallback
 
 ### Error Scenarios
-- **No Implementation Found**: If no `/sdd-impl` in history and no `[x]` tasks, report "No implementations detected"
+- **No Implementation Found**: If `docs/specs/$1/tasks.md` has no `[x]` tasks, report "No implementations detected"
+- **Missing feature argument**: Stop and ask for `/sdd-validate-impl <feature>`
 - **Test Command Unknown**: Return `MANUAL_VERIFY_REQUIRED` and explain which validation command is missing; do not return `GO`
 - **Missing Spec Files**: Stop with error if spec.json/requirements.md/design.md missing
 
@@ -195,7 +194,7 @@ If NO-GO, REMEDIATION is mandatory — identify the exact issue and what needs t
 **If NO-GO Decision**:
 - Address integration issues listed
 - Re-run `/sdd-impl <feature> [tasks]` for targeted fixes
-- Re-validate with `/sdd-validate-impl [feature]`
+- Re-validate with `/sdd-validate-impl <feature>`
 
 **Session Interrupted**:
 - Safe to re-run — validation is read-only and idempotent

@@ -57,7 +57,7 @@ Requirements validate: single `/sdd-validate-requirements` (unified). Design val
 | 用語 | 意味 |
 |------|------|
 | **Phase terminal** | 要求 or 設計の人間承認直後。`approvals.<phase>.approved: true` を書いたら、**同一 invocation では次フェーズのスキルを dispatch しない**。Phase Handoff を出して終了する |
-| **Resume** | ユーザーが**新しいチャット**で `/sdd-orchestrate <feature>` を実行。Entry Contract / Spec State Hints が次フェーズを選ぶ。**Artifact-only resume**: handoff・`spec.json`・`docs/specs/<feature>/` 成果物（および steering）だけを信頼し、前チャット履歴・口頭合意・未書き込みの決定は前提にしない |
+| **Resume** | ユーザーが**同じ Git checkout（worktree）**を開いたまま**新しいチャット**で `/sdd-orchestrate <feature>` を実行。Entry Contract / Spec State Hints が次フェーズを選ぶ。**Artifact-only resume**: handoff・`spec.json`・`docs/specs/<feature>/` 成果物（および steering）だけを信頼し、前チャット履歴・口頭合意・未書き込みの決定は前提にしない。フェーズごとに新しい worktree を作らない |
 | **Terminal auto-approve** | 現行どおり（タスク / 仕様一式）。変更しない |
 
 **実装ゲート（`[GATE] 実装`）は Phase terminal にしない**（`実装のみ` フロー内の承認のまま）。
@@ -130,7 +130,7 @@ After `go` on 要求 or 設計, emit one copy-friendly block in the chat. Langua
 
 1. **終了したフェーズ** — `requirements` | `design`
 2. **feature** — `<feature>`
-3. **次にやること** — 新しいチャットを開き、次を実行: `/sdd-orchestrate <feature>`
+3. **次にやること** — **同じ Git checkout（worktree）**で新しいチャットを開き、次を実行: `/sdd-orchestrate <feature>`
 4. **routing が選ぶ次フロー**（例）:
    - 要求承認後 → 設計フェーズ（`設計更新` or 要求新規作成の設計ステップ相当）
    - 設計承認後 → タスク生成（`/sdd-spec-tasks` まで）
@@ -138,7 +138,7 @@ After `go` on 要求 or 設計, emit one copy-friendly block in the chat. Langua
    - 要求終了時: `docs/specs/<feature>/spec.json`, `requirements.md`, `reviews/requirements-review.md`（あれば `brief.md`）
    - 設計終了時: 上記 + `design.md`, `reviews/design-review.md`（あれば `research.md`）
 6. **残リスク 1〜3 行** — 当該 unified review の受容残リスクから要約（再分析しない）
-7. **禁止** — 「このチャットの続きで設計／タスクを続けないでください」（短い一文）
+7. **禁止** — 「このチャットの続きで設計／タスクを続けないでください。次フェーズ用に新しい worktree を作らないでください」
 
 **Template** — emit as a single fenced ` ```markdown ` block (fill paths for the ended phase; omit N/A lines):
 
@@ -148,7 +148,7 @@ After `go` on 要求 or 設計, emit one copy-friendly block in the chat. Langua
 
 - **終了したフェーズ**: <requirements|design>
 - **feature**: <feature>
-- **次にやること**: 新しいチャットで `/sdd-orchestrate <feature>`
+- **次にやること**: 同じ checkout の新しいチャットで `/sdd-orchestrate <feature>`
 - **routing が選ぶ次フロー**: <設計フェーズ | タスク生成>
 - **読む成果物**:
   - `docs/specs/<feature>/spec.json`
@@ -160,7 +160,7 @@ After `go` on 要求 or 設計, emit one copy-friendly block in the chat. Langua
   - （設計終了時・あれば）`docs/specs/<feature>/research.md`
 - **残リスク**:
   - <1〜3 lines from unified review>
-- **禁止**: このチャットの続きで設計／タスクを続けないでください
+- **禁止**: このチャットの続きで設計／タスクを続けないでください。次フェーズ用に新しい worktree を作らないでください
 ```
 ````
 
@@ -183,14 +183,14 @@ After mechanical readiness (below), the orchestrator **auto-approves** without o
 2. `/sdd-verify-phase-gate <feature> tasks` → `STATUS: VERIFIED`
 3. **[調整者]** set `approvals.tasks.approved: true`, `ready_for_implementation: true`, `phase: tasks-approved`
 4. Emit **PR Summary Output**
-5. End orchestration (do **not** dispatch `/sdd-impl`)
+5. End orchestration (do **not** dispatch `/sdd-impl`). After the PR Summary fence, emit the chat-only next-step line from § [AUTO] 仕様一式.
 
 **S — after quick-path:**
 1. `/sdd-spec-quick --auto --from-orchestrate` succeeded; all three `approvals.*.generated === true`
 2. Sanity review (and optional unified validates) GO as required by quick-path contract
 3. **[調整者]** set all three `approvals.*.approved: true`, `ready_for_implementation: true`, `phase: tasks-approved`
 4. Emit **PR Summary Output**
-5. End orchestration (do **not** dispatch `/sdd-impl`)
+5. End orchestration (do **not** dispatch `/sdd-impl`). After the PR Summary fence, emit the chat-only next-step line from § [AUTO] 仕様一式.
 
 Do **not** open a human `go`/`fix` prompt for these terminal steps. User can still edit `tasks.md` / re-orchestrate later if needed.
 
@@ -222,7 +222,7 @@ On auto-approve (**[調整者]**):
 - `ready_for_implementation: true`
 - `phase: tasks-approved`
 
-Then: PR Summary Output → orchestration ends. Do **not** dispatch `/sdd-impl`.
+Then: PR Summary Output → orchestration ends. Do **not** dispatch `/sdd-impl`. After the PR Summary fence, emit one chat-only next-step line (not inside the PR body): 実装は **同じ checkout** の新しいチャットで `/sdd-orchestrate <feature> 実装のみ` または `/sdd-impl <feature>`。roadmap 上の downstream spec は、この PR がマージ先に入ってからその先端の checkout で始める。
 
 ## PR Summary Output (タスク生成完了時)
 

@@ -2,23 +2,16 @@
 
 ## Resolve Target Feature
 
-Resolve `<feature>` **before** routing. Do not guess from chat history.
+Resolve `<feature>` **before** routing. Do not guess from chat history. Do not use the current git branch.
 
-1. **Explicit `<feature>` wins** — first argument that is not a flow/tier/fast-track override (`実装のみ`, `実装だけ`, `要求だけ更新`, `要求更新`, `設計だけ`, `設計のみ`, `設計更新`, `quick`, `lite`, `フル`, `full`, `-y`).
-2. **Else use the current git branch** as `<feature>`:
-   - `git branch --show-current` (fallback: `git rev-parse --abbrev-ref HEAD`)
-   - Use the branch name as-is (matches `sdd-worktree`: branch == `docs/specs/<feature>/`)
-   - If the branch contains `/`, use the last segment only (`feature/001-user-edit` → `001-user-edit`)
-   - Announce: `Using spec: <feature> (from branch)`
-3. **Stop and ask for a spec name** if any of:
-   - Detached HEAD, empty branch, or git unavailable
-   - Branch is a default line: `main`, `master`, `develop`, `dev`, `trunk`
+1. **`<feature>` is required** — first argument that is not a flow/tier/fast-track override (`実装のみ`, `実装だけ`, `要求だけ更新`, `要求更新`, `設計だけ`, `設計のみ`, `設計更新`, `quick`, `lite`, `フル`, `full`, `-y`).
+2. **Stop and ask for a spec name** if no such argument is present.
 
 Then continue with § Entry Contract using the resolved `<feature>`.
 
 ## Entry Contract (discovery runs standalone)
 
-`/sdd-discovery` is **not** an orchestration step. It is run **standalone before** orchestration and has already produced `brief.md` (new specs), `roadmap.md` (when dependencies exist), and — for existing specs — `spec.json`. Orchestration is invoked with a target `<feature>` (explicit, or current git branch per § Resolve Target Feature) plus optional explicit flow, and selects the active flow without a discovery Path signal:
+`/sdd-discovery` is **not** an orchestration step. It is run **standalone before** orchestration and has already produced `brief.md` (new specs), `roadmap.md` (when dependencies exist), and — for existing specs — `spec.json`. Orchestration is invoked with a required target `<feature>` plus optional explicit flow, and selects the active flow without a discovery Path signal:
 
 1. **User-specified flow wins** — e.g.「要求だけ更新」「設計だけ」「実装だけ」.
 2. **Else derive from `spec.json`** via § Spec State Hints:
@@ -29,7 +22,7 @@ Then continue with § Entry Contract using the resolved `<feature>`.
    - `tasks` approved → **実装のみ** (explicit request only)
 3. **Neither `brief.md` nor `spec.json` exists** for the target → **stop**; instruct the user to run `/sdd-discovery` first. Do **not** auto-run discovery.
 
-**Resume (new session):** A new chat with `/sdd-orchestrate <feature>` starts from the next incomplete phase based on approved `approvals` (same table as § Spec State Hints). Example: requirements `approved` and design not → start design generation; design `approved` and tasks not → start task generation.
+**Resume (new session):** A new chat on the **same Git checkout** with `/sdd-orchestrate <feature>` starts from the next incomplete phase based on approved `approvals` (same table as § Spec State Hints). Example: requirements `approved` and design not → start design generation; design `approved` and tasks not → start task generation. Do not create a new worktree per phase.
 
 Path B (no spec) is decided by discovery **before** orchestration and never enters an orchestration flow (see `flows.md` § Path B).
 
@@ -133,7 +126,9 @@ Report to the user:
 
 - Target feature and which upstream dep(s) are not ready
 - Each blocking dep's status (`phase`, `approvals` from `spec.json`; optional `/sdd-spec-status <dep>`)
-- Instruction: complete upstream through `/sdd-orchestrate` for the blocking spec(s) first, then retry
+- Instruction: complete upstream through `/sdd-orchestrate <dep>` **in a checkout that will hold those artifacts**, then retry **this** spec in a checkout that already contains the upstream `spec.json` + `tasks.md` (typically: merge the upstream PR to the integration branch, then recreate or rebase this worktree onto that tip).
+- **Do not** treat another worktree as visible. This guard reads only the current checkout. "Upstream finished next door" is not readiness.
+- Independent specs (`Dependencies: none`) may run in parallel checkouts. A downstream spec must not start until every listed upstream is ready **here**.
 
 **User override does not bypass this guard** unless the user explicitly acknowledges incomplete upstream specs and insists on proceeding anyway.
 

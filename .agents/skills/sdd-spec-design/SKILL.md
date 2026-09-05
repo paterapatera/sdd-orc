@@ -273,6 +273,7 @@ After all findings return, synthesize in main context before proceeding.
    - Document public interfaces and contracts clearly to ensure cross-component type safety. Authoritative long-lived contracts live in `docs/contracts/**`; `design.md` holds excerpts + Persistent References.
 - **Requirements Traceability IDs**: Use numeric requirement IDs only (e.g. "1.1", "1.2", "3.1", "3.3") exactly as defined in requirements.md. Do not invent new IDs or use alphabetic labels.
 - **Persistent contracts at design time**: Index → related Read → merge/create → Persistent References in draft → review gate → write `design.md`. Never defer contract creation to a post-implementation phase. Never bulk-read all of `docs/contracts/` or `docs/architecture/`.
+- **In-flight parallel specs**: When `roadmap.md` lists other incomplete specs, diff-merge only contract/architecture files this spec's Boundary Commitments own. If another in-flight spec already owns the same public surface, **stop and ask** — do not rewrite that file wholesale.
 - **Greenfield**: never run gap-analysis sub-agents; never invent gap `research.md` content.
 - **Brownfield**: gap runs once in Step 2.0; discovery must reuse `research.md` instead of duplicating codebase survey.
 </instructions>
