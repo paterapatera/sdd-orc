@@ -1,6 +1,6 @@
 # Cursor Task bindings for sdd-impl
 
-Read from the Cursor `sdd-impl` SKILL.md before the first dispatch. Domain rules stay in `.agents/skills/sdd-impl/SKILL.md`.
+Follow the already-loaded Cursor `sdd-impl` SKILL.md. Do not `Read` that SKILL.md again if it is attached or inlined. Domain rules stay in `.agents/skills/sdd-impl/SKILL.md`.
 
 ## Tool
 

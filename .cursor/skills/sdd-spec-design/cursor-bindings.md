@@ -1,6 +1,6 @@
 # Cursor Task bindings for sdd-spec-design
 
-Read from the Cursor `sdd-spec-design` SKILL.md before the first research dispatch. Domain rules stay in `.agents/skills/sdd-spec-design/`.
+Follow the already-loaded Cursor `sdd-spec-design` SKILL.md. Do not `Read` that SKILL.md again if it is attached or inlined. Domain rules stay in `.agents/skills/sdd-spec-design/`.
 
 ## Tool
 

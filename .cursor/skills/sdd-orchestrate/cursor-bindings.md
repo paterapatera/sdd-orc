@@ -1,6 +1,6 @@
 # Cursor Task bindings for sdd-orchestrate
 
-Read from the Cursor `sdd-orchestrate` SKILL.md before the first dispatch. Domain rules stay in `.agents/skills/sdd-orchestrate/`.
+Follow the already-loaded Cursor `sdd-orchestrate` SKILL.md. Do not `Read` that SKILL.md again if it is attached or inlined. Domain rules stay in `.agents/skills/sdd-orchestrate/`.
 
 ## Tool
 

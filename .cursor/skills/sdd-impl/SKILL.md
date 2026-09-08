@@ -20,9 +20,11 @@ Cursor **binding**, not a second domain spec.
 | Cursor runtime | this file + [cursor-bindings.md](cursor-bindings.md) | `Task` parameters, resume, parallel, prompt envelope |
 | Model pin | [../model-pin.yaml](../model-pin.yaml) | Subagent `Task.model` (docs: [../model-pin.md](../model-pin.md)) |
 
-If both this skill and `.agents/skills/sdd-impl` are listed, **this file governs dispatch**. Domain rules still come from the canonical SKILL.md. Do not rewrite those rules here.
+This file governs dispatch. `.agents/skills/sdd-impl` is the procedure the parent Reads as a file — not a second attached Cursor skill. Do not @-attach or inline that SKILL.md as a catalog skill. Domain rules still come from the canonical SKILL.md. Do not rewrite those rules here.
 
 ## Load order
+
+This SKILL.md is already in context when attached or inlined. Do **not** `Read` it again.
 
 1. Read `.agents/skills/sdd-impl/SKILL.md` (Startup through the active mode). Skip orchestrator `rules/`.
 2. Before the first subagent dispatch, read [cursor-bindings.md](cursor-bindings.md) and [../model-pin.yaml](../model-pin.yaml). Do not parse [../model-pin.md](../model-pin.md) for values.
