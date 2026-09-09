@@ -16,7 +16,7 @@ You operate with two layers of mode:
 
 **Execution mode** (from `complexity_tier` / task-count / user override — see Step 2):
 - **`direct`**: Parent (or a single agent) implements sequentially; reviewer once at selection/feature end — do not spawn per-task implementer×reviewer pairs
-- **`wave`**: Default for tier M — one implementer per **major** (`1`, `2`, …), sticky on happy path, two-tier review per major; `(P)` may run ready majors concurrently
+- **`wave`**: Default for tier M — parent is controller only (does not implement the batch); one implementer per **major** (`1`, `2`, …), sticky on happy path, two-tier review per major; `(P)` may run ready majors concurrently
 - **`strict`**: Tier L / user-forced — same as `wave`, plus Integration/Validation majors stay solo and split a major earlier when excerpts/change-set are tight; failure-path fresh agents stay mandatory
 
 - **Success Criteria**:
@@ -144,7 +144,7 @@ Do **not** reinvent tier scoring. Prefer `spec.json` `complexity_tier` written b
 | Mode | When (default) | Behavior |
 |------|----------------|----------|
 | `direct` | tier **S**, or executable sub-tasks ≤ 3, or manual invocation | Parent (or single agent) implements sequentially. No per-task fresh implementer×reviewer pairs. Reviewer **once** at selection end (manual) or after all pending tasks / feature end (autonomous `direct`). Then deferred `sdd-verify-completion` + Step 4 validate. |
-| `wave` | tier **M**, or missing-tier with 4–12 tasks | Full **major-number** dispatch: one implementer per major (`1`, `2`, …), sticky happy path, parent mechanical + judgment reviewer per major, `(P)` parallel across ready majors when the contract holds. |
+| `wave` | tier **M**, or missing-tier with 4–12 tasks | Full **major-number** dispatch: parent is controller only (does not implement the batch); one implementer per major (`1`, `2`, …), sticky happy path, parent mechanical + judgment reviewer per major, `(P)` parallel across ready majors when the contract holds. |
 | `strict` | tier **L**, or missing-tier with \> 12 tasks, or user「strict」 | Same as `wave`, plus: Integration / Validation **majors** stay solo (do not parallel them with implementation majors); split a major earlier when change-set or Spec Excerpts budget is tight. Failure-path **fresh** debugger / post-debug implementer stays mandatory (unchanged). Terminal validate unchanged. |
 
 ## Step 3: Execute Implementation
@@ -238,7 +238,9 @@ When the implementer detects drift, it must update in place: align code to contr
 
 Do **not** introduce `design/` multi-file splits or inject steering wholesale — only short task-relevant steering snippets already allowed elsewhere.
 
-If multi-agent capability is available, for each batch:
+**Parent is controller, not implementer.** When execution mode is `wave` or `strict`, the parent MUST dispatch implementer and reviewer as separate agents for each batch. Do not implement, edit production code, or write tests in the parent context. Do not skip dispatch because the parent could finish the work, the batch looks small, or a separate agent would use a similar model. "The parent can implement this" is not the same as multi-agent being unavailable.
+
+For each batch:
 
 **a) Dispatch implementer** (one implementer per **major** batch):
 - Read `templates/implementer-prompt.md` from this skill's directory
@@ -352,11 +354,11 @@ The debug subagent runs in a **fresh context** — it receives only the error in
 
 **`(P)` markers**: See **`(P)` execution contract** under Batch definition rules. Parallel is **major-to-major**, not `N.M`-to-`N.M`. Hosts that cannot run concurrent sub-agents still honor the contract by processing ready `(P)` majors **serially** (never inventing informational-only semantics).
 
-**Fallback**: If multi-agent is not available, fall back to `direct` (Manual Mode) execution for all tasks.
+**Fallback**: Fall back to `direct` (Manual Mode) only when the host cannot spawn a separate agent at all. If the host can spawn isolated agents, `wave` / `strict` remain dispatch modes. Do not fall back because the parent could implement the batch, the work looks small, or the parent already uses a capable coding model.
 
 ### Manual Mode / `direct` (main context)
 
-Used for **manual invocation**, execution mode **`direct`** (tier S or ≤3 tasks), and multi-agent fallback. Execute the selected / pending queue with the same TDD + mechanical + judgment loop. Do **not** dispatch a fresh implementer and reviewer per sub-task. `sdd-verify-completion` is **deferred** to selection completion — not required after every remediation, and not required merely because a task was `APPROVED`.
+Used for **manual invocation**, execution mode **`direct`** (tier S or ≤3 tasks), and the host-cannot-spawn fallback above. Execute the selected / pending queue with the same TDD + mechanical + judgment loop. Do **not** dispatch a fresh implementer and reviewer per sub-task. `sdd-verify-completion` is **deferred** to selection completion — not required after every remediation, and not required merely because a task was `APPROVED`.
 
 Reviewer cadence under `direct`: run judgment review **once** after all tasks in the selection/queue are implemented (or once if only one task) — not once per sub-task. Parent mechanical checks still run before that reviewer call.
 
@@ -433,6 +435,7 @@ If `tasks.md` or design excerpts require a flag → `required`.
 
 ## Critical Constraints
 - **Execution Mode Selection**: Choose `direct` / `wave` / `strict` per Step 2 (user override → manual → `complexity_tier` → task-count fallback). Report the chosen mode and reason in one line at run start. Autonomous `wave` / `strict` dispatch by **major number**, not per `N.M`. Tier S / `direct` must not default to per-task fresh implementer×reviewer.
+- **Dispatch Required (`wave` / `strict`)**: Parent is controller only. MUST spawn implementer and reviewer as separate agents per major batch. Do not implement the batch in the parent context. Fall back to `direct` only when the host cannot spawn a separate agent — not because the parent could do the work faster.
 - **Strict Handoff Parsing**: Never infer implementer `STATUS` or reviewer `VERDICT` from surrounding prose; only the exact structured fields count
 - **Parent Spec Excerpts**: Before each major dispatch, inject `## Spec Excerpts (authoritative for this batch)` with `### Requirements`, `### Design`, and when related `### Contracts (authoritative for touched surfaces)`; if combined excerpts exceed ~250–400 lines, split **within** the major. Under `direct`, apply the same excerpt discipline in-context (do not full-file dump). Do not make full-file Read of requirements/design/architecture the default for subagents. Do not split design into multi-file layouts under this skill.
 - **Contract Drift**: Detect from Contracts excerpts + related contracts + executable contracts (not architecture full Read). On drift: align code or update contracts intentionally; register new contract/ADR paths in the corresponding README Entries; report `CONTRACTS_UPDATED: <paths>` in the implementer Status Report; stage those paths with the batch commit. Do not rewrite unrelated contracts.
