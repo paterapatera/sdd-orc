@@ -37,7 +37,7 @@ Read on demand when routing, Path B, requirements init, or impl monitoring needs
 
 Batch / selection loop (delegate to impl skill — detail in `sdd-impl`):
 
-1. Form next Wave/batch (or `direct` selection) → implementer TDD → `READY_FOR_REVIEW`
+1. Form next **major** batch (or `direct` selection) → implementer TDD → `READY_FOR_REVIEW`
 2. Parent mechanical checks → on FAIL, remediate (no reviewer yet)
 3. Judgment `/sdd-review` (batch/selection-local) → `APPROVED` / `REJECTED`
 4. On `APPROVED`: `/sdd-verify-completion` once (`BATCH`, or `TASK` only for a single manual task) — **not** after every APPROVED when more tasks remain unmarked

@@ -14,14 +14,14 @@ Do **not** pass `model` when `resume` is set (prior model is reused).
 
 | Role | When | `subagent_type` | `model` | `resume` | `run_in_background` |
 |------|------|-----------------|---------|----------|---------------------|
-| Implementer (fresh) | First batch of the run; any dispatch after debug `RETRY_TASK` | `generalPurpose` | pin | omit | `true` if this is one of several `(P)` implementers in the same parent message; else omit / false |
-| Implementer (sticky) | Previous batch `APPROVED` → next batch; reviewer `REJECTED` rounds 1–2; mechanical FAIL remediation | `generalPurpose` | omit | previous implementer `agent_id` for **this lineage** | same as fresh |
-| Reviewer | After parent mechanical checks all PASS | `generalPurpose` | pin | omit always | omit / false (one reviewer per completed batch) |
+| Implementer (fresh) | First major of the run; any dispatch after debug `RETRY_TASK` | `generalPurpose` | pin | omit | `true` if this is one of several `(P)` implementers in the same parent message; else omit / false |
+| Implementer (sticky) | Previous major `APPROVED` → next major; reviewer `REJECTED` rounds 1–2; mechanical FAIL remediation | `generalPurpose` | omit | previous implementer `agent_id` for **this lineage** | same as fresh |
+| Reviewer | After parent mechanical checks all PASS | `generalPurpose` | pin | omit always | omit / false (one reviewer per completed major) |
 | Debugger | `BLOCKED`; unresolved `NEEDS_CONTEXT`; mechanical FAIL after review-round budget; `REJECTED` after 2 remediations | `generalPurpose` | pin | omit always | omit / false |
 
 Forbidden in this loop: `bugbot`, `security-review`, `ci-investigator`, `explore`, `cursor-guide`. Fast models: only if `model-pin.yaml` allows them (`forbid_fast: false`).
 
-If `resume` fails (agent gone / still running without `interrupt`): re-dispatch **fresh** with the canonical **pseudo-sticky** payload (changed paths, Implementation Notes, next-batch excerpts). Never start the next happy-path batch with an empty prompt.
+If `resume` fails (agent gone / still running without `interrupt`): re-dispatch **fresh** with the canonical **pseudo-sticky** payload (changed paths, Implementation Notes, next-major excerpts). Never start the next happy-path major with an empty prompt.
 
 ## Continuity matrix
 
@@ -30,9 +30,9 @@ Canonical sticky/fresh table, bound to Task:
 | Situation | Binding |
 |-----------|---------|
 | First batch, or after debug RETRY | New Task. Record returned `agent_id` as this lineage's implementer |
-| Happy-path next batch | `resume: <implementer_id>` + next-batch envelope (still include Spec Excerpts; do not assume memory) |
+| Happy-path next major | `resume: <implementer_id>` + next-major envelope (still include Spec Excerpts; do not assume memory) |
 | In-batch remediation (REJECTED / mechanical FAIL, rounds 1–2) | `resume: <implementer_id>` + feedback + `MECHANICAL_RESULTS` / Review Verdict |
-| `(P)` parallel Waves | **One implementer id per Wave/batch**. Never resume lineage A onto lineage B |
+| `(P)` parallel majors | **One implementer id per major**. Never resume lineage A onto lineage B |
 | Reviewer | New Task every time. Do not resume implementer or debugger |
 | Debugger | New Task every time. Do not resume anyone |
 | Post-debug implementer | New Task (fresh). New lineage id |
@@ -47,11 +47,11 @@ When the canonical `(P)` contract holds (different `_Boundary:_`, closed Depends
 2. Each call: `run_in_background: true`, own prompt / excerpts / `description`.
 3. Do not `resume` across those concurrent calls.
 4. Do not poll with AwaitShell. Wait for Task completion notifications.
-5. Per finished batch: parent mechanical → reviewer Task → selective commit (Wave order or completion order).
+5. Per finished major: parent mechanical → reviewer Task → selective commit (major-number order or completion order).
 6. On git conflict or overlapping staged paths: **stop for human**. No force-merge, no `git add -A`.
 7. After the parallel set finishes or aborts: re-read `tasks.md` before forming the next set.
 
-If any `(P)` condition is unclear → serial (lowest ready Wave). Hosts that cannot run concurrent Tasks: serial, still honoring `(P)` as dispatch order — never informational-only.
+If any `(P)` condition is unclear → serial (lowest ready major). Hosts that cannot run concurrent Tasks: serial, still honoring `(P)` as dispatch order — never informational-only.
 
 ## Prompt envelope
 
@@ -91,7 +91,7 @@ Line budgets and NEEDS_CONTEXT re-excerpt: follow the canonical skill. Re-dispat
 
 | Work | Who |
 |------|-----|
-| Resolve `<feature>`, mode selection, Wave/batch formation, Spec Excerpts cut | Parent |
+| Resolve `<feature>`, mode selection, major-batch formation, Spec Excerpts cut | Parent |
 | TDD implementation, `RED_PHASE_OUTPUT`, in-boundary edits | Implementer Task |
 | `TEST_COMMANDS`, TBD/secrets/boundary/RED mechanical checks | Parent (before reviewer) |
 | Judgment review vs Spec Excerpts + `git diff` | Reviewer Task |

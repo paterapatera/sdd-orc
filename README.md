@@ -187,7 +187,7 @@ spec ベースの実装では、調整者は `/sdd-impl` の内部ループを�
 
 実行モードは `spec.json` の `complexity_tier`（またはタスク数フォールバック）で `direct` / `wave` / `strict` を選ぶ（詳細は `sdd-impl` Step 2）。
 
-1. 次 Wave／バッチ（または `direct` 選択）を組み、実装（サブエージェントまたは親）が TDD → `READY_FOR_REVIEW`
+1. 次の **major**（または `direct` 選択）を組み、実装（サブエージェントまたは親）が TDD → `READY_FOR_REVIEW`
 2. 親が機械チェック（テスト / TBD / Secrets / Boundary / RED）→ FAIL なら reviewer を呼ばず差し戻し
 3. 通過後、レビューが `/sdd-review` で判断レビュー（バッチ／選択単位）→ `APPROVED` / `REJECTED`
 4. `APPROVED` 後、`[x]` 直前に `/sdd-verify-completion` を **1 回**（claim type: `BATCH`、単一手動タスクのみ `TASK`）で fresh evidence 確認 — 中間 `APPROVED` ごとには呼ばない
@@ -373,7 +373,7 @@ docs/specs/<feature>/reviews/
 
 **チャット 5 — 実装**（同じ checkout で `/sdd-orchestrate <feature> 実装のみ` または `/sdd-impl <feature>`）
 
-1. `/sdd-impl <feature>`（Wave／バッチ: 親 mechanical → `/sdd-review` → `/sdd-verify-completion`（`BATCH` / 単一 `TASK`）→ `[x]`）
+1. `/sdd-impl <feature>`（major 単位: 親 mechanical → `/sdd-review` → `/sdd-verify-completion`（`BATCH` / 単一 `TASK`）→ `[x]`）
 2. `/sdd-validate-impl <feature>`
 3. `/sdd-verify-completion`（`FEATURE_GO`）→ 終了
 

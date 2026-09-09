@@ -2,8 +2,8 @@
 name: sdd-impl
 description: >-
   Cursor runtime for TDD implementation with Task subagent dispatch,
-  sticky resume, and (P) parallel Waves. Use when the user invokes /sdd-impl,
-  sdd-impl, implementation-only AI-DLC, or wave/strict batch implementation.
+  sticky resume, and (P) parallel majors. Use when the user invokes /sdd-impl,
+  sdd-impl, implementation-only AI-DLC, or wave/strict major-batch implementation.
   Domain procedure stays in .agents/skills/sdd-impl; this skill is the Cursor
   Task binding. Target spec is the required first argument.
 disable-model-invocation: true
@@ -46,13 +46,13 @@ Full parameter table: [cursor-bindings.md](cursor-bindings.md).
 
 | Role | `subagent_type` | `model` | Continuity |
 |------|-----------------|---------|------------|
-| Implementer | `generalPurpose` | pin (`slug`) | Fresh on first batch and after debug RETRY. `resume` same `agent_id` on happy-path next batch and remediation rounds 1–2 |
+| Implementer | `generalPurpose` | pin (`slug`) | Fresh on first major and after debug RETRY. `resume` same `agent_id` on happy-path next major and remediation rounds 1–2 |
 | Reviewer | `generalPurpose` | pin (`slug`) | Always fresh. Never `resume` an implementer or debugger id |
 | Debugger | `generalPurpose` | pin (`slug`) | Always fresh. Never `resume` |
 
 `model` comes from [../model-pin.yaml](../model-pin.yaml). Never copy a slug into this file. Do not use `bugbot`, `security-review`, `ci-investigator`, or `explore` in this loop.
 
-`(P)` ready Waves: one parent message with multiple implementer `Task` calls (`run_in_background: true`). Separate lineage ids. Serial if boundaries, Depends, or paths overlap.
+`(P)` ready majors: one parent message with multiple implementer `Task` calls (`run_in_background: true`). Separate lineage ids. Serial if boundaries, Depends, or paths overlap.
 
 ## Prompt construction
 
@@ -60,7 +60,7 @@ For each `Task`:
 
 1. Read the matching template under `.agents/skills/sdd-impl/templates/`.
 2. Build `prompt` as **template body + batch payload** (see bindings § Prompt envelope).
-3. Set `description` to 3–5 words (e.g. `Implement batch 1.1`).
+3. Set `description` to 3–5 words (e.g. `Implement major 1`).
 4. Tell the subagent the exact block to return (`## Status Report` / `## Review Verdict` / `## Debug Report`).
 5. After return, parse **only** those structured fields (canonical parsing rules).
 
