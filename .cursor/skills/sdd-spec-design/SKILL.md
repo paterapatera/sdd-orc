@@ -4,7 +4,7 @@ description: >-
   Cursor runtime for technical design generation. Uses explore Tasks for
   brownfield gap and codebase research, then synthesizes design in the parent.
   Use when the user invokes /sdd-spec-design, design generation, gap analysis,
-  or after approved requirements in AI-DLC. Domain procedure stays in
+  or after generated requirements in AI-DLC. Domain procedure stays in
   .agents/skills/sdd-spec-design; this skill is the Cursor Task binding.
   Target spec is the required first argument.
 disable-model-invocation: true

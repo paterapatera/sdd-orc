@@ -1,6 +1,6 @@
 ---
 name: sdd-impl
-description: Implement approved tasks using TDD with subagent dispatch. Runs all pending tasks autonomously or selected tasks manually. Target spec is the required first argument.
+description: Implement tasks using TDD with subagent dispatch. Requires `ready_for_implementation: true`. Runs all pending tasks autonomously or selected tasks manually. Target spec is the required first argument.
 disable-model-invocation: true
 ---
 
@@ -85,8 +85,8 @@ After all parallel research completes, synthesize implementation brief before st
 
 ### Preflight
 
-**Validate approvals**:
-- Verify tasks are approved in spec.json (stop if not, see Safety & Fallback)
+**Validate readiness**:
+- Verify `ready_for_implementation: true` in spec.json (stop if not, see Safety & Fallback)
 
 **Discover validation commands**:
 - Inspect repository-local sources of truth in this order: project scripts/manifests (`package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`, app manifests), task runners (`Makefile`, `justfile`), CI/workflow files, existing e2e/integration configs, then `README*`
@@ -465,8 +465,8 @@ If `tasks.md` or design excerpts require a flag → `required`.
 - **Stop Execution**: No explicit `<feature>`, or `docs/specs/<feature>/spec.json` is missing
 - **Suggested Action**: Pass the spec name (`/sdd-impl <feature>`). Do not infer from chat, git branch, or scan `docs/specs/`
 
-**Tasks Not Approved or Missing Spec Files**:
-- **Stop Execution**: All spec files must exist and tasks must be approved
+**Not Ready for Implementation or Missing Spec Files**:
+- **Stop Execution**: All spec files must exist and `ready_for_implementation` must be true
 - **Suggested Action**: "Complete previous phases: `/sdd-spec-requirements`, `/sdd-spec-design`, `/sdd-spec-tasks`"
 
 **Test Failures**:

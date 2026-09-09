@@ -1,7 +1,7 @@
 ---
 name: sdd-impl
 description: >-
-  Cursor runtime for approved-task TDD implementation with Task subagent dispatch,
+  Cursor runtime for TDD implementation with Task subagent dispatch,
   sticky resume, and (P) parallel Waves. Use when the user invokes /sdd-impl,
   sdd-impl, implementation-only AI-DLC, or wave/strict batch implementation.
   Domain procedure stays in .agents/skills/sdd-impl; this skill is the Cursor

@@ -6,7 +6,7 @@ Follow the already-loaded Cursor `sdd-orchestrate` SKILL.md. Do not `Read` that 
 
 Use the **Task** tool. Required every call: `description`, `prompt`. Fresh skill dispatch: `subagent_type`, `model`.
 
-Do **not** `resume` a previous skill's `agent_id` onto a different skill. Re-runs after NO-GO / `fix` are also **fresh** (artifact-only).
+Do **not** `resume` a previous skill's `agent_id` onto a different skill. Re-runs after NO-GO are also **fresh** (artifact-only).
 
 **Model:** resolve once from [../model-pin.yaml](../model-pin.yaml). Use `roles.skill` if set, else `slug`. Do not parse `model-pin.md` for values. Do not hardcode slugs here.
 
@@ -15,8 +15,7 @@ Do **not** `resume` a previous skill's `agent_id` onto a different skill. Re-run
 | Work | Who |
 |------|-----|
 | Resolve `<feature>`, flow, complexity tier, greenfield check | Parent |
-| `[調整者]` steps (`spec.json` writes, guards, Terminal auto-approve) | Parent |
-| Human `[GATE]` (`go` / `fix`) | Parent |
+| `[調整者]` steps (`spec.json` writes, guards, phase auto-approve, Terminal auto-approve) | Parent |
 | Parse `VERDICT:` / Phase Gate `STATUS:` from report files | Parent |
 | Rollback / 2× NO-GO stop | Parent |
 | Path B (no orchestration) | Not this skill |
@@ -44,7 +43,7 @@ Forbidden as orchestrator dispatches: `/sdd-discovery`, `bugbot`, `security-revi
 
 | Role | When | `subagent_type` | `model` | `resume` | `run_in_background` |
 |------|------|-----------------|---------|----------|---------------------|
-| Skill dispatch | Each `/sdd-*` flow step that is not `[調整者]` / `[GATE]` | `generalPurpose` | pin | omit always | omit / false (serial steps). `true` only if Path D/E independent specs are explicitly parallel **and** each has its own checkout — default is one feature, serial |
+| Skill dispatch | Each `/sdd-*` flow step that is not `[調整者]` | `generalPurpose` | pin | omit always | omit / false (serial steps). `true` only if Path D/E independent specs are explicitly parallel **and** each has its own checkout — default is one feature, serial |
 
 Do not use `explore` for whole-skill dispatch (skills write artifacts). Fast models: only if `model-pin.yaml` allows them.
 
@@ -64,7 +63,7 @@ Workspace: <repo root>
    <absolute or repo-relative path from the catalog>
 2. Follow that skill fully. Load its rules only as that skill's Startup / Load order says.
 3. You may nest Task calls if that skill's Cursor binding says so (spec-design explore, sdd-impl implementer).
-4. Do NOT dispatch sibling orchestration skills. Do NOT set approvals.*.approved or ready_for_implementation (parent owns gates). You MAY write artifacts and generated flags the target skill requires.
+4. Do NOT dispatch sibling orchestration skills. Do NOT set `ready_for_implementation` (parent owns terminal gate). You MAY write artifacts and `approvals.*.generated` flags the target skill requires.
 5. Do NOT run /sdd-discovery. Do NOT start implementation unless this invocation is /sdd-impl.
 
 Return exactly one block:

@@ -34,7 +34,7 @@ This SKILL.md is already in context when attached or inlined. Do **not** `Read` 
 
 Replace “Dispatch `/sdd-*`” with a **fresh** `Task` per [cursor-bindings.md](cursor-bindings.md).
 
-- **Parent (調整者) only:** routing, `[調整者]` steps, human `[GATE]`, `spec.json` approvals / `ready_for_implementation`, Phase Handoff, PR Summary, rollback decisions.
+- **Parent (調整者) only:** routing, `[調整者]` steps, `spec.json` `approvals.*.generated` / `ready_for_implementation`, Phase Handoff, PR Summary, rollback decisions.
 - **Do not inline** requirements, design, tasks, validate, or impl work. One flow step → one skill `Task`.
 - **Never** dispatch `/sdd-discovery`. Never chain generation flows into `/sdd-impl`.
 - Unified validates stay **one** Task (`sdd-validate-requirements`, `sdd-validate-design-qa`). Do not split po/qa/sec or qa/arch/sec into sibling Tasks.

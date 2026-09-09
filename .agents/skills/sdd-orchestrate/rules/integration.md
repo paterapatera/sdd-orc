@@ -29,7 +29,7 @@ Read on demand when routing, Path B, requirements init, or impl monitoring needs
 
 - Decided by `/sdd-discovery` **before** orchestration; Path B work never enters an orchestration flow.
 - No spec create/update; do not enter spec flow.
-- Implement in main context — **no** `/sdd-impl` (no approved tasks).
+- Implement in main context — **no** `/sdd-impl` (no `ready_for_implementation` spec).
 - Verify with `/sdd-verify-completion` (`FIX` or `TEST_OR_BUILD`).
 - **Not used**: `spec.json` gates, `/sdd-impl`, `/sdd-validate-impl`, mandatory `/sdd-review`.
 
