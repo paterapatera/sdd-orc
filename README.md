@@ -227,6 +227,7 @@ spec ベースの実装では、調整者は `/sdd-impl` の内部ループを�
 | `/sdd-discovery` | `.agents/skills/sdd-discovery/` | Path 判定、`brief.md` / `roadmap.md`。orchestrate しない |
 | `/sdd-orchestrate <feature>` | `.agents/skills/sdd-orchestrate/` | フロールーティング、フェーズゲート、巻き戻し。`<feature>` 必須。手順は `rules/` |
 | `/sdd-impl <feature>` | `.agents/skills/sdd-impl/` | `ready_for_implementation: true` の TDD 実装。`<feature>` 必須 |
+| `/sdd-steering` | `.agents/skills/sdd-steering/` | steering 同期。完了 spec の retention と、確認後のディレクトリ削除 + roadmap から名前削除 |
 
 ### validate スキル（統合 2 本）
 
@@ -314,9 +315,15 @@ docs/specs/<feature>/reviews/
 
 **実行順**: `spec-design` → `validate-design-qa` → Phase terminal → **次チャット**で `spec-tasks`
 
-## Spec クリーンアップ（手動）
+## Spec クリーンアップ
 
-実装完了後、`docs/specs/{feature}/` は **手動で削除**する（自動ドキュメント化スキルはない）。
+実装完了後の削除は `/sdd-steering`（確認付き）。`--steering-only` では retention / cleanup をスキップする。
+
+1. 完了 spec の Implementation Notes を `docs/steering/` へ移す（retention）
+2. ユーザー確認後、`docs/specs/{feature}/` を削除する
+3. その spec 名を `docs/steering/roadmap.md` から外す（自身の行と、他 spec の `Dependencies:`）
+
+削除済みの spec 名は roadmap に残さない。追跡できない名前が残ると、後続の discovery がそれを upstream にして orchestrate が止まる。
 
 削除してよいのは当該 feature ディレクトリのみ。次は消さない:
 
@@ -324,7 +331,7 @@ docs/specs/<feature>/reviews/
 - `docs/contracts/**`
 - `docs/architecture/adr/**`
 
-永続知は設計時に書いた architecture / contracts / ADR。roadmap の依存関係更新も手動で行う。
+永続知は retention 先の steering と、設計時の architecture / contracts / ADR。
 
 ## 設計 validate の役割分担
 
