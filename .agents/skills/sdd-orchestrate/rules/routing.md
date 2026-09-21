@@ -4,7 +4,7 @@
 
 Resolve `<feature>` **before** routing. Do not guess from chat history. Do not use the current git branch.
 
-1. **`<feature>` is required** — first argument that is not a flow/tier override (`実装のみ`, `実装だけ`, `要求だけ更新`, `要求更新`, `設計だけ`, `設計のみ`, `設計更新`, `quick`, `lite`, `フル`, `full`).
+1. **`<feature>` is required** — first argument that is not a flow/tier override (`要求だけ更新`, `要求更新`, `設計だけ`, `設計のみ`, `設計更新`, `quick`, `lite`, `フル`, `full`) and not a reserved redirect token (`実装のみ`, `実装だけ`).
 2. **Stop and ask for a spec name** if no such argument is present.
 
 Then continue with § Entry Contract using the resolved `<feature>`.
@@ -13,16 +13,17 @@ Then continue with § Entry Contract using the resolved `<feature>`.
 
 `/sdd-discovery` is **not** an orchestration step. It is run **standalone before** orchestration and has already produced `brief.md` (new specs), `roadmap.md` (when dependencies exist), and — for existing specs — `spec.json`. Orchestration is invoked with a required target `<feature>` plus optional explicit flow, and selects the active flow without a discovery Path signal:
 
-1. **User-specified flow wins** — e.g.「要求だけ更新」「設計だけ」「実装だけ」.
-2. **Else derive from `spec.json`** via § Spec State Hints:
+1. **Implementation is not an orchestration flow.** 「実装のみ」「実装だけ」 (or any request to implement without spec change) → **stop**; instruct `/sdd-impl <feature>`. Do not dispatch `/sdd-impl` from this skill.
+2. **User-specified flow wins** — e.g.「要求だけ更新」「設計だけ」.
+3. **Else derive from `spec.json`** via § Spec State Hints:
    - `brief.md` exists, no `spec.json` → **要求新規作成** (start at `/sdd-spec-requirements`)
    - `approvals.requirements.generated` false → resume requirements / **要求更新**
    - requirements generated, `approvals.design.generated` false → **設計更新**
    - design generated, `approvals.tasks.generated` false → resume task generation (`/sdd-spec-tasks` … Terminal auto-approve)
-   - `ready_for_implementation: true` → **実装のみ** (explicit request only)
-3. **Neither `brief.md` nor `spec.json` exists** for the target → **stop**; instruct the user to run `/sdd-discovery` first. Do **not** auto-run discovery.
+   - `ready_for_implementation: true` → **stop** (orchestration complete). Instruct `/sdd-impl <feature>`. Spec 変更が必要なら 要求更新 / 設計更新 を明示させる。
+4. **Neither `brief.md` nor `spec.json` exists** for the target → **stop**; instruct the user to run `/sdd-discovery` first. Do **not** auto-run discovery.
 
-**Resume (new session):** A new chat on the **same Git checkout** with `/sdd-orchestrate <feature>` means the human accepted the previous phase artifacts. Start from the next incomplete phase based on `approvals.*.generated` and `ready_for_implementation` (same table as § Spec State Hints). Same-chat correction notes after Phase Handoff are not resume. Do not create a new worktree per phase.
+**Resume (new session):** A new chat on the **same Git checkout** with `/sdd-orchestrate <feature>` means the human accepted the previous phase artifacts. Start from the next incomplete phase based on `approvals.*.generated` (same table as § Spec State Hints). If `ready_for_implementation: true` and the user did not request 要求更新 / 設計更新, stop and instruct `/sdd-impl <feature>`. Same-chat correction notes after Phase Handoff are not resume. Do not create a new worktree per phase.
 
 Path B (no spec) is decided by discovery **before** orchestration and never enters an orchestration flow (see `flows.md` § Path B).
 
@@ -45,7 +46,7 @@ User override: explicit「フル」「lite」「quick」でティア／経路を
 - 「quick」「lite」→ force S / **quick-path** (regardless of score)
 - 「フル」「full」→ force L / **full-path**
 
-**Do not** change `実装のみ` by tier. Existing specs without `complexity_tier` → treat as **L** for **orchestration path selection** only (not for `/sdd-impl` execution mode — that uses task-count fallback; see `complexity-tier.md` § Scope note). Path D/E → force **L** (never S / never quick-path).
+Existing specs without `complexity_tier` → treat as **L** for **orchestration path selection** only (not for `/sdd-impl` execution mode — that uses task-count fallback; see `complexity-tier.md` § Scope note). Path D/E → force **L** (never S / never quick-path).
 
 ## Determine Active Flow
 
@@ -56,10 +57,10 @@ Combine **`spec.json` state** (§ Spec State Hints) and **user override** to pic
 | New spec / new requirements (`brief.md`, no `spec.json`) | 要求新規作成 |
 | Existing spec, requirements change | 要求更新 |
 | Requirements generated, design-only change | 設計更新 |
-| No spec change, implementation only | 実装のみ |
+| No spec change, implementation only | **Not an orchestration flow** — stop; `/sdd-impl <feature>` |
 | Path B (no spec, decided by discovery) | 直接実装 (outside orchestration) |
 
-**User override wins** — e.g.「要求だけ更新」「実装だけ」.
+**User override wins** — e.g.「要求だけ更新」「設計だけ」. 「実装のみ」「実装だけ」 is a redirect to `/sdd-impl`, not an override into an orchestration flow.
 
 ## Modification Guard (implementation must be complete first)
 
@@ -69,12 +70,12 @@ Read `docs/specs/<feature>/spec.json` + `tasks.md`:
 
 | State | Meaning | Orchestrator action |
 | ----- | ------- | ------------------- |
-| `ready_for_implementation: true` **and** `tasks.md` has any `[ ]` or `_Blocked:_` | implementation-ready but **not** complete | **Stop. Do not modify.** Prompt user to finish implementation first (explicit `実装のみ`). |
+| `ready_for_implementation: true` **and** `tasks.md` has any `[ ]` or `_Blocked:_` | implementation-ready but **not** complete | **Stop. Do not modify.** Prompt user to finish implementation first (`/sdd-impl <feature>`). |
 | `ready_for_implementation: true` **and** all `tasks.md` tasks `[x]`, no `_Blocked:_` | implementation complete | Modification allowed — proceed with 要求更新 / 設計更新 |
 | `ready_for_implementation: false` | still in first-pass authoring (requirements/design/tasks not finished) | Not a modification of implemented-ready work — resume the initial flow normally |
 
 - "Implementation complete" = `tasks.md` exists, every task `[x]`, none `_Blocked:_` (confirm via `/sdd-spec-status <feature>`; a prior `/sdd-validate-impl` GO is stronger evidence).
-- On a blocked modification, report: which spec, its outstanding `[ ]` / `_Blocked:_` tasks, and instruct: complete implementation via an explicit `実装のみ` run, then re-request the change.
+- On a blocked modification, report: which spec, its outstanding `[ ]` / `_Blocked:_` tasks, and instruct: complete implementation via `/sdd-impl <feature>`, then re-request the change.
 - **User override does not bypass this guard** unless the user explicitly acknowledges the incomplete implementation and insists on modifying anyway.
 - Path B (直接実装) is unaffected — it has no spec.
 
@@ -90,7 +91,7 @@ Read `docs/specs/<feature>/spec.json` + `tasks.md`:
 | 要求更新 / 設計更新 | After Modification Guard passes, before any generation or validate dispatch |
 | Path D/E Multi-Spec | Before starting each spec's applicable flow (in roadmap dependency order) |
 
-**Not applied** to 実装のみ, Path B, or features with no upstream dependencies.
+**Not applied** to Path B, or features with no upstream dependencies.
 
 ### Parse dependencies
 
@@ -138,7 +139,7 @@ Reference mapping from the Path that `/sdd-discovery` determined **standalone** 
 
 | Path | Route |
 | ---- | ----- |
-| **A** (existing spec sufficient) | 要求更新 \| 設計更新 \| 実装のみ — pick from user intent + `spec.json` approvals |
+| **A** (existing spec sufficient) | 要求更新 \| 設計更新 — pick from user intent + `spec.json` approvals. No spec change → do **not** enter orchestration; `/sdd-impl <feature>` |
 | **B** (no spec) | **直接実装** — never enter spec flow (handled outside orchestration) |
 | **C** (new single spec) | 要求新規作成 |
 | **D/E** (multi / mixed) | Run per-spec flows sequentially by dependency |
@@ -153,7 +154,7 @@ Read `docs/specs/<feature>/spec.json` metadata only when routing:
 | `approvals.requirements.generated` false | 要求更新 or resume requirements phase |
 | requirements generated, design not | 設計更新 or resume design phase |
 | design generated, tasks not | resume task generation (`/sdd-spec-tasks` … Terminal auto-approve) |
-| `ready_for_implementation: true` | 実装のみ |
+| `ready_for_implementation: true` | orchestration complete — stop; `/sdd-impl <feature>` (unless user requested 要求更新 / 設計更新) |
 
 If orchestration was interrupted mid-flow, the next `/sdd-orchestrate <feature>` resumes from the next incomplete phase per `spec.json` `generated` flags and artifacts — artifact-only resume per `gates.md` § Resume.
 
@@ -165,11 +166,11 @@ If orchestration was interrupted mid-flow, the next `/sdd-orchestrate <feature>`
 - Mid-flow user pivot → re-route; resume from required step.
 - Status check → `/sdd-spec-status <feature>`.
 
-## Path B vs 実装のみ
+## Path B vs `/sdd-impl`
 
-| | Path B 直接実装 | 実装のみ |
-| - | --------------- | -------- |
+| | Path B 直接実装 | `/sdd-impl` |
+| - | --------------- | ----------- |
 | spec | none | existing |
 | prerequisite | discovery Path B (standalone; never enters orchestration) | `ready_for_implementation: true` |
-| implement | main context direct | `/sdd-impl` |
+| implement | main context direct | `/sdd-impl` (standalone; not dispatched by this skill) |
 | verify | `/sdd-verify-completion` | `/sdd-impl` review + `/sdd-validate-impl` |

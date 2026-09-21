@@ -1,6 +1,6 @@
 # SDD Skill Integration
 
-Read on demand when routing, Path B, requirements init, or impl monitoring needs detail.
+Read on demand when routing, Path B, requirements init, or skill-boundary questions need detail.
 
 ## Roles (dispatch only)
 
@@ -44,7 +44,7 @@ Batch / selection loop (delegate to impl skill — detail in `sdd-impl`):
 5. Mark all batch/selection tasks `[x]` + selective commit
 6. `REJECTED` / mechanical FAIL: max 2 remediation rounds → `/sdd-debug` (fresh) → `_Blocked:_` on persistent failure
 
-Orchestrator stops if `_Blocked:_` remains or tasks incomplete before `/sdd-validate-impl`. Autonomous impl mode auto-runs validate-impl on completion, then `FEATURE_GO` verify-completion.
+Orchestrator does **not** dispatch `/sdd-impl`. `/sdd-impl` stops if `_Blocked:_` remains or tasks are incomplete before `/sdd-validate-impl`. Autonomous impl mode auto-runs validate-impl on completion, then `FEATURE_GO` verify-completion.
 
 ## Validate Skill Boundaries
 

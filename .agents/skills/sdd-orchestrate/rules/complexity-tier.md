@@ -2,7 +2,7 @@
 
 Compute the complexity tier **at orchestration start, immediately after routing** resolves the active flow and **before the first skill dispatch**. Write the result to `spec.json`, then load the matching flow variant in `flows.md`.
 
-**Do not** change the `実装のみ` flow by tier. **Do not** read `requirements.md` / `design.md` for scoring — inputs are brief + metadata only.
+**Do not** read `requirements.md` / `design.md` for scoring — inputs are brief + metadata only.
 
 ## When to run
 
@@ -10,7 +10,6 @@ Compute the complexity tier **at orchestration start, immediately after routing*
 | --------- | ------ |
 | Active flow is `要求新規作成` (or Path D/E per-spec 要求新規作成) | Compute tier; select S / M / L variant |
 | Active flow is `要求更新` / `設計更新` | Optional recompute on re-orchestrate; default to existing `complexity_tier` if present, else **L** |
-| Active flow is `実装のみ` | **Skip** — do not alter the flow by tier |
 | `spec.json` exists without `complexity_tier` | Treat as **L** (backward compatible) until recomputed |
 
 Re-orchestration may recompute and overwrite `complexity_tier` / `complexity_score` / `complexity_rationale`.
@@ -91,15 +90,13 @@ Orchestrator (`[調整者]`) merges these fields without removing existing keys:
 After resolving the active flow (`routing.md` § Entry Contract), before the first skill dispatch:
 
 1. Read this file (`rules/complexity-tier.md`)
-2. If flow is `実装のみ` → skip; keep the 実装のみ section
-3. Else score from `brief.md` (+ roadmap if present); apply force-L / user override
-4. Write `complexity_tier` / `complexity_score` / `complexity_rationale` to `docs/specs/<feature>/spec.json` (create `spec.json` only if init already ran or will run via `/sdd-spec-requirements` Step 0; if pre-init, write immediately after Step 0 creates it, or stash the computed values and write on first `[調整者]` touch of `spec.json`)
-5. Load the matching `flows.md` variant (`要求新規作成 (S|M|L)`). Missing `complexity_tier` on an existing spec → **L**
+2. Score from `brief.md` (+ roadmap if present); apply force-L / user override
+3. Write `complexity_tier` / `complexity_score` / `complexity_rationale` to `docs/specs/<feature>/spec.json` (create `spec.json` only if init already ran or will run via `/sdd-spec-requirements` Step 0; if pre-init, write immediately after Step 0 creates it, or stash the computed values and write on first `[調整者]` touch of `spec.json`)
+4. Load the matching `flows.md` variant (`要求新規作成 (S|M|L)`). Missing `complexity_tier` on an existing spec → **L**
 
 ## Hard rules
 
 - Do **not** pick tier **S** for Path D/E multi-spec flows
-- Do **not** vary `実装のみ` by tier
 - Do **not** score from requirements/design bodies
 - Default without `complexity_tier` → **L** for **orchestration flow path** only (backward compatible)
 
@@ -110,7 +107,7 @@ After resolving the active flow (`routing.md` § Entry Contract), before the fir
 | **Orchestration** (this file, `routing.md`, `contract.md`) | Treat as **L** full-path for 要求/設計/タスク flows | Conservative: do not silently take quick-path on legacy specs |
 | **`/sdd-impl` execution mode** | Task-count fallback: ≤3 → `direct`, ≤12 → `wave`, >12 → `strict` | Cost control at implement time; see `sdd-impl` Step 2 |
 
-These are different decisions. Writing `complexity_tier` at orchestration entry (or before `実装のみ`) keeps them aligned; do not assume “missing → L” forces impl `strict`.
+These are different decisions. Writing `complexity_tier` at orchestration entry keeps them aligned; do not assume “missing → L” forces impl `strict`.
 
 ## Link to `/sdd-spec-design` discovery (improvement 08)
 

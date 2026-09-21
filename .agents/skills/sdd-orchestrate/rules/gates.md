@@ -38,7 +38,7 @@ Report paths: see `../sdd-validate-shared/contract.md` (read only if parsing).
 | `NOT_VERIFIED` | Rollback per `rollback.md` § Phase gate failures |
 | `MANUAL_VERIFY_REQUIRED` | Stop; report gaps to user |
 
-**Do not** use `/sdd-verify-completion` with `FEATURE_GO` for 要求 / 設計 / タスク — that claim type is for post-impl feature completion only. Inside `/sdd-impl`, use `BATCH` at each batch/selection completion gate (or `TASK` only for a single manual task); use `FEATURE_GO` only after `/sdd-validate-impl` GO at the end of `実装のみ`. Do **not** require verify-completion after every intermediate `APPROVED` while batch tasks remain unmarked.
+**Do not** use `/sdd-verify-completion` with `FEATURE_GO` for 要求 / 設計 / タスク — that claim type is for post-impl feature completion inside `/sdd-impl` only. Inside `/sdd-impl`, use `BATCH` at each batch/selection completion gate (or `TASK` only for a single manual task); use `FEATURE_GO` only after `/sdd-validate-impl` GO. Do **not** require verify-completion after every intermediate `APPROVED` while batch tasks remain unmarked.
 
 ## Phase Gate Table (`spec.json`)
 
@@ -48,7 +48,6 @@ Report paths: see `../sdd-validate-shared/contract.md` (read only if parsing).
 | 設計 | `design.md` + `approvals.design.generated` + `/sdd-validate-design-qa` GO + Phase Gate VERIFIED | **Phase terminal** → 次チャットでタスク |
 | タスク | `tasks.md` + `approvals.tasks.generated` + `/sdd-verify-phase-gate` VERIFIED | Set `ready_for_implementation: true` → **end orchestration (do not dispatch `/sdd-impl`)** |
 | 仕様一式 (S) | all three `approvals.*.generated` + sanity review (or unified validates GO) | Set `ready_for_implementation: true` → **end orchestration** |
-| 実装 | `/sdd-validate-impl` GO + `/sdd-verify-completion` (`FEATURE_GO`) VERIFIED | **End orchestration** — reached only via explicit `実装のみ` |
 
 Requirements validate: single `/sdd-validate-requirements` (unified). Design validate: single `/sdd-validate-design-qa` (unified).
 
@@ -145,7 +144,7 @@ After mechanical readiness (below), the orchestrator **auto-approves**:
 4. Emit **PR Summary Output**
 5. End orchestration (do **not** dispatch `/sdd-impl`). After the PR Summary fence, emit the chat-only next-step line from § [AUTO] 仕様一式.
 
-User can still edit `tasks.md` / re-orchestrate later if needed. After PR Summary the same human review applies: same-chat correction notes stay in this phase; a new `/sdd-orchestrate <feature> 実装のみ` (or `/sdd-impl`) means they accepted the spec.
+User can still edit `tasks.md` / re-orchestrate later if needed. After PR Summary the same human review applies: same-chat correction notes stay in this phase; a new `/sdd-impl <feature>` means they accepted the spec.
 
 ### Complexity tier (session)
 
@@ -155,8 +154,6 @@ User can still edit `tasks.md` / re-orchestrate later if needed. After PR Summar
 | **M** | 要求 / 設計は各 Phase terminal; タスクは再開後に自動 |
 | **L** | same as M |
 | missing `complexity_tier` | Treat as L (backward compatible). |
-
-`実装のみ`: end after `/sdd-verify-completion` (`FEATURE_GO`) VERIFIED.
 
 ## [AUTO] 仕様一式 (S-tier only)
 
@@ -172,7 +169,7 @@ On terminal (**[調整者]**):
 - `ready_for_implementation: true`
 - `phase: tasks-approved`
 
-Then: PR Summary Output → orchestration ends. Do **not** dispatch `/sdd-impl`. After the PR Summary fence, emit one chat-only next-step line (not inside the PR body): 実装は **同じ checkout** の新しいチャットで `/sdd-orchestrate <feature> 実装のみ` または `/sdd-impl <feature>`。roadmap 上の downstream spec は、この PR がマージ先に入ってからその先端の checkout で始める。
+Then: PR Summary Output → orchestration ends. Do **not** dispatch `/sdd-impl`. After the PR Summary fence, emit one chat-only next-step line (not inside the PR body): 実装は **同じ checkout** の新しいチャットで `/sdd-impl <feature>`。roadmap 上の downstream spec は、この PR がマージ先に入ってからその先端の checkout で始める。
 
 ## PR Summary Output (タスク生成完了時)
 
@@ -244,14 +241,6 @@ Spec: `docs/specs/<feature>/`
 </details>
 ```
 ````
-
-## Impl Phase Monitoring
-
-Delegate to `/sdd-impl`; monitor stop conditions:
-
-- All tasks `[x]` before `/sdd-validate-impl`
-- `_Blocked:_` tasks → stop, report user
-- Batch / selection loop: implement → parent mechanical → `/sdd-review` (judgment) → `/sdd-verify-completion` (`BATCH` / single-task `TASK`) before `[x]` (impl skill owns detail; execution mode `direct` / `wave` / `strict` from `complexity_tier`)
 
 ## Brownfield Option
 

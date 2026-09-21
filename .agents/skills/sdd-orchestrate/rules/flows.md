@@ -1,6 +1,6 @@
 # Flow Step Sequences
 
-**Orchestration scope ends at task generation.** The generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **Terminal auto-approve** (M/L: tasks; S: 仕様一式). After mechanical readiness, the orchestrator auto-approves, emits the **PR Summary Output** (`gates.md` § PR Summary Output), and **ends the orchestration** — it must **not** dispatch `/sdd-impl` or any implementation step. Implementation is run separately (explicit `実装のみ` invocation only).
+**Orchestration scope ends at task generation.** The generation flows (要求新規作成 / 要求更新 / 設計更新) terminate at **Terminal auto-approve** (M/L: tasks; S: 仕様一式). After mechanical readiness, the orchestrator auto-approves, emits the **PR Summary Output** (`gates.md` § PR Summary Output), and **ends the orchestration** — it must **not** dispatch `/sdd-impl` or any implementation step. Implementation is a separate `/sdd-impl <feature>` invocation.
 
 **Entry precondition (discovery is not an orchestration step).** `/sdd-discovery` is run **standalone before** orchestration and has already produced `brief.md` (for new specs) / `roadmap.md` (when dependencies exist) and, for existing specs, `spec.json`. Orchestration is invoked with a required target `<feature>` plus optional explicit flow, and selects the active flow per `routing.md` § Entry Contract. If neither `brief.md` nor `spec.json` exists for the target, **stop** and instruct the user to run `/sdd-discovery` first (do not auto-run discovery).
 
@@ -84,7 +84,7 @@ _Precondition_: same as (L); selected when `complexity_tier` is **M** (score 2�
 
 _Precondition_: `/sdd-discovery` already ran standalone and confirmed this is an update to existing spec `<feature>` (`spec.json` exists).
 
-1. **[調整者] Modification guard** — verify the target spec's implementation is complete (`routing.md` § Modification Guard). If it is implementation-ready but not complete (`ready_for_implementation: true` with `[ ]` / `_Blocked:_` tasks), **stop** and prompt the user to finish implementation first (explicit `実装のみ`). Do not proceed to the next step.
+1. **[調整者] Modification guard** — verify the target spec's implementation is complete (`routing.md` § Modification Guard). If it is implementation-ready but not complete (`ready_for_implementation: true` with `[ ]` / `_Blocked:_` tasks), **stop** and prompt the user to finish implementation first (`/sdd-impl <feature>`). Do not proceed to the next step.
 2. **[調整者] Upstream dependency guard** — verify roadmap upstream deps are task-generation complete (`routing.md` § Upstream Dependency Guard). If not ready, **stop** before generation or validate.
 3. **[調整者]** Invalidate implementation readiness in `docs/specs/<feature>/spec.json` **before** generation or validate:
    - `ready_for_implementation: false`
@@ -106,7 +106,7 @@ _Precondition_: `/sdd-discovery` already ran standalone and confirmed this is an
 
 _Precondition_: `/sdd-discovery` already ran standalone and confirmed this is a design-only change to existing spec `<feature>` (`spec.json` exists, `approvals.requirements.generated: true`).
 
-1. **[調整者] Modification guard** — verify the target spec's implementation is complete (`routing.md` § Modification Guard). If it is implementation-ready but not complete, **stop** and prompt the user to finish implementation first (explicit `実装のみ`). Do not proceed.
+1. **[調整者] Modification guard** — verify the target spec's implementation is complete (`routing.md` § Modification Guard). If it is implementation-ready but not complete, **stop** and prompt the user to finish implementation first (`/sdd-impl <feature>`). Do not proceed.
 2. **[調整者] Upstream dependency guard** — verify roadmap upstream deps are task-generation complete (`routing.md` § Upstream Dependency Guard). If not ready, **stop** before generation or validate.
 3. `/sdd-spec-design <feature>`
 4. `/sdd-validate-design-qa <feature>` (unified; diff only — optional `--only qa|arch|sec|final`)
@@ -115,17 +115,6 @@ _Precondition_: `/sdd-discovery` already ran standalone and confirmed this is a 
 6. `/sdd-spec-tasks <feature>` (diff only)
 7. `/sdd-verify-phase-gate <feature> tasks`（未実施なら）
 8. **[調整者] Terminal auto-approve** — set `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
-
-## 実装のみ
-
-**Enter only on an explicit user request for implementation** (e.g.「実装だけ」). This flow is never reached automatically from a task-generation flow — Terminal auto-approve does not chain into it.
-
-_Precondition_: `/sdd-discovery` already ran standalone (Path A → impl only); `spec.json` exists.
-
-1. Verify `ready_for_implementation: true` — stop if false
-2. `/sdd-impl <feature>` — impl selects execution mode `direct` / `wave` / `strict` from `spec.json` `complexity_tier` (or task-count fallback); see `sdd-impl` Step 2
-3. `/sdd-validate-impl <feature>`
-4. `/sdd-verify-completion <feature>` (`FEATURE_GO`) → end
 
 ## Path B 直接実装
 

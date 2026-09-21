@@ -13,7 +13,7 @@ Discovery is **capture and route**, not requirements authoring. Default mode is 
   - Correct Path (A–E) identified
   - User intent captured in `brief.md` (or capture log) on disk — not left in chat only
   - Cross-spec dependency edges reflected in `roadmap.md` when present (additive; never lose `[x]`)
-  - Actionable next command suggested for a **new chat** (`/sdd-orchestrate` for Path A/C/D/E) — never chained in this conversation
+  - Actionable next command suggested for a **new chat** (`/sdd-orchestrate` for Path A/C/D/E, or `/sdd-impl` when Path A needs no spec change) — never chained in this conversation
   - User can finish Confirm with **はい** or a correction (no abort-via-いいえ; no “実行しない”)
   - Total discovery interaction kept minimal unless Workshop mode explicitly triggered
 </background_information>
@@ -134,7 +134,7 @@ Shrink of former deep dialogue — still produce the **minimal** brief template:
 
 | Path | After Capture |
 | ---- | ------------- |
-| **A** | Update brief or record「既存 spec X に追記」; proceed Confirm → Write as needed → Next (new chat): `/sdd-orchestrate <feature>` (要求更新) |
+| **A** | Update brief or record「既存 spec X に追記」; proceed Confirm → Write as needed → Next (new chat): `/sdd-orchestrate <feature>` (要求更新 / 設計更新) or `/sdd-impl <feature>` if no spec change |
 | **B** | Do **not** force a spec. Optional memo under `docs/captures/` only. Recommend direct implementation |
 | **C** | Confirm → Write `brief.md` → Next (new chat): `/sdd-orchestrate <feature>` |
 | **D/E** | If decomposition unset → Workshop first. Else Confirm → Write brief(s) + `roadmap.md` → Next (new chat): `/sdd-orchestrate <first-ready-feature>` (and other parallel-ready specs by name) |
@@ -325,7 +325,7 @@ Suggest the next command for a **new conversation** and **stop**.
 
 - Do NOT automatically run `/sdd-orchestrate` or spec generation.
 - Do NOT ask 「今実行するか」 or any yes/no about chaining. Discovery is finished.
-- Phrase as: 別チャットで次を実行: `/sdd-orchestrate <feature>` (or the Path-specific command below). Always include `<feature>`.
+- Phrase as: 別チャットで次を実行: `/sdd-orchestrate <feature>` (or the Path-specific command below). Always include `<feature>`. If Path A needs no spec change, phrase `/sdd-impl <feature>` instead.
 
 ### Git / checkout
 
@@ -343,7 +343,7 @@ Keep the same Git checkout across later phase chats for a given spec. Do not cre
 
 | Path | Next command |
 | ---- | ------------ |
-| **A** | `/sdd-orchestrate <feature>`（要求更新 / 設計更新 as appropriate） |
+| **A** | Spec change: `/sdd-orchestrate <feature>`（要求更新 / 設計更新 as appropriate）. No spec change: `/sdd-impl <feature>` |
 | **B** | Direct implementation — no spec; do not force `sdd-spec-*` |
 | **C** | Default: `/sdd-orchestrate <feature-name>` (orchestrator picks S/M/L path). Manual phase control: `/sdd-spec-requirements <feature-name>` (M/L only). Explicit fast: `/sdd-orchestrate <feature-name> quick` or `/sdd-spec-quick <feature-name> --auto` |
 | **D** | `/sdd-orchestrate <first-ready-feature>` — first spec in roadmap order that is ready in this checkout. Name every parallel-ready spec the user may start (`/sdd-orchestrate <a>`, `/sdd-orchestrate <b>`). Downstream waits until upstream is merged into the checkout it will use. |

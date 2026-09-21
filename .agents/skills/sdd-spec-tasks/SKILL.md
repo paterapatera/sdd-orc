@@ -128,7 +128,7 @@ Before writing `tasks.md`, run one lightweight independent sanity review of the 
 
 **Summary**:
 - Display task summary (task count, major groups, parallel markers)
-- Respond: "Tasks generated. Start implementation with `/sdd-impl $1` or `/sdd-orchestrate $1 実装のみ`"
+- Respond: "Tasks generated. Start implementation with `/sdd-impl $1`"
 
 ## Critical Constraints
 - **Task Integration**: Every task must connect to the system (no orphaned work)

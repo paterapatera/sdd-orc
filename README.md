@@ -8,8 +8,7 @@
 | -------- | ---- |
 | `/sdd-discovery` | 新規作業の入口。Path 判定と `brief.md`（必要なら `roadmap.md`）。この会話では orchestrate しない |
 | `/sdd-orchestrate <feature>` | 要求・設計・タスクの調整。再開も同じコマンド。実装は付けない |
-| `/sdd-orchestrate <feature> 実装のみ` | `ready_for_implementation: true` の spec の実装フロー |
-| `/sdd-impl <feature>` | 実装のみを直接起動する場合 |
+| `/sdd-impl <feature>` | spec 実装（`ready_for_implementation: true`）。オーケストレーションとは別コマンド |
 | `/sdd-spec-status <feature>` | 1 spec の進捗。引数なしは全 spec 一覧 |
 | `/propose-quality-tools <language> <scale>` | SDD 前の品質ツール提案 |
 
@@ -57,16 +56,16 @@
 | 新規 spec・新規要求          | 要求新規作成   |
 | 既存 spec の要求変更         | 要求更新       |
 | 要求は確定済み、設計のみ変更 | 設計更新       |
-| spec 更新不要、実装のみ      | 実装のみ（明示のときだけ） |
+| spec 更新不要、実装するだけ  | **orchestrate しない** — `/sdd-impl <feature>` |
 | spec 不要（Path B）          | 直接実装（orchestrate に入らない） |
 
 **ルーティングの判断基準**
 
-- Discovery **Path A**（既存 spec で足りる）→ 要求更新 or 設計更新 or 実装のみのいずれかに振り分ける
+- Discovery **Path A**（既存 spec で足りる）→ 要求更新 or 設計更新。仕様変更なしなら `/sdd-impl <feature>`（orchestrate に入らない）
 - Discovery **Path B**（spec 不要）→ **直接実装フロー**（下記）。spec を経由しない。`/sdd-orchestrate` は使わない
 - Discovery **Path C**（新規単一 spec）→ 要求新規作成フロー（`/sdd-orchestrate <feature>`）
 - Discovery **Path D/E**（複数 spec・混合分解）→ spec 単位で `/sdd-orchestrate <feature>`。ready な spec は並列 checkout 可。downstream は upstream がこの checkout で tasks 生成済みになるまで待つ
-- ユーザーが明示した場合（「要求だけ更新」「実装だけ」等）は、その指示を優先する
+- ユーザーが明示した場合（「要求だけ更新」「設計だけ」等）は、その指示を優先する。「実装だけ」は `/sdd-impl <feature>` へ誘導する
 - 起動は常に `/sdd-orchestrate <feature>`。feature 無し・ブランチ名からの推測はしない
 
 **実行中の制御**
@@ -85,8 +84,8 @@
 | -------- | -------- | ---------------- | ---------------- |
 | 要求 | `requirements.md` 生成済み + `/sdd-validate-requirements` GO（`requirements-review.md` の Phase Gate VERIFIED） | `approvals.requirements.generated: true` | 人間確認後、次チャットで設計 |
 | 設計 | `design.md` 生成済み + `/sdd-validate-design-qa` GO（`design-review.md` の Phase Gate VERIFIED） | `approvals.design.generated: true` | 人間確認後、次チャットでタスク |
-| タスク | `tasks.md` 生成済み + `/sdd-verify-phase-gate` VERIFIED | `approvals.tasks.generated: true` → `ready_for_implementation: true` | 人間確認後、明示的 `実装のみ` |
-| 実装 | 全タスク `[x]` + `/sdd-review` APPROVED + `/sdd-validate-impl <feature>` GO + `/sdd-verify-completion` (`FEATURE_GO`) | （phase を完了状態に更新） | 終了 |
+| タスク | `tasks.md` 生成済み + `/sdd-verify-phase-gate` VERIFIED | `approvals.tasks.generated: true` → `ready_for_implementation: true` | 人間確認後、`/sdd-impl <feature>` |
+| 実装 | 全タスク `[x]` + `/sdd-review` APPROVED + `/sdd-validate-impl <feature>` GO + `/sdd-verify-completion` (`FEATURE_GO`) | （phase を完了状態に更新） | `/sdd-impl` が担当。orchestrate は呼ばない |
 
 `go` / `fix` コマンドはない。M/L の会話分割はトークン節約。次フェーズへ進む行為そのものが「問題なし」。S は 1 チャット。
 
@@ -120,7 +119,7 @@
 - `GO` 判定の前に各 validate スキル内で fresh-evidence を適用する。要求・設計は統合レポートの Phase Gate、タスクは `/sdd-verify-phase-gate`
 - 同一フェーズ内の専門 validate（要求: po / qa / sec、設計: qa / arch / sec）は、いずれかが `NO-GO` なら最終ゲート（`/sdd-validate-requirements --only final` / `/sdd-validate-design-qa --only final`）へ進めない
 - `/sdd-validate-requirements --only final` / `/sdd-validate-design-qa --only final` は専門 validate の結果を入力として総合 GO/NO-GO を判定する **最終ゲート**
-- 要求 / 設計の Phase terminal では **Phase Handoff** を出して終了する。タスク完了直後は **PR Summary Output** を出し、チャット側に実装用の次コマンド（同じ checkout で `/sdd-orchestrate <feature> 実装のみ` または `/sdd-impl <feature>`）を書いてオーケストレーションを終了する
+- 要求 / 設計の Phase terminal では **Phase Handoff** を出して終了する。タスク完了直後は **PR Summary Output** を出し、チャット側に実装用の次コマンド（同じ checkout で `/sdd-impl <feature>`）を書いてオーケストレーションを終了する
 
 ### 巻き戻し
 
@@ -170,20 +169,20 @@ Path B は spec を作成・更新しない。調整者は discovery が Path B 
 
 **Path B で使わないもの**: `spec.json` ゲート、`/sdd-impl`、`/sdd-validate-impl`、`/sdd-review`（タスク単位）。必要に応じて `/sdd-review` 相当の軽量チェックは調整者が手動で行ってもよいが、必須ではない。
 
-**Path B と「実装のみフロー」の違い**
+**Path B と `/sdd-impl` の違い**
 
-| | Path B 直接実装 | 実装のみフロー |
-| - | --------------- | -------------- |
+| | Path B 直接実装 | `/sdd-impl` |
+| - | --------------- | ----------- |
 | spec | なし | 既存 spec あり |
 | 前提 | discovery Path B | `ready_for_implementation: true` |
-| 実装手段 | メインコンテキスト直接 | `/sdd-impl <feature>` |
+| 実装手段 | メインコンテキスト直接 | `/sdd-impl <feature>`（orchestrate からは呼ばない） |
 | 完了検証 | `/sdd-verify-completion` | `/sdd-impl` 内 review + `/sdd-validate-impl <feature>` |
 
 ### 実装フェーズ内のレビュー（`/sdd-impl` + `/sdd-review`）
 
-spec ベースの実装では、調整者は `/sdd-impl` の内部ループを把握し、feature 検証の前提が満たされているか確認する。
+spec ベースの実装は `/sdd-impl` が内部ループを回す。調整者は実装を dispatch しない。
 
-**`/sdd-impl` 内のバッチ／選択ループ**（調整者は impl スキルに委譲するが、停止条件を監視する）
+**`/sdd-impl` 内のバッチ／選択ループ**
 
 実行モードは `spec.json` の `complexity_tier`（またはタスク数フォールバック）で `direct` / `wave` / `strict` を選ぶ（詳細は `sdd-impl` Step 2）。
 
@@ -194,11 +193,11 @@ spec ベースの実装では、調整者は `/sdd-impl` の内部ループを�
 5. バッチ／選択内タスクをまとめて `[x]` にし、選択的 git commit
 6. `REJECTED` / 機械 FAIL は最大 2 回リトライ → 失敗時 `/sdd-debug`（fresh）→ それでも失敗なら `_Blocked:_` で停止
 
-**調整者の関与**
+**`/sdd-impl` の責務**
 
 - 全タスク `[x]` になるまで `/sdd-validate-impl` へ進めない
 - `_Blocked:_` タスクが残ったら停止し、ユーザーに報告
-- autonomous mode では impl 完了後に自動で `/sdd-validate-impl <feature>` が走る（手動 mode では調整者が明示 dispatch）
+- autonomous mode では impl 完了後に自動で `/sdd-validate-impl <feature>` が走る（手動 mode では明示 dispatch）
 - feature 終端では `/sdd-validate-impl` GO 後に `/sdd-verify-completion`（`FEATURE_GO`）を適用する
 
 ### 既存 validate との棲み分け
@@ -351,7 +350,7 @@ docs/specs/<feature>/reviews/
 
 フロー開始前に `/propose-quality-tools` の実行を推奨する（詳細は「SDD 実施前の推奨」）。M/L は下のチャット境界で切る。S（quick-path）は要求+設計+タスクが 1 チャット。
 
-[調整者]: `/sdd-orchestrate <feature>` で下記を回す。要求・設計は統合レポートの Phase Gate `VERIFIED` 後に Phase Handoff を出す（`go` 待ちなし）。人間が成果物を確認し、問題があれば同じチャットで修正、問題がなければ新しいチャットで `/sdd-orchestrate <feature>`。タスクは `/sdd-verify-phase-gate <feature> tasks` VERIFIED 後に `ready_for_implementation: true` を立て、PR Summary を出す（`/sdd-impl` には自動で進まない）。実装は明示的 `実装のみ`。
+[調整者]: `/sdd-orchestrate <feature>` で下記を回す。要求・設計は統合レポートの Phase Gate `VERIFIED` 後に Phase Handoff を出す（`go` 待ちなし）。人間が成果物を確認し、問題があれば同じチャットで修正、問題がなければ新しいチャットで `/sdd-orchestrate <feature>`。タスクは `/sdd-verify-phase-gate <feature> tasks` VERIFIED 後に `ready_for_implementation: true` を立て、PR Summary を出す（`/sdd-impl` には自動で進まない）。実装は `/sdd-impl <feature>`。
 
 ### 要求新規作成の場合（M/L）
 
@@ -378,7 +377,7 @@ docs/specs/<feature>/reviews/
 2. `/sdd-verify-phase-gate <feature> tasks`
 3. `ready_for_implementation: true` → PR Summary → 終了
 
-**チャット 5 — 実装**（同じ checkout で `/sdd-orchestrate <feature> 実装のみ` または `/sdd-impl <feature>`）
+**チャット 5 — 実装**（同じ checkout で `/sdd-impl <feature>`）
 
 1. `/sdd-impl <feature>`（major 単位: 親 mechanical → `/sdd-review` → `/sdd-verify-completion`（`BATCH` / 単一 `TASK`）→ `[x]`）
 2. `/sdd-validate-impl <feature>`
@@ -392,10 +391,10 @@ Discovery のあと `/sdd-orchestrate <feature>`。要求の Phase Handoff 後�
 
 Discovery のあと `/sdd-orchestrate <feature>`（設計から）。設計の Phase Handoff 後に人間が確認し、OK なら同じ checkout の新しいチャットでタスク生成まで。
 
-### 実装のみの場合（既存 spec・`ready_for_implementation: true`）
+### spec 実装の場合（既存 spec・`ready_for_implementation: true`）
 
-1. 必要なら `/sdd-discovery`（Path A で実装のみ）
-2. `/sdd-orchestrate <feature> 実装のみ`（または `/sdd-impl <feature>`）。`ready_for_implementation: true` でなければ停止
+1. 必要なら `/sdd-discovery`（Path A で仕様変更なし）
+2. `/sdd-impl <feature>`。`ready_for_implementation: true` でなければ停止
 3. `/sdd-validate-impl <feature>` → `/sdd-verify-completion`（`FEATURE_GO`）→ 終了
 
 ### Path B 直接実装の場合（spec なし）
