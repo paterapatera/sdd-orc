@@ -83,7 +83,7 @@ Emit one copy-friendly block. Language follows the spec (default ja). Distinct f
 2. **feature** — `<feature>`
 3. **次にやること** — 成果物を確認する。問題があれば**このチャット**で修正指示。問題がなければ **同じ Git checkout** の新しいチャットで `/sdd-orchestrate <feature>`
 4. **routing が選ぶ次フロー**:
-   - 要求終了後 → 設計フェーズ
+   - 要求終了後 → 設計フェーズ。Optional (not dispatched): `/sdd-req-grill <feature>` after `requirements.md` is on disk and before that next `/sdd-orchestrate`
    - 設計終了後 → タスク生成
 5. **読む成果物**（パス列挙）
 6. **残リスク 1〜3 行** — 当該 unified review の受容残リスクから要約（再分析しない）
@@ -99,6 +99,8 @@ Emit one copy-friendly block. Language follows the spec (default ja). Distinct f
 - **feature**: <feature>
 - **次にやること**: 成果物を確認 → 問題があればこのチャットで修正指示 / 問題がなければ同じ checkout の新しいチャットで `/sdd-orchestrate <feature>`
 - **routing が選ぶ次フロー**: <設計フェーズ | タスク生成>
+- **オプション（要求終了時・ここでは実行しない）**: 設計に進む前に `/sdd-req-grill <feature>`
+  （設計終了の Handoff ではこの行を出さない）
 - **読む成果物**:
   - `docs/specs/<feature>/spec.json`
   - `docs/specs/<feature>/requirements.md`

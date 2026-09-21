@@ -74,7 +74,7 @@ Do **NOT** dispatch individual `spec-requirements`, `validate-*`, `spec-design`,
 | アーキテクト管理者 | (arch via unified validate-design-qa) |
 | 調整者 (self) | routing, gates, rollback, `verify-phase-gate` (タスク; 要求/設計は統合スキル内) |
 
-`discovery` is **not dispatched** by the orchestrator — `/sdd-discovery` is an external pre-step run standalone before orchestration (`routing.md` § Entry Contract).
+`discovery` is **not dispatched** by the orchestrator — `/sdd-discovery` is an external pre-step run standalone before orchestration (`routing.md` § Entry Contract). `/sdd-brief-grill` and `/sdd-req-grill` are optional standalone gates (brief→requirements, requirements→design); never dispatch them.
 </instructions>
 
 ## Safety

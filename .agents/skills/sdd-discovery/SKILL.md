@@ -326,6 +326,7 @@ Suggest the next command for a **new conversation** and **stop**.
 - Do NOT automatically run `/sdd-orchestrate` or spec generation.
 - Do NOT ask 「今実行するか」 or any yes/no about chaining. Discovery is finished.
 - Phrase as: 別チャットで次を実行: `/sdd-orchestrate <feature>` (or the Path-specific command below). Always include `<feature>`. If Path A needs no spec change, phrase `/sdd-impl <feature>` instead.
+- Optional (not part of discovery or orchestration; do not run it here): `/sdd-brief-grill <feature>` after `brief.md` is on disk and before `/sdd-orchestrate`.
 
 ### Git / checkout
 
