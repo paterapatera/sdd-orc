@@ -1,8 +1,9 @@
 ---
 name: sdd-spec-tasks
-description: Generate implementation tasks for a specification
+description: Orchestrator-only. Generates implementation tasks for a specification. Dispatched by /sdd-orchestrate (タスク phase, and inside sdd-spec-quick).
 metadata:
   shared-rules: "tasks-generation.md, tasks-parallel-analysis.md"
+disable-model-invocation: true
 ---
 
 
@@ -43,7 +44,6 @@ metadata:
 
 **Validate prerequisites**:
 - Verify `approvals.requirements.generated === true` and `approvals.design.generated === true` (stop if not, see Safety & Fallback)
-- Determine sequential mode based on presence of `--sequential`
 
 **Artifact-only resume**: 前のチャット履歴・口頭の合意・未書き込みの決定を前提にしない。フェーズの入力は上記 Load Context の成果物（および steering）のみ。チャットにしかない意図が必要なら、生成前に成果物へ書いてから続行する（勝手に補完しない）。設計にないコンポーネントや暗黙の実装方針を会話から追加しない。
 
@@ -51,7 +51,7 @@ metadata:
 
 **Load generation rules and template**:
 - Read `rules/tasks-generation.md` from this skill's directory for principles
-- If `sequential` is false: Read `rules/tasks-parallel-analysis.md` from this skill's directory for parallel judgement criteria
+- Read `rules/tasks-parallel-analysis.md` from this skill's directory for parallel judgement criteria
 - Read `docs/settings/templates/specs/tasks.md` for format (supports `(P)` markers)
 
 #### Parallel Research
@@ -73,7 +73,7 @@ After all parallel research completes, synthesize findings before generating tas
 - Ensure each executable sub-task includes at least one detail bullet that states what "done" looks like in observable terms
 - Keep normal implementation tasks within a single responsibility boundary; if work crosses boundaries, make it an explicit integration task
 - Collapse single-subtask structures by promoting them to major tasks and avoid duplicating details on container-only major tasks (use template patterns accordingly)
-- Apply `(P)` markers to tasks that satisfy parallel criteria (omit markers when sequential mode requested)
+- Apply `(P)` markers to tasks that satisfy parallel criteria
 - Annotate every executable sub-task with `_Wave: N_` (phase order: Foundation → Core → Integration → Validation; Integration/Validation stay in their own majors; `(P)` + different `_Boundary:_` → different **majors**)
 - Mark optional test coverage subtasks with `- [ ]*` only when they strictly cover acceptance criteria already satisfied by core implementation and can be deferred post-MVP
 - If existing tasks.md found, merge with new content
@@ -94,7 +94,7 @@ After all parallel research completes, synthesize findings before generating tas
   - `_Depends:_`, `_Boundary:_`, `_Wave:_`, and `(P)` markers still match the dependency graph, architecture boundaries, and **packed-batch** dispatch rules
 - If issues are task-plan-local, repair the draft and re-run the review gate before writing
 - Keep the review bounded to at most 2 repair passes
-- If review exposes a real requirements/design gap or contradiction, stop and send the user back to requirements/design instead of inventing filler tasks
+- If review exposes a real requirements/design gap or contradiction, stop with `TASKS: RETURN_TO_DESIGN` instead of inventing filler tasks
 
 ### Step 3.5: Run Task-Graph Sanity Review
 
@@ -113,7 +113,7 @@ Before writing `tasks.md`, run one lightweight independent sanity review of the 
   - `NEEDS_FIXES`
   - `RETURN_TO_DESIGN`
 - If `NEEDS_FIXES`, repair the draft once and re-run the sanity review one time.
-- If `RETURN_TO_DESIGN`, stop without writing `tasks.md` and point back to the exact gap in requirements/design.
+- If `RETURN_TO_DESIGN`, stop without writing `tasks.md`; return `TASKS: RETURN_TO_DESIGN` with the exact gap in requirements/design.
 - Keep this bounded. Do not turn it into a second full planning cycle.
 
 ### Step 4: Finalize
@@ -123,12 +123,8 @@ Before writing `tasks.md`, run one lightweight independent sanity review of the 
 - Update spec.json metadata:
   - Set `phase: "tasks-generated"`
   - Set `approvals.tasks.generated: true`
-  - Set `ready_for_implementation: true`
   - Update `updated_at` timestamp
-
-**Summary**:
-- Display task summary (task count, major groups, parallel markers)
-- Respond: "Tasks generated. Start implementation with `/sdd-impl $1`"
+  - Do **not** set `ready_for_implementation`. The orchestrator sets it at Terminal auto-approve, after its タスクゲート.
 
 ## Critical Constraints
 - **Task Integration**: Every task must connect to the system (no orphaned work)
@@ -142,58 +138,15 @@ Before writing `tasks.md`, run one lightweight independent sanity review of the 
 - **No persistent bulk load**: Never glob-bulk-Read `docs/contracts/**` / `docs/architecture/**` while generating tasks
 </instructions>
 
-## Output Description
+## Return to the orchestrator
 
-Provide brief summary in the language specified in spec.json:
+One line, then a summary under 100 words in the spec language (major tasks / sub-tasks count, requirements covered, review gate and sanity review results):
 
-1. **Status**: Confirm tasks generated at `docs/specs/$1/tasks.md`
-2. **Task Summary**: 
-   - Total: X major tasks, Y sub-tasks
-   - All Z requirements covered
-   - Average task size: 1-3 hours per sub-task
-3. **Quality Validation**:
-   - ✅ All requirements mapped to tasks
-   - ✅ Design coverage and runtime prerequisites reviewed
-   - ✅ Task dependencies verified
-   - ✅ Task plan review gate passed
-   - ✅ Independent task-graph sanity review passed
-   - ✅ Testing tasks included
-4. **Next Action**: Review tasks and proceed when ready
-
-**Format**: Concise (under 200 words)
+- `TASKS: WRITTEN` — `tasks.md` written, `approvals.tasks.generated: true`, every requirement ID covered
+- `TASKS: RETURN_TO_DESIGN` — requirements/design missing, not generated, non-numeric requirement IDs, or a real gap the task plan would have to paper over. Name the gap. `tasks.md` not written
 
 ## Safety & Fallback
 
-### Error Scenarios
-
-**Requirements or Design Not Generated**:
-- **Stop Execution**: Cannot proceed without generated requirements and design
-- **User Message**: "Requirements and design must be generated before task generation"
-- **Suggested Action**: "Run `/sdd-spec-requirements $1` and `/sdd-spec-design $1` first"
-
-**Missing Requirements or Design**:
-- **Stop Execution**: Both documents must exist
-- **User Message**: "Missing requirements.md or design.md at `docs/specs/$1/`"
-- **Suggested Action**: "Complete requirements and design phases first"
-
-**Incomplete Requirements Coverage**:
-- **Warning**: "Not all requirements mapped to tasks. Review coverage."
-- **User Action Required**: Confirm intentional gaps or regenerate tasks
-
-**Spec Gap Found During Task Review**:
-- **Stop Execution**: Do not write a patched-over `tasks.md`
-- **User Message**: "Requirements/design do not provide enough clear coverage to generate an executable task plan"
-- **Suggested Action**: "Refine requirements.md or design.md, then re-run `/sdd-spec-tasks $1`"
-
-**Template/Rules Missing**:
-- **User Message**: "Template or rules files missing in `docs/settings/`"
-- **Fallback**: Use inline basic structure with warning
-- **Suggested Action**: "Check repository setup or restore template files"
-- **Missing Numeric Requirement IDs**:
-  - **Stop Execution**: All requirements in requirements.md MUST have numeric IDs. If any requirement lacks a numeric ID, stop and request that requirements.md be fixed before generating tasks.
-
-### Next Phase: Implementation
-
-Once `ready_for_implementation: true` is set in Step 4:
-- Autonomous implementation: `/sdd-impl $1`
-- Specific tasks only: `/sdd-impl $1 1.1,1.2`
+- **Requirements or design missing / not generated / non-numeric requirement IDs**: `TASKS: RETURN_TO_DESIGN`.
+- **Spec gap found during task review**: do not write a patched-over `tasks.md`; `TASKS: RETURN_TO_DESIGN`.
+- **Template/rules missing**: inline basic structure with a warning in the summary.

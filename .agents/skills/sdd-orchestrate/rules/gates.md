@@ -22,15 +22,21 @@ Report paths: see `../sdd-validate-shared/contract.md` (read only if parsing).
 
 ## Phase Gate Verification (要求 / 設計 / タスク)
 
-**要求 (unified + grills):** `reviews/requirements-review.md` has `VERDICT: GO` and `## Phase Gate` → `STATUS: VERIFIED`, **and** the 要求ブロック has converged: `req-grill.md` is `VERDICT: READY` with `Target edited: no` and `Target SHA256` = current `requirements.md` (and `brief-grill.md` READY when `brief.md` exists). Then **Phase terminal** (handoff → end). Do **not** dispatch `/sdd-verify-phase-gate` for requirements in the orchestrated flow (standalone re-check still allowed).
+**要求 (unified + grills):** the 要求ブロック entry table (`flows.md` § 要求ブロック) matches no step: `brief-grill.md` READY and not stale (when `brief.md` exists), `req-grill.md` READY and not stale, and `reviews/requirements-review.md` has `VERDICT: GO`, `## Phase Gate` → `STATUS: VERIFIED`, and `Output SHA256` = current `requirements.md`. Then **Phase terminal** (handoff → end).
 
-**設計 (unified):** After `/sdd-validate-design-qa` writes `reviews/design-review.md` with `VERDICT: GO` and `## Phase Gate` → `STATUS: VERIFIED`, **Phase terminal** (handoff → end). Do **not** dispatch `/sdd-verify-phase-gate` for design in the orchestrated flow.
+**設計 (unified):** After `/sdd-validate-design-qa` writes `reviews/design-review.md` with `VERDICT: GO` and `## Phase Gate` → `STATUS: VERIFIED`, **Phase terminal** (handoff → end).
 
-**タスク:** After generation, **before** terminal auto-approve:
+### タスクゲート（[調整者] inline）
 
-1. Dispatch `/sdd-verify-phase-gate <feature> tasks`
-2. Parse `STATUS: VERIFIED` | `NOT_VERIFIED` | `MANUAL_VERIFY_REQUIRED` (claim type `PHASE_GATE`)
-3. Checklist: `../sdd-validate-shared/phase-gate.md`
+After `/sdd-spec-tasks` returns `TASKS: WRITTEN`, **before** Terminal auto-approve, the orchestrator checks these itself. Re-read `spec.json` and `tasks.md` from disk in this turn; do not trust the generation skill's chat summary.
+
+| # | Check |
+| - | ----- |
+| 1 | `docs/specs/<feature>/tasks.md` exists with at least one task entry |
+| 2 | `spec.json` → `approvals.tasks.generated === true` |
+| 3 | No `_Blocked:_` tasks |
+
+All pass → `VERIFIED`. Check 1 or 2 fails → `NOT_VERIFIED`. Check 3 fails → `MANUAL_VERIFY_REQUIRED` (a blocked task needs a human decision). Report the failing checks as GAPS.
 
 | Result | Orchestrator action |
 | ------ | ------------------- |
@@ -44,10 +50,10 @@ Report paths: see `../sdd-validate-shared/contract.md` (read only if parsing).
 
 | Phase | Pass condition | After readiness |
 | ----- | -------------- | ------------------- |
-| 要求 | `requirements.md` + `approvals.requirements.generated` + `/sdd-validate-requirements` GO + Phase Gate VERIFIED + `brief-grill.md` / `req-grill.md` READY (要求ブロック収束) | **Phase terminal** → 次チャットで設計 |
+| 要求 | `requirements.md` + `approvals.requirements.generated` + `/sdd-validate-requirements` GO + Phase Gate VERIFIED + `brief-grill.md` / `req-grill.md` READY and not stale (要求ブロック entry table) | **Phase terminal** → 次チャットで設計 |
 | 設計 | `design.md` + `approvals.design.generated` + `/sdd-validate-design-qa` GO + Phase Gate VERIFIED | **Phase terminal** → 次チャットでタスク |
-| タスク | `tasks.md` + `approvals.tasks.generated` + `/sdd-verify-phase-gate` VERIFIED | Set `ready_for_implementation: true` → **end orchestration (do not dispatch `/sdd-impl`)** |
-| 仕様一式 (S) | `brief-grill.md` READY + all three `approvals.*.generated` + sanity review (or unified validates GO) | Set `ready_for_implementation: true` → **end orchestration** |
+| タスク | タスクゲート VERIFIED (`tasks.md` + `approvals.tasks.generated` + no `_Blocked:_`) | Set `ready_for_implementation: true` → **end orchestration (do not dispatch `/sdd-impl`)** |
+| 仕様一式 (S) | `brief-grill.md` READY + all three `approvals.*.generated` + `QUICK: DONE` (sanity review passed) | Set `ready_for_implementation: true` → **end orchestration** |
 
 Requirements validate: single `/sdd-validate-requirements` (unified). Design validate: single `/sdd-validate-design-qa` (unified).
 
@@ -127,7 +133,7 @@ Emit (language follows the spec, default ja):
 - **止まった段**: <brief-grill | req-grill>
 - **持ち帰り事項**: `docs/specs/<feature>/<brief-grill|req-grill>.md` の `## DEFERRED`（番号・確認先・候補を 1 行ずつ転記）
 - **次にやること**: 確認がついたら同じ checkout で `/sdd-orchestrate <feature>`（同じチャットでも新しいチャットでもよい）。持ち帰った項目から選択肢で再度聞く。成果物に直接書いてもよい
-- **まだ不可**: brief-grill で止まった場合はティア判定と requirements 生成（S の quick-path も含む）。req-grill で止まった場合は設計フェーズ
+- **まだ不可**: brief-grill で止まった場合はティア判定と requirements 生成（S の quick-path も含む）。req-grill で止まった場合は validate と設計フェーズ
 ```
 
 ### Exceptions（切断しない）
@@ -136,7 +142,7 @@ Emit (language follows the spec, default ja):
 |--------|----------|
 | **S / quick-path** | brief-grill → 1 dispatch で要求+設計+タスク → Terminal auto-approve。Phase terminal なし |
 | **フェーズ内**（生成 → validate → 機械ゲート前の修正往復） | **同一会話のまま** |
-| **要求ブロック内**（brief-grill → spec-requirements → validate → req-grill と、その収束ループ・人間への持ち帰り質問） | **同一会話のまま** |
+| **要求ブロック内**（brief-grill → spec-requirements → req-grill → validate と、人間への持ち帰り質問・rollback） | **同一会話のまま** |
 | **Phase Handoff 後の修正指示** | **同一会話のまま**（次フェーズへは進まない） |
 | **validate NO-GO → rollback 再生成** | 同一フェーズ内。切らない |
 
@@ -150,15 +156,15 @@ After mechanical readiness (below), the orchestrator **auto-approves**:
 
 **M/L — after tasks:**
 1. `/sdd-spec-tasks` completed; `approvals.tasks.generated === true`
-2. `/sdd-verify-phase-gate <feature> tasks` → `STATUS: VERIFIED`
+2. タスクゲート (§ Phase Gate Verification) → `VERIFIED`
 3. **[調整者]** set `ready_for_implementation: true`, `phase: tasks-approved`
 4. Emit **PR Summary Output**
 5. End orchestration (do **not** dispatch `/sdd-impl`). After the PR Summary fence, emit the chat-only next-step line from § [AUTO] 仕様一式.
 
 **S — after quick-path:**
 0. `brief-grill.md` is `VERDICT: READY` (run at 要求新規作成 entry, before tier scoring)
-1. `/sdd-spec-quick --auto --from-orchestrate` succeeded; all three `approvals.*.generated === true`
-2. Sanity review (and optional unified validates) GO as required by quick-path contract
+1. `/sdd-spec-quick` returned `QUICK: DONE`; all three `approvals.*.generated === true`
+2. Its sanity review passed
 3. **[調整者]** set `ready_for_implementation: true`, `phase: tasks-approved`
 4. Emit **PR Summary Output**
 5. End orchestration (do **not** dispatch `/sdd-impl`). After the PR Summary fence, emit the chat-only next-step line from § [AUTO] 仕様一式.
@@ -181,7 +187,7 @@ Terminal auto-approve checklist covering requirements, design, and tasks.
 Precondition:
 
 - `spec.json` `approvals.*.generated === true` for all three phases
-- Sanity review or unified validate reports `VERDICT: GO`
+- `/sdd-spec-quick` returned `QUICK: DONE`
 
 On terminal (**[調整者]**):
 

@@ -187,8 +187,7 @@ Before writing `tasks.md`, review the draft task plan and repair local issues un
 - Sub-tasks reset per major task: 1.1, 1.2, then 2.1, 2.2...
 - Never repeat major task numbers
 
-### Parallel Analysis (default)
-- Assume parallel analysis is enabled unless explicitly disabled (e.g. `--sequential` flag).
+### Parallel Analysis
 - **Policy: `(P)` is an execution contract** — it promises `sdd-impl` may parallel-dispatch this **major** with other ready `(P)` majors when boundaries, Depends, and paths are disjoint. Do not mark `(P)` for documentation-only or "looks independent" notes that cannot actually run in parallel.
 - `(P)` means: this **major** has no dependency on its immediately preceding peer majors and **may be dispatched concurrently** with them at implementation time. Sub-tasks under the same major always share one implementer; do not use `(P)` on `N.M` siblings expecting them to run as separate agents.
 - Identify **majors** that can run concurrently when **all** conditions hold:
@@ -205,7 +204,6 @@ Before writing `tasks.md`, review the draft task plan and repair local issues un
   - Example: `- [ ] 2. (P) Build auth service`
   - Put different-boundary `(P)` work in **different majors**, not as `(P)` siblings under one parent.
   - Skip marking container-only major lines if the parallel contract is already on that major's executable children consistently — prefer the major-level marker.
-- If sequential mode is requested, omit `(P)` markers entirely.
 - Explicitly call out dependencies that prevent `(P)` even when majors look similar. **Never attach `(P)` when parallel dispatch would be unsafe.**
 
 ### Checkbox Format

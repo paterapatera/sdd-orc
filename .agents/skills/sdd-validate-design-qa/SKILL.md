@@ -1,15 +1,16 @@
 ---
 name: sdd-validate-design-qa
-description: Autonomous unified design validation (qa + arch + sec + final gate + phase-gate). Use in /sdd-orchestrate flows. Supports --only qa|arch|sec|final.
+description: Orchestrator-only unified design validation (qa + arch + sec + final gate + phase-gate). Dispatched by /sdd-orchestrate after /sdd-spec-design. No user dialogue. Supports --only qa|arch|sec|final.
 metadata:
   shared-rules: "../sdd-validate-shared/contract.md, ../sdd-validate-shared/phase-gate.md"
+disable-model-invocation: true
 ---
 
 
 # Validate Design (Unified)
 
 <background_information>
-Single-pass design-phase validate for AI-DLC (replaces separate qa → arch → sec → ex → verify-phase-gate dispatches). Autonomous; no user dialogue. Writes `reviews/design-review.md` with one `VERDICT:` and inline `Phase Gate` status.
+Single-pass design-phase validate for AI-DLC (replaces separate qa → arch → sec → ex dispatches). Autonomous; no user dialogue. Writes `reviews/design-review.md` with one `VERDICT:` and inline `Phase Gate` status.
 </background_information>
 
 <instructions>
@@ -90,7 +91,7 @@ Skip when `--only qa|arch|sec` (unless `--only final`).
 
 - Single `VERDICT: GO | NO-GO | MANUAL_VERIFY_REQUIRED` at the end of `design-review.md`
 - On `NO-GO`: name rollback target in Findings (`/sdd-spec-design`, `qa` / `arch` / `sec` / `final`, or requirements phase)
-- Orchestrator emits Phase Handoff and ends when `VERDICT: GO` **and** `Phase Gate` → `STATUS: VERIFIED` (no separate `/sdd-verify-phase-gate` for design in the flow). Next `/sdd-orchestrate` resumes at tasks.
+- Orchestrator emits Phase Handoff and ends when `VERDICT: GO` **and** `Phase Gate` → `STATUS: VERIFIED`. Next `/sdd-orchestrate` resumes at tasks.
 
 ## Report format (`reviews/design-review.md`)
 
@@ -175,5 +176,5 @@ Orchestrator rolls back per Findings (usually `/sdd-spec-design`, then re-run th
 
 ## Safety
 
-- Missing `design.md` → stop: run `/sdd-spec-design $1` first.
+- Missing `design.md` → `VERDICT: NO-GO`, rollback target `/sdd-spec-design`.
 - Pass B must not claim `Phase Gate STATUS: VERIFIED` if Pass A did not complete all three specialists.

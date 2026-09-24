@@ -4,7 +4,7 @@
 
 **Entry precondition (discovery is not an orchestration step).** `/sdd-discovery` is run **standalone before** orchestration and has already produced `brief.md` (for new specs) / `roadmap.md` (when dependencies exist) and, for existing specs, `spec.json`. Orchestration is invoked with a required target `<feature>` plus optional explicit flow, and selects the active flow per `routing.md` § Entry Contract. If neither `brief.md` nor `spec.json` exists for the target, **stop** and instruct the user to run `/sdd-discovery` first (do not auto-run discovery).
 
-Load **only** the section matching the active flow and complexity tier (`要求新規作成 (S|M|L)`, etc.). After each validate step: phase gate must be verified — for **要求**, via unified `/sdd-validate-requirements` (`requirements-review.md`); for **設計**, via unified `/sdd-validate-design-qa` (`design-review.md`). On `VERIFIED` for 設計 (M/L), and for 要求 once the 要求ブロック converges (§ 要求ブロック): **Phase terminal** — handoff → end. Do **not** continue numbered steps below the boundary in the same conversation. Resume in a **new chat** on the **same Git checkout** with `/sdd-orchestrate <feature>`. For **タスク** terminal: `/sdd-verify-phase-gate <feature> tasks` then set `ready_for_implementation: true` (**Terminal auto-approve**). S-tier quick-path uses sanity review (and optional unified validates) then **Terminal auto-approve (S)**.
+Load **only** the section matching the active flow and complexity tier (`要求新規作成 (S|M|L)`, etc.). After each validate step: phase gate must be verified — for **要求**, via unified `/sdd-validate-requirements` (`requirements-review.md`); for **設計**, via unified `/sdd-validate-design-qa` (`design-review.md`). On `VERIFIED` for 設計 (M/L), and for 要求 once the 要求ブロック entry table matches no step (§ 要求ブロック): **Phase terminal** — handoff → end. Do **not** continue numbered steps below the boundary in the same conversation. Resume in a **new chat** on the **same Git checkout** with `/sdd-orchestrate <feature>`. For **タスク** terminal: **[調整者] タスクゲート** (`gates.md`) then set `ready_for_implementation: true` (**Terminal auto-approve**). S-tier quick-path uses its sanity review then **Terminal auto-approve (S)**.
 
 **Session boundary (M/L):** After 要求 or 設計 is mechanically ready, emit Phase Handoff and **stop**. No `go` wait. Human reviews artifacts: same-chat correction notes stay in this phase; a new `/sdd-orchestrate <feature>` means proceed. (S quick-path is the exception per `gates.md` § Exceptions.)
 
@@ -16,7 +16,7 @@ After complexity tier is computed (`routing.md` § Complexity Tier):
 
 | Tier | Path name | Behavior |
 |------|-----------|----------|
-| S | **quick-path** | Delegate to `/sdd-spec-quick <feature> --auto --from-orchestrate` |
+| S | **quick-path** | Delegate to `/sdd-spec-quick <feature>` |
 | M | **standard-path** | Unified validates; 要求 / 設計 each → Phase terminal; タスクは再開後に自動 |
 | L | **full-path** | Current 要求新規作成 (L) — all steps; 要求 / 設計 each → Phase terminal; タスクは再開後に自動 |
 
@@ -28,52 +28,53 @@ User override `full` → force full-path.
 要求新規作成 (including Path D/E per spec) always starts here, **before** the tier is known:
 
 1. **[調整者] Upstream dependency guard** (`routing.md` § Upstream Dependency Guard). If not ready, **stop**.
-2. `/sdd-brief-grill <feature> --from-orchestrate` (read `../sdd-brief-grill/SKILL.md`). Skip when `brief-grill.md` is `VERDICT: READY` and its `Target SHA256` = `sha256(brief.md)`. `WAITING` → **Grill 待ち stop**. `BLOCKED` → stop (`rollback.md` § Grill).
+2. `/sdd-grill <feature> brief` (read `../sdd-grill/SKILL.md`). Skip when `brief-grill.md` is `VERDICT: READY` and its `Target SHA256` = `sha256(brief.md)`. `WAITING` → **Grill 待ち stop**. `BLOCKED` → stop (`rollback.md` § Grill).
 3. **[調整者] Complexity tier** — compute from the **grilled** `brief.md` (`complexity-tier.md`). brief-grill answers can raise the score, so an S candidate may become M. Load the matching `要求新規作成 (S|M|L)` section.
 
 A user override (`quick` / `lite` / `フル` / `full`) still wins at step 3, but brief-grill runs regardless.
 
 ## 要求ブロック (M/L)
 
-M/L flows that produce `requirements.md` (要求新規作成 M/L, 要求更新, Path D/E per spec) run these four steps as **one block**. They replace the old `spec-requirements → validate-requirements` pair. S quick-path does not use this block; S gets only brief-grill, via § 要求新規作成 entry. On 要求新規作成, step 1 has already run in the entry, so the entry table below normally skips it.
+M/L flows that produce `requirements.md` (要求新規作成 M/L, 要求更新, Path D/E per spec) run these four steps as **one block**, in this order. S quick-path does not use this block; S gets only the brief grill, via § 要求新規作成 entry. On 要求新規作成, step 1 has already run in the entry, so the entry table below normally skips it.
 
-1. `/sdd-brief-grill <feature> --from-orchestrate` (read `../sdd-brief-grill/SKILL.md`)
+1. `/sdd-grill <feature> brief`
 2. `/sdd-spec-requirements <feature>`
-3. `/sdd-validate-requirements <feature>`
-4. `/sdd-req-grill <feature> --from-orchestrate` (read `../sdd-req-grill/SKILL.md`)
+3. `/sdd-grill <feature> req`
+4. `/sdd-validate-requirements <feature>`
 
-The grills run in orchestrated mode (`../sdd-grill-shared/orchestrated-mode.md`): an AI answerer handles each item, and only items it takes back reach the human as choices. Each choice list includes 「持ち帰る」. Do not print the grill punch-lists yourself. Parse only the `GRILL:` line and the grill file header.
+Read `../sdd-grill/SKILL.md` for steps 1 and 3. An AI answerer handles each grill item, and only items it takes back reach the human as choices. Each choice list includes 「持ち帰る」. Do not print the grill punch-lists yourself. Parse only the `GRILL:` line and the grill file header.
+
+Intent and scope questions are settled in step 3, so validate (step 4) runs once on a work order the human has already confirmed. Validate edits are autonomous, recorded as `## Reflected Fixes`, and do not send the block back to the grill.
 
 ### Entry point (artifact state)
 
-Evaluate top to bottom. Start at the first row that matches. `sha256(x)` means the current file hash (e.g. `sha256sum`).
+Evaluate top to bottom. Start at the first row that matches. `sha256(x)` means the current file hash (e.g. `sha256sum`). `G` = `req-grill.md` `Target SHA256`; `I` / `O` = `requirements-review.md` `Input SHA256` / `Output SHA256`.
 
 | Condition | Start at |
 | --------- | -------- |
 | `brief.md` exists **and** `brief-grill.md` is missing, not `VERDICT: READY`, or its `Target SHA256` ≠ `sha256(brief.md)` | 1 |
 | `approvals.requirements.generated !== true` | 2 |
-| `reviews/requirements-review.md` missing / not GO + Phase Gate VERIFIED, or `req-grill.md` is `READY` with `Target edited: yes` or `Target SHA256` ≠ `sha256(requirements.md)` | 3 |
-| `req-grill.md` missing, `WAITING`, or `BLOCKED` | 4 |
+| `req-grill.md` missing / not `READY`, **or** `requirements.md` changed after the grill by anything other than validate: `G` ≠ `sha256(requirements.md)` **and** not (`I` = `G` **and** `O` = `sha256(requirements.md)`), **or** `requirements-review.md` is NO-GO with a Findings rollback target `grill` **and** `I` = `G` (the grill has not run since that validate) | 3 |
+| `reviews/requirements-review.md` missing / not GO + Phase Gate VERIFIED, or `O` ≠ `sha256(requirements.md)` | 4 |
 | none of the above | Phase terminal (要求) |
 
+- A missing hash field (older grill or review files) never matches, so that step re-runs.
 - `brief.md` missing (e.g. Path A 要求更新) → skip step 1.
+- The loop is bounded by the grill round caps and by **2 consecutive NO-GO** on validate (`rollback.md` § Rules).
 - 要求更新: steps 2–4 target only the changed requirements and ACs, as the validate update mode does.
-- 要求新規作成 computes the tier after brief-grill (§ 要求新規作成 entry). Once the block is past step 1, do not recompute the tier or switch paths mid-block.
+- 要求新規作成 computes the tier after the brief grill (§ 要求新規作成 entry). Once the block is past step 1, do not recompute the tier or switch paths mid-block.
 
 ### Step outcomes
 
 | Step | Outcome | Next |
 | ---- | ------- | ---- |
-| 1 brief-grill | `READY` | Step 2. When requirements already exist, step 2 runs in diff mode: step 1 only runs when `brief.md` is new, changed, or unfinished, so `requirements.md` may no longer match it |
-| 1 / 4 grill | `WAITING` | **Grill 待ち stop** (`gates.md` § Grill 待ち) |
-| 1 / 4 grill | `BLOCKED` | Stop. Report the open items (`rollback.md` § Grill) |
+| 1 brief grill | `READY` | Step 2. When requirements already exist, step 2 runs in diff mode: step 1 only runs when `brief.md` is new, changed, or unfinished, so `requirements.md` may no longer match it |
+| 1 / 3 grill | `WAITING` | **Grill 待ち stop** (`gates.md` § Grill 待ち) |
+| 1 / 3 grill | `BLOCKED` | Stop. Report the open items (`rollback.md` § Grill) |
 | 2 spec-requirements | written | Step 3 |
-| 3 validate | GO + VERIFIED | Step 4 |
-| 3 validate | NO-GO / NOT_VERIFIED | `rollback.md` (same as before) |
-| 4 req-grill | `READY`, `Target edited: no` | **Phase terminal (要求)** |
-| 4 req-grill | `READY`, `Target edited: yes` | Step 3 again. Validate has not seen the grill's edits yet |
-
-**Convergence cap:** at most **3** runs of step 3 per block invocation. If req-grill still reports `Target edited: yes` after the third validate, stop and report (`rollback.md` § Grill).
+| 3 req grill | `READY` | Step 4 |
+| 4 validate | GO + VERIFIED | **Phase terminal (要求)** |
+| 4 validate | NO-GO / NOT_VERIFIED | `rollback.md`. After the rollback fix, re-evaluate the entry table (a fix that edits `requirements.md` makes the req grill stale, so step 3 runs again in resume mode before validate) |
 
 ## 要求新規作成 (L)
 
@@ -85,7 +86,7 @@ _Precondition_: `/sdd-discovery` (Path C/D/E) already ran standalone; `brief.md`
 **Brownfield**: Gap runs inside spec-design only (07).
 
 1. **§ 要求新規作成 entry** — upstream guard → brief-grill → tier (already done when this section is selected)
-2. **要求ブロック** (§ 要求ブロック): `/sdd-brief-grill --from-orchestrate` → `/sdd-spec-requirements` (initializes `spec.json` if missing — Step 0) → `/sdd-validate-requirements` (unified → `reviews/requirements-review.md`) → `/sdd-req-grill --from-orchestrate`
+2. **要求ブロック** (§ 要求ブロック): brief grill → `/sdd-spec-requirements` (initializes `spec.json` if missing — Step 0) → req grill → `/sdd-validate-requirements` (unified → `reviews/requirements-review.md`)
 3. **[調整者] Phase terminal (要求)** — handoff → end。同一フロー内で `/sdd-spec-design` に進まない
 ── session boundary ──（再開後のフローで実行）
 4. `/sdd-spec-design <feature>` (inline brownfield gap analysis; greenfield skips gap)
@@ -93,7 +94,7 @@ _Precondition_: `/sdd-discovery` (Path C/D/E) already ran standalone; `brief.md`
 6. **[調整者] Phase terminal (設計)** — handoff → end。同一フロー内で `/sdd-spec-tasks` に進まない
 ── session boundary ──（再開後のフローで実行）
 7. `/sdd-spec-tasks <feature>`
-8. `/sdd-verify-phase-gate <feature> tasks`（未実施なら）
+8. **[調整者] タスクゲート**（`gates.md` § タスクゲート）
 9. **[調整者] Terminal auto-approve** — set `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
 
 ## 要求新規作成 (S)
@@ -106,8 +107,11 @@ _Precondition_: same as (L); selected when `complexity_tier` is **S** (score ≤
 **Brownfield**: Gap runs inside spec-design only (07).
 
 1. **§ 要求新規作成 entry** — upstream guard → brief-grill → tier (already done when this section is selected). S requires `brief-grill.md` `VERDICT: READY`
-2. `/sdd-spec-quick <feature> --auto --from-orchestrate` — generates requirements + design + tasks; runs sanity review (and optional unified validates). Do **not** dispatch individual `spec-requirements` / `validate-*` / `spec-design` / `spec-tasks` separately.
-3. **[調整者] Terminal auto-approve (S)** — set `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
+2. `/sdd-spec-quick <feature>` — generates requirements + design + tasks; runs its sanity review. Do **not** dispatch individual `spec-requirements` / `validate-*` / `spec-design` / `spec-tasks` separately.
+3. By result line:
+   - `QUICK: DONE` → **[調整者] Terminal auto-approve (S)** — set `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
+   - `QUICK: ESCALATE_M` — requirements left `Open question:` bullets, so the brief did not settle them. **[調整者]** set `complexity_tier: M` (rationale: 「quick-path で要求が確定せず M へ昇格」) and continue with **要求新規作成 (M)** step 2 (the 要求ブロック entry table starts at the req grill). Design and tasks were not generated
+   - `QUICK: FOLLOW_UP` → stop; report the finding. Do not auto-approve
 
 ## 要求新規作成 (M)
 
@@ -119,7 +123,7 @@ _Precondition_: same as (L); selected when `complexity_tier` is **M** (score 2�
 **Brownfield**: Gap runs inside spec-design only (07).
 
 1. **§ 要求新規作成 entry** — upstream guard → brief-grill → tier (already done when this section is selected)
-2. **要求ブロック** (§ 要求ブロック): `/sdd-brief-grill --from-orchestrate` → `/sdd-spec-requirements` (initializes `spec.json` if missing — Step 0) → `/sdd-validate-requirements` (unified) → `/sdd-req-grill --from-orchestrate`
+2. **要求ブロック** (§ 要求ブロック): brief grill → `/sdd-spec-requirements` (initializes `spec.json` if missing — Step 0) → req grill → `/sdd-validate-requirements` (unified)
 3. **[調整者] Phase terminal (要求)** — handoff → end。同一フロー内で `/sdd-spec-design` に進まない
 ── session boundary ──（再開後のフローで実行）
 4. `/sdd-spec-design <feature>` (inline brownfield gap; greenfield skips)
@@ -127,7 +131,7 @@ _Precondition_: same as (L); selected when `complexity_tier` is **M** (score 2�
 6. **[調整者] Phase terminal (設計)** — handoff → end。同一フロー内で `/sdd-spec-tasks` に進まない
 ── session boundary ──（再開後のフローで実行）
 7. `/sdd-spec-tasks <feature>`
-8. `/sdd-verify-phase-gate <feature> tasks`（未実施なら）
+8. **[調整者] タスクゲート**（`gates.md` § タスクゲート）
 9. **[調整者] Terminal auto-approve** — set `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
 
 ## 要求更新
@@ -140,7 +144,7 @@ _Precondition_: `/sdd-discovery` already ran standalone and confirmed this is an
    - `ready_for_implementation: false`
    - Update `updated_at`
    - Do **not** clear `generated` flags — existing artifacts remain until regenerated in later steps
-4. **要求ブロック** (§ 要求ブロック; diff only): `/sdd-brief-grill --from-orchestrate` (only when `brief.md` exists) → `/sdd-spec-requirements` → `/sdd-validate-requirements` (optional `--only po|qa|sec|final`) → `/sdd-req-grill --from-orchestrate`
+4. **要求ブロック** (§ 要求ブロック; diff only): brief grill (only when `brief.md` exists) → `/sdd-spec-requirements` → req grill → `/sdd-validate-requirements` (optional `--only po|qa|sec|final`)
 5. **[調整者] Phase terminal (要求)** — handoff → end。同一フロー内で `/sdd-spec-design` に進まない
 ── session boundary ──（再開後のフローで実行）
 6. `/sdd-spec-design <feature>` (requirements diff only)
@@ -148,7 +152,7 @@ _Precondition_: `/sdd-discovery` already ran standalone and confirmed this is an
 8. **[調整者] Phase terminal (設計)** — handoff → end。同一フロー内で `/sdd-spec-tasks` に進まない
 ── session boundary ──（再開後のフローで実行）
 9. `/sdd-spec-tasks <feature>` (diff only)
-10. `/sdd-verify-phase-gate <feature> tasks`（未実施なら）
+10. **[調整者] タスクゲート**（`gates.md` § タスクゲート）
 11. **[調整者] Terminal auto-approve** — set `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
 
 ## 設計更新
@@ -162,7 +166,7 @@ _Precondition_: `/sdd-discovery` already ran standalone and confirmed this is a 
 5. **[調整者] Phase terminal (設計)** — handoff → end。同一フロー内で `/sdd-spec-tasks` に進まない
 ── session boundary ──（再開後のフローで実行）
 6. `/sdd-spec-tasks <feature>` (diff only)
-7. `/sdd-verify-phase-gate <feature> tasks`（未実施なら）
+7. **[調整者] タスクゲート**（`gates.md` § タスクゲート）
 8. **[調整者] Terminal auto-approve** — set `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
 
 ## Path B 直接実装

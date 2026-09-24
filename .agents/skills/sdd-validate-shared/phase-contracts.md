@@ -14,7 +14,7 @@ Single invocation: Pass A (po→qa→sec) then Pass B (reflection + gap domains 
 
 1. Pass A complete — else do not claim full Phase Gate VERIFIED
 2. Verify specialist reflections landed in `requirements.md`; audit gap domains (brief traceability, cross-spec consistency, NFR completeness, operability expectations, compliance, template conformance, scope fitness, terminology & consistency); no cap on findings
-3. Self-repair `requirements.md` for Minor / unambiguous Major findings only — no specialist deep-dive; rollback to the failing pass (or `/sdd-spec-requirements` for new scope decisions) if a fix needs re-analysis
+3. Self-repair `requirements.md` for Minor / unambiguous Major findings only — no specialist deep-dive; rollback to the failing pass (or `grill` for human intent / scope decisions, `/sdd-spec-requirements` for content to generate) if a fix needs re-analysis
 4. Output: `reviews/requirements-review.md` (`VERDICT`, Phase Gate `STATUS`, 承認ゲートサマリ)
 
 ### vs `requirements-review-gate`
@@ -42,6 +42,6 @@ Single invocation: Pass A (qa→arch→sec) then Pass B (reflection + gap domain
 
 ## Phase Gate Verification
 
-- **Requirements:** unified skill embeds phase-gate checks in `requirements-review.md` (`## Phase Gate`). Orchestrator does not dispatch `/sdd-verify-phase-gate` when `STATUS: VERIFIED`.
-- **Design:** unified `/sdd-validate-design-qa` embeds phase-gate checks in `design-review.md`. Orchestrator does not dispatch `/sdd-verify-phase-gate` when `STATUS: VERIFIED`.
-- **Tasks:** after generation, before Terminal auto-approve: `/sdd-verify-phase-gate` with `PHASE_GATE` (not `FEATURE_GO`). Checklist: `phase-gate.md`.
+- **Requirements:** unified skill embeds phase-gate checks in `requirements-review.md` (`## Phase Gate`).
+- **Design:** unified `/sdd-validate-design-qa` embeds phase-gate checks in `design-review.md` (`## Phase Gate`).
+- **Tasks:** after generation, before Terminal auto-approve: orchestrator inline タスクゲート (`PHASE_GATE`, not `FEATURE_GO`). Checklist: `sdd-orchestrate/rules/gates.md`.

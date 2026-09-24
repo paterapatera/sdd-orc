@@ -87,7 +87,7 @@ Orchestrator (`[調整者]`) merges these fields without removing existing keys:
 
 ## Orchestrator procedure
 
-After resolving the active flow (`routing.md` § Entry Contract). On 要求新規作成, run this **after** `/sdd-brief-grill --from-orchestrate` returns `READY` (`flows.md` § 要求新規作成 entry) and before any generation dispatch. Other flows: before the first skill dispatch.
+After resolving the active flow (`routing.md` § Entry Contract). On 要求新規作成, run this **after** `/sdd-grill <feature> brief` returns `READY` (`flows.md` § 要求新規作成 entry) and before any generation dispatch. Other flows: before the first skill dispatch.
 
 1. Read this file (`rules/complexity-tier.md`)
 2. Score from `brief.md` (+ roadmap if present); apply force-L / user override

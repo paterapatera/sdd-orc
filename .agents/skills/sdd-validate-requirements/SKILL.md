@@ -1,15 +1,18 @@
 ---
 name: sdd-validate-requirements
-description: Unified autonomous requirements-phase validate (PO + QA + Sec + final gate + phase-gate). Semantic consistency, testability, security, reflection verification, gap-domain audit. Use after /sdd-spec-requirements in AI-DLC. No user dialogue. Supports --only po|qa|sec|final for partial re-runs.
+description: Orchestrator-only unified requirements-phase validate (PO + QA + Sec + final gate + phase-gate). Semantic consistency, testability, security, reflection verification, gap-domain audit. Dispatched by /sdd-orchestrate as 要求ブロック step 4 (after the req grill). No user dialogue. Supports --only po|qa|sec|final for partial re-runs.
 metadata:
   shared-rules: "../sdd-validate-shared/contract.md, ../sdd-validate-shared/phase-gate.md"
+disable-model-invocation: true
 ---
 
 
 # Validate Requirements (Unified)
 
 <background_information>
-Single-pass requirements-phase validate for AI-DLC (replaces separate po → qa → sec → ex → verify-phase-gate dispatches). Autonomous; no user dialogue. Writes `reviews/requirements-review.md` with one `VERDICT:` and inline `Phase Gate` status for the human approval gate.
+Single-pass requirements-phase validate for AI-DLC (replaces separate po → qa → sec → ex dispatches). Autonomous; no user dialogue. Writes `reviews/requirements-review.md` with one `VERDICT:` and inline `Phase Gate` status for the human approval gate.
+
+This runs **after** the req grill (`/sdd-grill <feature> req`), so intent and scope have already been confirmed with the human. Do not re-decide them: a finding whose fix needs an intent / scope / acceptance-bar choice (what the grill would take back to the human) is `NO-GO` with rollback target `grill`, never an assumption written into `requirements.md`.
 </background_information>
 
 <instructions>
@@ -52,20 +55,22 @@ Skip when `--only po|qa|sec` (unless `--only final`).
 
 ### Pass C — Write outputs
 
-9. Write **only** `docs/specs/$1/reviews/requirements-review.md` (format below).
+9. Write **only** `docs/specs/$1/reviews/requirements-review.md` (format below). Record `Input SHA256` (`sha256sum` of `requirements.md` before Pass A) and `Output SHA256` (after the last edit). The orchestrator uses them to tell validate's own edits from later changes.
 10. Do **NOT** write separate per-specialist report files.
 
 ### Verdict
 
 - Single `VERDICT: GO | NO-GO | MANUAL_VERIFY_REQUIRED` at the end of `requirements-review.md`
-- On `NO-GO`: name rollback target in Findings (`/sdd-spec-requirements` or specific pass: `po` / `qa` / `sec` / `final`)
-- Orchestrator emits Phase Handoff and ends when `VERDICT: GO` **and** `Phase Gate` → `STATUS: VERIFIED` (no separate `/sdd-verify-phase-gate` dispatch in the flow). Next `/sdd-orchestrate` resumes at design.
+- On `NO-GO`: name rollback target in Findings (`/sdd-spec-requirements`, `grill` for intent / scope decisions, or specific pass: `po` / `qa` / `sec` / `final`)
+- Orchestrator emits Phase Handoff and ends when `VERDICT: GO` **and** `Phase Gate` → `STATUS: VERIFIED`. Next `/sdd-orchestrate` resumes at design.
 
 ## Report format (`reviews/requirements-review.md`)
 
 ```markdown
 ## Verdict
 - VERDICT: GO
+- Input SHA256: <requirements.md before Pass A>
+- Output SHA256: <requirements.md after the last edit>
 
 ## Summary
 ...
@@ -125,11 +130,10 @@ When `/sdd-orchestrate` runs 要求更新 (not new creation), scope to **changed
 
 ## On NO-GO
 
-Orchestrator rolls back per Findings (usually `/sdd-spec-requirements`, then re-run this unified skill). Specialist-domain defects may name `po` / `qa` / `sec` for `--only` re-run after a targeted `requirements.md` fix.
+Orchestrator rolls back per Findings (usually `/sdd-spec-requirements`, then re-run this unified skill). Intent / scope decisions name `grill`: the orchestrator re-runs the req grill, which picks up those Findings as probes. Specialist-domain defects may name `po` / `qa` / `sec` for `--only` re-run after a targeted `requirements.md` fix.
 </instructions>
 
 ## Safety
 
-- Missing `requirements.md` → stop: run `/sdd-spec-requirements $1` first.
-- Missing `spec.json` → stop: run `/sdd-spec-requirements $1` first (Step 0 initializes).
+- Missing `requirements.md` or `spec.json` → `VERDICT: NO-GO`, rollback target `/sdd-spec-requirements`.
 - Pass B must not claim `Phase Gate STATUS: VERIFIED` if Pass A did not complete all three specialists.

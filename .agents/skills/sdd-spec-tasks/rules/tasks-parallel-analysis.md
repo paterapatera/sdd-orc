@@ -29,7 +29,6 @@ Only mark a **major** as parallel-capable when **all** of the following are true
 - Append `(P)` immediately after the **major** numeric identifier for each qualifying major.
   - Example: `- [ ] 2. (P) Build background worker for emails`
 - Put different-boundary `(P)` work in different majors. Do not mark sibling `N.M` under one parent as `(P)` expecting them to run as separate agents.
-- If sequential execution is requested (e.g. via `--sequential` flag), omit `(P)` markers entirely.
 - Keep `(P)` **outside** of checkbox brackets to avoid confusion with completion state.
 
 ## Grouping & Ordering Guidelines

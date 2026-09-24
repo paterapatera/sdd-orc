@@ -19,7 +19,7 @@ Requirements should clarify the feature boundary in user- or operator-observable
 - If the feature touches adjacent systems, specs, or workflows, the draft must make clear what this feature expects from them and what it does not own when that distinction affects user-visible behavior or operator expectations.
 - Business/domain rules, compliance constraints, security/privacy expectations, and operational constraints that materially shape user-visible behavior must be reflected explicitly when they are in scope.
 - If coverage is missing because the draft is incomplete, repair the draft and review again.
-- If coverage cannot be completed cleanly because the project description or steering context is ambiguous, contradictory, or underspecified, stop and ask the user to clarify instead of guessing.
+- If coverage cannot be completed cleanly because the project description or steering context is ambiguous, contradictory, or underspecified, record an `Open question:` (SKILL.md § Never ask the human) instead of guessing.
 
 ## EARS and Testability Review
 
@@ -47,5 +47,5 @@ Before applying judgment, verify these mechanically:
 
 - Run mechanical checks first, then judgment-based review.
 - If issues are local to the draft, repair the draft and re-run the review gate.
-- Keep the loop bounded: no more than 2 review-and-repair passes before escalating a real ambiguity back to the user.
+- Keep the loop bounded: no more than 2 review-and-repair passes. A real ambiguity left after that becomes an `Open question:`.
 - Write `requirements.md` only after the review gate passes.

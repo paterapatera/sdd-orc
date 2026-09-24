@@ -9,7 +9,6 @@
 | `/sdd-discovery` | 新規作業の入口。Path 判定と `brief.md`（必要なら `roadmap.md`）。この会話では orchestrate しない |
 | `/sdd-orchestrate <feature>` | 要求・設計・タスクの調整。再開も同じコマンド。実装は付けない |
 | `/sdd-impl <feature>` | spec 実装（`ready_for_implementation: true`）。オーケストレーションとは別コマンド |
-| `/sdd-spec-status <feature>` | 1 spec の進捗。引数なしは全 spec 一覧 |
 | `/propose-quality-tools <language> <scale>` | SDD 前の品質ツール提案 |
 
 スキル定義: `.agents/skills/sdd-orchestrate/`（`SKILL.md` + `rules/`）。validate 共通契約: `.agents/skills/sdd-validate-shared/`。
@@ -72,7 +71,7 @@
 
 - 各ステップは原則 **直列**。要求の統合 validate はスキル内で **po → qa → sec → final+phase-gate**（`/sdd-validate-requirements`）。設計は **qa → arch → sec → final+phase-gate**（`/sdd-validate-design-qa`）
 - フロー途中でユーザーが方針を変更した場合、調整者がルートを再判定し、必要なステップから再開する
-- 進捗確認が必要なときは `/sdd-spec-status <feature>`（一覧は引数なし）
+- 進捗は `/sdd-orchestrate <feature>` の出力（Phase Handoff / Grill 待ち / PR Summary）と `docs/specs/<feature>/` の成果物で確認する。`sdd-spec-status` は調整者が変更ガード・上流依存ガードで使う内部スキル
 
 ### ゲート
 
@@ -82,9 +81,9 @@
 
 | フェーズ | 通過条件 | `spec.json` 更新 | 次に進めるスキル |
 | -------- | -------- | ---------------- | ---------------- |
-| 要求 | `requirements.md` 生成済み + `/sdd-validate-requirements` GO（`requirements-review.md` の Phase Gate VERIFIED）+ `brief-grill.md` / `req-grill.md` READY（M/L 要求ブロック収束） | `approvals.requirements.generated: true` | 人間確認後、次チャットで設計 |
+| 要求 | `requirements.md` 生成済み + `/sdd-validate-requirements` GO（`requirements-review.md` の Phase Gate VERIFIED）+ `brief-grill.md` / `req-grill.md` READY（M/L 要求ブロック。成果物のハッシュで古さを判定） | `approvals.requirements.generated: true` | 人間確認後、次チャットで設計 |
 | 設計 | `design.md` 生成済み + `/sdd-validate-design-qa` GO（`design-review.md` の Phase Gate VERIFIED） | `approvals.design.generated: true` | 人間確認後、次チャットでタスク |
-| タスク | `tasks.md` 生成済み + `/sdd-verify-phase-gate` VERIFIED | `approvals.tasks.generated: true` → `ready_for_implementation: true` | 人間確認後、`/sdd-impl <feature>` |
+| タスク | `tasks.md` 生成済み + 調整者のタスクゲート VERIFIED | `approvals.tasks.generated: true` → `ready_for_implementation: true` | 人間確認後、`/sdd-impl <feature>` |
 | 実装 | 全タスク `[x]` + `/sdd-review` APPROVED + `/sdd-validate-impl <feature>` GO + `/sdd-verify-completion` (`FEATURE_GO`) | （phase を完了状態に更新） | `/sdd-impl` が担当。orchestrate は呼ばない |
 
 `go` / `fix` コマンドはない。M/L の会話分割はトークン節約。次フェーズへ進む行為そのものが「問題なし」。S は 1 チャット。
@@ -116,7 +115,7 @@
 **ゲート運用ルール**
 
 - `go` / `fix` コマンドはない。人間は成果物を確認する。問題があれば同じチャットで修正指示、問題がなければ新しいチャットで `/sdd-orchestrate <feature>`（M/L の会話分割はトークン節約）
-- `GO` 判定の前に各 validate スキル内で fresh-evidence を適用する。要求・設計は統合レポートの Phase Gate、タスクは `/sdd-verify-phase-gate`
+- `GO` 判定の前に各 validate スキル内で fresh-evidence を適用する。要求・設計は統合レポートの Phase Gate、タスクは調整者のタスクゲート（`tasks.md`・`approvals.tasks.generated`・`_Blocked:_` なしをディスクから確認）
 - 同一フェーズ内の専門 validate（要求: po / qa / sec、設計: qa / arch / sec）は、いずれかが `NO-GO` なら最終ゲート（`/sdd-validate-requirements --only final` / `/sdd-validate-design-qa --only final`）へ進めない
 - `/sdd-validate-requirements --only final` / `/sdd-validate-design-qa --only final` は専門 validate の結果を入力として総合 GO/NO-GO を判定する **最終ゲート**
 - 要求 / 設計の Phase terminal では **Phase Handoff** を出して終了する。タスク完了直後は **PR Summary Output** を出し、チャット側に実装用の次コマンド（同じ checkout で `/sdd-impl <feature>`）を書いてオーケストレーションを終了する
@@ -131,12 +130,13 @@ validate やレビューで `NO-GO` / `REJECTED` となった場合、調整者�
 | `/sdd-validate-requirements --only qa`  | `/sdd-spec-requirements` または `requirements.md` | 同上                                                    |
 | `/sdd-validate-requirements --only sec` | `/sdd-spec-requirements` または `requirements.md` | 同上                                                    |
 | `/sdd-validate-requirements --only final`  | `/sdd-spec-requirements`（専門起因なら該当 validate） | 修正後 po → qa → sec → requirements-ex の順で再 validate |
+| `/sdd-validate-requirements`（Findings の巻き戻し先が `grill`） | `/sdd-grill <feature> req`（意図・スコープの判断を人間に戻す） | grill READY 後に再 validate |
 | `/sdd-validate-design-qa`        | `/sdd-spec-design`               | 修正後 qa → arch → sec → design-ex の順で再 validate                 |
 | `/sdd-validate-design-qa --only arch`      | `/sdd-spec-design`               | 同上                                                                 |
 | `/sdd-validate-design-qa --only sec`       | `/sdd-spec-design`               | 同上                                                                 |
 | `/sdd-validate-design-qa --only final`        | `/sdd-spec-design`               | 修正後 qa → arch → sec → design-ex の順で再 validate                 |
 | `/sdd-impl` 内タスク review      | 当該タスクの実装                  | 修正後 `/sdd-review` を再実行                                       |
-| `/sdd-validate-impl`             | 原因タスク or 設計                | タスク単位修正 → `/sdd-impl <feature>`、設計起因なら `/sdd-spec-design <feature>` 以降 |
+| `/sdd-validate-impl`             | 原因タスク or 設計                | タスク単位修正 → `/sdd-impl <feature>`、設計起因なら `/sdd-orchestrate <feature> 設計更新` |
 
 **巻き戻しの運用ルール**
 
@@ -146,6 +146,8 @@ validate やレビューで `NO-GO` / `REJECTED` となった場合、調整者�
 - 更新フロー（要求更新・設計更新）では、**変更差分に関係しない downstream 成果物は再生成しない**
 
 ## 既存 SDD スキルとの接続
+
+**フェーズスキルは `/sdd-orchestrate` 専用。** `sdd-grill` / `sdd-spec-requirements` / `sdd-spec-quick` / `sdd-spec-design` / `sdd-spec-tasks` / `sdd-validate-requirements` / `sdd-validate-design-qa` / `sdd-spec-status` は単体では実行しない（`disable-model-invocation`）。調整者がパスで読み込んで実行し、各スキルは結果行（`GRILL:` / `QUICK:` / `DESIGN:` / `TASKS:` / `VERDICT:` / `STATUS:`）を返す。人間に直接質問するのは grill の選択肢 UI だけ。このドキュメント中の `/sdd-<skill>` 表記は調整者によるこの実行を指す。
 
 ### `/sdd-spec-requirements`（新規 spec の初期化）
 
@@ -275,7 +277,7 @@ docs/specs/<feature>/reviews/
 **`/sdd-verify-completion` との関係**
 
 - 各 validate スキルが `GO` を宣言する前に、スキル内で fresh evidence（ファイル存在・内容整合）を確認する
-- 調整者は **要求・設計** では統合レポートの Phase Gate `STATUS: VERIFIED` を用い、オーケストレーション中は `/sdd-verify-phase-gate` を dispatch しない（タスクは `/sdd-verify-phase-gate`）
+- 調整者は **要求・設計** では統合レポートの Phase Gate `STATUS: VERIFIED` を用いる。タスクは調整者が inline でタスクゲートを確認する
 - **実装フェーズ**完了時（`/sdd-validate-impl` GO 後）は `/sdd-verify-completion`（`FEATURE_GO`）を適用する
 
 ### 要求フェーズ validate
@@ -350,7 +352,7 @@ docs/specs/<feature>/reviews/
 
 フロー開始前に `/propose-quality-tools` の実行を推奨する（詳細は「SDD 実施前の推奨」）。M/L は下のチャット境界で切る。S（quick-path）は brief-grill のあと要求+設計+タスクが 1 チャット。
 
-[調整者]: `/sdd-orchestrate <feature>` で下記を回す。要求・設計は統合レポートの Phase Gate `VERIFIED` 後に Phase Handoff を出す（`go` 待ちなし）。人間が成果物を確認し、問題があれば同じチャットで修正、問題がなければ新しいチャットで `/sdd-orchestrate <feature>`。タスクは `/sdd-verify-phase-gate <feature> tasks` VERIFIED 後に `ready_for_implementation: true` を立て、PR Summary を出す（`/sdd-impl` には自動で進まない）。実装は `/sdd-impl <feature>`。
+[調整者]: `/sdd-orchestrate <feature>` で下記を回す。要求・設計は統合レポートの Phase Gate `VERIFIED` 後に Phase Handoff を出す（`go` 待ちなし）。人間が成果物を確認し、問題があれば同じチャットで修正、問題がなければ新しいチャットで `/sdd-orchestrate <feature>`。タスクは調整者のタスクゲート VERIFIED 後に `ready_for_implementation: true` を立て、PR Summary を出す（`/sdd-impl` には自動で進まない）。実装は `/sdd-impl <feature>`。
 
 ### 要求新規作成の場合（M/L）
 
@@ -363,13 +365,13 @@ docs/specs/<feature>/reviews/
 
 要求は次の 4 ステップを **要求ブロック** として 1 塊で回す（`sdd-orchestrate/rules/flows.md` § 要求新規作成 entry / § 要求ブロック）。
 
-1. `/sdd-brief-grill <feature> --from-orchestrate` → `brief-grill.md`。**S を含む全ティアで最初に走る**。ティア（S/M/L）はグリル後の `brief.md` で判定するので、回答次第で S が M になることがある。S と判定されたら 2 以降は走らず `/sdd-spec-quick --auto --from-orchestrate`（1 チャット）へ進む
-2. `/sdd-spec-requirements <feature>`（init + EARS。内部で `requirements-review-gate`）
-3. `/sdd-validate-requirements <feature>` → `reviews/requirements-review.md`
-4. `/sdd-req-grill <feature> --from-orchestrate` → `req-grill.md`。`requirements.md` を直したら 3 に戻る（validate は最大 3 回）
-5. Phase Gate VERIFIED かつ両 grill READY → Phase Handoff（設計へ進まない。人間が確認し、OK なら次チャット）
+1. `/sdd-grill <feature> brief` → `brief-grill.md`。**S を含む全ティアで最初に走る**。ティア（S/M/L）はグリル後の `brief.md` で判定するので、回答次第で S が M になることがある。S と判定されたら 2 以降は走らず `/sdd-spec-quick`（1 チャット）へ進む。quick-path で requirements に `Open question:` が残ったら、設計に進まず M に昇格して 3 へ合流する
+2. `/sdd-spec-requirements <feature>`（init + EARS。内部で `requirements-review-gate`。人間には聞かず、決められない点は `Open question:` として残す）
+3. `/sdd-grill <feature> req` → `req-grill.md`。`Open question:` を含む意図・スコープの穴をここで埋める
+4. `/sdd-validate-requirements <feature>` → `reviews/requirements-review.md`（1 回。意図・スコープの判断が要る指摘は推測せず NO-GO で 3 に戻す）
+5. 両 grill READY かつ Phase Gate VERIFIED → Phase Handoff（設計へ進まない。人間が確認し、OK なら次チャット）
 
-grill は AI 同士で質問と回答を繰り返す（`sdd-grill-shared/orchestrated-mode.md`）。回答者 AI が根拠で決められない項目だけを「持ち帰り」として人間に選択肢で聞く。選択肢には必ず「持ち帰る（今は決められない）」を含む。人間が「持ち帰る」を選んだらブロックは **Grill 待ち** で止まり、確認後に同じ checkout で `/sdd-orchestrate <feature>` を実行すると持ち帰った項目から再開する。
+grill は 1 つのスキル（`/sdd-grill <feature> brief|req`）で、対象ごとの観点は `sdd-grill/rules/` にある。AI 同士で質問と回答を繰り返す（`sdd-grill/SKILL.md` § Loop）。回答者 AI が根拠で決められない項目だけを「持ち帰り」として人間に選択肢で聞く。選択肢には必ず「持ち帰る（今は決められない）」を含む。人間が「持ち帰る」を選んだらブロックは **Grill 待ち** で止まり、確認後に同じ checkout で `/sdd-orchestrate <feature>` を実行すると持ち帰った項目から再開する。
 
 **チャット 3 — 設計**（同じ checkout で `/sdd-orchestrate <feature>`）
 
@@ -380,7 +382,7 @@ grill は AI 同士で質問と回答を繰り返す（`sdd-grill-shared/orchest
 **チャット 4 — タスク**（同じ checkout で `/sdd-orchestrate <feature>`）
 
 1. `/sdd-spec-tasks <feature>`
-2. `/sdd-verify-phase-gate <feature> tasks`
+2. [調整者] タスクゲート（`tasks.md`・`approvals.tasks.generated`・`_Blocked:_` なし）
 3. `ready_for_implementation: true` → PR Summary → 終了
 
 **チャット 5 — 実装**（同じ checkout で `/sdd-impl <feature>`）

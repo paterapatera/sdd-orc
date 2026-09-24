@@ -18,7 +18,7 @@ Then continue with § Entry Contract using the resolved `<feature>`.
 3. **Else derive from `spec.json`** via § Spec State Hints:
    - `brief.md` exists, no `spec.json` → **要求新規作成** (`flows.md` § 要求新規作成 entry: brief-grill for every tier → tier → M/L 要求ブロック or S `/sdd-spec-quick`)
    - `approvals.requirements.generated` false → resume requirements / **要求更新**
-   - requirements generated but the 要求ブロック has not converged (`brief-grill.md` / `req-grill.md` missing, `WAITING`, `BLOCKED`, or stale per the entry table) and `complexity_tier` is not S → resume the 要求ブロック at the entry-table step. Skipped when the user explicitly asked for 設計更新
+   - requirements generated but the 要求ブロック entry table still picks a step (`brief-grill.md` / `req-grill.md` missing, `WAITING`, `BLOCKED`, or stale; validate missing, NO-GO, or stale) and `complexity_tier` is not S → resume the 要求ブロック at the entry-table step. Skipped when the user explicitly asked for 設計更新
    - requirements generated, `approvals.design.generated` false → **設計更新**
    - design generated, `approvals.tasks.generated` false → resume task generation (`/sdd-spec-tasks` … Terminal auto-approve)
    - `ready_for_implementation: true` → **stop** (orchestration complete). Instruct `/sdd-impl <feature>`. Spec 変更が必要なら 要求更新 / 設計更新 を明示させる。
@@ -39,7 +39,7 @@ After resolving the active flow, before the first generation dispatch. On 要求
 
 | Tier | Path | Flow section |
 | ---- | ---- | ------------ |
-| S | **quick-path** | `要求新規作成 (S)` → `/sdd-spec-quick --auto --from-orchestrate` |
+| S | **quick-path** | `要求新規作成 (S)` → `/sdd-spec-quick` |
 | M | **standard-path** | `要求新規作成 (M)` → unified validates; 要求 / 設計 each → Phase terminal; タスクは再開後 |
 | L | **full-path** | `要求新規作成 (L)` → full pipeline; 要求 / 設計 each → Phase terminal; タスクは再開後 |
 
@@ -75,7 +75,7 @@ Read `docs/specs/<feature>/spec.json` + `tasks.md`:
 | `ready_for_implementation: true` **and** all `tasks.md` tasks `[x]`, no `_Blocked:_` | implementation complete | Modification allowed — proceed with 要求更新 / 設計更新 |
 | `ready_for_implementation: false` | still in first-pass authoring (requirements/design/tasks not finished) | Not a modification of implemented-ready work — resume the initial flow normally |
 
-- "Implementation complete" = `tasks.md` exists, every task `[x]`, none `_Blocked:_` (confirm via `/sdd-spec-status <feature>`; a prior `/sdd-validate-impl` GO is stronger evidence).
+- "Implementation complete" = `tasks.md` exists, every task `[x]`, none `_Blocked:_` (`/sdd-spec-status <feature>` → `IMPLEMENTATION_COMPLETE`; a prior `/sdd-validate-impl` GO is stronger evidence).
 - On a blocked modification, report: which spec, its outstanding `[ ]` / `_Blocked:_` tasks, and instruct: complete implementation via `/sdd-impl <feature>`, then re-request the change.
 - **User override does not bypass this guard** unless the user explicitly acknowledges the incomplete implementation and insists on modifying anyway.
 - Path B (直接実装) is unaffected — it has no spec.
@@ -118,7 +118,7 @@ A dependency `<dep>` is **ready** if **any** of:
 
 Otherwise **not ready** — including when `docs/specs/<dep>/` is missing or the upstream is still in requirements/design phase.
 
-This matches `/sdd-verify-phase-gate <dep> tasks` generation criteria (upstream must complete before downstream starts).
+This is the same criterion as checks 1–2 of the タスクゲート (`gates.md`) applied to `<dep>` (upstream must complete before downstream starts).
 
 ### On block
 
@@ -153,7 +153,7 @@ Read `docs/specs/<feature>/spec.json` metadata only when routing:
 | ----------------- | ----------- |
 | No spec / pre-init | 要求新規作成 (Path C+) |
 | `approvals.requirements.generated` false | 要求更新 or resume requirements phase |
-| requirements generated, 要求ブロック not converged (M/L) | resume 要求ブロック (`flows.md` § 要求ブロック entry table) |
+| requirements generated, 要求ブロック entry table still picks a step (M/L) | resume 要求ブロック (`flows.md` § 要求ブロック entry table) |
 | requirements generated, design not | 設計更新 or resume design phase |
 | design generated, tasks not | resume task generation (`/sdd-spec-tasks` … Terminal auto-approve) |
 | `ready_for_implementation: true` | orchestration complete — stop; `/sdd-impl <feature>` (unless user requested 要求更新 / 設計更新) |
@@ -166,8 +166,6 @@ If orchestration was interrupted mid-flow, the next `/sdd-orchestrate <feature>`
 - Design validate: single `/sdd-validate-design-qa` (Pass A qa→arch→sec serial inside one skill — no parallel `design.md` writes).
 - All Pass A GO before Pass B final + inline phase-gate.
 - Mid-flow user pivot → re-route; resume from required step.
-- Status check → `/sdd-spec-status <feature>`.
-
 ## Path B vs `/sdd-impl`
 
 | | Path B 直接実装 | `/sdd-impl` |

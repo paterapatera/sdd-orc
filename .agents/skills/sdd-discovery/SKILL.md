@@ -324,7 +324,7 @@ Suggest the next command for a **new conversation** and **stop**.
 - Do NOT automatically run `/sdd-orchestrate` or spec generation.
 - Do NOT ask 「今実行するか」 or any yes/no about chaining. Discovery is finished.
 - Phrase as: 別チャットで次を実行: `/sdd-orchestrate <feature>` (or the Path-specific command below). Always include `<feature>`. If Path A needs no spec change, phrase `/sdd-impl <feature>` instead.
-- Do not run `/sdd-brief-grill` here. `/sdd-orchestrate` runs it first on every 要求新規作成 (S included), before tier scoring. A human who wants to answer the brief grill directly may still run `/sdd-brief-grill <feature>` standalone before `/sdd-orchestrate`.
+- Do not run `/sdd-grill` here. `/sdd-orchestrate` runs the brief grill first on every 要求新規作成 (S included), before tier scoring.
 
 ### Git / checkout
 
@@ -344,7 +344,7 @@ Keep the same Git checkout across later phase chats for a given spec. Do not cre
 | ---- | ------------ |
 | **A** | Spec change: `/sdd-orchestrate <feature>`（要求更新 / 設計更新 as appropriate）. No spec change: `/sdd-impl <feature>` |
 | **B** | Direct implementation — no spec; do not force `sdd-spec-*` |
-| **C** | Default: `/sdd-orchestrate <feature-name>` (orchestrator picks S/M/L path). Manual phase control: `/sdd-spec-requirements <feature-name>` (M/L only). Explicit fast: `/sdd-orchestrate <feature-name> quick` or `/sdd-spec-quick <feature-name> --auto` |
+| **C** | `/sdd-orchestrate <feature-name>` (orchestrator picks S/M/L path). Force fast: `/sdd-orchestrate <feature-name> quick` |
 | **D** | `/sdd-orchestrate <first-ready-feature>` — first spec in roadmap order that is ready in this checkout. Name every parallel-ready spec the user may start (`/sdd-orchestrate <a>`, `/sdd-orchestrate <b>`). Downstream waits until upstream is merged into the checkout it will use. |
 | **E** | Same as D for new specs; existing-spec updates: `/sdd-orchestrate <existing-feature>` separately |
 

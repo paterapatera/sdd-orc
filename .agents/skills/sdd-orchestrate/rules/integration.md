@@ -12,7 +12,7 @@ Read on demand when routing, Path B, requirements init, or skill-boundary questi
 | 設計者 | Design, tasks, AI-DLC design final gate | spec-design (inline brownfield gap), validate-design-qa (unified), spec-tasks |
 | アーキテクト管理者 | SOLID, coupling | via unified validate-design-qa |
 | 品質管理者 | Testability, edge cases, integration | validate-requirements (unified), validate-design-qa (unified), validate-impl |
-| 業務委託担当者（grill） | brief / requirements の過不足を突く。AI 回答者と往復し、持ち帰りだけ人間に選択肢で聞く | brief-grill (`--from-orchestrate`, 全ティアの要求新規作成 + 要求更新), req-grill (`--from-orchestrate`, M/L 要求ブロック) |
+| 業務委託担当者（grill） | brief / requirements の過不足を突く。AI 回答者と往復し、持ち帰りだけ人間に選択肢で聞く | grill `brief` (全ティアの要求新規作成 + 要求更新), grill `req` (M/L 要求ブロック) |
 | 実装者 | TDD per tasks | `/sdd-impl` (or main context for Path B) |
 
 ## Spec Init
@@ -51,14 +51,15 @@ Orchestrator does **not** dispatch `/sdd-impl`. `/sdd-impl` stops if `_Blocked:_
 
 | Skill | Phase | Role |
 | ----- | ----- | ---- |
-| `/sdd-brief-grill --from-orchestrate` | Pre-requirements: 要求新規作成 entry (all tiers, before tier scoring) / 要求更新 要求ブロック step 1 | brief の過不足 → `brief-grill.md`; answers transcribed into `brief.md` |
-| `requirements-review-gate` (in spec-requirements) | Pre-write | EARS mechanical + draft quality |
-| `/sdd-validate-requirements` | Post-write (unified) | PO+QA+Sec+final+phase-gate → `requirements-review.md` |
-| `/sdd-req-grill --from-orchestrate` | Post-validate (要求ブロック step 4) | requirements の過不足 → `req-grill.md`; edits send the block back to validate |
+| `/sdd-grill brief` | Pre-requirements: 要求新規作成 entry (all tiers, before tier scoring) / 要求更新 要求ブロック step 1 | brief の過不足 → `brief-grill.md`; answers transcribed into `brief.md` |
+| `requirements-review-gate` (in spec-requirements) | Pre-write | EARS mechanical + draft quality. Unresolved scope → `Open question:` (no user prompt) |
+| `/sdd-grill req` | Post-write, pre-validate (要求ブロック step 3) | requirements の過不足（意図・スコープの判断）→ `req-grill.md`; human sees only 持ち帰り items |
+| `/sdd-validate-requirements` | Post-grill (unified, 要求ブロック step 4) | PO+QA+Sec+final+phase-gate → `requirements-review.md`; intent/scope decisions → NO-GO to `grill`, never assumed |
 | `/sdd-spec-design` | Design generation | Inline gap (brownfield) + discovery + `design.md` |
 | `/sdd-validate-design-qa` | Design (unified) | QA+Arch+Sec+final+phase-gate → `design-review.md` |
 | `/sdd-validate-impl` | Post-impl | Cross-task integration |
-| `/sdd-verify-phase-gate` | Pre-approval (タスク; 要求/設計は統合内 or standalone debug) | Artifact + `VERDICT` readiness (`PHASE_GATE`) |
+| タスクゲート（[調整者] inline, `gates.md`） | Pre-approval (タスクのみ; 要求/設計は統合 validate 内) | Artifact readiness (`PHASE_GATE`) |
+| `/sdd-spec-status` | Modification / Upstream Dependency Guard | Read-only status block (phase, approvals, gates, task completion) |
 | `/sdd-verify-completion` | Impl batch/selection gate / Path B / post-impl | Fresh evidence (`BATCH`, `TASK`, `FIX`, `TEST_OR_BUILD`, `FEATURE_GO`) |
 
 Validate I/O detail: `../sdd-validate-shared/phase-contracts.md`.

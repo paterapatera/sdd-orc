@@ -84,9 +84,9 @@ Every fix a validate applies to `requirements.md` / `design.md` **must** appear 
 
 Before declaring `GO`, confirm fresh evidence: referenced files exist, edits are written, and content is internally consistent. At **orchestrated phase gates** (要求/設計/タスク):
 
-- **Requirements (unified):** `/sdd-validate-requirements` embeds phase-gate checks; orchestrator does **not** dispatch `/sdd-verify-phase-gate` for requirements when `requirements-review.md` has `STATUS: VERIFIED`.
-- **Design (unified):** `/sdd-validate-design-qa` embeds phase-gate checks; orchestrator does **not** dispatch `/sdd-verify-phase-gate` for design when `design-review.md` has `STATUS: VERIFIED`.
-- **Tasks:** orchestrator still applies `/sdd-verify-phase-gate` (`PHASE_GATE`). See `phase-gate.md`.
+- **Requirements (unified):** `/sdd-validate-requirements` embeds phase-gate checks in `requirements-review.md` (`## Phase Gate`).
+- **Design (unified):** `/sdd-validate-design-qa` embeds phase-gate checks in `design-review.md` (`## Phase Gate`).
+- **Tasks:** the orchestrator checks the タスクゲート inline (`sdd-orchestrate/rules/gates.md`).
 
 `FEATURE_GO` is not used for pre-implementation gates.
 

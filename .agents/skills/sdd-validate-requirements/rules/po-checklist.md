@@ -38,7 +38,7 @@ Post-generation semantic review and autonomous brush-up of `requirements.md`. Pr
 Use the shared scale in `../../sdd-validate-shared/contract.md` (Critical / Major / Minor):
 
 - **Critical**: contradiction, missing core capability, scope hole → `NO-GO`
-- **Major**: ambiguity requiring an assumption → fix into `requirements.md` (list in `## Reflected Fixes`) + record the assumption in `## Decisions`
+- **Major**: ambiguity whose resolution follows from `brief.md`, steering, or the rest of `requirements.md` → fix into `requirements.md` (list in `## Reflected Fixes`) + record the reasoning in `## Decisions`. If it needs an intent / scope / acceptance-bar choice with no source to derive it from → `NO-GO` with rollback target `grill` (do not assume)
 - **Minor**: wording improvement → fix inline if safe; note in `## Reflected Fixes`
 
 ## NO-GO Triggers

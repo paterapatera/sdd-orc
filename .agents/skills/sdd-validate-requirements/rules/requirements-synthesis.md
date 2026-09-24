@@ -42,7 +42,7 @@ Audit `requirements.md` against **every** domain below. Each domain gets an expl
 
 1. **Brief traceability** — Build a matrix: every problem statement, scope decision, and boundary candidate in `brief.md` → the requirement/AC that covers it (or an explicit exclusion in scope boundaries). Include the matrix in the report Evidence. A brief scope decision with no requirement and no documented exclusion is **Critical**. Requirements with no brief backing feed the scope check (domain 7). No `brief.md` → `N/A`, and note the traceability source used instead (project description in `requirements.md`).
 2. **Cross-spec consistency** — Against `docs/specs/roadmap.md` (if present): upstream dependencies' expectations are not contradicted; adjacent-system expectations in scope boundaries name the right specs; no obligation is claimed that an upstream spec owns. No roadmap → `N/A`.
-3. **NFR completeness** — Performance, availability, capacity, and reliability expectations materially implied by `brief.md`, steering, or the feature's nature are present as user- or operator-observable ACs or explicitly excluded in scope boundaries. Missing material NFRs are findings; do not author NFR targets that require new scope decisions — that is a **NO-GO to `/sdd-spec-requirements`**. (Measurability of stated NFRs is qa domain — do not re-audit.)
+3. **NFR completeness** — Performance, availability, capacity, and reliability expectations materially implied by `brief.md`, steering, or the feature's nature are present as user- or operator-observable ACs or explicitly excluded in scope boundaries. Missing material NFRs are findings; do not author NFR targets that require new scope decisions — that is a **NO-GO to `grill`** (the human sets the bar). (Measurability of stated NFRs is qa domain — do not re-audit.)
 4. **Operability expectations** — Operator-visible expectations (monitoring/alerting needs, manual intervention points, data retention/cleanup) implied by steering or the feature are stated at requirements level, or their absence is deliberate. Do not introduce design detail (no tooling or architecture choices).
 5. **Compliance** — Regulatory/policy constraints from steering (`product.md` + any compliance steering) are reflected or their deviation documented. (Security-specific compliance is sec domain — verify sec addressed it rather than re-auditing.)
 6. **Template conformance** — Structure matches `docs/settings/templates/specs/requirements.md`: introduction present; scope-boundary section present when adjacent systems/specs are touched; every requirement has 目的 and 受け入れ条件; numeric IDs only; language matches `spec.json` with EARS keywords in English.
@@ -62,7 +62,7 @@ Record **all** findings with severity. Do not limit the count.
 Fix findings in `requirements.md` directly rather than deferring them to the human, within these bounds:
 
 - **Repair**: Minor findings, and Major findings whose fix is unambiguous from `brief.md`, steering, or the specialist reports (e.g. align a term with steering vocabulary, complete a scope-boundary entry the brief already decided, fix a heading ID, restore template structure without changing meaning).
-- **Do not repair — NO-GO to `/sdd-spec-requirements`** when a fix needs a new scope or behavior decision (missing material NFR with no source to derive it from, uncovered brief scope decision with no obvious requirement shape): that content must be generated upstream and pass the po → qa → sec chain, not be authored at this gate.
+- **Do not repair — NO-GO to `grill`** when a fix needs a human intent / scope / acceptance-bar decision (e.g. missing material NFR with no source to derive it from). **NO-GO to `/sdd-spec-requirements`** when content must be generated (e.g. uncovered brief scope decision with no obvious requirement shape). Either way the content must pass the po → qa → sec chain, not be authored at this gate.
 - **Do not repair — NO-GO with named rollback target** when the fix would require re-analysis inside a specialist domain: functional scope/semantic ambiguity (`validate-requirements`), AC verifiability semantics (`validate-requirements-qa`), auth/PII/trust-boundary expectations (`validate-requirements-sec`). If a self-repair would even *touch* such an area, roll back instead.
 - After repairing, re-check the edited sections for internal consistency and confirm no specialist-domain content changed. Every repair is listed as a `## Reflected Fixes` row (finding → requirements.md section → summary), with rationale in `## Decisions`.
 
@@ -98,7 +98,7 @@ Evidence must include the brief→requirements traceability matrix (or its `N/A`
 - Any specialist pass incomplete or failing
 - Claimed specialist fix absent from `requirements.md`
 - Finding requires specialist re-analysis → name rollback: `po`, `qa`, or `sec` (or `/sdd-validate-requirements --only …`)
-- Fix needs a new scope/behavior decision → name `/sdd-spec-requirements` as rollback target
+- Fix needs a new scope/behavior decision → name `grill` as rollback target when it is a human intent / scope choice on existing requirements, else `/sdd-spec-requirements` (missing content to generate)
 - `requirements.md` contradicts adopted specialist decisions
 - Cannot decide safely without user input → `MANUAL_VERIFY_REQUIRED`
 

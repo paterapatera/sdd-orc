@@ -1,6 +1,6 @@
 ---
 name: sdd-spec-design
-description: Create comprehensive technical design for a specification. Runs inline brownfield gap analysis before discovery.
+description: Orchestrator-only. Creates the technical design for a specification, with inline brownfield gap analysis before discovery. Dispatched by /sdd-orchestrate (設計 phase, and inside sdd-spec-quick).
 metadata:
   shared-rules: "design-principles.md, design-discovery-full.md, design-discovery-light.md, design-discovery-minimal.md, design-synthesis.md, design-review-gate.md, gap-analysis.md"
 disable-model-invocation: true
@@ -51,7 +51,7 @@ disable-model-invocation: true
 **Validate requirements readiness**:
 - Verify `approvals.requirements.generated === true` in spec.json (stop if false, see Safety & Fallback)
 
-**Artifact-only resume**: 前のチャット履歴・口頭の合意・未書き込みの決定を前提にしない。フェーズの入力は上記 Load Context の成果物（および steering）のみ。チャットにしかない意図が必要なら、生成前に成果物へ書いてから続行する（勝手に補完しない）。要求の曖昧さを会話記憶で埋めない。不足なら `requirements.md` の修正をユーザーに求め、設計を進めない。
+**Artifact-only resume**: 前のチャット履歴・口頭の合意・未書き込みの決定を前提にしない。フェーズの入力は上記 Load Context の成果物（および steering）のみ。チャットにしかない意図が必要なら、生成前に成果物へ書いてから続行する（勝手に補完しない）。要求の曖昧さを会話記憶で埋めない。不足なら `DESIGN: RETURN_TO_REQUIREMENTS` で止まり、設計を進めない。
 
 ### Step 2: Discovery & Analysis
 
@@ -246,7 +246,7 @@ After all findings return, synthesize in main context before proceeding.
 - Verify requirements coverage, architecture readiness, implementation executability, and Persistent References / external contract updates before finalizing the design
 - If issues are local to the draft (or to a `Mode: modify` contract/architecture file from Step 4), repair and review again
 - Keep the review bounded to at most 2 repair passes
-- If the draft exposes a real requirements/design gap, stop and return to requirements clarification instead of papering over it in `design.md`
+- If the draft exposes a real requirements/design gap, stop with `DESIGN: RETURN_TO_REQUIREMENTS` instead of papering over it in `design.md`
 
 ### Step 7: Finalize Design Document
 
@@ -272,67 +272,24 @@ After all findings return, synthesize in main context before proceeding.
    - Document public interfaces and contracts clearly to ensure cross-component type safety. Authoritative long-lived contracts live in `docs/contracts/**`; `design.md` holds excerpts + Persistent References.
 - **Requirements Traceability IDs**: Use numeric requirement IDs only (e.g. "1.1", "1.2", "3.1", "3.3") exactly as defined in requirements.md. Do not invent new IDs or use alphabetic labels.
 - **Persistent contracts at design time**: Index → related Read → merge/create → Persistent References in draft → review gate → write `design.md`. Never defer contract creation to a post-implementation phase. Never bulk-read all of `docs/contracts/` or `docs/architecture/`.
-- **In-flight parallel specs**: When `roadmap.md` lists other incomplete specs, diff-merge only contract/architecture files this spec's Boundary Commitments own. If another in-flight spec already owns the same public surface, **stop and ask** — do not rewrite that file wholesale.
+- **In-flight parallel specs**: When `roadmap.md` lists other incomplete specs, diff-merge only contract/architecture files this spec's Boundary Commitments own. If another in-flight spec already owns the same public surface, stop with `DESIGN: STOPPED` naming the file and the owning spec — do not rewrite that file wholesale.
 - **Greenfield**: never run gap-analysis sub-agents; never invent gap `research.md` content.
 - **Brownfield**: gap runs once in Step 2.0; discovery must reuse `research.md` instead of duplicating codebase survey.
 </instructions>
 
-## Output Description
+## Return to the orchestrator
 
-**Command execution output** (separate from design.md content):
+One line, then a summary under 150 words in the spec language:
 
-Provide brief summary in the language specified in spec.json:
+- `DESIGN: WRITTEN` — `design.md` written, `approvals.design.generated: true`
+- `DESIGN: RETURN_TO_REQUIREMENTS` — requirements are missing, not generated, use non-numeric IDs, or have a real gap the design would have to paper over. Name the requirement IDs and the gap. `design.md` not written
+- `DESIGN: STOPPED` — another in-flight spec owns a public surface this design must change, or an init template is missing
 
-1. **Status**: Confirm design document generated at `docs/specs/$1/design.md`
-2. **Gap Analysis**: brownfield completed / greenfield skipped
-3. **Discovery Type**: Which discovery process was executed (full/light/minimal)
-4. **Persistent Contracts**: Which `docs/contracts/**` / `docs/architecture/**` / ADR paths were created or modified (or **No contract changes**)
-5. **Key Findings**: 2-3 critical insights from `research.md` (if any) that shaped the design
-6. **Review Gate**: Confirm the design review gate passed
-7. **Next Action**: Continue to `/sdd-validate-design-qa $1` (orchestrated) or review `design.md`
-8. **Research Log**: Confirm `research.md` updated, or note that none was needed (greenfield)
-
-**Format**: Concise Markdown (under 200 words) - this is the command output, NOT the design document itself
-
-**Note**: The actual design document follows `docs/settings/templates/specs/design.md` structure.
+Summary items: gap analysis (brownfield completed / greenfield skipped), discovery type (full / light / minimal), persistent contract / architecture / ADR paths created or modified (or **No contract changes**), 2–3 key findings from `research.md` if any, review gate result, `research.md` updated or not needed.
 
 ## Safety & Fallback
 
-### Error Scenarios
-
-**Requirements Not Generated**:
-- **Stop Execution**: Cannot proceed without generated requirements
-- **User Message**: "Requirements not yet generated. Run requirements phase first."
-- **Suggested Action**: "Run `/sdd-spec-requirements $1` first"
-
-**Missing Requirements**:
-- **Stop Execution**: Requirements document must exist
-- **User Message**: "No requirements.md found at `docs/specs/$1/requirements.md`"
-- **Suggested Action**: "Run `/sdd-spec-requirements $1` to generate requirements first"
-
-**Template Missing**:
-- **User Message**: "Template file missing at `docs/settings/templates/specs/design.md`"
-- **Suggested Action**: "Check repository setup or restore template file"
-- **Fallback**: Use inline basic structure with warning
-
-**Steering Context Missing**:
-- **Warning**: "Steering directory empty or missing - design may not align with project standards"
-- **Proceed**: Continue with generation but note limitation in output
-
-**Invalid Requirement IDs**:
-  - **Stop Execution**: If requirements.md is missing numeric IDs or uses non-numeric headings (for example, "Requirement A"), stop and instruct the user to fix requirements.md before continuing.
-
-**Spec Gap Found During Design Review**:
-- **Stop Execution**: Do not write a patched-over `design.md`
-- **User Message**: "Design review found a real spec gap or ambiguity that must be resolved before design can be finalized."
-- **Suggested Action**: Clarify or fix `requirements.md`, then re-run `/sdd-spec-design $1`
-
-### Next Phase: Task Generation
-
-**If Design generated**:
-- Review generated design at `docs/specs/$1/design.md`
-- Then `/sdd-spec-tasks $1` to generate implementation tasks
-
-**If Modifications Needed**:
-- Provide feedback and re-run `/sdd-spec-design $1`
-- Existing design used as reference (merge mode)
+- **Requirements missing / not generated / non-numeric IDs**: `DESIGN: RETURN_TO_REQUIREMENTS`.
+- **Real spec gap found in the review gate**: do not write a patched-over `design.md`; `DESIGN: RETURN_TO_REQUIREMENTS`.
+- **Design template missing**: inline basic structure with a warning in the summary.
+- **Steering directory empty**: continue; note the limitation in the summary.

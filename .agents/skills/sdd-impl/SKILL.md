@@ -482,7 +482,7 @@ If `tasks.md` or design excerpts require a flag → `required`.
 
 **Not Ready for Implementation or Missing Spec Files**:
 - **Stop Execution**: All spec files must exist and `ready_for_implementation` must be true
-- **Suggested Action**: "Complete previous phases: `/sdd-spec-requirements`, `/sdd-spec-design`, `/sdd-spec-tasks`"
+- **Suggested Action**: "Complete previous phases: `/sdd-orchestrate <feature>`"
 
 **Test Failures**:
 - **Stop Implementation**: Fix failing tests before continuing
