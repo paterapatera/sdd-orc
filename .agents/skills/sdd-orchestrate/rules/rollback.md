@@ -31,6 +31,16 @@ On `NOT_VERIFIED`, parse `GAPS` / Phase Gate `CHECKS` against `../sdd-validate-s
 | `tasks` | `_Blocked:_` tasks present | stop — report user | resolve blockers before re-gate |
 | `tasks` | any other `NOT_VERIFIED` after `/sdd-spec-tasks` ran | **[調整者]** set `ready_for_implementation: false` if true | `/sdd-verify-phase-gate` |
 
+## Grill (要求ブロック)
+
+Grills are not validates: there is no NO-GO to roll back. Their stops are:
+
+| Result | Orchestrator action |
+| ------ | ------------------- |
+| `GRILL: WAITING` | **Grill 待ち** stop (`gates.md` § Grill 待ち). Resume re-asks the DEFERRED items as choices |
+| `GRILL: BLOCKED` (AI or human round cap hit) | Stop. Report the live items from the grill file. The user writes answers into `brief.md` / `requirements.md` or re-aligns scope, then `/sdd-orchestrate <feature>` |
+| Convergence cap (3 validate runs; req-grill still `Target edited: yes`) | Stop. Report which requirements keep changing between validate and req-grill. Seek user re-alignment |
+
 ## Rules
 
 - Requirements change affecting design/impl → ask user rollback depth: 要求のみ / 設計まで / タスクまで

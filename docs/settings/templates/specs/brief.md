@@ -1,11 +1,5 @@
 # Brief: {{feature-name}}
 
-## Trigger
-[動作確認・依頼・バグ報告など、きっかけを 1–3 文]
-
-## Problem
-[誰のどんな痛みか — 1–3 文]
-
 ## Desired Outcome
 [完了時に何が真になるか — 1–3 文]
 
@@ -18,6 +12,9 @@
 - **Rationale**: [1 文でなぜその Path か]
 
 <!-- Optional: fill when known; otherwise leave for requirements -->
+
+## Background
+[人間が書いた・述べたきっかけ・動機・困りごとのみ転記 — 1–3 文。記述が無ければセクションごと省略し、推測で補わない]
 
 ## Approach
 [採用方針 1–2 文。複数案の比較表は書かない]

@@ -1,6 +1,6 @@
 # Complexity Tier (S / M / L)
 
-Compute the complexity tier **at orchestration start, immediately after routing** resolves the active flow and **before the first skill dispatch**. Write the result to `spec.json`, then load the matching flow variant in `flows.md`.
+Compute the complexity tier **at orchestration start, after routing** resolves the active flow and **before the first generation dispatch**. On 要求新規作成, brief-grill runs first and the tier is scored from the grilled `brief.md`: grill answers can add Scope In items, brownfield facts, or upstream deps, so S may become M. Write the result to `spec.json`, then load the matching flow variant in `flows.md`.
 
 **Do not** read `requirements.md` / `design.md` for scoring — inputs are brief + metadata only.
 
@@ -40,7 +40,7 @@ Start at **0**. Add/subtract per row. Sum determines the tier unless an override
 | roadmap 上の upstream 依存 ≥ 1 | +2 |
 | Path D/E（multi-spec） | +5（**強制 L**） |
 | 参照実装・パターンが brief に明示 | −1 |
-| brief が Problem / Approach / Scope In/Out / Constraints をすべて埋めている | −1 |
+| brief が Desired Outcome / Approach / Scope In/Out / Constraints をすべて埋めている | −1 |
 
 ### Force L (before threshold)
 
@@ -87,7 +87,7 @@ Orchestrator (`[調整者]`) merges these fields without removing existing keys:
 
 ## Orchestrator procedure
 
-After resolving the active flow (`routing.md` § Entry Contract), before the first skill dispatch:
+After resolving the active flow (`routing.md` § Entry Contract). On 要求新規作成, run this **after** `/sdd-brief-grill --from-orchestrate` returns `READY` (`flows.md` § 要求新規作成 entry) and before any generation dispatch. Other flows: before the first skill dispatch.
 
 1. Read this file (`rules/complexity-tier.md`)
 2. Score from `brief.md` (+ roadmap if present); apply force-L / user override

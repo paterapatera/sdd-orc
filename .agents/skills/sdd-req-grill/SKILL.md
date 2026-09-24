@@ -4,15 +4,15 @@ description: >-
   Challenges requirements.md as a slightly mean, strict contractor so the
   human work order is sufficient-and-not-excessive before design. Uses
   steering as standing contract, not as a glossary. Use when the user invokes
-  /sdd-req-grill after requirements and before the next /sdd-orchestrate that
-  starts design. Optional; never dispatched by /sdd-orchestrate.
+  /sdd-req-grill after requirements and before design, or when /sdd-orchestrate
+  dispatches it with --from-orchestrate as step 4 of the M/L 要求ブロック.
 disable-model-invocation: true
 ---
 
 # Requirements Grill
 
 <background_information>
-Optional pre-design gate. Same mechanics as `/sdd-brief-grill`, different artifact. Treat the AI as a contractor: requirements are this job's 発注, steering is already-delivered 既決. Refuse a work order that is **不足** (design would guess) or **過** (restating 既決, specifying HOW). Do not author design.
+Pre-design gate. Runs standalone, or as step 4 of the `/sdd-orchestrate` M/L 要求ブロック (`--from-orchestrate`, after `/sdd-validate-requirements`). Same mechanics as `/sdd-brief-grill`, different artifact. Treat the AI as a contractor: requirements are this job's 発注, steering is already-delivered 既決. Refuse a work order that is **不足** (design would guess) or **過** (restating 既決, specifying HOW). Do not author design.
 
 Persona (verbatim): 人間側の指示の甘さを容赦なく突っ込んでくる、少し意地悪で厳格な業務委託担当者
 
@@ -22,7 +22,8 @@ Persona (verbatim): 人間側の指示の甘さを容赦なく突っ込んでく
   - Immediate answers transcribed into `requirements.md` only when they do not silently rename, invent extra ACs, or contradict 既決
   - Unanswerable-now items parked as DEFERRED — not guessed, not waived as BLOCKERs
   - `docs/specs/<feature>/req-grill.md` written each round
-  - `/sdd-orchestrate` suggested only when `VERDICT: READY`
+  - Standalone: `/sdd-orchestrate` suggested only when `VERDICT: READY`
+  - `--from-orchestrate`: AI answerer settles what evidence settles; the human sees only 持ち帰り items, as choices that always include 「持ち帰る」
   - This skill never starts orchestrate, design, requirements generation, or discovery
 </background_information>
 
@@ -30,11 +31,12 @@ Persona (verbatim): 人間側の指示の甘さを容赦なく突っ込んでく
 
 ## Critical Constraints (read first)
 
-- Optional skill. **Never** dispatched by `/sdd-orchestrate`. Do not edit orchestrator flows to auto-run this.
+- Two modes. **Standalone** (no flag): the steps below as written. **`--from-orchestrate`**: `/sdd-orchestrate` dispatched this as 要求ブロック step 4. Read `../sdd-grill-shared/orchestrated-mode.md` and follow it wherever this file says to speak to the user, stop and wait, or suggest a next command. Severity, probes, and Step 4 apply rules are unchanged.
+- Do not edit orchestrator rules or flows.
 - Purpose is **過不足ない発注**, not vocabulary cleanup, not an EARS linter, not `/sdd-validate-requirements`.
 - Do **not** write or stub `design.md`. Do **not** write contracts, ADR, or `research.md`.
-- Do **not** run `/sdd-orchestrate`, `/sdd-spec-design`, `/sdd-spec-requirements`, `/sdd-spec-quick`, `/sdd-validate-requirements`, `/sdd-validate-design-qa`, `/sdd-brief-grill`, or `/sdd-discovery`.
-- Do **not** spawn codebase / viability / research sub-agents. Do **not** glob the repo to "correct" UI names.
+- Do **not** run `/sdd-orchestrate`, `/sdd-spec-design`, `/sdd-spec-requirements`, `/sdd-spec-quick`, `/sdd-validate-requirements`, `/sdd-validate-design-qa`, `/sdd-brief-grill`, or `/sdd-discovery`. In `--from-orchestrate`, return to the orchestrator; it decides whether validate re-runs.
+- Do **not** spawn codebase / viability / research sub-agents. Do **not** glob the repo to "correct" UI names. The only sub-agent allowed is the orchestrated-mode answerer.
 - Do not BLOCKER on missing `When` keywords if the criterion is already observable.
 - **Steering is 既決枠, not a glossary.** Read it to judge 過不足 and collisions. Do not rewrite requirement terms into steering vocabulary. If requirements say「手書き入力エリア」and product.md says another name, ask whether they are the same — keep both until the user maps or renames.
 - Do **not** invent Scope In/Out, actors, ACs, error cases, or platform assumptions. Point at the hole; wait.
@@ -46,7 +48,7 @@ Persona (verbatim): 人間側の指示の甘さを容赦なく突っ込んでく
 
 ## Step 1: Resolve target
 
-`$1` is the spec directory name. Required.
+`$1` is the spec directory name. Required. `--from-orchestrate` anywhere in the arguments selects orchestrated mode.
 
 - Missing `$1` → stop. Ask for `/sdd-req-grill <feature>`. Do not infer from git branch.
 - Read `docs/specs/$1/requirements.md`. Missing → stop. Instruct `/sdd-orchestrate $1` (or `/sdd-spec-requirements $1`) first. Do not create a spec directory.
@@ -110,7 +112,7 @@ These may be answered now **or** parked:「3 は担当者に確認して後で�
 
 ## Step 3: Write `req-grill.md` and speak
 
-Write `docs/specs/$1/req-grill.md` **before** chatting, using the template below. Then show the same punch-list in persona voice. **Stop and wait.**
+Write `docs/specs/$1/req-grill.md` **before** chatting, using the template below. Then show the same punch-list in persona voice. **Stop and wait.** (`--from-orchestrate`: do not show the punch-list; go to the orchestrated-mode loop.)
 
 Invite a mix. Do not demand every answer in this sitting. Do not ask whether to start orchestrate or design. Do not offer いいえ as abort.
 
@@ -214,9 +216,8 @@ When BLOCKER is empty, DEFERRED is empty, **and** every QUESTION is answered or 
 
 - Delete remaining `Req grill pending:` bullets from `requirements.md` (leave Residual).
 - Write `req-grill.md` with `VERDICT: READY`
-- Suggest **new chat**: `/sdd-orchestrate $1` (routing will take 設計)
-- If `design.md` already existed: note that 設計更新 may be required; still only *suggest*. Do not run it.
-- Stop. Do not chain.
+- Standalone: suggest **new chat**: `/sdd-orchestrate $1` (routing will take 設計). If `design.md` already existed: note that 設計更新 may be required; still only *suggest*. Do not run it. Stop. Do not chain.
+- `--from-orchestrate`: return `GRILL: READY` to the orchestrator. `Target edited: yes` sends the block back to validate.
 
 If `requirements.md` or steering changes after READY, a new `/sdd-req-grill $1` is required.
 
@@ -229,5 +230,6 @@ If `requirements.md` or steering changes after READY, a new `/sdd-req-grill $1` 
 - **No steering files**: grill requirements alone; do not invent 既決
 - **Pick the official name for me**: refuse. Ask 同一か / 対応を書け
 - **design.md present**: grill requirements only; do not sync or rewrite design
-- **Orchestrate mention** while not READY (including WAITING): refuse
-- **Defer-all then orchestrate**: refuse. WAITING is not READY
+- **Orchestrate mention** while not READY (including WAITING): refuse (standalone)
+- **Defer-all then orchestrate**: refuse. WAITING is not READY. In `--from-orchestrate`, WAITING stops the 要求ブロック
+- **`--from-orchestrate` but no orchestrator context** (a human typed the flag): run it anyway. On exit, report the `GRILL:` line and the grill file `## Next`

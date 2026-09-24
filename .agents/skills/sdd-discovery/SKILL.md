@@ -30,6 +30,7 @@ Discovery is **capture and route**, not requirements authoring. Default mode is 
 - Deep context loading (codebase exploration sub-agents) is deferred to requirements (brownfield) or design — not discovery.
 - Never generate Pros/Cons approach comparison tables in Capture + Route.
 - Do not invent Scope In/Out for vague requests — trigger Workshop instead.
+- **Background is transcription only.** Write `## Background` only from what the human actually wrote or said (きっかけ・動機・困りごと). If they gave none, omit the section. Never manufacture a problem or pain to justify a request — "the user wants X" needs no invented reason.
 - **Path classification is independent of roadmap presence.** A single-scope new spec that depends on an existing/other spec **stays Path C** and merely gains a roadmap line. Do **not** promote it to Path D/E — promotion implies multi-spec generation (per-spec `/sdd-orchestrate` in dependency order).
 - **Never rewrite `roadmap.md` wholesale** — append/update only, preserving completed items and prior phases.
 - **`roadmap.md` is the single dependency source.** Do not add machine-readable dependency fields to `brief.md`; briefs keep their prose `Upstream / Downstream` as human context only.
@@ -83,11 +84,11 @@ Use **Workshop** only when **ANY** of:
 - Complexity would be L-tier (score ≥ 5 / Path D/E force-L per `sdd-orchestrate` complexity-tier rules) **AND** brief lacks Scope In/Out
 - Path D/E **AND** decomposition / dependency order is not yet stated
 - Contradictions in user input that cannot be resolved with one question
-- Request is too vague to Capture (e.g.「GitLab まわりをなんとかしたい」with no Problem / Outcome / boundary hint)
+- Request is too vague to Capture (e.g.「GitLab まわりをなんとかしたい」with no Outcome / boundary hint)
 
 **Otherwise:** stay in Capture + Route — skip Workshop entirely (no sequential question series, no approach comparison, no viability sub-agent).
 
-Completed or concrete briefs (Problem / Approach / Scope present) are the **normal** case for Capture + Route, not a special short-circuit.
+Completed or concrete briefs (Desired Outcome / Scope present) are the **normal** case for Capture + Route, not a special short-circuit.
 
 ## Step 4: Capture
 
@@ -111,7 +112,7 @@ Transform into brief sections per **Minimal brief requirements** below.
 
 ### Input patterns
 
-**A — 動作確認・改善メモ:** Capture Trigger (when / what / what happened), pain (1–2 sentences), Desired Outcome (1–2 sentences), touched files/modules/spec names if any, rough In/Out (~3 bullets).
+**A — 動作確認・改善メモ:** Capture Background from the memo (when / what / what happened, and any pain the user stated), Desired Outcome (1–2 sentences), touched files/modules/spec names if any, rough In/Out (~3 bullets).
 
 **B — 新規構想が既に具体的:** Transcribe/reshape user text into brief sections. Ask only when there is a **contradiction**.
 
@@ -125,7 +126,7 @@ Time budget: treat this step as **note-taking**, not analysis.
 
 Shrink of former deep dialogue — still produce the **minimal** brief template:
 
-- Sequential questions: **max 3** — Problem / Desired Outcome / Boundary candidate (one)
+- Sequential questions: **max 3** — Desired Outcome / Boundary candidate (one) / Background (only if the motivation is needed to set the boundary)
 - Approach comparison: **L-tier only**, max **2** approaches (no full Pros/Cons essay)
 - Viability / research sub-agent: **forbidden** (defer to requirements or design research)
 - Path D/E with unset decomposition: this is the **only** required Workshop thinking — propose dependency-ordered split, then Confirm
@@ -187,12 +188,6 @@ Template reference: `docs/settings/templates/specs/brief.md`.
 ```markdown
 # Brief: <feature-name>
 
-## Trigger
-[動作確認・依頼・バグ報告など、きっかけを 1–3 文]
-
-## Problem
-[誰のどんな痛みか — 1–3 文]
-
 ## Desired Outcome
 [完了時に何が真になるか — 1–3 文]
 
@@ -208,6 +203,9 @@ Template reference: `docs/settings/templates/specs/brief.md`.
 **Optional** (write if known; otherwise leave for requirements):
 
 ```markdown
+## Background
+[人間が書いた・述べたきっかけ・動機・困りごとのみ転記 — 1–3 文]
+
 ## Approach
 [採用方針 1–2 文。複数案の比較表は書かない]
 
@@ -266,9 +264,9 @@ Path E rules:
 - No-spec work → `## Direct Implementation Candidates`
 - Write `brief.md` only for **new** specs under Specs
 
-**Path A:** Update the existing spec's brief (or append a short Trigger/Problem note) when useful; do not create a duplicate spec directory.
+**Path A:** Update the existing spec's brief (or append a short Background note) when useful; do not create a duplicate spec directory.
 
-**Path B:** Do not create `docs/specs/<feature>/`. Optional: `docs/captures/<slug>.md` with Trigger/Problem/Outcome only.
+**Path B:** Do not create `docs/specs/<feature>/`. Optional: `docs/captures/<slug>.md` with Desired Outcome (and Background if stated) only.
 
 **Re-entry** (`roadmap.md` already exists): Write the next new spec's `brief.md`. Update `roadmap.md` if scope/ordering changed; preserve completed items and prior phases.
 
@@ -326,7 +324,7 @@ Suggest the next command for a **new conversation** and **stop**.
 - Do NOT automatically run `/sdd-orchestrate` or spec generation.
 - Do NOT ask 「今実行するか」 or any yes/no about chaining. Discovery is finished.
 - Phrase as: 別チャットで次を実行: `/sdd-orchestrate <feature>` (or the Path-specific command below). Always include `<feature>`. If Path A needs no spec change, phrase `/sdd-impl <feature>` instead.
-- Optional (not part of discovery or orchestration; do not run it here): `/sdd-brief-grill <feature>` after `brief.md` is on disk and before `/sdd-orchestrate`.
+- Do not run `/sdd-brief-grill` here. `/sdd-orchestrate` runs it first on every 要求新規作成 (S included), before tier scoring. A human who wants to answer the brief grill directly may still run `/sdd-brief-grill <feature>` standalone before `/sdd-orchestrate`.
 
 ### Git / checkout
 

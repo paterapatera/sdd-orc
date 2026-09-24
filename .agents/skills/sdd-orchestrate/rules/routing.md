@@ -16,8 +16,9 @@ Then continue with § Entry Contract using the resolved `<feature>`.
 1. **Implementation is not an orchestration flow.** 「実装のみ」「実装だけ」 (or any request to implement without spec change) → **stop**; instruct `/sdd-impl <feature>`. Do not dispatch `/sdd-impl` from this skill.
 2. **User-specified flow wins** — e.g.「要求だけ更新」「設計だけ」.
 3. **Else derive from `spec.json`** via § Spec State Hints:
-   - `brief.md` exists, no `spec.json` → **要求新規作成** (start at `/sdd-spec-requirements`)
+   - `brief.md` exists, no `spec.json` → **要求新規作成** (`flows.md` § 要求新規作成 entry: brief-grill for every tier → tier → M/L 要求ブロック or S `/sdd-spec-quick`)
    - `approvals.requirements.generated` false → resume requirements / **要求更新**
+   - requirements generated but the 要求ブロック has not converged (`brief-grill.md` / `req-grill.md` missing, `WAITING`, `BLOCKED`, or stale per the entry table) and `complexity_tier` is not S → resume the 要求ブロック at the entry-table step. Skipped when the user explicitly asked for 設計更新
    - requirements generated, `approvals.design.generated` false → **設計更新**
    - design generated, `approvals.tasks.generated` false → resume task generation (`/sdd-spec-tasks` … Terminal auto-approve)
    - `ready_for_implementation: true` → **stop** (orchestration complete). Instruct `/sdd-impl <feature>`. Spec 変更が必要なら 要求更新 / 設計更新 を明示させる。
@@ -29,10 +30,10 @@ Path B (no spec) is decided by discovery **before** orchestration and never ente
 
 ## Complexity Tier (orchestrator inline)
 
-After resolving the active flow, before the first skill dispatch:
+After resolving the active flow, before the first generation dispatch. On 要求新規作成, this runs after brief-grill `READY` (`flows.md` § 要求新規作成 entry):
 
 1. Read `rules/complexity-tier.md`
-2. Compute tier from `brief.md` (+ roadmap if present)
+2. Compute tier from `brief.md` as it stands after brief-grill (+ roadmap if present)
 3. Write `complexity_tier` / `complexity_score` / `complexity_rationale` to `spec.json`
 4. Map tier → orchestration path (`flows.md` § Orchestration Paths by Tier), then load the matching flow variant (S / M / L suffix)
 
@@ -152,6 +153,7 @@ Read `docs/specs/<feature>/spec.json` metadata only when routing:
 | ----------------- | ----------- |
 | No spec / pre-init | 要求新規作成 (Path C+) |
 | `approvals.requirements.generated` false | 要求更新 or resume requirements phase |
+| requirements generated, 要求ブロック not converged (M/L) | resume 要求ブロック (`flows.md` § 要求ブロック entry table) |
 | requirements generated, design not | 設計更新 or resume design phase |
 | design generated, tasks not | resume task generation (`/sdd-spec-tasks` … Terminal auto-approve) |
 | `ready_for_implementation: true` | orchestration complete — stop; `/sdd-impl <feature>` (unless user requested 要求更新 / 設計更新) |

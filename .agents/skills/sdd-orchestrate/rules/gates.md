@@ -22,7 +22,7 @@ Report paths: see `../sdd-validate-shared/contract.md` (read only if parsing).
 
 ## Phase Gate Verification (要求 / 設計 / タスク)
 
-**要求 (unified):** After `/sdd-validate-requirements` writes `reviews/requirements-review.md` with `VERDICT: GO` and `## Phase Gate` → `STATUS: VERIFIED`, **Phase terminal** (handoff → end). Do **not** dispatch `/sdd-verify-phase-gate` for requirements in the orchestrated flow (standalone re-check still allowed).
+**要求 (unified + grills):** `reviews/requirements-review.md` has `VERDICT: GO` and `## Phase Gate` → `STATUS: VERIFIED`, **and** the 要求ブロック has converged: `req-grill.md` is `VERDICT: READY` with `Target edited: no` and `Target SHA256` = current `requirements.md` (and `brief-grill.md` READY when `brief.md` exists). Then **Phase terminal** (handoff → end). Do **not** dispatch `/sdd-verify-phase-gate` for requirements in the orchestrated flow (standalone re-check still allowed).
 
 **設計 (unified):** After `/sdd-validate-design-qa` writes `reviews/design-review.md` with `VERDICT: GO` and `## Phase Gate` → `STATUS: VERIFIED`, **Phase terminal** (handoff → end). Do **not** dispatch `/sdd-verify-phase-gate` for design in the orchestrated flow.
 
@@ -44,10 +44,10 @@ Report paths: see `../sdd-validate-shared/contract.md` (read only if parsing).
 
 | Phase | Pass condition | After readiness |
 | ----- | -------------- | ------------------- |
-| 要求 | `requirements.md` + `approvals.requirements.generated` + `/sdd-validate-requirements` GO + Phase Gate VERIFIED | **Phase terminal** → 次チャットで設計 |
+| 要求 | `requirements.md` + `approvals.requirements.generated` + `/sdd-validate-requirements` GO + Phase Gate VERIFIED + `brief-grill.md` / `req-grill.md` READY (要求ブロック収束) | **Phase terminal** → 次チャットで設計 |
 | 設計 | `design.md` + `approvals.design.generated` + `/sdd-validate-design-qa` GO + Phase Gate VERIFIED | **Phase terminal** → 次チャットでタスク |
 | タスク | `tasks.md` + `approvals.tasks.generated` + `/sdd-verify-phase-gate` VERIFIED | Set `ready_for_implementation: true` → **end orchestration (do not dispatch `/sdd-impl`)** |
-| 仕様一式 (S) | all three `approvals.*.generated` + sanity review (or unified validates GO) | Set `ready_for_implementation: true` → **end orchestration** |
+| 仕様一式 (S) | `brief-grill.md` READY + all three `approvals.*.generated` + sanity review (or unified validates GO) | Set `ready_for_implementation: true` → **end orchestration** |
 
 Requirements validate: single `/sdd-validate-requirements` (unified). Design validate: single `/sdd-validate-design-qa` (unified).
 
@@ -83,10 +83,10 @@ Emit one copy-friendly block. Language follows the spec (default ja). Distinct f
 2. **feature** — `<feature>`
 3. **次にやること** — 成果物を確認する。問題があれば**このチャット**で修正指示。問題がなければ **同じ Git checkout** の新しいチャットで `/sdd-orchestrate <feature>`
 4. **routing が選ぶ次フロー**:
-   - 要求終了後 → 設計フェーズ。Optional (not dispatched): `/sdd-req-grill <feature>` after `requirements.md` is on disk and before that next `/sdd-orchestrate`
+   - 要求終了後 → 設計フェーズ
    - 設計終了後 → タスク生成
 5. **読む成果物**（パス列挙）
-6. **残リスク 1〜3 行** — 当該 unified review の受容残リスクから要約（再分析しない）
+6. **残リスク 1〜3 行** — 当該 unified review の受容残リスクから要約（再分析しない）。要求終了時は grill の `## Residual`（人間が「そのままでいい」を選んだ項目）も対象
 7. **禁止** — 「問題がない限り、このチャットの続きで次フェーズを続けないでください。次フェーズ用に新しい worktree を作らないでください」
 
 **Template:**
@@ -99,13 +99,12 @@ Emit one copy-friendly block. Language follows the spec (default ja). Distinct f
 - **feature**: <feature>
 - **次にやること**: 成果物を確認 → 問題があればこのチャットで修正指示 / 問題がなければ同じ checkout の新しいチャットで `/sdd-orchestrate <feature>`
 - **routing が選ぶ次フロー**: <設計フェーズ | タスク生成>
-- **オプション（要求終了時・ここでは実行しない）**: 設計に進む前に `/sdd-req-grill <feature>`
-  （設計終了の Handoff ではこの行を出さない）
 - **読む成果物**:
   - `docs/specs/<feature>/spec.json`
   - `docs/specs/<feature>/requirements.md`
   - `docs/specs/<feature>/reviews/requirements-review.md`
-  - （要求終了時・あれば）`docs/specs/<feature>/brief.md`
+  - （要求終了時）`docs/specs/<feature>/req-grill.md`（`## AI Answers` = AI が根拠付きで転記した回答）
+  - （要求終了時・あれば）`docs/specs/<feature>/brief.md` / `docs/specs/<feature>/brief-grill.md`
   - （設計終了時）`docs/specs/<feature>/design.md`
   - （設計終了時）`docs/specs/<feature>/reviews/design-review.md`
   - （設計終了時・あれば）`docs/specs/<feature>/research.md`
@@ -115,12 +114,29 @@ Emit one copy-friendly block. Language follows the spec (default ja). Distinct f
 ```
 ````
 
+### Grill 待ち（要求新規作成 entry / 要求ブロック内の停止）
+
+When a grill returns `GRILL: WAITING` (brief-grill at 要求新規作成 entry for any tier, or either grill in the 要求ブロック), the human chose 「持ち帰る」 on at least one item. Stop the block; this is **not** a Phase terminal and not a Phase Handoff.
+
+Emit (language follows the spec, default ja):
+
+```markdown
+## Grill 待ち
+
+- **feature**: <feature>
+- **止まった段**: <brief-grill | req-grill>
+- **持ち帰り事項**: `docs/specs/<feature>/<brief-grill|req-grill>.md` の `## DEFERRED`（番号・確認先・候補を 1 行ずつ転記）
+- **次にやること**: 確認がついたら同じ checkout で `/sdd-orchestrate <feature>`（同じチャットでも新しいチャットでもよい）。持ち帰った項目から選択肢で再度聞く。成果物に直接書いてもよい
+- **まだ不可**: brief-grill で止まった場合はティア判定と requirements 生成（S の quick-path も含む）。req-grill で止まった場合は設計フェーズ
+```
+
 ### Exceptions（切断しない）
 
 | ケース | 振る舞い |
 |--------|----------|
-| **S / quick-path** | 1 dispatch で要求+設計+タスク → Terminal auto-approve。Phase terminal なし |
+| **S / quick-path** | brief-grill → 1 dispatch で要求+設計+タスク → Terminal auto-approve。Phase terminal なし |
 | **フェーズ内**（生成 → validate → 機械ゲート前の修正往復） | **同一会話のまま** |
+| **要求ブロック内**（brief-grill → spec-requirements → validate → req-grill と、その収束ループ・人間への持ち帰り質問） | **同一会話のまま** |
 | **Phase Handoff 後の修正指示** | **同一会話のまま**（次フェーズへは進まない） |
 | **validate NO-GO → rollback 再生成** | 同一フェーズ内。切らない |
 
@@ -140,6 +156,7 @@ After mechanical readiness (below), the orchestrator **auto-approves**:
 5. End orchestration (do **not** dispatch `/sdd-impl`). After the PR Summary fence, emit the chat-only next-step line from § [AUTO] 仕様一式.
 
 **S — after quick-path:**
+0. `brief-grill.md` is `VERDICT: READY` (run at 要求新規作成 entry, before tier scoring)
 1. `/sdd-spec-quick --auto --from-orchestrate` succeeded; all three `approvals.*.generated === true`
 2. Sanity review (and optional unified validates) GO as required by quick-path contract
 3. **[調整者]** set `ready_for_implementation: true`, `phase: tasks-approved`
