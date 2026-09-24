@@ -194,5 +194,5 @@ Review and approve as Source of Truth.
 - "Golden Rule": New code following patterns shouldn't require steering updates
 - Avoid documenting agent-specific tooling directories (e.g. `.agents/`, `.cursor/`, `.gemini/`, `.claude/`)
 - `docs/settings/` content should NOT be documented in steering files (settings are metadata, not project knowledge)
-- Light references to `docs/specs/` and `docs/steering/` are acceptable; avoid other `.kiro/` directories
+- Light references to `docs/specs/` and `docs/steering/` are acceptable; avoid tool-metadata directories
 - Weekly batch: one `/sdd-steering` run can cover Extended Sync → retention → confirmed spec cleanup

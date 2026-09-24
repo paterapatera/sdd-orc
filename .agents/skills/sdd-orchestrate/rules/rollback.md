@@ -6,8 +6,6 @@ On `NO-GO` / `REJECTED`, roll back to the **generating step** for the failed che
 | ------------ | ----------- | ----------- |
 | `/sdd-validate-requirements` (unified) | `/sdd-spec-requirements`; if Findings names `grill` → `/sdd-grill <feature> req` (the finding is an intent / scope decision for the human); if Findings names `po`/`qa`/`sec` → fix `requirements.md` then `--only` that pass or full re-run | Re-evaluate the 要求ブロック entry table (`flows.md`): edits to `requirements.md` re-run the req grill in resume mode, then `/sdd-validate-requirements` |
 | `/sdd-validate-design-qa` (unified) | `/sdd-spec-design`; if Findings names `qa`/`arch`/`sec` → fix `design.md` then `--only` that pass or full re-run; if Findings names a requirements defect → `/sdd-spec-requirements` (apply 要求 rollback-depth rule) | `/sdd-validate-design-qa`; requirements cause → `/sdd-validate-requirements` → design chain |
-| `/sdd-impl` task review | that task's implementation | `/sdd-review` |
-| `/sdd-validate-impl` | causing task or design | task → `/sdd-impl`; design cause → `/sdd-spec-design` onward |
 
 ## Phase gate failures (unified inline Phase Gate or タスクゲート)
 
@@ -29,6 +27,7 @@ On `NOT_VERIFIED`, parse Phase Gate `CHECKS` (`../sdd-validate-shared/phase-gate
 | `tasks` | `approvals.tasks.generated !== true` | `/sdd-spec-tasks` | タスクゲート |
 | `tasks` | `ready_for_implementation === true` while re-gating tasks | **[調整者]** set `ready_for_implementation: false` | タスクゲート |
 | `tasks` | `_Blocked:_` tasks present | stop — report user | resolve blockers before re-gate |
+| `tasks` | `source_sha256.design_at_tasks` missing or ≠ `sha256(design.md)` | `/sdd-spec-tasks` | タスクゲート |
 
 ## Generation stops
 

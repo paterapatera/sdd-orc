@@ -1,6 +1,7 @@
 ---
 name: sdd-review
 description: Review a batch or task implementation against approved specs, task boundaries, and verification evidence. Use after an implementer finishes a batch/selection, after remediation, or before the completion gate that marks tasks [x].
+disable-model-invocation: true
 ---
 
 # sdd-review

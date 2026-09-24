@@ -76,16 +76,16 @@ Output the investigation prompt in Japanese.
 
 ---
 
-## Example (gijirec / fix-release-transcribe)
+## Example (release CLI prints nothing)
 
 ### Input
 
 ```
-Feature: fix-release-transcribe
-Symptom: no transcription on release manual smoke
-Environment: Windows, dev OK, release + --log NG
-Logs: enters transcribing but no UI blocks; CPU ~0%
-Related docs: docs/specs/fix-release-transcribe/smoke-checklist.md
+Feature: export-report
+Symptom: release build exits 0 and writes an empty report
+Environment: dev OK, release NG
+Logs: startup line present, no error, output file is 0 bytes
+Related docs: docs/specs/export-report/smoke-checklist.md
 Constraints: no code first, one hypothesis at a time
 ```
 
@@ -94,18 +94,18 @@ Constraints: no code first, one hypothesis at a time
 ```
 /sdd-debug を実行し、Phase 0（コード変更禁止）から始めてください。
 
-fix-release-transcribe の release 手動確認で文字起こしされない。
+export-report の release ビルドは終了コード 0 だが、出力ファイルが空。
 
 まずコードは変えず、次を順に出して:
 
 1. 症状分類（機能しない / エラー / 遅い・品質悪い）— ログから主分類を1つ決める
-2. dev vs release の差分表（ModelStore パス、setup/inject 順、モデルロード開始タイミング、block-appended ACL、TranscribeStallWatchdog 配線、worker 致命エラー surface、cmake/whisper /O2 フラグ）— 各行 SAME/DIFFERS/UNKNOWN
-3. 貼った --log の信号チェックリスト（loading_model→ready→transcribing、whisper engine ready、inference_latency、block-appended、INFERENCE_FAILED/stall、モデルファイル存在とサイズ）— PASS/FAIL/MISSING
-4. 上記から最も有力な仮説1つ（CONFIDENCE 付き）と、次に1つだけ試す確認手順（リポジトリ grep / ファイル存在 / ビルドログの /O2 確認など）
+2. dev vs release の差分表（設定パス、起動順、出力先、最適化フラグ）— 各行 SAME/DIFFERS/UNKNOWN
+3. ログの信号チェックリスト（起動、入力の読込、出力の書込、エラー行）— PASS/FAIL/MISSING
+4. 上記から最も有力な仮説1つ（CONFIDENCE 付き）と、次に1つだけ試す確認手順
 5. このラウンド終了時にユーザーへ求める追加情報（最大5項目）
 
 修正は CONFIDENCE: HIGH になってから。
-各修正後は release ビルドで30秒マイク入力スモーク（10秒以内に最初のブロックが出ること）を実行し、信号チェックリストを再評価する。unit test / verify だけでは完了としない。
+各修正後は release ビルドで同じ入力のスモークを実行し、信号チェックリストを再評価する。ユニットテストだけでは完了としない。
 ```
 
 ---

@@ -109,7 +109,7 @@ After resolving the active flow (`routing.md` § Entry Contract). On 要求新�
 
 These are different decisions. Writing `complexity_tier` at orchestration entry keeps them aligned; do not assume “missing → L” forces impl `strict`.
 
-## Link to `/sdd-spec-design` discovery (improvement 08)
+## Link to `/sdd-spec-design` discovery
 
 When `/sdd-spec-design` classifies scope scale, prefer `complexity_tier` over brief heuristics:
 

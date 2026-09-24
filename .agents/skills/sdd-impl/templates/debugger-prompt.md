@@ -22,34 +22,29 @@ You are a fresh debug investigator with NO prior context about implementation at
 
 ## Method
 
+Follow `sdd-debug` Phase 0 before any fix plan. You have no user in this dispatch. Do not end with questions for the user.
+
+0. **Phase 0** — one symptom class (`NON_FUNCTIONAL`, `ERROR_SURFACE`, or `DEGRADED`), an env-diff table, a signal checklist, and one hypothesis. No source edits. If `CONFIDENCE` is `LOW` or `MEDIUM`, set `FIX_PLAN` to `none until CONFIDENCE HIGH` and `NEXT_ACTION: BLOCK_TASK` (the rest of the queue can continue) or `STOP_FOR_HUMAN` when the missing evidence is a product decision or an environment you cannot inspect. Do not return `RETRY_TASK` below `HIGH`.
 1. **Read the error carefully** — extract the exact error message, stack trace, and failure location
 2. **Search the web** if available — search the exact error message, the technology + symptom combination, and official documentation
-   - e.g., `site:electronjs.org "Cannot find module"`, `better-sqlite3 electron ABI mismatch`
-   - Check GitHub Issues for the specific package/framework version
-3. **Inspect the runtime environment** — check package.json (dependencies, scripts, main/module fields), build config, tsconfig, and any runtime-specific configuration
-4. **Classify the root cause**:
-   - **Missing dependency**: A required package is not installed or not configured
-   - **Runtime mismatch**: Code works in one runtime (e.g., Node.js) but not the target (e.g., Electron, browser, Lambda)
-   - **Module format conflict**: ESM vs CJS incompatibility
-   - **Native module ABI**: Binary compiled for wrong runtime/version
-   - **Configuration gap**: Missing entry point, build output format, or runtime flags
-   - **Logic error**: Actual bug in the implementation
-   - **Spec conflict**: Requirements or design (from Spec Excerpts) contradicts what's technically possible
-   - **External dependency**: Requires human decision, external API access, or hardware
-5. **Determine if repo-fixable** — can this be resolved by editing files, adding dependencies, or changing configuration within this repository?
+3. **Inspect the runtime environment** — check the project manifest, build config, and runtime config
+4. **Classify the root cause** using exactly one of: `MISSING_DEPENDENCY`, `RUNTIME_MISMATCH`, `MODULE_FORMAT`, `NATIVE_ABI`, `CONFIG_GAP`, `LOGIC_ERROR`, `TASK_ORDERING_PROBLEM`, `TASK_DECOMPOSITION_PROBLEM`, `SPEC_CONFLICT`, `EXTERNAL_DEPENDENCY`
+5. **Determine if repo-fixable** — can this be resolved by editing files, adding dependencies, or changing configuration within this repository and the approved task plan?
+
+`TASK_ORDERING_PROBLEM` or `TASK_DECOMPOSITION_PROBLEM` → `NEXT_ACTION: STOP_FOR_HUMAN`. Do not patch around a bad task split.
 
 Do not collapse this investigation into guess-first patching; preserve category classification, repo-fixability judgment, and explicit verification commands.
 
 ## Critical Rule
 
-Use `NEXT_ACTION: STOP_FOR_HUMAN` only when the fix genuinely requires something outside the repository or the approved task plan is no longer safe to continue. If the fix is adding a dependency, changing a config file, or restructuring code inside the current task plan, prefer `NEXT_ACTION: RETRY_TASK`.
+Use `NEXT_ACTION: RETRY_TASK` only when `CONFIDENCE` is `HIGH` and the fix is inside the current task plan (a dependency, a config file, or a code change). Use `STOP_FOR_HUMAN` when the fix needs something outside the repository or the approved plan is no longer safe. Use `BLOCK_TASK` when this task should stop and the rest of the queue can continue.
 
 ## Output
 
 ```
 ## Debug Report
 - ROOT_CAUSE: <1-2 sentence description of the fundamental issue>
-- CATEGORY: MISSING_DEPENDENCY | RUNTIME_MISMATCH | MODULE_FORMAT | NATIVE_ABI | CONFIG_GAP | LOGIC_ERROR | SPEC_CONFLICT | EXTERNAL_DEPENDENCY
+- CATEGORY: MISSING_DEPENDENCY | RUNTIME_MISMATCH | MODULE_FORMAT | NATIVE_ABI | CONFIG_GAP | LOGIC_ERROR | TASK_ORDERING_PROBLEM | TASK_DECOMPOSITION_PROBLEM | SPEC_CONFLICT | EXTERNAL_DEPENDENCY
 - FIX_PLAN:
   1. <specific action with file path>
   2. <specific action with file path>

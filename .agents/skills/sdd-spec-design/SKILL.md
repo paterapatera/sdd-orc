@@ -261,6 +261,7 @@ After all findings return, synthesize in main context before proceeding.
 2. **Update Metadata** in spec.json:
    - Set `phase: "design-generated"`
    - Set `approvals.design.generated: true`
+   - Set `source_sha256.requirements_at_design` to `sha256sum` of `requirements.md` (create `source_sha256` if missing; do not remove other keys)
    - Update `updated_at` timestamp
 
 ## Critical Constraints

@@ -32,6 +32,8 @@ For each step in the active flow:
 
 **Dispatch = read by path.** The phase skills (`sdd-grill`, `sdd-spec-requirements`, `sdd-spec-quick`, `sdd-spec-design`, `sdd-spec-tasks`, `sdd-validate-requirements`, `sdd-validate-design-qa`, `sdd-spec-status`) are orchestrator-only and set `disable-model-invocation`. `/sdd-<skill> <feature> [args]` in these rules means: read `../sdd-<skill>/SKILL.md` and run it with those arguments. They never ask the human directly (the grill asks only through its choice UI) and return one result line to the orchestrator.
 
+**Validate isolation.** Run `/sdd-validate-requirements` and `/sdd-validate-design-qa` in a **fresh subagent**. Pass only the feature name, optional `--only`, and the skill path. Do not pass the generation chat, grill reasoning, or draft notes. The subagent writes the review file; this context parses `VERDICT:` and Phase Gate `STATUS:` from that file only. If the host cannot spawn a subagent, run the skill here, and do not treat generation-time assumptions as evidence.
+
 **When `complexity_tier === "S"` and flow is 要求新規作成 (quick-path):**
 
 1. **[調整者]** Upstream dependency guard

@@ -14,10 +14,10 @@ Run only from `/sdd-orchestrate` (`rules/routing.md` § Modification Guard / § 
 <instructions>
 ## Step 1: Load Spec Context
 
-- `docs/specs/$1/spec.json` (metadata, phase, approvals, `ready_for_implementation`, `complexity_tier`)
+- `docs/specs/$1/spec.json` (metadata, phase, approvals, `ready_for_implementation`, `complexity_tier`, `source_sha256`, `quick_sanity`)
 - List `docs/specs/$1/` for available files
 - `brief.md`, `requirements.md`, `design.md`, `tasks.md` if they exist
-- `brief-grill.md`, `req-grill.md` headers (`VERDICT:`, `Target SHA256`) and `reviews/*-review.md` (`VERDICT:`, Phase Gate `STATUS:`) if they exist
+- `brief-grill.md`, `req-grill.md` headers (`VERDICT:`, `Target SHA256`) and `reviews/*-review.md` (`VERDICT:`, Phase Gate `STATUS:`, `Requirements SHA256`, `Design SHA256`) if they exist
 - `docs/steering/roadmap.md` if it exists and lists this spec
 
 ## Step 2: Analyze
@@ -46,6 +46,9 @@ In the spec language:
 - GATES: brief-grill=<verdict|stale|none> req-grill=<…> requirements-review=<verdict/status|none> design-review=<…>
 - TASKS: done=<n> open=<n> blocked=<n> (none when no tasks.md)
 - IMPLEMENTATION_COMPLETE: yes | no  (yes = tasks.md exists, all [x], no _Blocked:_)
+- SOURCE_SHA256: requirements_at_design=<value|missing> design_at_tasks=<value|missing>
+- DESIGN_REVIEW_HASHES: requirements=<value|missing> design=<value|missing>
+- QUICK_SANITY: passed | follow_up | missing
 - MISSING_FILES: <list>
 - BOUNDARY: <upstream/downstream, out-of-boundary, allowed dependencies — short>
 - REVALIDATION_WATCHLIST: <short list or none>

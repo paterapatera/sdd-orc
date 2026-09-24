@@ -76,7 +76,7 @@ If `--only qa|arch|sec`: run only that specialist sub-pass, then write `design-r
 
 Skip when `--only qa|arch|sec` (unless `--only final`).
 
-4. Read `rules/design-synthesis.md`.
+4. Read `rules/design-final-gate.md`.
 5. **Reflection verification** — Verify all Reflected Fixes from Pass A against `design.md`; cross-check Decisions (synthesis § Step 1). Prefer in-memory Pass A notes.
 6. **Gap-domain audit** — all 8 domains per synthesis § Step 2.
 7. **Self-repair** — Minor / unambiguous Major in **non-specialist** domains only (synthesis § Step 4). Specialist-domain defects → `VERDICT: NO-GO` with rollback target — do **not** self-repair specialist domains here.
@@ -84,7 +84,7 @@ Skip when `--only qa|arch|sec` (unless `--only final`).
 
 ### Pass C — Write outputs
 
-9. Write **only** `docs/specs/$1/reviews/design-review.md` (format below).
+9. Write **only** `docs/specs/$1/reviews/design-review.md` (format below). Set `Requirements SHA256` from `requirements.md`, and `Design SHA256` from `design.md` after the last edit (`sha256sum`). A missing hash makes the review not fresh (`../sdd-orchestrate/rules/routing.md` § Artifact Freshness).
 10. Do **NOT** write separate per-specialist report files.
 
 ### Verdict
@@ -98,6 +98,8 @@ Skip when `--only qa|arch|sec` (unless `--only final`).
 ```markdown
 ## Verdict
 - VERDICT: GO
+- Requirements SHA256: <sha256sum of requirements.md>
+- Design SHA256: <sha256sum of design.md after the last edit>
 
 ## Summary
 ...

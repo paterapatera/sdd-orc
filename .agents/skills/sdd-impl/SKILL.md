@@ -1,6 +1,11 @@
 ---
 name: sdd-impl
-description: Implement tasks using TDD with subagent dispatch. Requires `ready_for_implementation: true`. Autonomous runs dispatch packed batches of consecutive majors (skinny majors combined; not one implementer per `N.M`). Manual selection still uses the given task ids. Target spec is the required first argument.
+description: >-
+  Implement tasks using TDD with subagent dispatch. Requires
+  ready_for_implementation true in spec.json. Autonomous runs dispatch packed
+  batches of consecutive majors (skinny majors combined; not one implementer
+  per N.M). Manual selection still uses the given task ids. Target spec is
+  the required first argument.
 disable-model-invocation: true
 ---
 
@@ -16,7 +21,7 @@ You operate with two layers of mode:
 
 **Execution mode** (from `complexity_tier` / task-count / user override — see Step 2):
 - **`direct`**: Parent (or a single agent) implements sequentially; reviewer once at selection/feature end — do not spawn per-task implementer×reviewer pairs
-- **`wave`**: Default for tier M — parent is controller only (does not implement the batch); one implementer per **packed batch** of consecutive majors (skinny majors combined), sticky on happy path, two-tier review per batch; `(P)` may run ready un-packed majors concurrently
+- **`wave`**: Default for tier M — parent is controller only (does not implement the batch); one implementer per **packed batch** of consecutive majors (skinny majors combined), sticky on happy path, two-tier review per batch; `(P)` may run ready un-packed majors concurrently only in separate worktrees; otherwise those majors are serial
 - **`strict`**: Tier L / user-forced — same as `wave`, plus Integration/Validation majors stay solo and split a packed batch earlier when excerpts/change-set are tight; failure-path fresh agents stay mandatory
 
 - **Success Criteria**:
@@ -54,8 +59,9 @@ Examples: `/sdd-impl 001-login` (autonomous); `/sdd-impl 001-login 1.1,1.2` (man
 
 ## Step 1: Gather Context
 
-If steering/spec context is already available from conversation, skip redundant file reads.
-Otherwise, load all necessary context:
+Re-read `spec.json` and `tasks.md` from disk at the start of the run and at each batch iteration. Chat memory is not the spec. Other spec files are loaded as excerpts for the current batch, not as a full-file dump carried forward.
+
+Load:
 - `docs/specs/{feature}/spec.json`, `requirements.md`, `design.md`, `tasks.md`
 - Core steering context: `product.md`, `tech.md`, `structure.md`
 - Additional steering files only when directly relevant to the selected task's boundary, runtime prerequisites, integrations, domain rules, security/performance constraints, or team conventions that affect implementation or validation
@@ -144,7 +150,7 @@ Do **not** reinvent tier scoring. Prefer `spec.json` `complexity_tier` written b
 | Mode | When (default) | Behavior |
 |------|----------------|----------|
 | `direct` | tier **S**, or executable sub-tasks ≤ 3, or manual invocation | Parent (or single agent) implements sequentially. No per-task fresh implementer×reviewer pairs. Reviewer **once** at selection end (manual) or after all pending tasks / feature end (autonomous `direct`). Then deferred `sdd-verify-completion` + Step 4 validate. |
-| `wave` | tier **M**, or missing-tier with 4–12 tasks | **Packed-batch** dispatch: parent is controller only (does not implement the batch); one implementer per packed batch of consecutive majors (skinny majors combined, ceiling 4 executable tasks), sticky happy path, parent mechanical + judgment reviewer per batch; `(P)` parallel across ready un-packed majors when the contract holds. |
+| `wave` | tier **M**, or missing-tier with 4–12 tasks | **Packed-batch** dispatch: parent is controller only (does not implement the batch); one implementer per packed batch of consecutive majors (skinny majors combined, ceiling 4 executable tasks), sticky happy path, parent mechanical + judgment reviewer per batch; `(P)` parallel across ready un-packed majors only when each major has its own worktree. |
 | `strict` | tier **L**, or missing-tier with \> 12 tasks, or user「strict」 | Same as `wave`, plus: Integration / Validation **majors** stay solo (do not pack them with other work, and do not parallel them with implementation majors); split a packed batch earlier when change-set or Spec Excerpts budget is tight. Failure-path **fresh** debugger / post-debug implementer stays mandatory (unchanged). Terminal validate unchanged. |
 
 ## Step 3: Execute Implementation
@@ -186,11 +192,11 @@ If execution mode is **`direct`**, use **Manual Mode** below (even when invocati
 - **Non-overlapping change paths**: planned paths inferred from File Structure / `_Boundary:_` / task bodies do not overlap
 - **Marker**: the major itself is marked `(P)`, **or** every remaining executable child under the major is marked `(P)`
 
-**Parallel dispatch**: When multiple incomplete majors are dependency-ready, `(P)`-eligible, and pass the conditions above, **do not pack them together**. The parent may dispatch those **major batches** concurrently (one implementer per such major). Packed serial batches (non-`(P)` or failed contract) still use one implementer for the packed set. If any condition fails or collision risk is unclear → fall back to **serial** (lowest ready packed batch first). Never unconditional parallel that ignores path/Depends conflicts. Never split a major into parallel implementers just because its children have `(P)`.
+**Parallel dispatch**: When multiple incomplete majors are dependency-ready, `(P)`-eligible, and pass the conditions above, **do not pack them together**. Concurrent dispatch is allowed only when **each major has its own git worktree**. The same worktree shares uncommitted files, so one major's tests and boundary check would see the other's edits. Without a worktree per major, run those majors **serially** (lowest ready major first). That still honors the contract; `(P)` is not informational-only. Packed serial batches still use one implementer. If any condition fails or collision risk is unclear → serial. Never unconditional parallel that ignores path/Depends conflicts. Never split a major into parallel implementers just because its children have `(P)`.
 
 **Merge / commit under parallel**: Parent still owns commits. Prefer selective staging per completed packed batch / parallel major, committing in major-number order or completion order. On git conflict or overlapping staged paths → **stop and escalate to human**; do not force-merge or `git add -A`.
 
-**Iteration discipline**: Default is ONE packed batch per iteration (form packed batch → one implementer → parent mechanical checks → (pass) one batch reviewer → commit → re-read tasks.md → next packed batch). When the `(P)` execution contract allows parallel majors, one iteration may run multiple such un-packed major cycles concurrently; each of those majors still gets its own implementer → mechanical → reviewer → selective commit. After any parallel set finishes (or aborts on conflict), re-read `tasks.md` before forming the next set.
+**Iteration discipline**: Default is ONE packed batch per iteration (form packed batch → one implementer → parent mechanical checks → (pass) one batch reviewer → commit → re-read tasks.md → next packed batch). Concurrent `(P)` majors in one iteration require one worktree per major. Otherwise one serial major per iteration. Each major still gets its own implementer → mechanical → reviewer → selective commit. After any parallel set finishes (or aborts on conflict), re-read `tasks.md` before forming the next set.
 
 **Context management** (parent vs implementer — keep these distinct):
 - **Parent controller**: At the start of each iteration, re-read `tasks.md` and determine the next **packed batch** (or parallel-ready `(P)` major set) as ordered task-ID list(s), which may span consecutive majors. Do NOT rely on accumulated memory of previous iterations for batch selection. After completing each iteration, the parent may discard verbose status/reviewer reports and retain only a one-line summary per batch (e.g., "majors 1–3 [1.1, 2.1, 3.1]: APPROVED, 5 files changed").
@@ -284,7 +290,7 @@ After the implementer returns `READY_FOR_REVIEW`, the parent controller runs the
 1. **Regression**: Run the parent-held `TEST_COMMANDS` (task-relevant subset is allowed). Record each command, exit code, and a short pass/fail summary.
 2. **TBD/TODO/FIXME**: Grep changed files for `TBD|TODO|FIXME|HACK|XXX` (same intent as the reviewer template). Record CLEAN or match count / samples.
 3. **Secrets**: Grep changed files for hardcoded secret patterns (e.g. `password=`, `api_key=`, `secret=`, `token=`, case-insensitive). Record CLEAN or match count / samples.
-4. **Boundary**: Run `git diff --name-only` and compare against every `_Boundary:_` in the batch. Record WITHIN or files outside boundary.
+4. **Boundary**: Compare this batch only. Record `git status --porcelain` immediately before the implementer starts, then treat as this batch's files the implementer's `FILES_CHANGED` plus paths that differ from that baseline. Do not count files another in-flight batch dirtied. Compare those paths against every `_Boundary:_` in the batch. Record WITHIN or files outside boundary.
 5. **RED phase**: For behavioral tasks in the batch, confirm the implementer Status Report includes non-empty `RED_PHASE_OUTPUT` (required whether `FEATURE_FLAG` is `required` or `skipped`). Record VERIFIED | MISSING | N/A.
 
 **If any mechanical check FAILs**:
@@ -332,7 +338,7 @@ Evidence for this gate:
 - Stage only the files actually changed for this batch, plus tasks.md
 - **NEVER** use `git add -A` or `git add .`
 - Use `git add <file1> <file2> ...` with explicit file paths
-- Commit message format: `feat(<feature-name>): <batch summary spanning majors and task IDs>`
+- Commit message: Conventional Commits. Pick the type from the batch: `feat` for new behavior, `fix` for a defect, `refactor` when behavior stays the same, `test` for test-only, `docs` for docs-only, `chore` otherwise. The description follows `spec.json` `language` (`ja` → Japanese). Form: `type(<feature-name>): <summary spanning majors and task IDs>`
 
 **g) Record learnings**:
 - If this batch revealed cross-cutting insights, append a one-line note to the `## Implementation Notes` section at the bottom of tasks.md
@@ -450,7 +456,7 @@ If `tasks.md` or design excerpts require a flag → `required`.
 - **Strict Handoff Parsing**: Never infer implementer `STATUS` or reviewer `VERDICT` from surrounding prose; only the exact structured fields count
 - **Parent Spec Excerpts**: Before each packed-batch dispatch, inject `## Spec Excerpts (authoritative for this batch)` with `### Requirements`, `### Design`, and when related `### Contracts (authoritative for touched surfaces)`; if combined excerpts exceed ~250–400 lines, split the packed batch (prefer between majors). Under `direct`, apply the same excerpt discipline in-context (do not full-file dump). Do not make full-file Read of requirements/design/architecture the default for subagents. Do not split design into multi-file layouts under this skill.
 - **Contract Drift**: Detect from Contracts excerpts + related contracts + executable contracts (not architecture full Read). On drift: align code or update contracts intentionally; register new contract/ADR paths in the corresponding README Entries; report `CONTRACTS_UPDATED: <paths>` in the implementer Status Report; stage those paths with the batch commit. Do not rewrite unrelated contracts.
-- **`(P)` Execution Contract**: `(P)` authorizes conditional parallel **major** dispatch when boundaries, Depends, and paths are disjoint; otherwise serial (and consecutive skinny serial majors may pack). Never treat `(P)` as informational-only. Never pack `(P)`-eligible different-boundary peers into one implementer. Never split a major into parallel implementers for its `(P)` children. On merge conflict under parallel → stop for human. Applies to `wave` / `strict` only.
+- **`(P)` Execution Contract**: `(P)` authorizes conditional parallel **major** dispatch when boundaries, Depends, and paths are disjoint **and each major has its own worktree**; otherwise serial (and consecutive skinny serial majors may pack). Never treat `(P)` as informational-only. Never pack `(P)`-eligible different-boundary peers into one implementer. Never run two implementers in the same worktree. Never split a major into parallel implementers for its `(P)` children. On merge conflict under parallel → stop for human. Applies to `wave` / `strict` only.
 - **Sticky on Happy Path**: Under `wave` / `strict`, after APPROVED prefer sticky / resume (or pseudo-sticky fallback) for the next **packed batch**; do not treat unconditional fresh implementer as required on the success path. Under parallel majors, sticky applies per-major lineage, not across concurrent majors
 - **Fresh on Failure / Debug**: Under `wave` / `strict` (including `strict` / tier L): debugger is always fresh; implementer after debug RETRY is always fresh; max 2 debug rounds unchanged
 - **Deferred Verify-Completion**: Call `sdd-verify-completion` once per batch (or once per `direct`/manual selection) immediately before marking tasks `[x]`, plus once at feature end for `FEATURE_GO`. Do not require it after every APPROVED, every sub-task checkbox, or every remediation. Subagent self-reports are never sufficient evidence alone.

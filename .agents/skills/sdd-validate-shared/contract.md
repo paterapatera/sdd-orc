@@ -6,6 +6,7 @@ All `/sdd-validate-*` skills in the AI-DLC flow share this contract. Read once p
 
 - Do **not** ask the user questions during validate.
 - Resolve ambiguity with reasonable assumptions; record them in `## Decisions`.
+- Intent, scope, actor identity, and acceptance bars are not reasonable assumptions. Requirements validate returns `NO-GO` and names rollback target `grill` instead of writing a guess into `requirements.md`. Design validate does not invent requirement intent; it returns `NO-GO` back to the requirements phase.
 - If assumptions cannot be made safely → `VERDICT: NO-GO` or `MANUAL_VERIFY_REQUIRED`.
 - Use the language specified in `spec.json`.
 

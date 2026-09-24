@@ -3,6 +3,7 @@ name: sdd-debug
 description: Investigate implementation failures using root-cause-first debugging. Phase 0 triage (no code changes) before root-cause analysis. Use when blocked, verification fails, manual smoke fails, or repeated remediation does not converge.
 metadata:
   shared-rules: "investigation-prompt-template.md"
+disable-model-invocation: true
 ---
 
 # sdd-debug
@@ -73,9 +74,9 @@ Classify into exactly one primary bucket (secondary allowed in NOTES):
 
 | Class | Meaning | Examples |
 |-------|---------|----------|
-| `NON_FUNCTIONAL` | Pipeline runs but user-visible outcome missing | No transcript blocks, no UI update |
-| `ERROR_SURFACE` | User sees error toast / dialog / crash | "Restart required", INFERENCE_FAILED |
-| `DEGRADED` | Works but slow, wrong quality, or partial | 10 min latency, garbage text, mic OK / speaker bad |
+| `NON_FUNCTIONAL` | The command or pipeline finishes, but the expected output is missing | Exit 0 with an empty result file, no UI update |
+| `ERROR_SURFACE` | The user sees an error, a crash, or a non-zero failure | Dialog, stack trace, process abort |
+| `DEGRADED` | It runs, but the result is wrong, partial, or far above the latency bar | Truncated output, wrong value, multi-minute stall |
 
 If classes mixed across rounds, state which class this round targets first.
 
@@ -96,7 +97,7 @@ Typical row categories (include only what applies):
 - Startup / injection order (setup, inject, load thread)
 - IPC / events (ACL, listen permissions, event names)
 - Watchdogs / timeouts / error propagation
-- Native build flags (e.g. cmake optimization)
+- Native build flags (compiler optimization, cgo, or equivalent)
 - External dependencies (device, permissions, network)
 
 Mark each row: `SAME` | `DIFFERS` | `UNKNOWN` (UNKNOWN must have a single check to resolve it).
@@ -130,7 +131,7 @@ LOW/MEDIUM: run `NEXT_CHECK` only; return Phase 0 summary and request more evide
 
 #### 0.5 User follow-ups
 
-End Phase 0 with up to 5 specific items for the user (log line ranges, rebuild command, file existence, Task Manager metrics, etc.).
+End Phase 0 with up to 5 specific items for the user (log line ranges, rebuild command, file existence, process metrics). When this skill runs as an impl subagent, do not ask the user: map a missing fact to `BLOCK_TASK` or `STOP_FOR_HUMAN` instead of `RETRY_TASK`.
 
 #### Phase 0 output (prepend to Debug Report)
 
@@ -222,7 +223,7 @@ After any fix (whether proposed in FIX_PLAN or applied by a follow-up implemente
 
 1. Run the feature's minimal smoke from spec checklist (or state a justified substitute).
 2. Re-run the Phase 0 signal checklist; failing signals must be listed explicitly.
-3. Do not close the debug loop on `bun run verify` (or unit tests) alone when the failure was manual/release smoke.
+3. Do not close the debug loop on the unit-test command alone when the failure was a manual or release smoke.
 
 Record smoke in `VERIFICATION` with: build command, run command, duration, input, pass/fail per signal.
 

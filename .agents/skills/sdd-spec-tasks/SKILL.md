@@ -123,6 +123,7 @@ Before writing `tasks.md`, run one lightweight independent sanity review of the 
 - Update spec.json metadata:
   - Set `phase: "tasks-generated"`
   - Set `approvals.tasks.generated: true`
+  - Set `source_sha256.design_at_tasks` to `sha256sum` of `design.md` (create `source_sha256` if missing; do not remove other keys)
   - Update `updated_at` timestamp
   - Do **not** set `ready_for_implementation`. The orchestrator sets it at Terminal auto-approve, after its タスクゲート.
 

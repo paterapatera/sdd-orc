@@ -7,8 +7,8 @@ Parse report files only — do not re-run analysis:
 | Source | Parse field |
 | ------ | ----------- |
 | `reviews/*.md` from validate skills | `VERDICT: GO` \| `NO-GO` \| `MANUAL_VERIFY_REQUIRED` |
-| `/sdd-review` | `APPROVED` \| `REJECTED` |
-| `/sdd-validate-impl` | GO/NO-GO per that skill's output |
+
+`/sdd-review` and `/sdd-validate-impl` are impl-phase skills. This orchestrator does not parse them.
 
 Report paths: see `../sdd-validate-shared/contract.md` (read only if parsing).
 
@@ -35,8 +35,9 @@ After `/sdd-spec-tasks` returns `TASKS: WRITTEN`, **before** Terminal auto-appro
 | 1 | `docs/specs/<feature>/tasks.md` exists with at least one task entry |
 | 2 | `spec.json` → `approvals.tasks.generated === true` |
 | 3 | No `_Blocked:_` tasks |
+| 4 | `spec.json` `source_sha256.design_at_tasks` equals `sha256sum` of `design.md` |
 
-All pass → `VERIFIED`. Check 1 or 2 fails → `NOT_VERIFIED`. Check 3 fails → `MANUAL_VERIFY_REQUIRED` (a blocked task needs a human decision). Report the failing checks as GAPS.
+All pass → `VERIFIED`. Check 1, 2, or 4 fails → `NOT_VERIFIED`. Check 3 fails → `MANUAL_VERIFY_REQUIRED` (a blocked task needs a human decision). Report the failing checks as GAPS. A missing `design_at_tasks` fails check 4 (legacy specs with `ready_for_implementation: true` are not re-gated; see `routing.md` § Artifact Freshness).
 
 | Result | Orchestrator action |
 | ------ | ------------------- |
@@ -163,8 +164,8 @@ After mechanical readiness (below), the orchestrator **auto-approves**:
 
 **S — after quick-path:**
 0. `brief-grill.md` is `VERDICT: READY` (run at 要求新規作成 entry, before tier scoring)
-1. `/sdd-spec-quick` returned `QUICK: DONE`; all three `approvals.*.generated === true`
-2. Its sanity review passed
+1. `/sdd-spec-quick` returned `QUICK: DONE` (disk record: `spec.json` `quick_sanity` is `passed`); all three `approvals.*.generated === true`
+2. Its sanity review passed, and tasks are fresh (`source_sha256.design_at_tasks` equals `sha256(design.md)`)
 3. **[調整者]** set `ready_for_implementation: true`, `phase: tasks-approved`
 4. Emit **PR Summary Output**
 5. End orchestration (do **not** dispatch `/sdd-impl`). After the PR Summary fence, emit the chat-only next-step line from § [AUTO] 仕様一式.

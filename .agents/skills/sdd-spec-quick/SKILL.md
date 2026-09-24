@@ -17,21 +17,25 @@ This skill does **not** set `ready_for_implementation`, emit the PR Summary, or 
 
 Print one progress line per phase (e.g. `Phase 2/3 complete: design generated`).
 
+Skip a phase only when its disk record is current. A skipped phase was not rewritten in this run.
+
 ### Phase 1: Requirements
 
-Run `../sdd-spec-requirements/SKILL.md` for `$1` (Step 0 initializes `spec.json` + stub).
+Skip when `approvals.requirements.generated === true` and `requirements.md` has no `Open question:` bullet. Otherwise run `../sdd-spec-requirements/SKILL.md` for `$1` (Step 0 initializes `spec.json` + stub).
 
 Then check `requirements.md` `## スコープ境界` for `Open question:` bullets. If any exist, the brief did not settle the requirements, so S was the wrong tier: **stop here** (do not generate design) and return `QUICK: ESCALATE_M` with the bullets. The orchestrator switches to M and continues the 要求ブロック at the req grill.
 
 ### Phase 2: Design
 
-Run `../sdd-spec-design/SKILL.md` for `$1`.
+Skip when this run skipped Phase 1, `approvals.design.generated === true`, `design.md` exists, and `spec.json` `source_sha256.requirements_at_design` equals `sha256sum` of `requirements.md`. Otherwise run `../sdd-spec-design/SKILL.md` for `$1`.
 
 ### Phase 3: Tasks
 
-Run `../sdd-spec-tasks/SKILL.md` for `$1`.
+Skip when this run skipped Phase 2, `approvals.tasks.generated === true`, and `spec.json` `source_sha256.design_at_tasks` equals `sha256sum` of `design.md`. Otherwise run `../sdd-spec-tasks/SKILL.md` for `$1`.
 
 ### Final Sanity Review
+
+Always run, including when every phase was skipped.
 
 - Review `requirements.md`, `design.md`, and `tasks.md` from disk. Use `brief.md` only as supporting context.
 - Prefer a fresh review sub-agent. Pass only file paths and the review objective; the reviewer reads the files itself. Otherwise run inline.
@@ -40,9 +44,9 @@ Run `../sdd-spec-tasks/SKILL.md` for `$1`.
   - Obvious contradictions, missing prerequisites, or missing task coverage for required design work?
   - Are `_Depends:_`, `_Boundary:_`, and `(P)` markers plausible for implementation?
 - Task-plan-local issues only → repair `tasks.md` once, then re-run the sanity review.
-- A real requirements/design gap or contradiction → return `QUICK: FOLLOW_UP` with the exact finding. Do not claim success.
+- A real requirements/design gap or contradiction → set `spec.json` `quick_sanity` to `follow_up` and return `QUICK: FOLLOW_UP` with the exact finding. Do not claim success. Do not set `ready_for_implementation`.
 
-Set `spec.json` `complexity_tier: S` if missing.
+On success, set `spec.json` `quick_sanity` to `passed` and `complexity_tier: S` if missing. Do not set `ready_for_implementation`. The orchestrator owns Terminal auto-approve (S).
 
 </instructions>
 

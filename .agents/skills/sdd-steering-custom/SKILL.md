@@ -1,6 +1,9 @@
 ---
 name: sdd-steering-custom
-description: Create custom steering documents for specialized project contexts
+description: >-
+  Create custom steering documents for specialized project contexts. Use when
+  the user asks for a custom steering file (API standards, testing, security,
+  or another domain) beyond product.md, tech.md, and structure.md.
 metadata:
   shared-rules: "steering-principles.md"
 ---
@@ -25,7 +28,7 @@ metadata:
 If steering context is already available from conversation, skip redundant file reads.
 Otherwise:
 - Check `docs/settings/templates/steering-custom/` for available templates
-- Read `rules/steering-principles.md` from this skill's directory for steering principles
+- Read `../sdd-steering/rules/steering-principles.md` (canonical principles)
 
 ## Workflow
 
@@ -42,7 +45,7 @@ Otherwise:
 #### Parallel Research
 
 The following research areas are independent and can be executed in parallel:
-1. **Template & principles**: Load matching template and steering-principles.md
+1. **Template & principles**: Load the matching template and `../sdd-steering/rules/steering-principles.md`
 2. **Domain patterns**: Analyze codebase for domain-specific patterns using Glob/Grep/Read
 
 If multi-agent is enabled, spawn sub-agents for each area above. Otherwise execute sequentially.
@@ -51,7 +54,7 @@ After all parallel research completes, synthesize findings for steering document
 
 4. **Generate custom steering**:
    - Follow template structure if available
-   - Apply principles from `rules/steering-principles.md` from this skill's directory
+   - Apply principles from `../sdd-steering/rules/steering-principles.md`
    - Focus on patterns, not exhaustive lists
    - Keep to 100-200 lines (2-3 minute read)
 
@@ -73,7 +76,7 @@ Load template when needed, customize for project.
 
 ## Steering Principles
 
-From `rules/steering-principles.md` (in this skill's directory):
+From `../sdd-steering/rules/steering-principles.md`:
 
 - **Patterns over lists**: Document patterns, not every file/component
 - **Single domain**: One topic per file
@@ -141,5 +144,5 @@ Review and customize as needed.
 - All steering files loaded as project memory
 - Custom files equally important as core files
 - Avoid documenting agent-specific tooling directories (e.g. `.agents/`, `.cursor/`, `.gemini/`, `.claude/`)
-- Light references to `docs/specs/` and `docs/steering/` are acceptable; avoid other `.kiro/` directories
+- Light references to `docs/specs/` and `docs/steering/` are acceptable; avoid tool-metadata directories
 

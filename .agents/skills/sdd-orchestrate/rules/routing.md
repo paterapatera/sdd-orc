@@ -15,16 +15,19 @@ Then continue with § Entry Contract using the resolved `<feature>`.
 
 1. **Implementation is not an orchestration flow.** 「実装のみ」「実装だけ」 (or any request to implement without spec change) → **stop**; instruct `/sdd-impl <feature>`. Do not dispatch `/sdd-impl` from this skill.
 2. **User-specified flow wins** — e.g.「要求だけ更新」「設計だけ」.
-3. **Else derive from `spec.json`** via § Spec State Hints:
-   - `brief.md` exists, no `spec.json` → **要求新規作成** (`flows.md` § 要求新規作成 entry: brief-grill for every tier → tier → M/L 要求ブロック or S `/sdd-spec-quick`)
-   - `approvals.requirements.generated` false → resume requirements / **要求更新**
-   - requirements generated but the 要求ブロック entry table still picks a step (`brief-grill.md` / `req-grill.md` missing, `WAITING`, `BLOCKED`, or stale; validate missing, NO-GO, or stale) and `complexity_tier` is not S → resume the 要求ブロック at the entry-table step. Skipped when the user explicitly asked for 設計更新
-   - requirements generated, `approvals.design.generated` false → **設計更新**
-   - design generated, `approvals.tasks.generated` false → resume task generation (`/sdd-spec-tasks` … Terminal auto-approve)
-   - `ready_for_implementation: true` → **stop** (orchestration complete). Instruct `/sdd-impl <feature>`. Spec 変更が必要なら 要求更新 / 設計更新 を明示させる。
-4. **Neither `brief.md` nor `spec.json` exists** for the target → **stop**; instruct the user to run `/sdd-discovery` first. Do **not** auto-run discovery.
+3. **Else derive from disk** via § Artifact Freshness, then § Spec State Hints. First match wins:
+   - Neither `brief.md` nor `spec.json` → **stop**; instruct `/sdd-discovery`. Do **not** auto-run discovery.
+   - `brief.md` exists, no `spec.json` → **要求新規作成** (`flows.md` § 要求新規作成 entry)
+   - `ready_for_implementation: true` and the user did not request 要求更新 / 設計更新:
+     - Design fresh **and** tasks fresh → **stop**. Instruct `/sdd-impl <feature>`.
+     - Otherwise the artifacts changed after approval. Set `ready_for_implementation: false`, then continue this list. Do not send the user to implement stale tasks.
+   - `complexity_tier` is `S` and the user did not request 要求更新 / 設計更新 / `full` → **S resume** (`flows.md` § 要求新規作成 (S) resume). Do **not** select 設計更新.
+   - The 要求ブロック entry table picks a step → resume that step. Skipped when the user explicitly asked for 設計更新.
+   - Design is not fresh → dispatch per § Artifact Freshness. A missing design is the 要求新規作成 design step (full generation), not the diff-only 設計更新 flow.
+   - Tasks are not fresh → `/sdd-spec-tasks`, then the タスクゲート. Diff-only when `tasks.md` already exists. First generation is not diff-only.
+   - All fresh and `ready_for_implementation: false` → タスクゲート, then Terminal auto-approve if `VERIFIED`
 
-**Resume (new session):** A new chat on the **same Git checkout** with `/sdd-orchestrate <feature>` means the human accepted the previous phase artifacts. Start from the next incomplete phase based on `approvals.*.generated` (same table as § Spec State Hints). If `ready_for_implementation: true` and the user did not request 要求更新 / 設計更新, stop and instruct `/sdd-impl <feature>`. Same-chat correction notes after Phase Handoff are not resume. Do not create a new worktree per phase.
+**Resume (new session):** A new chat on the **same Git checkout** with `/sdd-orchestrate <feature>` means the human accepted the previous phase artifacts. Choose the next phase from § Artifact Freshness, not from `approvals.*.generated` alone. Same-chat correction notes after Phase Handoff are not resume. Do not create a new worktree per phase.
 
 Path B (no spec) is decided by discovery **before** orchestration and never enters an orchestration flow (see `flows.md` § Path B).
 
@@ -145,20 +148,55 @@ Reference mapping from the Path that `/sdd-discovery` determined **standalone** 
 | **C** (new single spec) | 要求新規作成 |
 | **D/E** (multi / mixed) | Run per-spec flows sequentially by dependency |
 
+## Artifact Freshness
+
+`approvals.*.generated` stays true across 要求更新 / 設計更新, so it cannot tell a finished phase from a stale one. Compare hashes. A hash is `sha256sum` of the file on disk. A missing hash field never counts as a match.
+
+**Design fresh** (M/L):
+
+- `reviews/design-review.md` has `VERDICT: GO` and Phase Gate `STATUS: VERIFIED`
+- `Requirements SHA256` equals `sha256(requirements.md)`
+- `Design SHA256` equals `sha256(design.md)`
+
+**S design fresh** (tier S only; there is no `design-review.md` on the quick-path):
+
+- `spec.json` `source_sha256.requirements_at_design` equals `sha256(requirements.md)`
+
+The ready-true stop uses S design fresh when `complexity_tier` is `S`, and design fresh otherwise.
+
+**Tasks fresh:**
+
+- `approvals.tasks.generated === true`
+- `tasks.md` exists and has at least one task entry
+- `spec.json` `source_sha256.design_at_tasks` equals `sha256(design.md)`
+
+**Legacy exception:** `ready_for_implementation: true` and the hash field for that side is absent (specs written before these fields). Treat that side as fresh so a completed spec is not forced back through design. The exception does not apply when ready is false, or when the field is present and does not match.
+
+**When design is not fresh, dispatch:**
+
+| Condition | Dispatch |
+| --------- | -------- |
+| `design.md` missing, or `approvals.design.generated !== true` | Resume 要求新規作成 (M/L) at `/sdd-spec-design` (full generation, then validate). Not diff-only 設計更新. |
+| Design was generated and `Requirements SHA256` ≠ `sha256(requirements.md)` | `/sdd-spec-design` in diff mode, then `/sdd-validate-design-qa` |
+| Requirements hash matches, but the review is missing, not `VERIFIED`, or `Design SHA256` ≠ `sha256(design.md)` | `/sdd-validate-design-qa` only |
+
+S quick-path has no `design-review.md`. Its disk record is `spec.json` `quick_sanity` (`passed` or `follow_up`), written by `/sdd-spec-quick`.
+
 ## Spec State Hints
 
-Read `docs/specs/<feature>/spec.json` metadata only when routing:
+Apply § Artifact Freshness first. `approvals.*.generated` alone does not choose the next phase.
 
-| `approvals` state | Likely flow |
-| ----------------- | ----------- |
-| No spec / pre-init | 要求新規作成 (Path C+) |
-| `approvals.requirements.generated` false | 要求更新 or resume requirements phase |
-| requirements generated, 要求ブロック entry table still picks a step (M/L) | resume 要求ブロック (`flows.md` § 要求ブロック entry table) |
-| requirements generated, design not | 設計更新 or resume design phase |
-| design generated, tasks not | resume task generation (`/sdd-spec-tasks` … Terminal auto-approve) |
-| `ready_for_implementation: true` | orchestration complete — stop; `/sdd-impl <feature>` (unless user requested 要求更新 / 設計更新) |
+| Disk state | Flow |
+| ---------- | ---- |
+| No spec / `brief.md` only | 要求新規作成 |
+| `complexity_tier` S, and the user did not ask for 要求更新 / 設計更新 / `full` | S resume (`flows.md`) |
+| 要求ブロック entry table picks a step | resume 要求ブロック |
+| Design not fresh | spec-design (full if design was never generated; diff if requirements moved) or validate-only, per § Artifact Freshness |
+| Tasks not fresh | resume task generation |
+| All fresh, `ready_for_implementation: false` | タスクゲート → Terminal auto-approve |
+| All fresh, `ready_for_implementation: true` | stop; `/sdd-impl <feature>` |
 
-If orchestration was interrupted mid-flow, the next `/sdd-orchestrate <feature>` resumes from the next incomplete phase per `spec.json` `generated` flags and artifacts — artifact-only resume per `gates.md` § Resume.
+If orchestration was interrupted mid-flow, the next `/sdd-orchestrate <feature>` resumes from the first stale phase — artifact-only resume per `gates.md` § Resume.
 
 ## Execution Control
 

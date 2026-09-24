@@ -1,13 +1,14 @@
 ---
 name: sdd-validate-impl
 description: Validate feature-level integration after all tasks are implemented. Checks cross-task consistency, full test suite, and overall spec coverage.
+disable-model-invocation: true
 ---
 
 
 # Implementation Integration Validation
 
 <background_information>
-Individual tasks have already been reviewed by the per-task reviewer during implementation. Your job is to catch problems that only become visible when looking across all tasks together.
+Batches or selections have already been reviewed during implementation. Your job is to catch problems that only become visible when looking across all tasks together.
 
 Boundary terminology continuity:
 - discovery identifies `Boundary Candidates`
@@ -23,7 +24,7 @@ Boundary terminology continuity:
   - Design structure is reflected end-to-end (not just per-component)
   - No orphaned code, conflicting implementations, integration seams, or boundary spillover
 
-**What This Skill Does NOT Do**: Per-task checks are the reviewer's responsibility during `/sdd-impl`. This skill does NOT re-check individual task acceptance criteria, per-file reality checks, or single-task spec alignment.
+**What This Skill Does NOT Do**: Batch and selection review during `/sdd-impl` already covers each task. This skill does NOT re-check individual task acceptance criteria, per-file reality checks, or single-task spec alignment.
 
 This skill's main question is: when the completed tasks are viewed together, do they still respect the designed boundary seams and dependency direction?
 </background_information>
@@ -135,7 +136,7 @@ For the specified feature:
 
 ### 4. Generate Report
 
-Before returning `GO`, apply the `sdd-verify-completion` protocol to the feature-level claim. Tests alone are insufficient: include full-suite, runtime liveness, coverage, integration, design-alignment, and blocked-task status in the evidence.
+Do not run `sdd-verify-completion` here. `/sdd-impl` Step 4 runs that protocol (`FEATURE_GO`) after this skill returns `GO`. Tests alone are insufficient for the report: include full-suite, runtime liveness, coverage, integration, design-alignment, and blocked-task status in the evidence so the caller can verify.
 
 Classify concrete failures by ownership before writing remediation:
 - `LOCAL` if the defect belongs to the feature being validated

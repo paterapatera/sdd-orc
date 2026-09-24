@@ -83,14 +83,14 @@ _Precondition_: `/sdd-discovery` (Path C/D/E) already ran standalone; `brief.md`
 **Path**: full-path. 要求 / 設計は機械ゲート通過後に Phase terminal。タスクは再開後に Terminal auto-approve。
 
 **Greenfield**: Never run a standalone gap step. spec-design Step 2.0 auto-skips.
-**Brownfield**: Gap runs inside spec-design only (07).
+**Brownfield**: Gap runs inside spec-design Step 2.0 only.
 
 1. **§ 要求新規作成 entry** — upstream guard → brief-grill → tier (already done when this section is selected)
 2. **要求ブロック** (§ 要求ブロック): brief grill → `/sdd-spec-requirements` (initializes `spec.json` if missing — Step 0) → req grill → `/sdd-validate-requirements` (unified → `reviews/requirements-review.md`)
 3. **[調整者] Phase terminal (要求)** — handoff → end。同一フロー内で `/sdd-spec-design` に進まない
 ── session boundary ──（再開後のフローで実行）
 4. `/sdd-spec-design <feature>` (inline brownfield gap analysis; greenfield skips gap)
-5. `/sdd-validate-design-qa <feature>` (unified: qa+arch+sec+ex+phase-gate → `reviews/design-review.md`)
+5. `/sdd-validate-design-qa <feature>` (unified: qa+arch+sec+final+phase-gate → `reviews/design-review.md`)
 6. **[調整者] Phase terminal (設計)** — handoff → end。同一フロー内で `/sdd-spec-tasks` に進まない
 ── session boundary ──（再開後のフローで実行）
 7. `/sdd-spec-tasks <feature>`
@@ -104,7 +104,7 @@ _Precondition_: same as (L); selected when `complexity_tier` is **S** (score ≤
 **Path**: quick-path. Terminal auto-approve (S) after quick-path success.
 
 **Greenfield**: Never run a standalone gap step. spec-design Step 2.0 auto-skips.
-**Brownfield**: Gap runs inside spec-design only (07).
+**Brownfield**: Gap runs inside spec-design Step 2.0 only.
 
 1. **§ 要求新規作成 entry** — upstream guard → brief-grill → tier (already done when this section is selected). S requires `brief-grill.md` `VERDICT: READY`
 2. `/sdd-spec-quick <feature>` — generates requirements + design + tasks; runs its sanity review. Do **not** dispatch individual `spec-requirements` / `validate-*` / `spec-design` / `spec-tasks` separately.
@@ -113,6 +113,16 @@ _Precondition_: same as (L); selected when `complexity_tier` is **S** (score ≤
    - `QUICK: ESCALATE_M` — requirements left `Open question:` bullets, so the brief did not settle them. **[調整者]** set `complexity_tier: M` (rationale: 「quick-path で要求が確定せず M へ昇格」) and continue with **要求新規作成 (M)** step 2 (the 要求ブロック entry table starts at the req grill). Design and tasks were not generated
    - `QUICK: FOLLOW_UP` → stop; report the finding. Do not auto-approve
 
+### 要求新規作成 (S) resume
+
+A later `/sdd-orchestrate <feature>` with `complexity_tier: S` uses this, not 設計更新. Disk fields, not the previous chat:
+
+1. Brief grill if `brief-grill.md` is missing, not `READY`, or stale (`flows.md` § 要求新規作成 entry).
+2. `requirements.md` still has an `Open question:` bullet → set `complexity_tier: M` and continue 要求新規作成 (M) at the req grill. Same as `QUICK: ESCALATE_M`.
+3. `spec.json` `quick_sanity` is `follow_up` → stop and report. Do not auto-approve.
+4. `quick_sanity` is `passed`, all three `approvals.*.generated` are true, and tasks are fresh (`routing.md` § Artifact Freshness) → Terminal auto-approve (S). Do not re-dispatch.
+5. Otherwise dispatch `/sdd-spec-quick <feature>`. It skips phases already on disk and rewrites a phase whose source hash moved. Then apply the result line above.
+
 ## 要求新規作成 (M)
 
 _Precondition_: same as (L); selected when `complexity_tier` is **M** (score 2–4).
@@ -120,14 +130,14 @@ _Precondition_: same as (L); selected when `complexity_tier` is **M** (score 2�
 **Path**: standard-path（same as L）. 要求 / 設計は Phase terminal。タスクは再開後。
 
 **Greenfield**: Never run a standalone gap step. spec-design Step 2.0 auto-skips.
-**Brownfield**: Gap runs inside spec-design only (07).
+**Brownfield**: Gap runs inside spec-design Step 2.0 only.
 
 1. **§ 要求新規作成 entry** — upstream guard → brief-grill → tier (already done when this section is selected)
 2. **要求ブロック** (§ 要求ブロック): brief grill → `/sdd-spec-requirements` (initializes `spec.json` if missing — Step 0) → req grill → `/sdd-validate-requirements` (unified)
 3. **[調整者] Phase terminal (要求)** — handoff → end。同一フロー内で `/sdd-spec-design` に進まない
 ── session boundary ──（再開後のフローで実行）
 4. `/sdd-spec-design <feature>` (inline brownfield gap; greenfield skips)
-5. `/sdd-validate-design-qa <feature>` (unified: qa+arch+sec+ex+phase-gate)
+5. `/sdd-validate-design-qa <feature>` (unified: qa+arch+sec+final+phase-gate)
 6. **[調整者] Phase terminal (設計)** — handoff → end。同一フロー内で `/sdd-spec-tasks` に進まない
 ── session boundary ──（再開後のフローで実行）
 7. `/sdd-spec-tasks <feature>`
@@ -161,13 +171,14 @@ _Precondition_: `/sdd-discovery` already ran standalone and confirmed this is a 
 
 1. **[調整者] Modification guard** — verify the target spec's implementation is complete (`routing.md` § Modification Guard). If it is implementation-ready but not complete, **stop** and prompt the user to finish implementation first (`/sdd-impl <feature>`). Do not proceed.
 2. **[調整者] Upstream dependency guard** — verify roadmap upstream deps are task-generation complete (`routing.md` § Upstream Dependency Guard). If not ready, **stop** before generation or validate.
-3. `/sdd-spec-design <feature>`
-4. `/sdd-validate-design-qa <feature>` (unified; diff only — optional `--only qa|arch|sec|final`)
-5. **[調整者] Phase terminal (設計)** — handoff → end。同一フロー内で `/sdd-spec-tasks` に進まない
+3. **[調整者]** Invalidate implementation readiness in `spec.json` **before** generation or validate: `ready_for_implementation: false`, update `updated_at`. Do **not** clear `generated` flags. Freshness hashes decide whether design and tasks must be regenerated (`routing.md` § Artifact Freshness).
+4. `/sdd-spec-design <feature>`
+5. `/sdd-validate-design-qa <feature>` (unified; diff only — optional `--only qa|arch|sec|final`)
+6. **[調整者] Phase terminal (設計)** — handoff → end。同一フロー内で `/sdd-spec-tasks` に進まない
 ── session boundary ──（再開後のフローで実行）
-6. `/sdd-spec-tasks <feature>` (diff only)
-7. **[調整者] タスクゲート**（`gates.md` § タスクゲート）
-8. **[調整者] Terminal auto-approve** — set `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
+7. `/sdd-spec-tasks <feature>` (diff only)
+8. **[調整者] タスクゲート**（`gates.md` § タスクゲート）
+9. **[調整者] Terminal auto-approve** — set `ready_for_implementation: true` → PR Summary Output（`gates.md`）→ end（実装工程には進まない）
 
 ## Path B 直接実装
 
