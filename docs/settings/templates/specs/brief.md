@@ -8,8 +8,10 @@
 - **Out**: [箇条書き。明示的に除外]
 
 ## Route
-- **Path**: A | B | C | D | E
+- **Path**: none | update | new
+- **Speed**: light | normal
 - **Rationale**: [1 文でなぜその Path か]
+- **Scale**: large は、設計の確認でも人間が止まるときだけ
 
 <!-- Optional: fill when known; otherwise leave for requirements -->
 
@@ -23,7 +25,7 @@
 [緑地 / 既存実装 / 関連 spec]
 
 ## Upstream / Downstream
-[依存のメモ。roadmap 同期は /sdd-discovery Step 7]
+[依存のメモ。新規が複数なら docs/steering/roadmap.md に行を足す]
 
 ## Constraints
 [分かっている制約のみ]

@@ -1,0 +1,41 @@
+# Python が import 時に書くバイトコード。版ごとに変わり、ソースから再生成できる。
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 仮想環境とパッケージのビルド成果物。
+.venv/
+venv/
+env/
+.Python
+*.egg-info/
+.eggs/
+dist/
+build/
+pip-wheel-metadata/
+
+# テストと型チェックのキャッシュ。
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+
+# 秘密情報。例示用の .env.example だけは残す。
+.env
+.env.*
+!.env.example
+*.pem
+credentials.json
+secrets.json
+
+# OS とエディタが置くローカルファイル。
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+.idea/
