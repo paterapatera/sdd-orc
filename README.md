@@ -1,21 +1,58 @@
 # SDD
 
-仕様は `docs/specs/<feature>/` のファイルが正である。feature 名はコマンドの引数で渡す。次の一手と `spec.json` の更新は `.agents/skills/sdd-spec/scripts/sdd.py` が決める。
+機能の仕様を書いてから、その仕様どおりに実装する手順です。
 
-| コマンド | いつ使う |
+仕様は `docs/specs/<feature>/` に書きます。`<feature>` は、その機能の短い名前です。
+
+手順書は `.agents/skills/` の `SKILL.md` です。このフォルダを読んで動くエージェントで、このリポジトリを開いて使います。`/sdd-new` のような名前は、チャットに送って手順書を呼び出す言葉です。
+
+エージェントは次の作業を決めるとき、`python3 .agents/skills/sdd-spec/scripts/sdd.py` を実行します。`python3` が入っていないと、この手順は使えません。このコマンドはエージェントが実行します。
+
+## 最初の実行
+
+ここから下の番号を、上から順に行います。
+
+1. このリポジトリをエージェントで開く。チャットに日本語で依頼を書けること。
+
+2. チャットに、やりたいことと `/sdd-new` を送る。
+   例: 「ログインを追加したい。`/sdd-new`」
+   エージェントが「この brief でよいか？」と聞く。brief は、やりたいことを短くまとめたメモです。
+   - そのままでよければ「はい」と返す。ファイルが書かれ、このやりとりは終わる。
+   - 直したいところがあれば、「はい」とは返さず、直し方を書く。
+   返す前に、メモの Path を見る。
+   - `none`: 仕様は作らない。ここで終わる。
+   - `update`: すでにある仕様を変える。
+   - `new`: 新しい仕様を作る。
+   `update` または `new` のとき、`docs/specs/<feature>/brief.md` ができる。`<feature>` は、そのファイルがあるフォルダの名前です。英数字で始まり、使える文字は英数字と `.` `_` `-` だけです。違っていれば、「はい」とは返さず、名前の直し方を書く。
+
+3. 同じチャットの次のメッセージで、進み方を一つだけ書いて `/sdd-spec <feature>` を送る。
+   - `light`: 要求を確認したあと、設計と作業一覧をまとめて書く。
+   - `normal`: 要求、設計、作業一覧を、確認を挟みながら一つずつ書く。
+   例: 「`normal` で `/sdd-spec login`」
+   brief に進み方の提案があっても、このメッセージでは自分でどちらか一方を選ぶ。
+
+4. エージェントが止まったら、画面の「次にやること」のとおりにする。仕様の続きは、同じチャットで `/sdd-spec <feature>` をもう一度送る。一回送るごとに一段だけ進む。画面に「実装は `/sdd-impl <feature>`」と出るまで、これを繰り返す。
+
+5. その文言が出たら、同じチャットで `/sdd-impl <feature>` を送る。`docs/specs/<feature>/spec.json` を開くと、`"ready_for_implementation": true` になっている。
+
+最初の実行はここまでです。下の表は、あとから見返す索引です。
+
+## あとから使う
+
+| チャットに送る言葉 | いつ送るか |
 | --- | --- |
-| `/sdd-new` | 依頼を brief に書く。依存があれば roadmap も更新する。書いたら止まる |
-| `/sdd-spec <feature>` | 次のフェーズを一つ進める |
-| `/sdd-impl <feature>` | `ready_for_implementation` が true の仕様を実装する |
-| `/sdd-steering` | `docs/steering/` を維持する |
+| `/sdd-new` | 新しい依頼を brief に書く。先に終わらせる機能があるときは、順番の表 `docs/steering/roadmap.md` にも一行足す。書いたら止まる |
+| `/sdd-spec <feature>` | その機能の仕様を一段進める |
+| `/sdd-impl <feature>` | 実装してよい状態になった仕様を実装する。目安は `spec.json` の `"ready_for_implementation": true` |
+| `/sdd-steering` | プロジェクトの決まりを `docs/steering/` に残す。`product.md` は何を作るか、`tech.md` は技術の決まり、`structure.md` はフォルダの決まり |
 
-`/sdd-spec` は `python3 .agents/skills/sdd-spec/scripts/sdd.py next <feature>` の結果だけを実行する。速度を選ぶときは `--speed light` または `--speed normal`。要求を確認したあとの再開は `--ack`。
+次の四つは、仕様を進める流れとは別に、自分で送ったときだけ動きます。
 
-必要なときだけ、人間が次を呼ぶ。`next` はこれらを起動しない。
-
-| コマンド | いつ使う |
+| チャットに送る言葉 | いつ送るか |
 | --- | --- |
-| `/propose-quality-tools` | 言語を指定し、無料の品質ツールの提案を受ける |
-| `/sdd-req-html <feature>` | `requirements.md` の HTML プレビューを作る |
-| `/sdd-design-html <feature>` | `design.md` の HTML プレビューを作る |
-| `/sdd-steering-custom` | `product.md`、`tech.md`、`structure.md` 以外の steering を一枚作る |
+| `/propose-quality-tools <言語> S` | 小さい規模向けに、その言語の無料の品質チェックツールを提案させる。インストールは自分で行う |
+| `/propose-quality-tools <言語> M` | 中くらいの規模向けに提案させる。インストールは自分で行う |
+| `/propose-quality-tools <言語> L` | 大きい規模向けに提案させる。インストールは自分で行う |
+| `/sdd-req-html <feature>` | 要求が書いてある `requirements.md` を、ブラウザで見る HTML にする |
+| `/sdd-design-html <feature>` | 設計が書いてある `design.md` を、ブラウザで見る HTML にする |
+| `/sdd-steering-custom` | `product.md`、`tech.md`、`structure.md` 以外の決まりを、`docs/steering/` に一枚書く |
