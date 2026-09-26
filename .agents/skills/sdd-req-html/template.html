@@ -44,40 +44,25 @@
 
     <hr class="separator" role="none">
 
+    <!-- omit this section when there is no prose before ## Boundary -->
     <section class="req-section" id="intro">
       <h2>{{LABEL_INTRO}}</h2>
       <div class="req-intro">{{SLOT_INTRO}}</div>
     </section>
 
+    {{SLOT_OPEN}}
+
     {{SLOT_SCOPE}}
+
+    {{SLOT_SCREENS}}
 
     <section class="req-section" id="index">
       <h2>{{LABEL_INDEX}}</h2>
-      <p class="req-meta">{{LABEL_LEGEND}}</p>
-      <div class="req-legend" aria-label="{{LABEL_LEGEND}}">
-        <span class="req-legend-item">
-          <span class="badge" data-ears="when">{{LABEL_EARS_WHEN}}</span>
-          <span class="req-legend-hint">{{LABEL_EARS_WHEN_HINT}}</span>
-        </span>
-        <span class="req-legend-item">
-          <span class="badge" data-ears="if">{{LABEL_EARS_IF}}</span>
-          <span class="req-legend-hint">{{LABEL_EARS_IF_HINT}}</span>
-        </span>
-        <span class="req-legend-item">
-          <span class="badge" data-ears="while">{{LABEL_EARS_WHILE}}</span>
-          <span class="req-legend-hint">{{LABEL_EARS_WHILE_HINT}}</span>
-        </span>
-        <span class="req-legend-item">
-          <span class="badge" data-ears="where">{{LABEL_EARS_WHERE}}</span>
-          <span class="req-legend-hint">{{LABEL_EARS_WHERE_HINT}}</span>
-        </span>
-        <span class="req-legend-item">
-          <span class="badge" data-ears="shall">{{LABEL_EARS_SHALL}}</span>
-          <span class="req-legend-hint">{{LABEL_EARS_SHALL_HINT}}</span>
-        </span>
-      </div>
+      {{SLOT_LEGEND}}
       {{SLOT_INDEX}}
     </section>
+
+    {{SLOT_COVERAGE}}
 
     {{SLOT_EXCEPTIONS}}
 
@@ -92,11 +77,14 @@
 
   <!-- SLOT recipes (delete these comments from output; copy the matching block into the slots above) -->
 
-  <!-- recipe:toc
+  <!-- recipe:toc — include a link only for a section that is emitted
   <ol>
     <li><a href="#intro">{{LABEL_INTRO}}</a></li>
+    <li><a href="#open">{{LABEL_OPEN}}</a></li>
     <li><a href="#scope">{{LABEL_SCOPE}}</a></li>
+    <li><a href="#screens">{{LABEL_SCREENS}}</a></li>
     <li><a href="#index">{{LABEL_INDEX}}</a></li>
+    <li><a href="#coverage">{{LABEL_COVERAGE}}</a></li>
     <li><a href="#exceptions">{{LABEL_EXCEPTIONS}}</a></li>
     <li><a href="#req-1">1. TITLE</a></li>
   </ol>
@@ -112,7 +100,16 @@
   </div>
   -->
 
-  <!-- recipe:scope — omit whole section if all three cards would be empty; omit a card if its list is empty
+  <!-- recipe:open — omit when there is no Open question line
+  <section class="req-section" id="open">
+    <h2>{{LABEL_OPEN}}</h2>
+    <ul>
+      <li>QUESTION</li>
+    </ul>
+  </section>
+  -->
+
+  <!-- recipe:scope — omit the section if both cards would be empty; omit a card if its list is empty
   <section class="req-section" id="scope">
     <h2>{{LABEL_SCOPE}}</h2>
     <div class="req-scope-grid">
@@ -128,12 +125,115 @@
         </div>
         <div class="card-content">{{SCOPE_OUT_LIST}}</div>
       </div>
-      <div class="card">
+    </div>
+  </section>
+  -->
+
+  <!-- recipe:legend — omit the whole block when the document has exactly one EARS type; otherwise include only types that appear
+  <p class="req-meta">{{LABEL_LEGEND}}</p>
+  <div class="req-legend" aria-label="{{LABEL_LEGEND}}">
+    <span class="req-legend-item">
+      <span class="badge" data-ears="when">{{LABEL_EARS_WHEN}}</span>
+      <span class="req-legend-hint">{{LABEL_EARS_WHEN_HINT}}</span>
+    </span>
+    <span class="req-legend-item">
+      <span class="badge" data-ears="if">{{LABEL_EARS_IF}}</span>
+      <span class="req-legend-hint">{{LABEL_EARS_IF_HINT}}</span>
+    </span>
+    <span class="req-legend-item">
+      <span class="badge" data-ears="while">{{LABEL_EARS_WHILE}}</span>
+      <span class="req-legend-hint">{{LABEL_EARS_WHILE_HINT}}</span>
+    </span>
+    <span class="req-legend-item">
+      <span class="badge" data-ears="where">{{LABEL_EARS_WHERE}}</span>
+      <span class="req-legend-hint">{{LABEL_EARS_WHERE_HINT}}</span>
+    </span>
+    <span class="req-legend-item">
+      <span class="badge" data-ears="shall">{{LABEL_EARS_SHALL}}</span>
+      <span class="req-legend-hint">{{LABEL_EARS_SHALL_HINT}}</span>
+    </span>
+  </div>
+  -->
+
+  <!-- recipe:screens — omit when ## Screens has no ### heading. One transition diagram, then one card per ###. Omit a card row whose text is empty. Omit the branch table when it would have one column. No flowchart inside the card.
+  <section class="req-section" id="screens">
+    <h2>{{LABEL_SCREENS}}</h2>
+    <h3 class="req-subh">{{LABEL_TRANSITIONS}}</h3>
+    <div class="req-diagram">
+      <pre class="mermaid">
+flowchart TD
+  list[一覧] ==>|開く| record[記録]
+      </pre>
+    </div>
+    <div class="req-screen-list">
+      <div class="card" id="screen-1">
         <div class="card-header">
-          <h3 class="card-title"><i data-lucide="git-branch" aria-hidden="true"></i> {{LABEL_ADJ}}</h3>
+          <h3 class="card-title">SCREEN</h3>
         </div>
-        <div class="card-content">{{SCOPE_ADJ_LIST}}</div>
+        <div class="card-content">
+          <dl class="req-kv">
+            <dt>{{LABEL_FROM}}</dt>
+            <dd>FROM</dd>
+            <dt>{{LABEL_ITEMS}}</dt>
+            <dd><ul><li>ITEM</li></ul></dd>
+            <dt>{{LABEL_GOES}}</dt>
+            <dd>GOES</dd>
+            <dt>{{LABEL_FAILURE}}</dt>
+            <dd><a href="#req-1">1.2</a> CONDITION — RESPONSE</dd>
+          </dl>
+          <h4 class="req-subh">{{LABEL_BRANCH}}</h4>
+          <div class="table-container">
+            <table class="table" aria-label="{{LABEL_BRANCH}}">
+              <thead>
+                <tr class="table-row">
+                  <th class="table-head" scope="col"></th>
+                  <th class="table-head" scope="col">{{LABEL_PATTERN}}1</th>
+                  <th class="table-head" scope="col">{{LABEL_PATTERN}}2</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr class="table-row">
+                  <th class="table-cell" scope="row">{{LABEL_COL_COND}}</th>
+                  <td class="table-cell">CONDITION</td>
+                  <td class="table-cell">CONDITION</td>
+                </tr>
+                <tr class="table-row">
+                  <th class="table-cell" scope="row">{{LABEL_COL_DEST}}</th>
+                  <td class="table-cell">PLACE</td>
+                  <td class="table-cell">PLACE</td>
+                </tr>
+                <tr class="table-row">
+                  <th class="table-cell" scope="row">{{LABEL_COL_RESPONSE}}</th>
+                  <td class="table-cell">RESPONSE</td>
+                  <td class="table-cell">RESPONSE</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
       </div>
+    </div>
+  </section>
+  -->
+
+  <!-- recipe:coverage — omit when both ## Quality and ## Checks are missing. Row names stay the English keys.
+  <section class="req-section" id="coverage">
+    <h2>{{LABEL_COVERAGE}}</h2>
+    <div class="table-container">
+      <table class="table" aria-label="{{LABEL_COVERAGE}}">
+        <thead>
+          <tr class="table-row">
+            <th class="table-head" scope="col"></th>
+            <th class="table-head" scope="col">{{LABEL_COL_BASIS}}</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr class="table-row">
+            <th class="table-cell" scope="row">functional</th>
+            <td class="table-cell"><a href="#req-1">1.1</a></td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </section>
   -->
@@ -157,7 +257,7 @@
   </section>
   -->
 
-  <!-- recipe:index-table
+  <!-- recipe:index-table — omit the type column when the document has exactly one EARS type
   <div class="table-container">
     <table class="table" aria-label="{{LABEL_INDEX}}">
       <thead>
@@ -173,29 +273,19 @@
   </div>
   -->
 
-  <!-- recipe:requirement
-  <details class="req-block" id="req-N" open>
-    <summary>要件 N: TITLE</summary>
+  <!-- recipe:requirement — closed by default. Type badges on the summary, and the type column, only when viz-rules say so. Omit the decision table and the diagrams when their rules do not fire. Do not split the purpose sentence.
+  <details class="req-block" id="req-N">
+    <summary>
+      <span>N. TITLE</span>
+      <span class="req-meta">AC_COUNT</span>
+    </summary>
     <div class="req-block-body">
       <div class="card req-story">
         <div class="card-header">
           <h3 class="card-title">{{LABEL_STORY}}</h3>
         </div>
         <div class="card-content">
-          <div class="req-story-grid">
-            <div>
-              <p class="req-story-label">{{LABEL_ROLE}}</p>
-              <p class="req-story-value">ROLE</p>
-            </div>
-            <div>
-              <p class="req-story-label">{{LABEL_CAPABILITY}}</p>
-              <p class="req-story-value">CAPABILITY</p>
-            </div>
-            <div>
-              <p class="req-story-label">{{LABEL_BENEFIT}}</p>
-              <p class="req-story-value">BENEFIT</p>
-            </div>
-          </div>
+          <p class="req-story-value">PURPOSE</p>
         </div>
       </div>
 
@@ -257,7 +347,7 @@
         <div class="req-diagram">
           <pre class="mermaid">
 flowchart TD
-  a[event] --> b[response]
+  a[event] ==> b[response]
           </pre>
         </div>
       </div>
@@ -267,8 +357,8 @@ flowchart TD
         <div class="req-diagram">
           <pre class="mermaid">
 stateDiagram-v2
-  [*] --> StateA
-  StateA --> StateB
+  [*] ==> StateA
+  StateA ==> StateB
           </pre>
         </div>
       </div>

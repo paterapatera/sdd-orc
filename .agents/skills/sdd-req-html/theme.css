@@ -139,7 +139,7 @@ body.req-body {
 
 .req-scope-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 0.75rem;
 }
 
@@ -223,29 +223,35 @@ body.req-body {
   border-color: transparent;
 }
 
-.req-story .req-story-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+.req-story-value {
+  margin: 0;
+}
+
+.req-screen-list {
+  display: flex;
+  flex-direction: column;
   gap: 0.75rem;
 }
 
-@media (max-width: 40rem) {
-  .req-story .req-story-grid {
-    grid-template-columns: 1fr;
-  }
+.req-kv {
+  margin: 0.35rem 0 0;
 }
 
-.req-story-label {
-  margin: 0 0 0.25rem;
+.req-kv dt {
+  margin: 0;
   font-size: 0.75rem;
   font-weight: 650;
   letter-spacing: 0.03em;
-  text-transform: uppercase;
   color: var(--casal);
 }
 
-.req-story-value {
+.req-kv dd {
+  margin: 0.15rem 0 0.65rem;
+}
+
+.req-kv dd ul {
   margin: 0;
+  padding-left: 1.1rem;
 }
 
 .req-block {
