@@ -20,15 +20,13 @@ Parse one AC into: **condition** (trigger/precondition text), **subject** (`the 
 
 ## Always emit (if the source section exists)
 
-### Scope triad
+### Scope
 
-Three `card`s: in / out / adjacent. Drop a card whose source bullet is missing or empty. Drop the whole scope section if all three are empty.
-
-Do not invent adjacent systems.
+Read `## Boundary`. Two cards: lines whose key is `in` / `out` (also `**In**` / `**Out**`). Drop a card whose text is empty. Drop the section if both are empty. Do not invent an adjacent system. A line `Open question:` stays out of the cards.
 
 ### Requirement index
 
-One table. Columns: ID (link to `#req-N`), purpose (short; role + capability if parsed), AC count, type badges (unique types present).
+One table. Columns: ID (link to `#req-N`), purpose (the `**Purpose:**` sentence), AC count, type badges (unique types present). The requirement id is the number on `## <n>`. The column title is `{{LABEL_COL_PURPOSE}}`, not the markdown label.
 
 ### Acceptance-criteria matrix (per requirement)
 
@@ -48,12 +46,7 @@ Omit the section if there are zero `If` ACs.
 
 ### Purpose / user-story card (per requirement)
 
-Parse `**目的:**` / `**Purpose:**` / `**User Story:**`:
-
-- ja: `{{ROLE}}として、{{CAPABILITY}}したい。その結果、{{BENEFIT}}となる。`
-- en: `As a {{ROLE}}, I want {{CAPABILITY}}, so that {{BENEFIT}}.`
-
-If the sentence does not split, put the whole purpose in the card body; do not fabricate Role/Capability/Benefit.
+Parse `**Purpose:**`. A legacy `**目的:**` line is the same sentence. Put the whole sentence in the card body. Do not split it into a role, a capability, and a benefit. The card title is `{{LABEL_STORY}}`.
 
 ## Emit only when warranted
 
@@ -98,8 +91,8 @@ Shape:
 
 1. Header (title, link to `requirements.md`, generated timestamp, not-canonical alert)
 2. TOC (intro, scope if present, index, exceptions if present, each `req-N`)
-3. Introduction
-4. Scope triad
+3. Introduction, only when the file has prose before `## Boundary`
+4. Scope
 5. Requirement index
 6. Exception catalog
 7. Per requirement: `<details open id="req-N">` → purpose card → AC matrix → decision table (if any) → mermaid (if any)

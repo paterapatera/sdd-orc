@@ -16,4 +16,4 @@ Do ask:
 - Who observes what, when the sources do not settle completion.
 - What happens to the previous state after success, when that is unstated.
 
-Transcribe answers into はじめに, スコープ境界, or the cited 目的 or 受け入れ条件. When an answer adds an acceptance criterion, write one criterion from the human's words. Do not renumber unrelated requirements.
+Transcribe answers into `## Boundary`, the cited `**Purpose:**`, or the numbered EARS line. When an answer adds an acceptance criterion, write one EARS line from the human's words. Do not emit a pattern the answer did not state. Do not renumber unrelated requirements.

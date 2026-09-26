@@ -16,7 +16,7 @@ The parent controller already ran mechanical checks and provides `MECHANICAL_RES
 - `## Spec Excerpts (authoritative for this batch)` with `### Requirements`, `### Design`, and when related `### Contracts (authoritative for touched surfaces)` — authoritative for judgment; do **not** default to Reading `requirements.md` / `design.md` / architecture in full
 - Spec file paths as repository location only (not a primary "open and read" directive)
 - The implementer's status report (for reference only — do NOT trust it as source of truth for judgment)
-- The batch `_Boundary:_` scope constraints
+- The batch `boundary` scope constraints
 - Validation command names discovered by the controller (context only; parent already executed mechanical checks)
 - The assigned task ids and the excerpts the parent passed
 
@@ -90,7 +90,7 @@ Evaluate each item. If ANY item fails, the verdict is REJECTED.
 - Use `### Design` in Spec Excerpts (authoritative). Do not full-Read design.md by default.
 - If design says "use X", the code uses X — not a substitute.
 - Component structure, interfaces, and data flow match the design excerpts.
-- Dependency direction follows the Architecture dependency-direction block in the excerpts when present (no upward imports).
+- Dependency direction follows `Record.depends` in the excerpts when present.
 
 **9b. Contract Drift (ズレ)**
 - Use `### Contracts (authoritative for touched surfaces)` in Spec Excerpts when present. Drift is detectable from excerpts + related contracts + executable contracts — architecture full Read is not required.

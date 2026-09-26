@@ -7,6 +7,8 @@ EARS patterns describe the logical structure of a requirement (condition + subje
 All acceptance criteria should be written in the target language configured for the specification (for example, `spec.json.language` / `ja`).  
 Keep EARS trigger keywords and fixed phrases in English (`When`, `If`, `While`, `Where`, `The system shall`, `The [system] shall`) and localize only the variable parts (`[event]`, `[precondition]`, `[trigger]`, `[feature is included]`, `[response/action]`) into the target language. Do not interleave target-language text inside the trigger or fixed English phrases themselves.
 
+Write one pattern per behavior. Do not emit a pattern that has no behavior.
+
 ## Primary EARS Patterns
 
 ### 1. Event-Driven Requirements

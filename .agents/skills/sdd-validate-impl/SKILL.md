@@ -6,7 +6,7 @@ disable-model-invocation: true
 
 # Integration check
 
-Run only when every task in `tasks.md` is `[x]` and none is `_Blocked:_`. Do not run it on an intermediate chunk.
+Run only when every task in `tasks.md` has `status` `done` and `blocked` null. A legacy checkbox file is ready when every leaf is `[x]` and none is `_Blocked:_`. Do not run it on an intermediate chunk.
 
 Check that each acceptance criterion is observable in a test or a run, that the design boundaries do not contradict each other, and that no secret or unsettled mark remains. Run the repository's existing test command once.
 

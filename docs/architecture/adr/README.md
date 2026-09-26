@@ -18,7 +18,6 @@ Architecture Decision Records。重要な設計判断を永続化する。contra
 - 依存方向・所有境界の変更
 - 公開契約の破壊的変更
 - 採用/不採用の大きな技術選択（後から理由が必要）
-- Revalidation Triggers に触れる判断
 
 書かないもの:
 
@@ -34,7 +33,7 @@ Architecture Decision Records。重要な設計判断を永続化する。contra
   1. **新規 ADR** を採番して作成する
   2. 旧 ADR の Status を `Superseded by ADR-XXXX` に変更する（本文の Context/Decision/Consequences は消さない）
   3. **この README の Entries** に新 ADR を登録し、旧エントリの Status も `Superseded by ADR-XXXX` に更新する（index 欠落禁止）
-  4. contracts / boundaries の更新とセットで、関連 ADR を design の Persistent References に載せる
+  4. contracts / boundaries の更新とセットで、関連 ADR を design の `## Record` `contracts` から辿れるようにする
 
 **Index 同期（必須）**: ADR ファイルを追加・置換したら、必ず本 Entries を更新する。index に無い ADR を「念のため」開かせないため、ファイル作成と Entries 更新はセット。
 

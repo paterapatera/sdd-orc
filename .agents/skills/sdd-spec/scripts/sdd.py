@@ -111,15 +111,45 @@ def section(text: str, heading: str) -> str:
     return rest[: nxt.start()] if nxt else rest
 
 
+def parse_task_records(tasks_text: str | None) -> list[dict] | None:
+    """Return task objects from a ```json fence, or None for a legacy checkbox file."""
+    if not tasks_text:
+        return None
+    fence = re.search(r"```json\s*", tasks_text)
+    blob = tasks_text[fence.end() :] if fence else tasks_text
+    blob = blob.lstrip()
+    if not blob.startswith("{"):
+        return None
+    try:
+        data, _end = json.JSONDecoder().raw_decode(blob)
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict):
+        return None
+    tasks = data.get("tasks")
+    if not isinstance(tasks, list):
+        return None
+    return [item for item in tasks if isinstance(item, dict)]
+
+
 def has_task(tasks_text: str | None) -> bool:
+    records = parse_task_records(tasks_text)
+    if records is not None:
+        return len(records) > 0
     return bool(tasks_text and TASK_RE.search(tasks_text))
 
 
 def has_open_task(tasks_text: str | None) -> bool:
+    records = parse_task_records(tasks_text)
+    if records is not None:
+        return any(item.get("status") != "done" for item in records)
     return bool(tasks_text and OPEN_TASK_RE.search(tasks_text))
 
 
 def has_blocked(tasks_text: str | None) -> bool:
+    records = parse_task_records(tasks_text)
+    if records is not None:
+        return any(bool(item.get("blocked")) for item in records)
     return bool(tasks_text and "_Blocked:" in tasks_text)
 
 
@@ -135,11 +165,13 @@ def rounds_exhausted(text: str | None) -> bool:
     return bool(ai and int(ai.group(1)) >= 3 and human and int(human.group(1)) >= 3)
 
 
-def route_path(brief: str | None) -> str | None:
+def route_path(brief: str | None, spec: dict | None = None) -> str | None:
+    if spec and spec.get("path") in {"none", "update", "new"}:
+        return spec["path"]
     if not brief:
         return None
     match = PATH_RE.search(brief)
-    return match.group(1) if match else None
+    return match.group(1).lower() if match else None
 
 
 def generated(spec: dict | None, phase: str) -> bool:
@@ -254,7 +286,9 @@ def mechanical_findings(kind: str, text: str | None) -> list[str]:
     return found
 
 
-def proposed_speed(brief: str | None) -> str | None:
+def proposed_speed(brief: str | None, spec: dict | None = None) -> str | None:
+    if spec and spec.get("proposed_speed") in {"light", "normal"}:
+        return spec["proposed_speed"]
     if not brief:
         return None
     match = SPEED_RE.search(brief)
@@ -502,7 +536,7 @@ def gate_followup(repo: Repo, spec: dict | None, feature: str, mutations: list) 
         return decision(
             "stop-manual",
             "tasks",
-            "タスクに _Blocked:_ がある。人間の判断が要る",
+            "タスクに blocked がある。人間の判断が要る",
             feature=feature,
             mutations=mutations,
             gate=gate,
@@ -720,7 +754,7 @@ def decide(
             feature=feature,
         )
 
-    path = route_path(brief)
+    path = route_path(brief, spec)
     chosen = effective_speed(spec, speed)
     tasks = read_text(repo.tasks_path)
     ready = bool(spec and spec.get("ready_for_implementation") is True)
@@ -778,7 +812,7 @@ def decide(
                 "速度はまだ選ばれていない。提案を見て --speed light か --speed normal を付ける",
                 feature=feature,
                 mutations=mutations,
-                details={"proposal": proposed_speed(brief)},
+                details={"proposal": proposed_speed(brief, spec)},
             )
         )
 

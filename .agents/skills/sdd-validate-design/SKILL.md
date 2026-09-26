@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 # Design review
 
-The subject is `docs/specs/<feature>/design.md` and `requirements.md`. The bar is `rules/review.md`. Also read `tech.md`, `structure.md`, and only the paths listed in the design's Persistent References.
+The subject is `docs/specs/<feature>/design.md` and `requirements.md`. The bar is `rules/review.md`. Also read `tech.md`, `structure.md`, and only the paths listed in the design's `## Record` `contracts` array.
 
 The mechanical checks are already done. This skill does not run when `details.checks` is non-empty.
 

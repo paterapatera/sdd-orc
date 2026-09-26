@@ -38,23 +38,28 @@ User passed `steering only` / `--steering-only` on invocation → skip Extended 
 
 ## Completion Status Rules (when `docs/specs/` exists)
 
-- **Done** for a feature: every task in `docs/specs/<feature>/tasks.md` is complete per Task hierarchy completion below, and no `_Blocked:_`
+- **Done** for a feature: every task in `docs/specs/<feature>/tasks.md` is complete per the rules below, and none is blocked
 - Do **not** mark incomplete from `spec.json` `phase` alone
 - Do not add fields to `spec.json` that are not already used in that project
 
-### Task hierarchy completion (tasks.md)
+### Task completion (tasks.md)
 
-When judging whether a task line counts as complete:
+When `tasks.md` contains a json fence with a `tasks` array:
+
+1. A task is complete when `status` is `done`
+2. A task is blocked when `blocked` is a non-empty string
+3. Ids are flat. A parent id is not inferred from a child id
+
+**Feature done**: every object has `status` `done` and `blocked` null.
+
+When the file is a legacy checkbox list (no `tasks` array):
 
 1. Parse task lines matching checkbox + numbered prefix (e.g. `- [ ] 1. Title`, `- [x] 1.1 Subtask`)
-2. A **parent** line (e.g. `[ ] 1. xxxxx`) counts as **complete** if **all direct children** at the next numbering level (e.g. `[x] 1.1 …`, `[x] 1.2 …`) are complete — **even when the parent checkbox is still `[ ]`**
-3. Apply recursively: a child with its own sub-children (e.g. `1.1.1`) is complete only when that subtree is complete
-4. **Leaf** tasks (no numbered sub-tasks under that line) require their own `[x]` to count as complete
-5. A parent is **not** complete if any direct child subtree remains incomplete
+2. A parent line counts as complete if all direct children at the next numbering level are complete, even when the parent checkbox is still `[ ]`
+3. A leaf requires its own `[x]`
+4. `_Blocked:_` anywhere means the feature is not done
 
-**Example**: `[ ] 1. Batch API` with `[x] 1.1 Handler`, `[x] 1.2 Tests` → treat `1.` as complete for feature-done / deletion-candidate checks.
-
-**Feature done**: All top-level task subtrees in `tasks.md` are complete and no `_Blocked:_` anywhere in the file.
+**Feature done** for a legacy file: all top-level task subtrees are complete and no `_Blocked:_`.
 
 ---
 
@@ -93,7 +98,7 @@ A feature has **retention complete** when every extracted Implementation Notes i
 
 Convention defaults; project steering overrides if defined:
 
-1. `tasks.md` satisfies Completion Status Rules (including Task hierarchy completion) and no `_Blocked:_`
+1. `tasks.md` satisfies Completion Status Rules and is not blocked
 2. **Retention complete** for that feature (step 6 finished; no pending Implementation Notes migration)
 3. Delete only `docs/specs/<feature>/` — never `docs/architecture/`, `docs/contracts/`, `docs/architecture/adr/`, or other paths
 

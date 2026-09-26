@@ -8,14 +8,14 @@ disable-model-invocation: true
 
 # Requirements
 
-The artifact is `docs/specs/<feature>/requirements.md`. If `spec.json` is missing, create it with the language and `approvals.requirements.generated: true`. Keep existing keys.
+The artifact is `docs/specs/<feature>/requirements.md`. If `spec.json` is missing, create it from `docs/settings/templates/specs/init.json` with the language and `approvals.requirements.generated: true`. Keep existing keys, including `path`, `proposed_speed`, and `scale`.
 
 Read the brief, steering when present (`product.md`, `tech.md`, `structure.md`), and `rules/ears-format.md`. Read implementation only for the spot the brief names as existing behavior.
 
-A good requirement states behavior a user or operator can observe. Acceptance criteria use EARS: keywords in English, the rest in the `spec.json` language. Each requirement has a numeric id, 目的, and 受け入れ条件. Where scope could be misread, state what is included and excluded as behavior.
+A good requirement states behavior a user or operator can observe. Each requirement is `## <number>. <name>`, one `**Purpose:**` sentence, and one numbered EARS line per behavior. The label and the EARS keywords stay in English. The purpose sentence and the EARS variable parts follow `spec.json` `language`. Use `When`, `If`, `While`, `Where`, or a bare `shall` only for a behavior that exists. Do not emit the other patterns. `## Boundary` lists `in:` and `out:` only where scope could be misread.
 
 When `details.checks` is set, fix only those items. `tbd` becomes a decision or an `Open question:`. `secret` removes the value. `test` adds an observable criterion within the sources. `boundary` turns `Boundary Candidates` or 境界未定 into a stated boundary or an `Open question:`. `red` removes the leftover mark. Do not add a capability the sources do not have.
 
-Put each unsettled point under `## スコープ境界` as one `Open question:`. Do not invent an acceptance criterion. Transcribe Background only when the brief already has the human's words.
+Put each unsettled point under `## Boundary` as one `Open question:`. Do not invent an acceptance criterion. Transcribe Background only when the brief already has the human's words.
 
-A bad requirement replaces behavior with components, APIs, or screen structure, or adds a purpose the sources do not contain.
+A bad requirement replaces behavior with components, APIs, or screen structure, adds a purpose the sources do not contain, or fills a user-story template the sources did not state.

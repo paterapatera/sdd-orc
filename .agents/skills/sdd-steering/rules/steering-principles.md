@@ -1,90 +1,28 @@
 # Steering Principles
 
-Steering files are **project memory**, not exhaustive specifications.
+Steering files are project memory. A file is a list of rules that already recur in the code and the specs.
 
----
+Each rule is three lines:
 
-## Content Granularity
+- `do`: the imperative to follow
+- `never`: the imperative to refuse
+- `source`: a path or a spec id that shows the rule is already true
 
-### Golden Rule
-> "If new code follows existing patterns, steering shouldn't need updating."
+Do not create a file, or a rule, without a source. Do not paste a template's empty slots into `docs/steering/`. Do not copy one spec's design into steering. Do not record a generic stack, framework, or security slogan that this repository has not decided.
 
-### ✅ Document
-- Organizational patterns (feature-first, layered)
-- Naming conventions (PascalCase rules)
-- Import strategies (absolute vs relative)
-- Architectural decisions (state management)
-- Technology standards (key frameworks)
-
-### ❌ Avoid
-- Complete file listings
-- Every component description
-- All dependencies
-- Implementation details
-- Agent-specific tooling directories (e.g. `.agents/`, `.cursor/`, `.gemini/`, `.claude/`)
-- Detailed documentation of tool-metadata directories (settings, automation)
-
-### Example Comparison
-
-**Bad** (Specification-like):
-```markdown
-- /components/Button.tsx - Primary button with variants
-- /components/Input.tsx - Text input with validation
-- /components/Modal.tsx - Modal dialog
-... (50+ files)
-```
-
-**Good** (Project Memory):
-```markdown
-## UI Components (`/components/ui/`)
-Reusable, design-system aligned primitives
-- Named by function (Button, Input, Modal)
-- Export component + TypeScript interface
-- No business logic
-```
-
----
+If new code follows an existing rule, steering does not need a new line.
 
 ## Security
 
-Never include:
-- API keys, passwords, credentials
-- Database URLs, internal IPs
-- Secrets or sensitive data
+Never include API keys, passwords, credentials, database URLs, internal IPs, or other secrets.
 
----
+## Preservation
 
-## Quality Standards
+Keep sentences the human wrote. When adding a rule, separate a contradiction. Do not merge it away. Do not delete a completed spec directory before the human agrees, and only after its durable rules are already in steering.
 
-- **Single domain**: One topic per file
-- **Concrete examples**: Show patterns with code
-- **Explain rationale**: Why decisions were made
-- **Maintainable size**: 100-200 lines typical
+## What does not belong
 
----
-
-## Preservation (when updating)
-
-- Preserve user sections and custom examples
-- Additive by default (add, don't replace)
-- Add `updated_at` timestamp
-- Note why changes were made
-
----
-
-## Notes
-
-- Templates are starting points, customize as needed
-- Follow same granularity principles as core steering
-- All steering files loaded as project memory
-- Light references to `docs/specs/` and `docs/steering/` are acceptable; avoid tool-metadata directories
-- Custom files equally important as core files
-
----
-
-## File-Specific Focus
-
-- **product.md**: Purpose, value, business context (not exhaustive features)
-- **tech.md**: Key frameworks, standards, conventions (not all dependencies)
-- **structure.md**: Organization patterns, naming rules (not directory trees)
-- **Custom files**: Specialized patterns (API, testing, security, etc.)
+- File trees and component catalogs
+- Agent tool directories (`.agents/`, `.cursor/`, `.gemini/`, `.claude/`)
+- Tool-metadata directories
+- A second copy of `product.md`, `tech.md`, or `structure.md` inside a custom file

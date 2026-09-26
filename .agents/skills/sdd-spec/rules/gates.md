@@ -46,7 +46,7 @@ After `auto-approve`, before implementation. One fenced `markdown` block the use
 - Summary is a few sentences and includes `Spec: docs/specs/<feature>/`.
 - One decision per row. Do not paste a long EARS sentence into a cell.
 - Residual risks come from `### Accepted residual risks` in the reviews, one sentence each. If none, write `なし`.
-- Acceptance checks are a closed `<details>` block. Transcribe every `#### 受け入れ条件` as `- [ ] **<requirement>.<criterion>** <text as written>`. 確認日, 確認者, and 確認対象 stay `（実装後に記入）`. Do not mark `[x]`. Do not invent a verification method.
+- Acceptance checks are a closed `<details>` block. Transcribe every numbered line that contains `shall` as `- [ ] **<requirement>.<criterion>** <text as written>`. The requirement id is the heading number (`## 1.` → `1`). 確認日, 確認者, and 確認対象 stay `（実装後に記入）`. Do not mark `[x]`. Do not invent a verification method.
 - The only line after the list is `チェックを入れた項目が確認済み。確認者・確認日は実装後の受け入れ確認で更新する。この一覧は条件の転記のみ。`
 
 Outside the fence, one line: implementation is `/sdd-impl <feature>` on the same checkout. A downstream spec starts from the tip after this spec is on the merge target.

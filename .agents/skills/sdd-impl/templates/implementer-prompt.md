@@ -20,7 +20,7 @@ You are a specialized implementation subagent for the tasks the parent assigned.
 - Do **not** default to glob-bulk-Read of `docs/contracts/**` or `docs/architecture/**`.
 - Judgment materials are limited to: Spec Excerpts (Requirements / Design / Contracts), related contract paths named in excerpts, and executable contracts (types / OpenAPI / contract tests) already in scope for this batch.
 - Architecture / ADR: only use what the parent already put in excerpts (boundary / dependency-direction slices). Never treat full architecture Read as the recovery path.
-- If a needed acceptance criterion, design constraint, or contract surface is missing from the excerpts, report **NEEDS_CONTEXT** immediately. In `MISSING`, name the exact missing **path or heading(s)** / section numbers (e.g., "docs/contracts/billing-api.md ## Invariants", "design.md ## Error Handling — Auth boundary"). Do **not** load the full file yourself.
+- If a needed acceptance criterion, design constraint, or contract surface is missing from the excerpts, report **NEEDS_CONTEXT** immediately. In `MISSING`, name the exact missing **path or heading(s)** / section numbers (e.g., "docs/contracts/billing-api.md ## Contract", "design.md ## Failures / ### 1", "design.md ## Record contracts"). Do **not** load the full file yourself.
 - The parent may re-dispatch once with additional excerpts for those headings. After that one-shot, escalate via the normal status path if still insufficient.
 
 ## Contract Drift (ズレ) — Definition & In-Place Update
@@ -36,7 +36,7 @@ You can detect drift **without** reading architecture in full. **"Drifted" (ズ�
 1. Align the implementation to the contract **or** intentionally change the contract (choose which is correct from the Task Brief / Requirements excerpts)
 2. Update `docs/contracts/<file>` (if the change is breaking, add a new ADR + Status update per ADR append-only rules — do not invent unrelated architecture rewrites). Record breaking intent in the contract **Changelog** when applicable
 3. If creating a **new** contract file, register it in `docs/contracts/README.md` Entries. If creating a **new** ADR, register it in `docs/architecture/adr/README.md` Entries (and update superseded entries' Status)
-4. If the feature still exists and `design.md` Persistent References lack the path, append it
+4. If the feature still exists and `design.md` `## Record` `contracts` lacks the path, append `{ "path", "mode": "modify" }`
 5. Include `CONTRACTS_UPDATED: <paths>` in the Status Report (include new index README paths when Entries changed)
 
 Do **not** rewrite unrelated contracts. Do **not** invent a post-hoc "write all contracts after implementation" phase.

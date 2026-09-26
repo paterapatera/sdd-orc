@@ -3,6 +3,10 @@
   "created_at": "{{TIMESTAMP}}",
   "updated_at": "{{TIMESTAMP}}",
   "language": "ja",
+  "path": "new",
+  "proposed_speed": "normal",
+  "speed": null,
+  "scale": null,
   "phase": "initialized",
   "approvals": {
     "requirements": {

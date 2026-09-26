@@ -396,6 +396,44 @@ class NextTests(unittest.TestCase):
         (self.spec / "spec.json").write_text(json.dumps(data), encoding="utf-8")
         return req, design
 
+    def test_spec_path_none_does_not_enter_spec(self) -> None:
+        self.spec_json(path="none", proposed_speed="light")
+        self.assertEqual(self.act(speed="light")["action"], "stop-no-spec")
+
+    def test_proposed_speed_comes_from_spec_json(self) -> None:
+        self.spec_json(path="new", proposed_speed="light")
+        result = self.act()
+        self.assertEqual(result["action"], "needs-speed")
+        self.assertEqual(result["details"]["proposal"], "light")
+
+    def test_json_tasks_auto_approve(self) -> None:
+        _req, design = self._fresh_design()
+        self.write(
+            "tasks.md",
+            '# Tasks\n\n```json\n{"tasks":[{"id":"1.1","status":"open","blocked":null}]}\n```\n',
+        )
+        data = json.loads((self.spec / "spec.json").read_text(encoding="utf-8"))
+        data["approvals"]["tasks"]["generated"] = True
+        data["source_sha256"]["design_at_tasks"] = design
+        (self.spec / "spec.json").write_text(json.dumps(data), encoding="utf-8")
+        result = self.act()
+        self.assertEqual(result["action"], "auto-approve")
+        self.assertEqual(result["gate"]["result"], "VERIFIED")
+
+    def test_json_blocked_task_stops_for_a_human(self) -> None:
+        _req, design = self._fresh_design()
+        self.write(
+            "tasks.md",
+            '# Tasks\n\n```json\n{"tasks":[{"id":"1.1","status":"open","blocked":"方針未決"}]}\n```\n',
+        )
+        data = json.loads((self.spec / "spec.json").read_text(encoding="utf-8"))
+        data["approvals"]["tasks"]["generated"] = True
+        data["source_sha256"]["design_at_tasks"] = design
+        (self.spec / "spec.json").write_text(json.dumps(data), encoding="utf-8")
+        result = self.act()
+        self.assertEqual(result["action"], "stop-manual")
+        self.assertEqual(result["gate"]["result"], "MANUAL_VERIFY_REQUIRED")
+
 
 if __name__ == "__main__":
     unittest.main()

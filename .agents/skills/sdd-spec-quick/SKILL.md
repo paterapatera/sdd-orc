@@ -6,9 +6,9 @@ disable-model-invocation: true
 
 # Light design and tasks
 
-The requirements already exist. This skill writes `design.md` and `tasks.md`. It does not rewrite the requirements, write a review, or set `ready_for_implementation`.
+The requirements already exist. This skill writes `design.md` and `tasks.md` in the shapes defined by `sdd-spec-design` and `sdd-spec-tasks`. It does not rewrite the requirements, write a review, or set `ready_for_implementation`.
 
-A good design traces each acceptance criterion to a responsibility and a failure behavior. List only the public-surface files in Persistent References. A good task is `- [ ] 1.` or `- [ ] 1.1`, with `_Depends:_` and `_Boundary:_`, and can be written as a test that fails before implementation.
+A good design traces each acceptance criterion to a responsibility and a failure behavior inside the `## Record` fence and the matching headings. `contracts` lists only the public-surface files, with `mode` `modify` or `reference`. A good task is one json object with `done`, `req`, `boundary`, `depends`, and `wave`, and can be written as a test that fails before implementation.
 
 When the existing design's hash matches the requirements, do not rewrite the design. Write only the missing tasks.
 
