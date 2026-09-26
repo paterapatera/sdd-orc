@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="{{HTML_LANG}}">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{FEATURE_NAME}} — {{LABEL_TITLE}}</title>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/codylindley/shadcn-html@v0.7.13-alpha/dist/theme/default-semantic-tokens.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/codylindley/shadcn-html@v0.7.13-alpha/dist/components/button/button.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/codylindley/shadcn-html@v0.7.13-alpha/dist/components/badge/badge.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/codylindley/shadcn-html@v0.7.13-alpha/dist/components/card/card.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/codylindley/shadcn-html@v0.7.13-alpha/dist/components/table/table.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/codylindley/shadcn-html@v0.7.13-alpha/dist/components/alert/alert.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/codylindley/shadcn-html@v0.7.13-alpha/dist/components/separator/separator.css">
+
+  <style id="tsk-theme">
+  {{THEME_CSS}}
+  </style>
+</head>
+<body class="tsk-body">
+  <div class="tsk-page">
+    <header class="tsk-header">
+      <div>
+        <h1>{{FEATURE_NAME}}</h1>
+        <p class="tsk-meta">{{LABEL_TITLE}} · {{LABEL_GENERATED}}: <time datetime="{{GENERATED_AT_ISO}}">{{GENERATED_AT}}</time></p>
+      </div>
+      <div class="tsk-header-actions">
+        <a class="btn" data-variant="outline" href="tasks.md">{{LABEL_SOURCE}}</a>
+        <a class="btn" data-variant="outline" href="{{REQ_MD_HREF}}">{{LABEL_REQ_SOURCE}}</a>
+      </div>
+    </header>
+
+    <div class="alert" role="alert">
+      <i data-lucide="info" class="alert-icon" aria-hidden="true"></i>
+      <div class="alert-content">
+        <h5 class="alert-title">{{LABEL_TITLE}}</h5>
+        <p class="alert-description">{{LABEL_NOT_CANONICAL}}</p>
+      </div>
+    </div>
+
+    <nav class="tsk-toc" aria-label="{{LABEL_TOC}}">
+      <h2>{{LABEL_TOC}}</h2>
+      {{SLOT_TOC}}
+    </nav>
+
+    <hr class="separator" role="none">
+
+    {{SLOT_STUB}}
+
+    {{SLOT_BLOCKED}}
+
+    {{SLOT_CHANGES}}
+
+    <hr class="separator" role="none">
+
+    <footer class="tsk-footer">
+      <p>{{LABEL_SOURCE}}: <code>{{SOURCE_PATH}}</code></p>
+    </footer>
+  </div>
+
+  <!-- SLOT recipes (delete these comments from output; copy the matching block into the slots above) -->
+
+  <!-- recipe:toc — include a link only for a group that is emitted
+  <ol>
+    <li>
+      <a href="#changes">{{LABEL_CHANGES}}</a>
+      <ol>
+        <li><a href="#screen-NAME">SCREEN_NAME</a></li>
+        <li><a href="#domain-STEM">DOMAIN_STEM</a></li>
+        <li><a href="#other">{{LABEL_OTHER}}</a></li>
+      </ol>
+    </li>
+  </ol>
+  -->
+
+  <!-- recipe:stub
+  <div class="alert" role="alert">
+    <i data-lucide="circle-alert" class="alert-icon" aria-hidden="true"></i>
+    <div class="alert-content">
+      <h5 class="alert-title">{{LABEL_STUB}}</h5>
+      <p class="alert-description">{{LABEL_STUB_HINT}}</p>
+    </div>
+  </div>
+  -->
+
+  <!-- recipe:blocked — omit when every blocked is null
+  <div class="alert" role="alert">
+    <i data-lucide="circle-alert" class="alert-icon" aria-hidden="true"></i>
+    <div class="alert-content">
+      <h5 class="alert-title">{{LABEL_BLOCKED}}</h5>
+      <p class="alert-description"><a href="#task-1.1">1.1</a> BLOCKED_SENTENCE</p>
+    </div>
+  </div>
+  -->
+
+  <!-- recipe:changes — one article per screen, then per domain, then #other. Tasks stay in source order. Omit an empty list and an empty article.
+  <section class="tsk-section" id="changes">
+    <h2>{{LABEL_CHANGES}}</h2>
+    <p class="tsk-lead">{{LABEL_CHANGES_LEAD}}</p>
+    <article class="tsk-group" id="screen-NAME">
+      <h3><span class="badge" data-kind="screen">{{LABEL_SCREEN}}</span> SCREEN_NAME</h3>
+      <article class="tsk-task" id="task-1.1">
+        <h4><span class="badge" data-status="open">未着手</span> 1.1 TITLE</h4>
+        <div class="tsk-change-grid">
+          <div class="card">
+            <div class="card-header"><h5 class="card-title">{{LABEL_CREATE}}</h5></div>
+            <div class="card-content"><ul><li><code>PATH</code></li></ul></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h5 class="card-title">{{LABEL_UPDATE}}</h5></div>
+            <div class="card-content"><ul><li><code>PATH</code></li></ul></div>
+          </div>
+        </div>
+        <p>BOUNDARY_ID</p>
+        <p>{{LABEL_DONE}} — DONE</p>
+        <p>{{LABEL_PHYSICAL}} — PHYSICAL</p>
+        <p>P-name · 推奨 · CHOOSE</p>
+        <p>REQ_IDS</p>
+        <p>{{LABEL_DEPENDS}} — 1</p>
+        <p><code>docs/contracts/billing-api.md</code></p>
+      </article>
+    </article>
+    <article class="tsk-group" id="domain-STEM">
+      <h3><span class="badge" data-kind="domain">{{LABEL_DOMAIN}}</span> DOMAIN_STEM</h3>
+    </article>
+    <article class="tsk-group" id="other">
+      <h3>{{LABEL_OTHER}}</h3>
+    </article>
+  </section>
+  -->
+
+  <!-- recipe:legacy — checkbox file only. No groups.
+  <section class="tsk-section" id="changes">
+    <h2>{{LABEL_CHANGES}}</h2>
+    <ul>
+      <li>1. TITLE</li>
+    </ul>
+  </section>
+  -->
+
+  <!-- recipe:gap — omit when requirements.md is missing, every id is covered, or the file is a checkbox list
+  <div class="alert" role="alert">
+    <i data-lucide="triangle-alert" class="alert-icon" aria-hidden="true"></i>
+    <div class="alert-content">
+      <h5 class="alert-title">{{LABEL_GAP}}</h5>
+      <p class="alert-description">GAP_IDS</p>
+    </div>
+  </div>
+  -->
+
+  <script src="https://unpkg.com/lucide@1.8.0"></script>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>

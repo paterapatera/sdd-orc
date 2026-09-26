@@ -1,5 +1,5 @@
-/* sdd-design-html — palette → shadcn semantic tokens + preview chrome.
-   Paste this entire file into <style id="des-theme"> in the generated HTML. */
+/* sdd-task-html — palette → shadcn semantic tokens + preview chrome.
+   Paste this entire file into <style id="tsk-theme"> in the generated HTML. */
 
 :root {
   --alto: #dedede;
@@ -48,7 +48,7 @@ html {
   color-scheme: light;
 }
 
-body.des-body {
+body.tsk-body {
   margin: 0;
   background: var(--background);
   color: var(--foreground);
@@ -56,13 +56,13 @@ body.des-body {
   line-height: 1.55;
 }
 
-.des-page {
+.tsk-page {
   max-width: 72rem;
   margin: 0 auto;
   padding: 1.5rem 1.25rem 3rem;
 }
 
-.des-header {
+.tsk-header {
   display: flex;
   flex-wrap: wrap;
   align-items: flex-start;
@@ -71,7 +71,7 @@ body.des-body {
   margin-bottom: 1rem;
 }
 
-.des-header h1 {
+.tsk-header h1 {
   margin: 0 0 0.35rem;
   color: var(--casal);
   font-size: 1.75rem;
@@ -79,19 +79,19 @@ body.des-body {
   letter-spacing: -0.02em;
 }
 
-.des-meta {
+.tsk-meta {
   margin: 0;
   font-size: 0.875rem;
   color: var(--chicago);
 }
 
-.des-header-actions {
+.tsk-header-actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
 
-.des-layer-hint {
+.tsk-layer-hint {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -99,12 +99,12 @@ body.des-body {
   margin: 0.75rem 0 0;
 }
 
-.des-layer-hint-text {
+.tsk-layer-hint-text {
   font-size: 0.85rem;
   color: var(--chicago);
 }
 
-.des-toc {
+.tsk-toc {
   margin: 1.25rem 0;
   padding: 1rem 1.15rem;
   background: var(--muted);
@@ -112,7 +112,7 @@ body.des-body {
   border-radius: var(--radius-lg, 0.625rem);
 }
 
-.des-toc h2 {
+.tsk-toc h2 {
   margin: 0 0 0.5rem;
   font-size: 0.8rem;
   font-weight: 650;
@@ -121,40 +121,40 @@ body.des-body {
   color: var(--casal);
 }
 
-.des-toc ol {
+.tsk-toc ol {
   margin: 0;
   padding-left: 1.2rem;
 }
 
-.des-toc > ol > li {
+.tsk-toc > ol > li {
   margin: 0.35rem 0;
 }
 
-.des-toc ol ol {
+.tsk-toc ol ol {
   margin-top: 0.2rem;
 }
 
-.des-toc a {
+.tsk-toc a {
   color: var(--chicago);
   text-decoration: none;
 }
 
-.des-toc a:hover {
+.tsk-toc a:hover {
   color: var(--casal);
   text-decoration: underline;
 }
 
-.des-toc .badge {
+.tsk-toc .badge {
   font-size: 0.7rem;
   vertical-align: middle;
   margin-right: 0.25rem;
 }
 
-.des-section {
+.tsk-section {
   margin: 2rem 0;
 }
 
-.des-section > h2 {
+.tsk-section > h2 {
   margin: 0 0 0.75rem;
   color: var(--casal);
   font-size: 1.25rem;
@@ -164,42 +164,42 @@ body.des-body {
   gap: 0.5rem;
 }
 
-.des-intro {
+.tsk-intro {
   font-size: 1rem;
 }
 
-.des-intro p {
+.tsk-intro p {
   margin: 0 0 0.65rem;
 }
 
-.des-lead {
+.tsk-lead {
   margin: 0 0 0.85rem;
   font-size: 1rem;
 }
 
-.des-change-grid {
+.tsk-change-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
 }
 
-.des-group {
+.tsk-group {
   margin: 1.5rem 0 0;
 }
 
-.des-group + .des-group {
+.tsk-group + .tsk-group {
   margin-top: 2.5rem;
 }
 
-.des-group > * + * {
+.tsk-group > * + * {
   margin-top: 1.25rem;
 }
 
-.des-group .card-content > * + * {
+.tsk-group .card-content > * + * {
   margin-top: 1rem;
 }
 
-.des-group > h3 {
+.tsk-group > h3 {
   margin: 0 0 0.75rem;
   color: var(--casal);
   font-size: 1.05rem;
@@ -210,26 +210,26 @@ body.des-body {
 }
 
 @media (max-width: 48rem) {
-  .des-change-grid {
+  .tsk-change-grid {
     grid-template-columns: 1fr;
   }
 }
 
-.des-group .card-header {
+.tsk-group .card-header {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
   gap: 0.15rem;
 }
 
-.des-card-hint {
+.tsk-card-hint {
   margin: 0.25rem 0 0;
   font-size: 1rem;
   font-weight: 400;
   color: var(--chicago);
 }
 
-.des-group .card-content ul {
+.tsk-group .card-content ul {
   margin: 0;
   padding-left: 1.1rem;
 }
@@ -241,13 +241,13 @@ body.des-body {
   color: var(--casal);
 }
 
-.des-subh {
+.tsk-subh {
   margin: 0 0 0.4rem;
   font-size: 0.95rem;
   color: var(--casal);
 }
 
-.des-diagram {
+.tsk-diagram {
   overflow-x: auto;
   padding: 0.75rem;
   border: 1px solid var(--border);
@@ -256,12 +256,12 @@ body.des-body {
   margin: 0 0 1rem;
 }
 
-.des-footer {
+.tsk-footer {
   margin-top: 2.5rem;
   font-size: 0.85rem;
 }
 
-.des-footer code {
+.tsk-footer code {
   font-size: 0.85em;
 }
 
@@ -269,12 +269,12 @@ body.des-body {
   overflow-x: auto;
 }
 
-.des-prose ul {
+.tsk-prose ul {
   margin: 0;
   padding-left: 1.15rem;
 }
 
-.des-prose p {
+.tsk-prose p {
   margin: 0 0 0.5rem;
 }
 
@@ -308,6 +308,22 @@ body.des-body {
   border-color: transparent;
 }
 
+.badge[data-status="open"] {
+  background: var(--almond);
+  color: var(--oregon);
+  border-color: transparent;
+}
+
+.badge[data-status="done"] {
+  background: var(--jagged-ice);
+  color: var(--casal);
+  border-color: transparent;
+}
+
+.tsk-task + .tsk-task {
+  margin-top: 1.5rem;
+}
+
 .badge[data-mode="modify"] {
   background: var(--almond);
   color: var(--oregon);
@@ -338,7 +354,7 @@ body.des-body {
   border-color: transparent;
 }
 
-.des-appendix {
+.tsk-appendix {
   margin: 0.75rem 0 1.15rem;
   border: 1px dashed var(--border);
   border-radius: var(--radius-lg, 0.625rem);
@@ -346,7 +362,7 @@ body.des-body {
   padding: 0.75rem 1rem 1rem;
 }
 
-.des-appendix > summary {
+.tsk-appendix > summary {
   cursor: pointer;
   list-style: none;
   display: flex;
@@ -358,11 +374,11 @@ body.des-body {
   font-weight: 650;
 }
 
-.des-appendix > summary::-webkit-details-marker {
+.tsk-appendix > summary::-webkit-details-marker {
   display: none;
 }
 
-.des-appendix > summary::before {
+.tsk-appendix > summary::before {
   content: "";
   width: 0.45rem;
   height: 0.45rem;
@@ -372,32 +388,32 @@ body.des-body {
   transition: transform 0.15s ease;
 }
 
-.des-appendix[open] > summary::before {
+.tsk-appendix[open] > summary::before {
   transform: rotate(45deg);
 }
 
-.des-appendix-body {
+.tsk-appendix-body {
   margin-top: 0.85rem;
   display: flex;
   flex-direction: column;
   gap: 0.85rem;
 }
 
-.des-comp-detail {
+.tsk-comp-detail {
   border: 1px solid var(--border);
   border-radius: var(--radius-md, 0.5rem);
   background: var(--card);
   padding: 0.75rem 0.9rem;
 }
 
-.des-comp-detail h3,
-.des-comp-detail h4 {
+.tsk-comp-detail h3,
+.tsk-comp-detail h4 {
   margin: 0 0 0.5rem;
   color: var(--casal);
   font-size: 1rem;
 }
 
-.des-pre {
+.tsk-pre {
   margin: 0;
   padding: 0.75rem;
   overflow-x: auto;
@@ -408,7 +424,7 @@ body.des-body {
   border-radius: var(--radius-md, 0.5rem);
 }
 
-.des-tree {
+.tsk-tree {
   margin: 0;
   padding: 0.75rem 1rem;
   overflow-x: auto;

@@ -58,6 +58,7 @@
 | `/propose-quality-tools <言語> M` | 中くらいの規模向けに提案させる。インストールは自分で行う |
 | `/propose-quality-tools <言語> L` | 大きい規模向けに提案させる。インストールは自分で行う |
 | `/sdd-req-html <feature>` | 要求が書いてある `requirements.md` を、ブラウザで見る HTML にする |
-| `/sdd-design-html <feature>` | 設計が書いてある `design.md` を、ブラウザで見る HTML にする |
+| `/sdd-design-html <feature>` | 設計の作成と更新を、画面またはドメインごとにまとめた HTML にする |
+| `/sdd-task-html <feature>` | 作業の作成と更新を、画面またはドメインごとにまとめた HTML にする |
 | `/sdd-steering-custom` | `product.md`、`tech.md`、`structure.md` 以外の決まりを、`docs/steering/` に一枚書く |
 | 評価して | このリポジトリだけで使う。手順は `AGENTS.md` が指し、`.agents` にも `docs` にも入らない。`sdd-*` の手順書や `sdd.py` を変えたあとに送る。case 名を続けるとその case だけ。`RESULT: OK` にならない変更は採用しない |
