@@ -36,16 +36,38 @@ Read `## Boundary`. Two cards: lines whose key is `in` / `out` (also `**In**` / 
 
 Read `## Screens`. One block per `###` heading. Omit the whole section when there is no `###` heading (including a lone `out:` that says there is no new screen).
 
-Screen names are the `###` headings. On each card, four rows, in this order: `from`, `items`, `goes`, `failure`. Use the sentence after the key. Drop a row whose text is empty.
+Screen names are the `###` headings. On each card, `from` is the first row. Then the item table. Then notices, if any. Then the branch table when it has two or more rows. `goes` and `failure` are rows only when the branch table is omitted. Drop a row whose text is empty.
 
 **Items**
 
-- `criteria:` — one list item per cited AC. The text is that AC's response clause.
-- `out:` — if the sentence contains `など`, `等`, `etc.`, or `or similar`, one list item for the whole sentence. Otherwise, if it contains `・`, one list item per `・` segment. Do not split on `、` or `と`. With no `・`, one list item for the whole sentence.
+One list. Each leaf is a noun from the items line, plus `{{LABEL_KIND}}`. Not an acceptance sentence. Do not add a column that says whether the item repeats.
+
+Take the `out:` sentence, or the response clause of each cited AC. Split on `。`.
+
+A sentence is a notice, not an item, when it says that a reason or a success is visible (`成功したこと`, `理由`, `未入力であること`) and it does not list fields with `・` or `と`. Put each notice under `{{LABEL_NOTICE}}`, after the list, in the sentence's own words. If the branch table's response cell already contains that sentence, omit the notice.
+
+Any other sentence is an item sentence:
+
+1. Remove a trailing `が見える` or `を見せる` only.
+2. If it contains `など`, `等`, `etc.`, or `or similar`, one row. The name is the sentence after step 1. Do not split it.
+3. Otherwise separate fields from operations. If the sentence contains `と、`, the left side is fields and the right side is operations. Else if a `と` is followed by a part that contains `操作`, split at that `と`.
+4. Fields: split on `・`. If that side ends with `の入力` or `の変更`, delete the suffix and mark every field `入力`. Otherwise, if the sentence's verb is `見せる` or `見える`, mark them `表示`. If the side has no `・` but has `と` (`本のタイトルと記録日`), split on `と`.
+5. Operations: if the side ends with `操作`, delete that one trailing `操作`, then split on `・`. Each piece is `操作`. The name is the piece (`記録完了`, `変更完了`, `変更`, `削除`).
+
+A sentence with `各<noun>` (`各感想`) puts those leaves under one group. The group name is the noun without `各` (`感想`). The group's kind is `{{LABEL_MANY}}`.
+
+A container is a wider group and has no kind. It exists only when the source names it.
+
+- The items value is a nested list: keep that tree. A parent written `名前(複数件)` or `名前（複数件）` is a `{{LABEL_MANY}}` group; drop the parentheses from the name. Any other parent is a container.
+- The items value is prose: a prefix `<name>では` or `<name>に` opens a container named `<name>`, when `<name>` is not this screen's `###` title. The rest of that sentence, including a `各` group, sits inside it. The same name across sentences is one container.
+
+Leaves with no container and no `各` stay at the top level. Do not invent a container. Do not print a path. `*.エリア1.感想.本のタイトル` only means the container `エリア1`, the group `感想`, and the leaf `本のタイトル`.
+
+`{{LABEL_KIND}}` is only `入力`, `操作`, `表示`, or a widget word that already appears in that leaf (`アラート`, `ボタン`, `ラジオ`, `チェック`). A widget word in the leaf wins (`検索ボタン` is `ボタン`, not `操作`). `示す` / `見える` / `見せる` are `表示`. `操作` is the kind only when the leaf says `操作` and names no widget. A field list ending in `の入力` or `の変更` is `入力`, not `テキスト` and not `ラジオ`. Do not write `アラート` unless the sentence says `アラート`.
 
 **Failure row**
 
-`criteria:` links each id to `#req-N` and shows that AC's condition and response. `out:` shows the sentence.
+Use this row only when the branch table is omitted. `criteria:` links each id to `#req-N` and shows that AC's condition and response. `out:` shows the sentence. The response keeps the place it names (`記録画面に示し`). Do not add a widget word the sentence does not have.
 
 ### Screen transition
 
@@ -63,17 +85,18 @@ The edge label is that sentence. Do not add words. The same ordered pair and the
 
 ### Screen branch table
 
-On a screen card, when `goes` navigation sentences and `failure` outcomes together make **two or more** columns. One column per `goes` navigation sentence, then one column per cited failure AC. A `failure` line that is `out:` prose is one column.
+On a screen card, when `goes` navigation sentences and `failure` outcomes together make **two or more** rows. One row per `goes` navigation sentence, then one row per cited failure AC. A `failure` line that is `out:` prose is one row.
 
-This table is not the limited-entry Y / N table. Cells are words from the source:
+This table is not the limited-entry Y / N table. Patterns run down the first column. Headers are `{{LABEL_PATTERN}}`, `{{LABEL_COL_COND}}`, `{{LABEL_COL_DEST}}`, `{{LABEL_COL_RESPONSE}}`, `{{LABEL_KIND}}`. Cells are words from the source:
 
-| Row | `goes` column | failure column |
+| Column | `goes` row | failure row |
 | --- | --- | --- |
-| `{{LABEL_COL_COND}}` | the clause of that sentence before the destination; if it cannot be separated, the whole sentence | the AC condition, or the `out:` sentence |
+| `{{LABEL_COL_COND}}` | the clause before the destination; if it cannot be separated, the whole sentence | the AC condition, or the `out:` sentence |
 | `{{LABEL_COL_DEST}}` | the target node name | the `###` screen named in the AC response; if the response says the user stays, this screen |
 | `{{LABEL_COL_RESPONSE}}` | the `goes` sentence | the AC response, or the `out:` sentence |
+| `{{LABEL_KIND}}` | `遷移` | `表示` when the response says `示す` / `見える` / `見せる`; `アラート` only when the response says `アラート`; `遷移` when the row only moves and shows nothing |
 
-Column titles are `{{LABEL_PATTERN}}` plus a 1-based index (`パターン1` / `Pattern 1`). Do not use `R1`. Do not fill Y / N / — / ○ here. Omit the table when it would have one column.
+The pattern cell is the 1-based index alone (`1`, `2`). The column header is already `{{LABEL_PATTERN}}`, so the cell does not repeat that word. Do not use `R1`. Do not fill Y / N / — / ○ here. Omit the table when it would have one row. When the table is present, omit the card's `goes` and `failure` rows so those sentences are not shown twice.
 
 ### Requirement index
 
@@ -91,7 +114,22 @@ Visible badge text is everyday language (see the label table below). Do **not** 
 
 ### Coverage
 
-One section for `## Quality` and `## Checks`, when either exists. One table. Each markdown key is a row, in source order, Quality first. The cell is the cited ids as links to `#req-N` (text `1.2`), or the `out:` sentence. An `Open question:` on that line is also listed under open questions; the cell repeats the question sentence.
+One section for `## Quality` and `## Checks`, when either exists. Place it after every requirement, immediately before the footer. One lead sentence: `{{LABEL_COVERAGE_LEAD}}`. One table. Each markdown key is a row, in source order, Quality first.
+
+The name cell is the Japanese or English gloss below, never the raw key (`functional`, `leakage`). The question cell is the fixed sentence in that same table. The basis cell is the cited AC's response clause, with the id linked to `#req-N` (`1.2` plus the response). An `out:` sentence is the basis when there is no criterion. An `Open question:` on that line is also listed under open questions; the basis cell repeats the question sentence.
+
+| key | ja name | en name | ja question | en question |
+| --- | --- | --- | --- | --- |
+| functional | 機能 | Function | スコープ内のふるまいが、受け入れ条件の結果になっているか | Does each in-scope behavior show up as a result? |
+| reliability | 信頼性 | Reliability | 失敗、二重の成功、同時の変更のあと、何が残るか | After a failure, a double success, or a concurrent change, what remains? |
+| usability | 使いやすさ | Usability | 拒否されたあとも続けられるか、入力が残るか、操作を始める場所が分かるか | After a rejection, can the user continue, keep what they typed, and see where to start? |
+| performance | 性能 | Performance | 件数や、かかる時間の上限が結果に書いてあるか | Does the result state a count or a time limit? |
+| maintainability | 保守 | Maintenance | 後から直しても、同じものを識別できるか | After a later change, can the same thing still be identified? |
+| security | 安全 | Safety | 本人以外に見せないこと、いつまで保持するかが結果に書いてあるか | Does the result say who else cannot see it, and how long it is kept? |
+| leakage | 漏洩 | Leakage | 対象外の人が、保持したものを見たり変えたりできないか | Can someone outside the allowed set see or change a kept thing? |
+| destruction | 破損 | Damage | ミスや二重の成功で、違うものが残ったり、消えたものが戻ったりしないか | Can a mistake or a second success leave the wrong thing, or bring a removed thing back? |
+| lockout | 行き止まり | Dead end | 拒否されたあと、理由が見えて操作を続けられるか | After a rejection, is the reason visible and can the user continue? |
+| rewrite | 同一性 | Identity | 後から変えても、同じものの識別が残るか | After a later change, does the identity of the same thing remain? |
 
 ### Exception catalog (document-level)
 
@@ -152,9 +190,9 @@ Shape:
 5. Scope
 6. Screens (transition, then one card each)
 7. Requirement index
-8. Coverage
-9. Exception catalog
-10. Per requirement: `<details id="req-N">` (closed) → summary (number, title, AC count, type badges only when the document has more than one type) → purpose card → AC matrix → decision table (if any) → mermaid (if any)
+8. Exception catalog
+9. Per requirement: `<details id="req-N">` (closed) → summary (number, title, AC count, type badges only when the document has more than one type) → purpose card → AC matrix → decision table (if any) → mermaid (if any)
+10. Coverage
 11. Footer (source path)
 
 Legend of everyday-language type badges: once, near the index, and only as the type rule above says. No Tabs JS. Never show raw EARS keywords on the page.
@@ -170,12 +208,17 @@ Headings and column titles use these strings. `spec.json` `language` `ja` uses t
 | `{{LABEL_TRANSITIONS}}` | 画面遷移 | Screen flow |
 | `{{LABEL_FROM}}` | 開き方 | Opens from |
 | `{{LABEL_ITEMS}}` | 項目 | Items |
+| `{{LABEL_KIND}}` | 種類 | Kind |
+| `{{LABEL_MANY}}` | 複数件 | Many |
+| `{{LABEL_NOTICE}}` | 表示 | Notice |
 | `{{LABEL_GOES}}` | 遷移先 | Goes to |
 | `{{LABEL_FAILURE}}` | 失敗時 | On failure |
 | `{{LABEL_BRANCH}}` | 分岐 | Branches |
 | `{{LABEL_COL_DEST}}` | 行き先 | Place |
 | `{{LABEL_COVERAGE}}` | 品質と確認 | Quality and checks |
-| `{{LABEL_COL_BASIS}}` | 根拠 | Basis |
+| `{{LABEL_COVERAGE_LEAD}}` | それぞれの行で、右の結果が「確かめること」を満たすかを見ます。 | Each row asks whether the result on the right settles the question. |
+| `{{LABEL_COL_QUESTION}}` | 確かめること | Question |
+| `{{LABEL_COL_BASIS}}` | この文書の結果 | Result in this document |
 | `{{LABEL_EARS_WHEN}}` | イベント | Event |
 | `{{LABEL_EARS_IF}}` | 例外 | Exception |
 | `{{LABEL_EARS_WHILE}}` | 状態 | State |
@@ -187,7 +230,7 @@ Headings and column titles use these strings. `spec.json` `language` `ja` uses t
 | `{{LABEL_EARS_WHERE_HINT}}` | オプションの機能がある場合 | Where an optional feature is present |
 | `{{LABEL_EARS_SHALL_HINT}}` | 条件なしで常に成立 | Always, with no condition |
 
-Quality and Checks row names stay the English keys from the markdown (`functional`, `leakage`, and the rest).
+Quality and Checks keys are not shown. Use the gloss table in the Coverage section.
 
 ## Forbidden
 
@@ -197,7 +240,8 @@ Quality and Checks row names stay the English keys from the markdown (`functiona
 - Mermaid types other than `flowchart` and `stateDiagram` / `stateDiagram-v2`
 - A cross-requirement flowchart other than the one screen transition
 - A flowchart inside a screen card
-- Splitting an items sentence on `、` or `と`
+- Naming a widget the sentence does not name (`アラート`, `ボタン`, `ラジオ`, `テキスト`)
+- Leaving an acceptance sentence in the item column (`が見える` still attached, or a whole `shall` response as one item)
 - Empty sections with placeholder lorem or “TBD” diagrams
 - Changing `requirements.md`
 

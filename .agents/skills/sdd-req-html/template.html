@@ -62,11 +62,11 @@
       {{SLOT_INDEX}}
     </section>
 
-    {{SLOT_COVERAGE}}
-
     {{SLOT_EXCEPTIONS}}
 
     {{SLOT_REQUIREMENTS}}
+
+    {{SLOT_COVERAGE}}
 
     <hr class="separator" role="none">
 
@@ -84,9 +84,9 @@
     <li><a href="#scope">{{LABEL_SCOPE}}</a></li>
     <li><a href="#screens">{{LABEL_SCREENS}}</a></li>
     <li><a href="#index">{{LABEL_INDEX}}</a></li>
-    <li><a href="#coverage">{{LABEL_COVERAGE}}</a></li>
     <li><a href="#exceptions">{{LABEL_EXCEPTIONS}}</a></li>
     <li><a href="#req-1">1. TITLE</a></li>
+    <li><a href="#coverage">{{LABEL_COVERAGE}}</a></li>
   </ol>
   -->
 
@@ -155,7 +155,7 @@
   </div>
   -->
 
-  <!-- recipe:screens — omit when ## Screens has no ### heading. One transition diagram, then one card per ###. Omit a card row whose text is empty. Omit the branch table when it would have one column. No flowchart inside the card.
+  <!-- recipe:screens — omit when ## Screens has no ### heading. One transition diagram, then one card per ###. Item list, then notices, then the branch table. A container has no kind and appears only when the source names it. A 複数件 group appears only for 各<noun> or a parent written 複数件. Omit goes/failure rows when the branch table is present. Omit the branch table when it would have one row. No flowchart inside the card. Leave space between the diagram and the first card (req-screen-list).
   <section class="req-section" id="screens">
     <h2>{{LABEL_SCREENS}}</h2>
     <h3 class="req-subh">{{LABEL_TRANSITIONS}}</h3>
@@ -175,37 +175,56 @@ flowchart TD
             <dt>{{LABEL_FROM}}</dt>
             <dd>FROM</dd>
             <dt>{{LABEL_ITEMS}}</dt>
-            <dd><ul><li>ITEM</li></ul></dd>
-            <dt>{{LABEL_GOES}}</dt>
-            <dd>GOES</dd>
-            <dt>{{LABEL_FAILURE}}</dt>
-            <dd><a href="#req-1">1.2</a> CONDITION — RESPONSE</dd>
+            <dd>
+              <ul class="req-items">
+                <li>
+                  <span class="req-item-name">AREA</span>
+                  <ul>
+                    <li>
+                      <span class="req-item-name">GROUP</span>
+                      <span class="req-item-kind">{{LABEL_MANY}}</span>
+                      <ul>
+                        <li>
+                          <span class="req-item-name">NAME</span>
+                          <span class="req-item-kind">表示</span>
+                        </li>
+                      </ul>
+                    </li>
+                  </ul>
+                </li>
+                <li>
+                  <span class="req-item-name">AREA</span>
+                  <ul>
+                    <li>
+                      <span class="req-item-name">NAME</span>
+                      <span class="req-item-kind">入力</span>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            </dd>
+            <dt>{{LABEL_NOTICE}}</dt>
+            <dd>NOTICE</dd>
           </dl>
           <h4 class="req-subh">{{LABEL_BRANCH}}</h4>
           <div class="table-container">
             <table class="table" aria-label="{{LABEL_BRANCH}}">
               <thead>
                 <tr class="table-row">
-                  <th class="table-head" scope="col"></th>
-                  <th class="table-head" scope="col">{{LABEL_PATTERN}}1</th>
-                  <th class="table-head" scope="col">{{LABEL_PATTERN}}2</th>
+                  <th class="table-head" scope="col">{{LABEL_PATTERN}}</th>
+                  <th class="table-head" scope="col">{{LABEL_COL_COND}}</th>
+                  <th class="table-head" scope="col">{{LABEL_COL_DEST}}</th>
+                  <th class="table-head" scope="col">{{LABEL_COL_RESPONSE}}</th>
+                  <th class="table-head" scope="col">{{LABEL_KIND}}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr class="table-row">
-                  <th class="table-cell" scope="row">{{LABEL_COL_COND}}</th>
+                  <th class="table-cell" scope="row">1</th>
                   <td class="table-cell">CONDITION</td>
-                  <td class="table-cell">CONDITION</td>
-                </tr>
-                <tr class="table-row">
-                  <th class="table-cell" scope="row">{{LABEL_COL_DEST}}</th>
                   <td class="table-cell">PLACE</td>
-                  <td class="table-cell">PLACE</td>
-                </tr>
-                <tr class="table-row">
-                  <th class="table-cell" scope="row">{{LABEL_COL_RESPONSE}}</th>
                   <td class="table-cell">RESPONSE</td>
-                  <td class="table-cell">RESPONSE</td>
+                  <td class="table-cell">遷移</td>
                 </tr>
               </tbody>
             </table>
@@ -216,21 +235,24 @@ flowchart TD
   </section>
   -->
 
-  <!-- recipe:coverage — omit when both ## Quality and ## Checks are missing. Row names stay the English keys.
+  <!-- recipe:coverage — after the requirements, before the footer. Omit when both ## Quality and ## Checks are missing. Names and questions come from the Coverage gloss table. Basis is the response clause, not a bare id.
   <section class="req-section" id="coverage">
     <h2>{{LABEL_COVERAGE}}</h2>
+    <p class="req-meta">{{LABEL_COVERAGE_LEAD}}</p>
     <div class="table-container">
       <table class="table" aria-label="{{LABEL_COVERAGE}}">
         <thead>
           <tr class="table-row">
             <th class="table-head" scope="col"></th>
+            <th class="table-head" scope="col">{{LABEL_COL_QUESTION}}</th>
             <th class="table-head" scope="col">{{LABEL_COL_BASIS}}</th>
           </tr>
         </thead>
         <tbody>
           <tr class="table-row">
-            <th class="table-cell" scope="row">functional</th>
-            <td class="table-cell"><a href="#req-1">1.1</a></td>
+            <th class="table-cell" scope="row">機能</th>
+            <td class="table-cell">QUESTION</td>
+            <td class="table-cell"><a href="#req-1">1.1</a> RESPONSE</td>
           </tr>
         </tbody>
       </table>
