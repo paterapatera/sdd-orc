@@ -65,6 +65,7 @@ Do not add intent, scope, or an acceptance bar. When one of those is required, w
 - rewrite: pass: <the bad result, and the criterion result that fails it>
 - place: pass: <each action and the place named on that same line>
 - lists: pass: <every kept item the list names>
+- boundary: N/A: <no Boundary out, or pass quoting an exclusion from this feature>
 
 ## Approval summary
 ### Accepted residual risks
@@ -73,4 +74,4 @@ Do not add intent, scope, or an acceptance bar. When one of those is required, w
 - STATUS: VERIFIED
 ```
 
-Write `VERIFIED` only together with `GO`. Under Accepted residual risks write `なし` unless every bullet is a consequence a criterion already states. A missing observable result is NO-GO in Findings, not a residual risk. `.agents/skills/sdd-spec/scripts/sdd.py` treats any other residual bullet as unsettled and returns to grill. It also withholds `GO` until `## Evidence` has all ten domains, `## Specialists` has PO, QA, and Sec, and `## Meaning` has all twelve lines, each as `pass:`, `finding:`, or `N/A:` with a reason. A `pass:` or `finding:` must quote a span that is in `requirements.md`. It checks that the quote is present. It does not grade the reason. A `finding:` is `VERDICT: NO-GO`. Any `NO-GO` on this review returns to grill. Do not edit a criterion so that a word appears. On `performance`, a number the human chose is unsettled until the criterion states that limit, even when the words are not the same characters.
+Write `VERIFIED` only together with `GO`. Under Accepted residual risks write `なし` unless every bullet is a consequence a criterion already states. A missing observable result is NO-GO in Findings, not a residual risk. `.agents/skills/sdd-spec/scripts/sdd.py` treats any other residual bullet as unsettled and returns to grill. It also withholds `GO` until `## Evidence` has all ten domains, `## Specialists` has PO, QA, and Sec, and `## Meaning` has all thirteen lines, each as `pass:`, `finding:`, or `N/A:` with a reason. A `pass:` or `finding:` must quote a span that is in `requirements.md`. It checks that the quote is present. It does not grade the reason. A `finding:` is `VERDICT: NO-GO`. Any `NO-GO` on this review returns to grill. Do not edit a criterion so that a word appears. On `performance`, a number the human chose is unsettled until the criterion states that limit, even when the words are not the same characters.

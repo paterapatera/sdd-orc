@@ -12,9 +12,9 @@ The subject is `docs/specs/<feature>/design.md` and `requirements.md`. The bar i
 
 Marks, secrets, and `reversible` are already checked. You judge whether the design presents a mechanism or a quantity as something the requirements decided. A status code, a deletion method, or a limit counts in any wording, including when the design says it will not use that mechanism. A number the human chose counts when the requirements do not state that limit. This skill does not run when `details.checks` is non-empty.
 
-Edit only `design.md` and `reviews/design-review.md`. Requirements SHA256 is `requirements.md`. Design SHA256 is `design.md` after the last edit. Record edits in `## Reflected Fixes`.
+Edit only `design.md` and `reviews/design-review.md`. Do not edit `requirements.md`. Requirements SHA256 is `requirements.md` before this review. Design SHA256 is `design.md` after the last edit. Record edits in `## Reflected Fixes`.
 
-Do not fill in intent the requirements do not contain. Write `VERDICT: NO-GO` and name the artifact to return to in Findings.
+Do not fill in intent the requirements do not contain. Do not add a `## Boundary` `out:` to record a design decision or a residual risk. A type, a range, or a storage choice stays a recommendation, or returns to grill as a question. It is not an exclusion from the feature. Write `VERDICT: NO-GO` and `## Route` when the requirements must change.
 
 ```markdown
 ## Verdict

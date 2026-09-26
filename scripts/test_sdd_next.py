@@ -97,7 +97,8 @@ def req_review(verdict: str, status: str, before: str, after: str, findings: str
         "- lockout: pass: \"拒否後も操作を続けられる\" is the sourced out\n"
         "- rewrite: pass: \"後から変えられないデータの形は依頼に無い\" is the sourced out\n"
         "- place: N/A: no action in this fixture starts without a place on its own line\n"
-        "- lists: N/A: no kept-item list\n\n"
+        "- lists: N/A: no kept-item list\n"
+        "- boundary: N/A: this fixture has no Boundary out\n\n"
         "## Phase Gate\n"
         f"- STATUS: {status}\n"
     )
@@ -908,6 +909,15 @@ class NextTests(unittest.TestCase):
         )
         self.assertEqual(self.act()["action"], "review-requirements")
         self.assertTrue(_sdd.meaning_audit_missing(review))
+
+    def test_a_design_review_source_on_boundary_out_returns_to_the_grill(self) -> None:
+        text = REQ + "\n## Boundary\n\n- out: 評価は 1〜5 の整数として保持する (source: design-review:D-rating-integer)\n"
+        req = self.write("requirements.md", text)
+        self.write("req-grill.md", grill("READY", req))
+        self.spec_json(speed="normal", approvals={"requirements": {"generated": True}, "design": {"generated": False}, "tasks": {"generated": False}})
+        result = self.act()
+        self.assertEqual(result["action"], "grill-req")
+        self.assertIn("design-review:D-rating-integer", result["details"]["boundary_out"][0])
 
     def test_a_meaning_pass_without_a_quote_reviews_again(self) -> None:
         req = self.write("requirements.md", REQ)

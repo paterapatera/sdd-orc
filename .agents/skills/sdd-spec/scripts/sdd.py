@@ -205,6 +205,7 @@ MEANING_KEYS = (
     "rewrite",
     "place",
     "lists",
+    "boundary",
 )
 
 
@@ -246,6 +247,16 @@ def judgments_lack_quotes(review: str | None, heading: str, corpus: str | None) 
 
 def design_audit_missing(review: str | None, corpus: str | None = None) -> bool:
     return audit_missing(review, DESIGN_DOMAINS, DESIGN_SPECIALISTS) or judgments_lack_quotes(review, "Evidence", corpus)
+
+
+def boundary_out_lines(requirements: str | None) -> list[str]:
+    """A Boundary out without a brief, grill, or steering source is not a scope exclusion."""
+    body = section(requirements or "", "Boundary")
+    return [
+        match.group(0).strip()
+        for match in re.finditer(r"^- out:.*$", body, re.M)
+        if not OUT_SOURCE_RE.search(match.group(0))
+    ]
 
 
 def review_next(review: str | None) -> str | None:
@@ -1088,6 +1099,11 @@ def requirements_step(repo: Repo, spec: dict | None) -> dict | None:
         return {"step": "split", "names": pending}
     if accepted_residual_lines(review) and first_verdict(review) == "GO" and output_hash == req_hash:
         return {"step": "grill", "escalate": True}
+    misused = boundary_out_lines(req_text)
+    if misused:
+        if rounds_exhausted(req_grill) and not changed_outside_validate and not review_nogo:
+            return {"stop": "req", "file": "req-grill.md"}
+        return {"step": "grill", "escalate": True, "boundary_out": misused}
     findings = mechanical_findings("requirements", req_text)
     if findings:
         return {"step": "fix", "checks": findings}
@@ -1110,6 +1126,9 @@ def design_action(repo: Repo, spec: dict | None) -> dict:
     design_hash = sha256_file(repo.design_path)
     if not repo.design_path.is_file() or not generated(spec, "design"):
         return {"action": "spec-design", "mode": "full", "checks": []}
+    misused = boundary_out_lines(read_text(repo.requirements_path))
+    if misused:
+        return {"action": "grill-req", "mode": None, "checks": [], "boundary_out": misused}
     req_field = labeled_hash(review, "Requirements SHA256")
     design_field = labeled_hash(review, "Design SHA256")
     if review is not None and req_field != req_hash:
@@ -1205,6 +1224,17 @@ def gate_followup(repo: Repo, spec: dict | None, feature: str, mutations: list) 
 
 def emit_design(repo: Repo, spec: dict | None, feature: str, mutations: list, picked: dict, reason: str) -> dict:
     if picked["action"] == "grill-req":
+        if picked.get("boundary_out"):
+            return with_skill(
+                decision(
+                    "grill-req",
+                    "requirements",
+                    "Boundary の out は機能の対象外だけを書く。設計の決定はここに載せない",
+                    feature=feature,
+                    mutations=mutations,
+                    details={"boundary_out": picked["boundary_out"]},
+                )
+            )
         return with_skill(
             decision(
                 "grill-req",
@@ -1375,6 +1405,9 @@ def step_decision(feature: str, step: dict, mutations: list, speed: str | None) 
             ]
         details = {}
         reason = "要求の grill が古い、未了、または未決の Open question がある"
+        if step.get("boundary_out"):
+            details["boundary_out"] = step["boundary_out"]
+            reason = "Boundary の out は機能の対象外だけを書く。設計の決定はここに載せない"
         return with_skill(
             decision(
                 "grill-req",
