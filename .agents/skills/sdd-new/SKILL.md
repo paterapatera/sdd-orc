@@ -13,7 +13,7 @@ The artifact is the brief on disk, plus `path`, `proposed_speed`, and `scale` in
 - `## Scope` In / Out contains only the range the request stated. Do not fill blanks.
 - `## Background` exists only when the human wrote a motive. Transcribe that motive. Omit the section otherwise.
 - `spec.json` `path` is `none` (no spec), `update` (change an existing spec), or `new` (a new spec). When more than one spec is new, append dependency-ordered rows to `docs/steering/roadmap.md`. Do not clear completed `[x]` rows.
-- `spec.json` `proposed_speed` is `light` or `normal`. Light writes design and tasks in one pass after the requirements check. Normal keeps phases separate. This is a proposal. The human chooses it on `/sdd-spec`. Leave `speed` null.
+- `spec.json` `proposed_speed` is `light` or `normal`. Light writes design and tasks in one pass after the requirements check. Normal keeps phases separate. `/sdd-spec` adopts this proposal unless the human names `light` or `normal` in that conversation. Leave `speed` null.
 - Set `scale` to `large` only when a human must also stop at the design check. Otherwise `scale` is null.
 - Create `spec.json` from `docs/settings/templates/specs/init.json` when it is missing. Set `feature_name`, timestamps, `path`, `proposed_speed`, and `scale`. Keep every other key when the file already exists.
 - The feature name is a short concept. Add an `NNN-` prefix only when the human gives a number. If that directory already exists, ask and stop.

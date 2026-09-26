@@ -26,7 +26,7 @@ When `action` is `phase-terminal`, emit this and stop.
 
 ## Grill 待ち
 
-When the grill returns `GRILL: WAITING`. This is not a Phase Handoff.
+When the grill returns `GRILL: WAITING` and `## DEFERRED` has items. This is not a Phase Handoff. Unanswered choices are AskQuestion, not this template.
 
 ```markdown
 ## Grill 待ち
