@@ -65,7 +65,7 @@ QUALITY_LINE_RE = re.compile(r"^- (?P<key>[a-z]+):[ \t]*(?P<value>.*)$", re.M)
 OUT_SOURCE_RE = re.compile(r"\(source:\s*(?:brief|grill:[A-Za-z0-9._-]+|steering/[A-Za-z0-9._/-]+)\)")
 REQ_HEADING_RE = re.compile(r"^## (\d+)\.\s", re.M)
 CRITERION_RE = re.compile(r"^(\d+)\.\s")
-CHOICE_LINE_RE = re.compile(r"^- (?P<id>D-[A-Za-z0-9-]+):\s*(?P<label>.+?)\s*$", re.M)
+CHOICE_LINE_RE = re.compile(r"^- (?P<id>[DP]-[A-Za-z0-9-]+):\s*(?P<label>.+?)\s*$", re.M)
 SPLIT_LINE_RE = re.compile(r"^- (?P<name>[A-Za-z0-9][A-Za-z0-9._-]*):", re.M)
 REQ_GAP_RE = re.compile(r"requirements gap|要求の穴", re.I)
 REVIEW_DOMAINS = (
@@ -87,7 +87,6 @@ DESIGN_DOMAINS = (
     "preconditions",
     "tests",
     "structure",
-    "extensions",
     "adr",
     "surface",
     "fixes",
@@ -846,6 +845,34 @@ def recommendation_gate(design: str | None, grill: str | None) -> dict | None:
     return {"action": "stop-design-deferred", "ids": [item.get("id") for item in records if item.get("id") in deferred]}
 
 
+def physical_decisions(tasks: str | None) -> list[dict]:
+    found: list[dict] = []
+    for item in parse_task_records(tasks) or []:
+        decisions = item.get("physical_decisions")
+        if isinstance(decisions, list):
+            found.extend(entry for entry in decisions if isinstance(entry, dict))
+    return found
+
+
+def physical_recommendation_gate(tasks: str | None, grill: str | None) -> dict | None:
+    """Ask before implementation when a physical shape is only a recommendation."""
+    records = [item for item in physical_decisions(tasks) if item.get("basis") == "recommendation"]
+    if not records:
+        return None
+    chosen = section_labels(grill, "Human choices")
+    deferred = section_labels(grill, "DEFERRED")
+    apply = [item for item in records if item.get("id") in chosen]
+    if apply:
+        return {
+            "action": "spec-tasks",
+            "confirm": [{"id": item.get("id"), "label": chosen[item.get("id")]} for item in apply],
+        }
+    pending = [item for item in records if item.get("id") not in chosen and item.get("id") not in deferred]
+    if pending:
+        return {"action": "needs-choice", "questions": [recommendation_question(item) for item in pending]}
+    return {"action": "stop-tasks-deferred", "ids": [item.get("id") for item in records if item.get("id") in deferred]}
+
+
 def irreversible_decisions(design: str | None) -> list[dict]:
     return [
         {"id": item.get("id"), "choose": item.get("choose"), "rejected": item.get("rejected")}
@@ -930,6 +957,7 @@ class Repo:
         self.brief_grill_path = self.spec_dir / "brief-grill.md"
         self.req_grill_path = self.spec_dir / "req-grill.md"
         self.design_grill_path = self.spec_dir / "design-grill.md"
+        self.tasks_grill_path = self.spec_dir / "tasks-grill.md"
         self.req_review_path = self.spec_dir / "reviews" / "requirements-review.md"
         self.design_review_path = self.spec_dir / "reviews" / "design-review.md"
         self.roadmap_path = root / "docs" / "steering" / "roadmap.md"
@@ -1039,15 +1067,23 @@ def task_gate(
     records = parse_task_records(tasks)
     uncovered_files: list[str] = []
     uncovered_reqs: list[str] = []
+    missing_physical: list[str] = []
     if records is not None:
         boundaries = [b for item in records for b in (item.get("boundary") or []) if isinstance(b, str)]
         uncovered_files = [path for path in record_files(design) if not path_covered(path, boundaries)]
         claimed = {str(r) for item in records for r in (item.get("req") or [])}
         uncovered_reqs = sorted(requirement_ids(requirements) - claimed, key=lambda x: int(x))
+        missing_physical = [
+            str(item.get("id"))
+            for item in records
+            if not str(item.get("physical") or "").strip()
+        ]
     if uncovered_files:
         gaps.append("5")
     if uncovered_reqs:
         gaps.append("6")
+    if missing_physical:
+        gaps.append("7")
     blocked = has_blocked(tasks)
     if gaps:
         result = "NOT_VERIFIED"
@@ -1062,6 +1098,8 @@ def task_gate(
         gate["uncovered_files"] = uncovered_files
     if uncovered_reqs:
         gate["uncovered_reqs"] = uncovered_reqs
+    if missing_physical:
+        gate["missing_physical"] = missing_physical
     return gate
 
 
@@ -1188,6 +1226,38 @@ def gate_followup(repo: Repo, spec: dict | None, feature: str, mutations: list) 
     design_hash = sha256_file(repo.design_path)
     gate = task_gate(spec, tasks, design_hash, read_text(repo.design_path), read_text(repo.requirements_path))
     if gate["result"] == "VERIFIED":
+        advice = physical_recommendation_gate(tasks, read_text(repo.tasks_grill_path))
+        if advice and advice["action"] == "spec-tasks":
+            return with_skill(
+                decision(
+                    "spec-tasks",
+                    "tasks",
+                    "物理設計への回答をタスクに反映する",
+                    feature=feature,
+                    mutations=mutations,
+                    mode="diff",
+                    details={"confirm": advice["confirm"]},
+                ),
+                "diff",
+            )
+        if advice and advice["action"] == "needs-choice":
+            return decision(
+                "needs-choice",
+                "tasks",
+                "design.md から判断できない物理設計がある。変更するか聞く",
+                feature=feature,
+                mutations=mutations,
+                details={"questions": advice["questions"]},
+            )
+        if advice and advice["action"] == "stop-tasks-deferred":
+            return decision(
+                "stop-tasks-deferred",
+                "tasks",
+                "物理設計の推奨が持ち帰りになっている。確認がつくまで実装へ進まない",
+                feature=feature,
+                mutations=mutations,
+                details={"ids": advice["ids"]},
+            )
         mutations = list(mutations) + [
             {"op": "set", "key": "ready_for_implementation", "value": True},
             {"op": "set", "key": "phase", "value": "tasks-approved"},

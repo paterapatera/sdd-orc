@@ -10,7 +10,7 @@ disable-model-invocation: true
 
 The parent reads `tasks.md`. A task is ready when every id in `depends` has `status` `done` and its own `blocked` is null. Dispatch follows `depends`. `wave` is only a sort hint. There is no packing ceiling. Only one implementer runs in a worktree.
 
-Pass the subagent that chunk's tasks, the matching requirements and design excerpts, and the task's `contracts` and `boundary` paths. Do not pass the full spec. A legacy checkbox file still uses `_Contracts:_` and `_Boundary:_`.
+Pass the subagent that chunk's tasks, the matching requirements and design excerpts, and the task's `contracts` and `boundary` paths. The implementer builds the shape in `physical` and in each `physical_decisions` entry whose `basis` is `human`. The test checks `done`. Do not pass the full spec. A legacy checkbox file still uses `_Contracts:_` and `_Boundary:_`.
 
 A good change has a failing test first, then production code that passes, without breaking existing tests. A test that fails before the production code is RED.
 

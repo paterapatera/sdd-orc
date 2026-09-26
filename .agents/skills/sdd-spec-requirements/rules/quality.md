@@ -23,30 +23,13 @@ Never write `out:` on your own judgment. Without a source it is an `Open questio
 
 ## What to derive
 
-Read the feature's elements: its actors and excluded actors, the things it keeps, the actions that change them, the values users type, the outside systems it calls, and when or how often it runs. Derive questions from those elements, not from a fixed list. A row applies only when its element exists in this feature.
-
-| characteristic | element | question the element raises |
-| --- | --- | --- |
-| functional | brief In, grill choices, kept things | Every In item and chosen label lands in a criterion. Every kept item appears in the result of the criterion that keeps it. |
-| reliability | actions that change kept things | What remains when the action fails midway. What happens on a repeated or double submit. What happens when two sessions change the same thing. Whether a removal or overwrite can be undone. |
-| reliability | outside systems, scheduled runs | What the user sees when the outside system is unavailable or slow. Whether a missed or repeated run is visible. |
-| usability | rejections, destructive actions, empty states, actions the user can take | Where the user continues after each rejection, and whether typed values survive. Whether a destructive action asks first. What the user sees before anything is kept. From which visible place the user starts each action. |
-| performance | kept things, runs | How many things one actor keeps, and how long the slowest view may take. "No condition" is a valid human answer and becomes `out:` with its grill source. |
-| maintainability | kept things, links to other features | What identifies one kept thing. Which link to another feature, present or planned, must survive. Which kept data must survive a later change of this feature. |
-| security | actors, excluded actors, personal data, typed values | What an excluded actor sees when they try each action. Who can see each kept item. How long personal data is kept and how its owner removes it. Whether a typed value is shown to anyone else. |
-
-A question the sources answer becomes a criterion. A question they do not answer becomes an `Open question:` on that characteristic's line. Options offered to a human are results a user sees, never status codes or mechanisms. Do not invent numbers.
+Read the feature's elements: its actors and excluded actors, the things it keeps, the actions that change them, the values users type, the outside systems it calls, and when or how often it runs. A question the sources answer becomes a criterion. A question they do not answer becomes an `Open question:` on that characteristic's line. Options offered to a human are results a user sees, never status codes or mechanisms. Do not invent numbers.
 
 ## When a criterion does not settle the question
 
 Citing the criterion anyway leaves the question open. Write `Open question:` instead.
 
-- The result names who may act, and does not say what a person outside that set sees or what remains. 「本人だけ」 does not settle the excluded person's attempt.
-- The result keeps an open list. 「など」, 「等」, 「etc.」, and 「or similar」 do not name every kept item. Ask for the closed list, including which items are required.
-- A removal asks for confirmation, and no criterion says whether the removed thing can come back or is gone. Confirmation does not settle that.
-- An action says the user can do it, and that same line does not name the visible place where they start it. 「削除できる」 does not settle that. A place named on a different line does not settle it either. Ask. The options are places the user already sees, and 「持ち帰る」. Do not pick the place.
-- A number chosen later, in design, settles performance only when this file's criterion text contains that number. A limit that exists only in the design does not.
-- Two criteria can both apply to one event, and their results cannot both be true. A failure that keeps typed values and a rejection that discards them is this pair when one input can be both. So is 「the latest remains」 together with 「several things remain」 when a later success can be either. Ask once, with options that make the two situations disjoint, and rewrite both conditions from the answer. Do not keep both results.
+A result that can still be satisfied by two outcomes a user would see as different, or that builds a place or an action brief `## Scope` In does not contain, is open. Write `Open question:` in the result's own words. Do not invent a name the result does not force. Do not add that place to Scope In yourself. A mechanism the user cannot see, such as a status code, a column type, or a session implementation, is not this question. An open list (`など`, `等`, `etc.`, `or similar`) does not settle a kept-item list. Two criteria that can both apply to one event and whose results cannot both be true do not settle either. A limit settles performance only when the criterion text contains that number.
 
 ## Checks
 

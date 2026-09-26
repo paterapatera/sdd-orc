@@ -120,7 +120,6 @@ def design_review(verdict: str, status: str, req: str, design: str) -> str:
         "- preconditions: pass: \"open a session\" starts from no session\n"
         "- tests: N/A: the design states no failure behavior\n"
         "- structure: pass: \"open a session\" has one owner\n"
-        "- extensions: pass: \"open a session\" absorbs a display name\n"
         "- adr: N/A: no dependency, contract, or technology decision\n"
         "- surface: N/A: requirements ask for no logs, rollout, or public contract\n"
         "- fixes: pass: \"open a session\" had no edit\n\n"
@@ -562,7 +561,7 @@ class NextTests(unittest.TestCase):
         _req, design = self._fresh_design()
         self.write(
             "tasks.md",
-            '# Tasks\n\n```json\n{"tasks":[{"id":"1.1","status":"open","req":["1"],"blocked":null}]}\n```\n',
+            '# Tasks\n\n```json\n{"tasks":[{"id":"1.1","status":"open","req":["1"],"physical":"sessions テーブル。id uuid","blocked":null}]}\n```\n',
         )
         data = json.loads((self.spec / "spec.json").read_text(encoding="utf-8"))
         data["approvals"]["tasks"]["generated"] = True
@@ -571,6 +570,76 @@ class NextTests(unittest.TestCase):
         result = self.act()
         self.assertEqual(result["action"], "auto-approve")
         self.assertEqual(result["gate"]["result"], "VERIFIED")
+
+    def test_tasks_without_physical_design_are_rewritten(self) -> None:
+        _req, design = self._fresh_design()
+        self.write(
+            "tasks.md",
+            '# Tasks\n\n```json\n{"tasks":[{"id":"1.1","status":"open","req":["1"],"blocked":null}]}\n```\n',
+        )
+        data = json.loads((self.spec / "spec.json").read_text(encoding="utf-8"))
+        data["approvals"]["tasks"]["generated"] = True
+        data["source_sha256"]["design_at_tasks"] = design
+        (self.spec / "spec.json").write_text(json.dumps(data), encoding="utf-8")
+        result = self.act()
+        self.assertEqual(result["action"], "spec-tasks")
+        self.assertEqual(result["gate"]["missing_physical"], ["1.1"])
+        self.assertIn("7", result["gate"]["gaps"])
+
+    def test_physical_recommendation_is_asked(self) -> None:
+        _req, design = self._fresh_design()
+        self.write(
+            "tasks.md",
+            "# Tasks\n\n```json\n"
+            '{"tasks":[{"id":"1.1","status":"open","req":["1"],"physical":"impressions テーブル",'
+            '"physical_decisions":[{"id":"P-rating","choose":"rating は null 可","rejected":"rating は必須","basis":"recommendation"}],'
+            '"blocked":null}]}\n```\n',
+        )
+        data = json.loads((self.spec / "spec.json").read_text(encoding="utf-8"))
+        data["approvals"]["tasks"]["generated"] = True
+        data["source_sha256"]["design_at_tasks"] = design
+        (self.spec / "spec.json").write_text(json.dumps(data), encoding="utf-8")
+        result = self.act()
+        self.assertEqual(result["action"], "needs-choice")
+        self.assertEqual(result["phase"], "tasks")
+        self.assertEqual(result["details"]["questions"][0]["id"], "P-rating")
+        self.assertEqual(result["details"]["questions"][0]["options"][-1], "持ち帰る")
+
+    def test_physical_choice_is_applied_to_the_task(self) -> None:
+        _req, design = self._fresh_design()
+        self.write(
+            "tasks.md",
+            "# Tasks\n\n```json\n"
+            '{"tasks":[{"id":"1.1","status":"open","req":["1"],"physical":"impressions テーブル",'
+            '"physical_decisions":[{"id":"P-rating","choose":"rating は null 可","rejected":"rating は必須","basis":"recommendation"}],'
+            '"blocked":null}]}\n```\n',
+        )
+        self.write("tasks-grill.md", "## Human choices\n\n- P-rating: rating は必須\n")
+        data = json.loads((self.spec / "spec.json").read_text(encoding="utf-8"))
+        data["approvals"]["tasks"]["generated"] = True
+        data["source_sha256"]["design_at_tasks"] = design
+        (self.spec / "spec.json").write_text(json.dumps(data), encoding="utf-8")
+        result = self.act()
+        self.assertEqual(result["action"], "spec-tasks")
+        self.assertEqual(result["details"]["confirm"], [{"id": "P-rating", "label": "rating は必須"}])
+
+    def test_deferred_physical_recommendation_stops(self) -> None:
+        _req, design = self._fresh_design()
+        self.write(
+            "tasks.md",
+            "# Tasks\n\n```json\n"
+            '{"tasks":[{"id":"1.1","status":"open","req":["1"],"physical":"impressions テーブル",'
+            '"physical_decisions":[{"id":"P-rating","choose":"rating は null 可","rejected":"rating は必須","basis":"recommendation"}],'
+            '"blocked":null}]}\n```\n',
+        )
+        self.write("tasks-grill.md", "## DEFERRED\n\n- P-rating: 持ち帰る\n")
+        data = json.loads((self.spec / "spec.json").read_text(encoding="utf-8"))
+        data["approvals"]["tasks"]["generated"] = True
+        data["source_sha256"]["design_at_tasks"] = design
+        (self.spec / "spec.json").write_text(json.dumps(data), encoding="utf-8")
+        result = self.act()
+        self.assertEqual(result["action"], "stop-tasks-deferred")
+        self.assertEqual(result["details"]["ids"], ["P-rating"])
 
     def test_missing_check_blocks_the_review(self) -> None:
         text = REQ.replace("- leakage: out: 個人データは扱わない (source: brief)\n", "")
@@ -1011,7 +1080,7 @@ class NextTests(unittest.TestCase):
         _req, design = self._fresh_design()
         self.write(
             "tasks.md",
-            '# Tasks\n\n```json\n{"tasks":[{"id":"1.1","status":"open","req":["1"],"blocked":"方針未決"}]}\n```\n',
+            '# Tasks\n\n```json\n{"tasks":[{"id":"1.1","status":"open","req":["1"],"physical":"sessions テーブル。id uuid","blocked":"方針未決"}]}\n```\n',
         )
         data = json.loads((self.spec / "spec.json").read_text(encoding="utf-8"))
         data["approvals"]["tasks"]["generated"] = True

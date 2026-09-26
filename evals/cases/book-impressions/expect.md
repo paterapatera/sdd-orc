@@ -12,5 +12,5 @@
 - E8: requirements.md — 蔵書・読了とつながないことが Boundary か受け入れ条件にある
 - E9: brief.md — requirements にある操作（閲覧・編集・削除）が brief の Scope In にもある
 - E10: design.md — 本のタイトルを感想と一緒に持つというデータの持ち方の決定が `"reversible": false` になっている
-- E11 [absence]: design.md — Failures と decisions に、要求に無い利用者に見える結果（未来日の禁止、並び順など）が無い
-- E12 [absence]: tasks.md — どのタスクの done も、要求の受け入れ条件か Boundary に無い規則を確かめていない
+- E11 [absence]: design.md — Failures と decisions に、要求がすでに言っている結果を一つに絞った推奨以外の、要求に無い利用者に見える結果（未来日の禁止、並び順、最大長など）が無い
+- E12 [absence]: tasks.md — どのタスクの done も、要求の受け入れ条件、Boundary、人が確定した設計の決定（basis が human）以外の規則を確かめていない

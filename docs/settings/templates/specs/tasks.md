@@ -8,6 +8,8 @@
       "status": "open",
       "title": "",
       "done": "",
+      "physical": "",
+      "physical_decisions": [],
       "req": [],
       "boundary": [],
       "contracts": [],

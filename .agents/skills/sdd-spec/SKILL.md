@@ -32,12 +32,13 @@ Stop actions, after mutations are applied:
 
 - `needs-speed` with no proposal. Ask which speed.
 - `phase-terminal`. Emit Phase Handoff from `rules/gates.md`.
-- `needs-choice`. Call AskQuestion once, one question per item in `details.questions`. Use each item's `prompt` and `options`. The last option is 「持ち帰る」. Do not print the choices again as a lettered list. Write a kept or changed label into `docs/specs/<feature>/design-grill.md` under `## Human choices` as `- <id>: <label>`. Write 「持ち帰る」 under `## DEFERRED` instead. Then run `next` again only when every answer is under Human choices. Do not run `next` while a deferred item remains.
+- `needs-choice`. Call AskQuestion once, one question per item in `details.questions`. Use each item's `prompt` and `options`. The last option is 「持ち帰る」. Do not print the choices again as a lettered list. When the phase is `design`, write a kept or changed label into `docs/specs/<feature>/design-grill.md` under `## Human choices` as `- <id>: <label>`. When the phase is `tasks`, write it into `docs/specs/<feature>/tasks-grill.md` the same way. Write 「持ち帰る」 under `## DEFERRED` instead. Then run `next` again only when every answer is under Human choices. Do not run `next` while a deferred item remains.
 - `stop-design-deferred`. The recommendation is deferred. Report `details.ids`. Do not call `next`.
+- `stop-tasks-deferred`. The physical recommendation is deferred. Report `details.ids`. Do not call `next`.
 - `auto-approve`. Emit the PR Summary from that file. Do not start `/sdd-impl`.
 - `stop-*`, `instruct-impl`, `instruct-discovery`. Report `reason` and `details`. For `stop-split-exists`, tell the user to rename the listed lines under `## Split` in `req-grill.md`.
 - Grill ends with `GRILL: ASK`, or with unanswered choices while `## DEFERRED` is empty. Call AskQuestion once, one question per item, options taken from the grill (the last is 「持ち帰る」). Do not print the choices again as a lettered list. Do not ask for a typed code or another `/sdd-spec` before the click. Write each selected label into `req-grill.md` under `## Human choices` as `- <id>: <label>`. Run `sdd-grill` again so the answerer can transcribe. Do not emit Grill 待ち.
 - Grill ends with `GRILL: WAITING` and `## DEFERRED` has items. Emit Grill 待ち. Do not call `next`.
 - Grill ends with anything else. Report that ending. Do not call `next`.
 
-If the same `action` comes back and `requirements.md`, `design.md`, `tasks.md`, `req-grill.md`, both review files, and `spec.json` are unchanged, stop and report that the step did not advance. Stop after 12 `next` calls in this invocation and tell the user to send `/sdd-spec <feature>` again.
+If the same `action` comes back and `requirements.md`, `design.md`, `tasks.md`, `req-grill.md`, `tasks-grill.md`, both review files, and `spec.json` are unchanged, stop and report that the step did not advance. Stop after 12 `next` calls in this invocation and tell the user to send `/sdd-spec <feature>` again.

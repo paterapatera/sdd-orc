@@ -11,4 +11,4 @@
 - E7: req-grill.md — `## Split` に通知先の設定が別 spec として一行あり、requirements の Boundary に out として残っている
 - E8: design.md — Slack という外部サービスに依存する決定が `"reversible": false` になっている
 - E9 [absence]: requirements.md — Webhook URL やトークンなどの秘密の値が書かれていない
-- E10 [absence]: design.md — Failures と decisions に、要求に無い利用者に見える結果が無い
+- E10 [absence]: design.md — Failures と decisions に、要求がすでに言っている結果を一つに絞った推奨以外の、要求に無い利用者に見える結果が無い
