@@ -24,7 +24,19 @@ The artifact is the brief on disk, plus `path`, `proposed_speed`, and `scale` in
 - Background contains a pain the human did not state.
 - Path is written as A–E, or written into the brief instead of `spec.json`.
 - Speed is scored by counting bullets, or `speed` is set before the human chooses it.
-- The file is written before confirmation. Ask once: 「この brief でよいか？ はい = ファイルに書く。修正があれば内容を書いてください。」
+- Outside split mode, the file is written before confirmation. Ask once: 「この brief でよいか？ はい = ファイルに書く。修正があれば内容を書いてください。」
 - After はい, this conversation starts `/sdd-spec` or implementation.
+
+## Split mode
+
+`/sdd-spec` dispatches this skill as `split-brief` with `details.split` (new feature names) and `details.source` (the parent's `req-grill.md`). The human already chose the split in the grill, so do not ask for confirmation.
+
+- Read only the `## Split` lines for those names and the matching `## Human choices` lines in the source. Do not read the parent's chat or requirements.
+- For each name, write `docs/specs/<name>/brief.md`. `## Desired Outcome` is one sentence from the moved action in the human's words. `## Scope` In is that action. Out stays empty. Omit Background.
+- Create `spec.json` from the init template with `path` `new`, `proposed_speed`, `scale` null, and `split_from` set to the parent feature.
+- Append a row per name to `docs/steering/roadmap.md` under `## Specs (dependency order)`, after the parent's row, as `- [ ] <name> -- <one line>. Dependencies: <deps from the Split line>`. Add the parent's row first when it is missing. Create the file with `# Roadmap` and that heading when it is missing.
+- If `docs/specs/<name>/` already exists, write nothing for that name and report it.
+
+Stop when the files are written. Do not start `/sdd-spec` for the new names.
 
 `none` does not require a brief. A memo, if needed, goes under `docs/captures/`. Write `spec.json` with `"path": "none"`. `update` and `new` write `docs/specs/<feature>/brief.md` and `spec.json`.

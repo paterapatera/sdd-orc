@@ -21,6 +21,10 @@ When `action` is `phase-terminal`, emit this and stop.
   - （設計のとき）`docs/specs/<feature>/reviews/design-review.md`
 - **残リスク**:
   - <1–3 lines from the review, or なし>
+- **戻しにくい決定**（設計のとき）:
+  - <one line per `details.irreversible`: `<id>`: <choose>（採らなかった案: <rejected or なし>）, or なし>
+- **分けた spec**:
+  - <`/sdd-spec <name>` per line from the `## Split` of req-grill.md, or なし>
 - **禁止**: フェーズ用に新しい worktree を作らない。サブエージェントの中で次のフェーズを始めない
 ```
 

@@ -21,6 +21,8 @@ The artifact is `docs/specs/<feature>/tasks.md`. The body is one json fence. `ta
 
 A good task maps to an acceptance criterion and a design boundary. The first check can be written as a test that fails before implementation.
 
+`done` checks only a result that an EARS line or a Boundary line states. A rule found in neither, such as a status code, a redirect, a required column, a date limit, or a sort order, goes into `blocked` as the decision a human must make. Every `Record.files` path belongs to a task `boundary`, including contract and ADR files. Every requirement heading number appears in some task's `req`. `.agents/skills/sdd-spec/scripts/sdd.py` checks both: gate gap `5` lists `gate.uncovered_files`, and gap `6` lists `gate.uncovered_reqs`. Fix only those when they are set.
+
 When `details` says the change is a diff, edit only the open tasks that cover the changed design. Do not set a `done` task back to `open` when its design did not change.
 
 Set `approvals.tasks.generated` to true. Set `source_sha256.design_at_tasks` to the SHA256 of `design.md`. Do not set `ready_for_implementation` here.

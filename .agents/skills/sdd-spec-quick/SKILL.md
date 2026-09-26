@@ -12,6 +12,8 @@ A good design traces each acceptance criterion to a responsibility and a failure
 
 When the existing design's hash matches the requirements, do not rewrite the design. Write only the missing tasks.
 
+A choice the requirements do not determine is written as a recommendation with alternatives, as `sdd-spec-design` says. Each task's `done` checks only a result an EARS line or a Boundary line states, as `sdd-spec-tasks` says.
+
 Set `approvals.design.generated` and `approvals.tasks.generated` to true. Set `source_sha256.requirements_at_design` and `source_sha256.design_at_tasks` to the SHA256 of the files just written.
 
 If an `Open question:` remains, write nothing and set `quick_sanity` to `follow_up`. When both files are written, set `quick_sanity` to `passed`.

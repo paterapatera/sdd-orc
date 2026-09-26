@@ -26,14 +26,16 @@ When `spec.json` exists, apply `mutations` in order before the next `next`. `set
 
 When `isolate` is true, the parent does not write the artifact. Pass a new subagent only the skill path, `args`, `details`, and the target paths. Do not pass the generation chat or draft reasoning. The subagent model is composer-2.5. Run the skill in this context only when the host cannot spawn a subagent. Each continued step gets its own subagent.
 
-Continue after these actions, once the step has finished and mutations are applied: `spec-requirements`, `review-requirements`, `spec-design`, `review-design`, `spec-tasks`, `spec-quick`. `grill-req` continues only when the grill ends with `GRILL: READY`.
+Continue after these actions, once the step has finished and mutations are applied: `spec-requirements`, `review-requirements`, `spec-design`, `review-design`, `spec-tasks`, `spec-quick`, `split-brief`. `grill-req` continues only when the grill ends with `GRILL: READY`. For `split-brief`, the subagent follows § Split mode of the `sdd-new` skill.
 
 Stop actions, after mutations are applied:
 
 - `needs-speed` with no proposal. Ask which speed.
 - `phase-terminal`. Emit Phase Handoff from `rules/gates.md`.
+- `needs-choice`. Call AskQuestion once, one question per item in `details.questions`. Use each item's `prompt` and `options`. The last option is 「持ち帰る」. Do not print the choices again as a lettered list. Write a kept or changed label into `docs/specs/<feature>/design-grill.md` under `## Human choices` as `- <id>: <label>`. Write 「持ち帰る」 under `## DEFERRED` instead. Then run `next` again only when every answer is under Human choices. Do not run `next` while a deferred item remains.
+- `stop-design-deferred`. The recommendation is deferred. Report `details.ids`. Do not call `next`.
 - `auto-approve`. Emit the PR Summary from that file. Do not start `/sdd-impl`.
-- `stop-*`, `instruct-impl`, `instruct-discovery`. Report `reason` and `details`.
+- `stop-*`, `instruct-impl`, `instruct-discovery`. Report `reason` and `details`. For `stop-split-exists`, tell the user to rename the listed lines under `## Split` in `req-grill.md`.
 - Grill ends with `GRILL: ASK`, or with unanswered choices while `## DEFERRED` is empty. Call AskQuestion once, one question per item, options taken from the grill (the last is 「持ち帰る」). Do not print the choices again as a lettered list. Do not ask for a typed code or another `/sdd-spec` before the click. Write each selected label into `req-grill.md` under `## Human choices` as `- <id>: <label>`. Run `sdd-grill` again so the answerer can transcribe. Do not emit Grill 待ち.
 - Grill ends with `GRILL: WAITING` and `## DEFERRED` has items. Emit Grill 待ち. Do not call `next`.
 - Grill ends with anything else. Report that ending. Do not call `next`.
