@@ -409,47 +409,10 @@ body.req-body {
   background: var(--almond);
   border-radius: 0.2rem;
   box-decoration-break: clone;
-  position: relative;
-  cursor: help;
 }
 
 .req-grill-tip {
-  display: none;
-  position: absolute;
-  z-index: 30;
-  left: 0;
-  bottom: calc(100% + 0.35rem);
-  width: min(22rem, 70vw);
-  margin: 0;
-  padding: 0.6rem 0.75rem;
-  background: var(--popover);
-  color: var(--popover-foreground);
-  border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
-  white-space: normal;
-  text-align: left;
-  font-size: 0.85rem;
-  font-weight: 400;
-  line-height: 1.45;
-}
-
-.req-grill-tip p {
-  margin: 0.15rem 0 0.45rem;
-}
-
-.req-grill-tip p:last-child {
-  margin-bottom: 0;
-}
-
-.req-grill:hover .req-grill-tip,
-.req-grill:focus-within .req-grill-tip {
-  display: block;
-}
-
-.req-page :is(.card-content, .req-diagram, .table):has(.req-grill:hover),
-.req-page :is(.card-content, .req-diagram, .table):has(.req-grill:focus-within) {
-  overflow: visible;
+  display: none !important;
 }
 
 .req-grill-left {

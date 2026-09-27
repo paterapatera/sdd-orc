@@ -1,16 +1,27 @@
 # Visualization rules
 
-Read this before filling [template.html](template.html). Prefer omission over a diagram that invents edges or behavior.
+This file is the **only** rule set for the requirements HTML preview. [SKILL.md](SKILL.md), [recipes.md](recipes.md), and [template.html](template.html) do not add rules.
 
-Strip every `(source: …)` tag from visible text. Keep the sentence it was attached to.
+## Output
+
+Write one static HTML file next to `docs/specs/<feature>/requirements.md`. Do not change `requirements.md`, `spec.json`, `req-grill.md`, or any other spec file while building the preview.
+
+## Assets
+
+- Shell: [template.html](template.html). Slot markup: [recipes.md](recipes.md). Paste [theme.css](theme.css) into `{{THEME_CSS}}`; do not treat CSS as rules.
+- Map each `{{SLOT_*}}` to the matching `recipe:*` in recipes.md (`{{SLOT_TOC}}` → `recipe:toc`, `{{SLOT_OPEN}}` → `recipe:open`, `{{SLOT_SCOPE}}` → `recipe:scope`, `{{SLOT_SCREENS}}` → `recipe:screens`, `{{SLOT_LEGEND}}` / `{{SLOT_INDEX}}` → `recipe:legend` / `recipe:index-table`, `{{SLOT_EXCEPTIONS}}` → `recipe:exceptions`, `{{SLOT_REQUIREMENTS}}` → one `recipe:requirement` per requirement plus optional `recipe:decision-table`, `recipe:mermaid-flow`, `recipe:mermaid-state` inside that block, `{{SLOT_COVERAGE}}` → `recipe:coverage`, `{{SLOT_GRILL_LEFT}}` → `recipe:grill-left`). Stub: `recipe:stub` after `#intro` when **Stub** applies; drop the `#index` section from the shell.
+
+Read this file before filling the template. Prefer omission over a diagram that invents edges or behavior.
+
+Strip `(source: …)` from visible text; keep the sentence.
 
 ## Grill answers
 
 Read `req-grill.md` `## Human choices` when that file exists. Each choice is one answer. The answer is the text after the colon on the choice line. Ignore `[expands]` before that colon. The question is the indented `質問:` line under it. Skip a choice with no answer. Skip `## DEFERRED` and `## AI Answers`.
 
-Mark a visible piece when it states that answer's decision, including when the requirements shortened or reworded it. The answer string does not have to appear unchanged. A failure form, an item control, or a kind counts: `画面上部のアラート` states an answer that says `画面上部のアラート（汎用メッセージ）`; `テキストエリア` states `テキストエリア（複数行）`; a sentence that the rating is chosen with a star states `星アイコンをクリックして5段階評価を選ぶ`. A line tagged `(source: grill:<id>)` states that choice. Do not mark a piece that only repeats a screen name the answer also uses, unless that piece is the place the question asked. Do not mark a Mermaid label. Wrap the smallest piece that states the decision: one table cell, one list item, one kind, or the response clause. Do not wrap a whole requirement because one clause matches. When one piece states several answers, wrap it once.
+Mark the smallest visible piece that states the choice's decision (rewording ok): a list item, an item-row `req-item-kind`, an AC-matrix cell, or a response clause. Count controls, failure forms, item kinds, and `(source: grill:<id>)`. Not screen-name-only overlap unless that piece is what the question asked; not Mermaid labels; not the screen branch table `{{LABEL_KIND}}` column (plain text only). Not a whole requirement for one clause. Several choices on one piece → one wrap.
 
-The wrap is a `span.req-grill` with `tabindex="0"`. Inside it, after the visible phrase, one `span.req-grill-tip` with `role="tooltip"`. For each answer that piece states, the tip has two paragraphs: `<b>{{LABEL_GRILL_Q}}</b>` and the question, then `<b>{{LABEL_GRILL_A}}</b>` and the answer. Copy both from `req-grill.md`. Do not paraphrase. Do not invent a mark when the piece does not state that decision.
+The wrap is a `span.req-grill` around the visible phrase only. Do not emit `span.req-grill-tip`, `role="tooltip"`, or any hover or focus popup. The mark is background highlight only (`theme.css`). Do not put question or answer text inside the wrap. Copy Q&A only into `#grill-left` for choices that were not marked. Do not invent a mark when the piece does not state that decision.
 
 After the coverage section and before the footer, one section `id="grill-left"` for every Human choice that was not marked. The heading is `{{LABEL_GRILL_LEFT}}`. One list, source order. Each item is the question, then the answer. Copy both from `req-grill.md`. Omit the section when every choice was marked, or when `## Human choices` is empty.
 
@@ -73,7 +84,19 @@ A container is a wider group and has no kind. It exists only when the source nam
 
 Leaves with no container and no `各` stay at the top level. Do not invent a container. Do not print a path. `*.エリア1.感想.本のタイトル` only means the container `エリア1`, the group `感想`, and the leaf `本のタイトル`.
 
-`{{LABEL_KIND}}` is the control written in that leaf: `テキスト入力`, `テキストエリア`, `セレクトボックス`, `ラジオボタン`, `チェックボックス`, `ボタン`, or `表示`. A control word in the leaf wins (`検索ボタン` is `ボタン`). `示す` / `見える` / `見せる` are `表示` only when the leaf names no control. `の入力` or `の変更` without one of those controls does not become `テキスト入力` or `入力`. Do not invent a control. Do not write `アラート` unless the sentence says `アラート`.
+`{{LABEL_KIND}}` on the screen card is `span.req-item-kind` for that leaf only (not the branch-table column). The **item name** is the field noun; the **kind** is how the user enters or reads it — the control or surface, not the field label.
+
+Derive the kind from the **response clause of the AC that cites this leaf** (`criteria:` on the screen line, or the sentence that created the leaf). Do not set every leaf to `表示` because the response uses `見せる` or `見える`.
+
+**Standard control kinds** (use when the source names them): `テキスト入力`, `テキストエリア`, `セレクトボックス`, `ラジオボタン`, `チェックボックス`, `ボタン`, `操作`, `表示`. These match the usual single-line / multi-line / choice / action / read-only split you would express with shadcn-style primitives (Input, Textarea, Select, Radio Group, Checkbox, Button); keep the **Japanese label from the requirements or grill**, not English component names.
+
+**Other widgets** the AC or grill names (calendar, date picker, rating control, toggle, slider, combobox, custom icon control, etc.): use the **shortest control phrase** from that source (`カレンダー`, `星アイコン`, …). Do not rename it to `表示` or to a standard kind unless the source uses that word.
+
+`表示` only when the clause describes visible content and names **no** input or interactive control. One cited AC → one leaf → one kind; do not merge several `criteria:` lines into one row or one shared `表示`.
+
+When `req-grill.md` states the control for this item, the kind must match that answer (rewording ok). Prefer `span.req-grill` on `req-item-kind` or the item name — not on the branch-table kind column.
+
+`の入力` / `の変更` without a named control has no kind cell. Do not use `入力` alone. Do not invent `アラート` on items unless the sentence says `アラート`.
 
 **Failure row**
 
@@ -105,6 +128,8 @@ This table is not the limited-entry Y / N table. Patterns run down the first col
 | `{{LABEL_COL_DEST}}` | the target node name | the screen named in `表示している画面` or before `を表示したまま`; otherwise the `###` screen named in the AC response. `表示したまま` is that screen, not a new transition |
 | `{{LABEL_COL_RESPONSE}}` | the `goes` sentence | the AC response, or the `out:` sentence |
 | `{{LABEL_KIND}}` | `遷移` | the form written in the response: `項目直下のインラインテキスト`, `ダイアログ`, or `画面上部のアラート`. Do not replace one of those with `表示` because the sentence also says `示す` or `見せる`. `遷移` when the row only moves and names none of those forms |
+
+The last column is plain text only. Do not wrap it in `span.req-grill`. Mark the grill choice on the item control or another visible piece that states that decision; otherwise list it under `#grill-left`.
 
 The pattern cell is the 1-based index alone (`1`, `2`). The column header is already `{{LABEL_PATTERN}}`, so the cell does not repeat that word. Do not use `R1`. Do not fill Y / N / — / ○ here. Omit the table when it would have one row. When the table is present, omit the card's `goes` and `failure` rows so those sentences are not shown twice.
 
@@ -152,6 +177,8 @@ Omit the section if there are zero `If` ACs. Do not add `When` rows here.
 Parse `**Purpose:**`. A legacy `**目的:**` line is the same sentence. Put the whole sentence in the card body. Do not split it into a role, a capability, and a benefit. The card title is `{{LABEL_STORY}}`.
 
 ## Emit only when warranted
+
+For each subsection below: when its conditions are met, **must emit** the matching recipe block in the slot **Page-level structure** names. When they are not met, omit it. Treating a met condition as optional is not allowed. Do not skip a required emission to shorten the file.
 
 ### Mermaid flowchart (`flowchart`)
 
@@ -209,6 +236,8 @@ Shape:
 
 Legend of everyday-language type badges: once, near the index, and only as the type rule above says. No Tabs JS. Never show raw EARS keywords on the page.
 
+**Stub** (no numbered EARS ACs): header, intro, open questions if any, not-canonical alert, `recipe:stub` — skip index shell, matrix, diagrams, screens, coverage, catalog.
+
 ## Labels
 
 Headings and column titles use these strings. `spec.json` `language` `ja` uses the ja column; otherwise en.
@@ -257,9 +286,9 @@ Quality and Checks keys are not shown. Use the gloss table in the Coverage secti
 - A flowchart inside a screen card
 - Naming a control or a failure form the sentence does not name (`テキスト入力`, `セレクトボックス`, `ボタン`, `項目直下のインラインテキスト`, `画面上部のアラート`, `ダイアログ`)
 - Leaving an acceptance sentence in the item column (`が見える` still attached, or a whole `shall` response as one item)
+- A screen item leaf `表示` when the cited AC or grill names a specific control or widget for that field
 - Empty sections with placeholder lorem or “TBD” diagrams
+- Omitting a diagram or limited-entry decision table when **Emit only when warranted** requires it for that requirement or the document (screen transition flowchart included)
 - Changing `requirements.md`
+- Generating the preview with a throwaway script instead of filling the template per this file
 
-## Stub documents
-
-If the md has no numbered EARS ACs (init stub): emit header, intro, open questions when any exist, the not-canonical alert, and `recipe:stub`. Skip index, matrix, diagrams, screens, coverage, catalog, and the `#index` shell section.

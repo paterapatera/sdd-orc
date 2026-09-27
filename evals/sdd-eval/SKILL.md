@@ -19,7 +19,7 @@ The feature name is `eval-<case>`. If `docs/specs/eval-<case>/` exists, ask and 
    - Where the skill would call AskQuestion, do not call it. Choose for the human from `answers.md`: the option that means the same as a line. When no line answers the question, choose by the `default` line and mark it `unanswered`. Never choose 「持ち帰る」.
    - Append every question to `questions.md` in the run directory as `## <id>`, the prompt, the options, and `chosen: <label>` (plus `unanswered` when marked).
    - At a Phase Handoff, send `/sdd-spec eval-<case>` again with nothing added.
-3. Copy `brief.md`, `requirements.md`, `design.md`, `tasks.md`, `req-grill.md`, `spec.json`, and `reviews/` from `docs/specs/eval-<case>/` into `evals/results/<YYYYMMDD-HHMM>-<case>/`. Also copy, under `split/<name>/`, every `docs/specs/<name>/` whose `spec.json` has `split_from` `eval-<case>`. Write the last action and its reason into `run.md`.
+3. Copy `brief.md`, `requirements.md`, `design.md`, `tasks.md`, `req-grill.md`, `spec.json`, and `reviews/` from `docs/specs/eval-<case>/` into `evals/results/<YYYYMMDD-HHMM>-<case>/`. Also copy, under `split/<name>/`, every `docs/specs/<name>/` whose `spec.json` has `split_from` `eval-<case>`. Write the last action and its reason into `run.md`. In this skill repository, `evals/results/` and `docs/specs/` are gitignored; keep artifacts on disk for comparison, do not commit them.
 4. Delete those `docs/specs/` directories and their rows in `docs/steering/roadmap.md`.
 
 ## Score
