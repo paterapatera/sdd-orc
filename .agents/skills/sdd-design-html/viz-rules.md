@@ -4,6 +4,16 @@ Read this before filling [template.html](template.html). Prefer omission over a 
 
 The page answers what this design creates and what it updates. It does not reprint `design.md` section by section. Do not put layer badges (`external` / `internal` / `physical`) on the page. The Record has no such slot.
 
+## Grill answers
+
+Read `design-grill.md` `## Human choices` when that file exists. Each choice is one answer. The answer is the text after the colon on the choice line. The question is the indented `質問:` line under it. Skip a choice with no answer. Skip `## DEFERRED`.
+
+Mark the visible `choose` of the decision whose `id` is that choice, including when that sentence shortened or reworded the answer. When the answer is 「このまま（推奨）」, mark the `choose` that stayed. Wrap that `choose` only, not the whole decision or the `rejected` line. Do not mark a Mermaid label. The answer string does not have to appear unchanged.
+
+The `choose` line is a `div.des-choose`, not a `p`. The wrap is a `span.des-grill` with `tabindex="0"` inside that div. Inside it, after the visible phrase, one `span.des-grill-tip` with `role="tooltip"`. The tip is two `span.des-grill-tip-line` elements, not paragraphs. A `p` inside a `p` is invalid, and the browser then empties the tip. The first line is `<b>{{LABEL_GRILL_Q}}</b>` and the question. The second is `<b>{{LABEL_GRILL_A}}</b>` and the answer. Copy both from `design-grill.md`. Do not paraphrase. Do not invent a mark when that decision is not on the page.
+
+Before the footer, one section `id="grill-left"` for every Human choice that was not marked. The heading is `{{LABEL_GRILL_LEFT}}`. One list, source order. Each item is the question, then the answer. Copy both from `design-grill.md`. Omit the section when every choice was marked, or when `## Human choices` is empty.
+
 ## What to read
 
 `design.md` has `## Overview`, a `## Record` json fence, and headings only for ids that exist in that fence.
@@ -101,7 +111,7 @@ A `reference` contract is neither create nor update. One line on its group: the 
 
 After the lists, decisions and failures that belong to this group. They are not their own page sections.
 
-One block per decision: the heading's sentence, `choose`, and `rejected` from the matching object. Omit `rejected` when null. Show `reversible` and `basis` with these glosses. Do not show the raw keys.
+One block per decision: the heading's sentence, `choose`, and `rejected` from the matching object. The `choose` line is a `div.des-choose`. Omit `rejected` when null. Show `reversible` and `basis` with these glosses. Do not show the raw keys.
 
 | Field | Value | ja | en |
 | --- | --- | --- | --- |
@@ -119,7 +129,7 @@ Inside the decision or `modify` contract that names it. One card per review-surf
 
 ## Diagrams
 
-Copy a fenced `mermaid` when it already sits under a decision or failure that this page shows. Allowed types: `flowchart` / `graph`, `sequenceDiagram`, `stateDiagram` / `stateDiagram-v2`, `erDiagram`. Skip any other type. Put it in that group's card.
+Copy a fenced `mermaid` when it already sits under a decision or failure that this page shows. Allowed types: `flowchart` / `graph`, `sequenceDiagram`, `stateDiagram` / `stateDiagram-v2`, `erDiagram`. Skip any other type. Put it in that group's card. Mermaid 11 reads labels as Markdown. Drop a leading number, period, and space from a label (`3. When`). Do not start a label with `#`, `*`, `-`, or `>`. Do not change the source file.
 
 Do not add a diagram. Do not draw a boundary flowchart, a component flowchart, or a file flowchart.
 
@@ -129,7 +139,8 @@ Do not add a diagram. Do not draw a boundary flowchart, a component flowchart, o
 2. Overview
 3. Current
 4. Changes (screen cards, domain cards, then the other card)
-5. Footer (source path)
+5. Unmarked grill answers, when any remain
+6. Footer (source path)
 
 Omit a step whose source is empty. TOC lists Overview, Current when emitted, and each emitted group. No layer badge in the TOC.
 
@@ -153,6 +164,9 @@ When `requirements.md` exists, collect numeric requirement ids from headings suc
 | `{{LABEL_MODE_MODIFY}}` | この設計で更新する | Updated by this design |
 | `{{LABEL_MODE_REF}}` | 参照する | Reference |
 | `{{LABEL_FILE_MISSING}}` | ファイルが無い | File is missing |
+| `{{LABEL_GRILL_Q}}` | 質問 | Question |
+| `{{LABEL_GRILL_A}}` | 回答 | Answer |
+| `{{LABEL_GRILL_LEFT}}` | 画面に印を付けられなかった回答 | Answers not marked on this page |
 
 ## Forbidden
 

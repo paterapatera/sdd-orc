@@ -4,6 +4,16 @@ Read this before filling [template.html](template.html). Prefer omission over a 
 
 The page answers what these tasks create and what they update. It does not reprint `tasks.md` field by field.
 
+## Grill answers
+
+Read `tasks-grill.md` `## Human choices` when that file exists. Each choice is one answer. The answer is the text after the colon on the choice line. The question is the indented `質問:` line under it. Skip a choice with no answer. Skip `## DEFERRED`.
+
+Mark the visible `choose` of the `physical_decisions` entry whose `id` is that choice, including when that sentence shortened or reworded the answer. When the answer is 「このまま（推奨）」, mark the `choose` that stayed. Wrap that `choose` only, not the whole task or the `rejected` line. The answer string does not have to appear unchanged.
+
+The `choose` line is a `div.tsk-choose`, not a `p`. The wrap is a `span.tsk-grill` with `tabindex="0"` inside that div. Inside it, after the visible phrase, one `span.tsk-grill-tip` with `role="tooltip"`. The tip is two `span.tsk-grill-tip-line` elements, not paragraphs. A `p` inside a `p` is invalid, and the browser then empties the tip. The first line is `<b>{{LABEL_GRILL_Q}}</b>` and the question. The second is `<b>{{LABEL_GRILL_A}}</b>` and the answer. Copy both from `tasks-grill.md`. Do not paraphrase. Do not invent a mark when that entry is not on the page.
+
+Before the footer, one section `id="grill-left"` for every Human choice that was not marked. The heading is `{{LABEL_GRILL_LEFT}}`. One list, source order. Each item is the question, then the answer. Copy both from `tasks-grill.md`. Omit the section when every choice was marked, or when `## Human choices` is empty.
+
 ## What to read
 
 `tasks.md` is one json fence. `tasks` is an array. Use `id`, `status`, `title`, `done`, `physical`, `physical_decisions`, `req`, `boundary`, `contracts`, `depends`, and `blocked`. Ignore `wave`.
@@ -73,7 +83,7 @@ Then, in this order, omit a row whose text is empty:
 
 - `done`
 - `physical`
-- each `physical_decisions` entry: `id`, `choose`, and `rejected` when it is not null. Show `basis` with the glosses below. Do not show the raw key.
+- each `physical_decisions` entry: `id`, `choose`, and `rejected` when it is not null. The `choose` line is a `div.tsk-choose`. Show `basis` with the glosses below. Do not show the raw key.
 
 | `basis` | ja | en |
 | --- | --- | --- |
@@ -90,7 +100,8 @@ Then, in this order, omit a row whose text is empty:
 1. Header (title, link to `tasks.md`, generated timestamp, not-canonical alert)
 2. Blocked
 3. Changes (screen cards, domain cards, then the other card)
-4. Footer (source path)
+4. Unmarked grill answers, when any remain
+5. Footer (source path)
 
 Omit a step whose source is empty. TOC lists each emitted group. No `wave` in the TOC.
 
@@ -115,6 +126,9 @@ When `requirements.md` exists, collect numeric requirement ids from headings suc
 | `{{LABEL_BLOCKED}}` | 着手できない | Cannot start |
 | `{{LABEL_DONE}}` | 確認すること | Check |
 | `{{LABEL_PHYSICAL}}` | 形 | Shape |
+| `{{LABEL_GRILL_Q}}` | 質問 | Question |
+| `{{LABEL_GRILL_A}}` | 回答 | Answer |
+| `{{LABEL_GRILL_LEFT}}` | 画面に印を付けられなかった回答 | Answers not marked on this page |
 
 ## Forbidden
 

@@ -415,23 +415,14 @@ class NextTests(unittest.TestCase):
         self._fresh_design()
         self.assertEqual(self.act(flow="design-update")["action"], "phase-terminal")
 
-    def test_grill_continues_until_both_rounds_reach_ten(self) -> None:
-        req = self.write("requirements.md", REQ + "\n- Open question: 誰が使うか\n")
-        self.write("req-grill.md", grill("WAITING", req) + "AI round: 10\nHuman round: 9\n")
-        self.spec_json(
-            speed="normal",
-            approvals={"requirements": {"generated": True}, "design": {"generated": False}, "tasks": {"generated": False}},
-        )
-        self.assertEqual(self.act()["action"], "grill-req")
-
-    def test_grill_stops_after_ten_rounds_each(self) -> None:
+    def test_grill_continues_after_ten_rounds_each(self) -> None:
         req = self.write("requirements.md", REQ + "\n- Open question: 誰が使うか\n")
         self.write("req-grill.md", grill("WAITING", req) + "AI round: 10\nHuman round: 10\n")
         self.spec_json(
             speed="normal",
             approvals={"requirements": {"generated": True}, "design": {"generated": False}, "tasks": {"generated": False}},
         )
-        self.assertEqual(self.act()["action"], "stop-grill-blocked")
+        self.assertEqual(self.act()["action"], "grill-req")
 
     def test_blocked_grill_with_a_matching_hash_stops(self) -> None:
         req = self.write("requirements.md", REQ)
@@ -650,22 +641,10 @@ class NextTests(unittest.TestCase):
         self.assertEqual(result["action"], "review-requirements")
         self.assertNotIn("checks", result.get("details", {}).get("checks", []))
 
-    def test_owner_only_does_not_settle_leakage(self) -> None:
+    def test_a_cited_criterion_settles_a_check_without_a_scene(self) -> None:
         text = (
             "# Req\n\n## 1. 感想\n\n"
             "1. When 他人が感想を開く, the システム shall 本人だけを対象とする。\n\n"
-            + QUALITY
-            + CHECKS.replace(
-                "- leakage: out: 個人データは扱わない (source: brief)",
-                "- leakage: criteria: 1.1",
-            )
-        )
-        self.assertIn("leakage", _sdd.check_gaps(text))
-
-    def test_hidden_content_settles_leakage(self) -> None:
-        text = (
-            "# Req\n\n## 1. 感想\n\n"
-            "1. When 他人が感想を開く, the システム shall 中身を表示しない。\n\n"
             + QUALITY
             + CHECKS.replace(
                 "- leakage: out: 個人データは扱わない (source: brief)",
@@ -819,6 +798,15 @@ class NextTests(unittest.TestCase):
         self.assertEqual(result["action"], "review-requirements")
         self.assertNotIn("unaligned", result["details"])
 
+    def test_a_question_line_is_not_the_chosen_label(self) -> None:
+        grill_text = "## Human choices\n\n- grill-book: 本詳細画面へ移る\n  - 質問: 感想はどの画面で読むか\n"
+        self.assertEqual(_sdd.human_choice_labels(grill_text), ["本詳細画面へ移る"])
+
+    def test_the_question_text_does_not_settle_a_place(self) -> None:
+        text = "## 1. 記録\n\n1. When 記録に成功する, the システム shall 感想一覧画面に移る。\n"
+        grill_text = "## Human choices\n\n- grill-record: 保存できる\n  - 質問: 保存後は感想一覧画面に移るか\n"
+        self.assertIn("感想一覧画面", _sdd.unaligned_places(text, grill_text, ""))
+
     def test_a_named_move_in_the_choice_is_aligned(self) -> None:
         text = "## 1. 記録\n\n1. When 記録に成功する, the システム shall 一覧に移る。\n"
         choice = "成功したら一覧に移る"
@@ -848,9 +836,9 @@ class NextTests(unittest.TestCase):
         text = (
             "# Req\n\n## 2. 登録\n\n"
             "1. When ユーザーが一覧画面から登録画面を開く, the システム shall 登録画面へ移る。\n"
-            "2. When 登録を開く, the システム shall 書籍名と感想を並べる。\n"
+            "2. When 登録を開く, the システム shall 書籍名のテキスト入力と感想のテキストエリアを見せる。\n"
             "3. When 追加する, the システム shall 一覧を開く。\n"
-            "4. When 保存に失敗する, the システム shall 理由が見えて登録画面のままにする。\n\n"
+            "4. If バリデーションエラーになる, the システム shall 登録画面を表示したまま、書籍名の項目直下のインラインテキストで理由を示す。\n\n"
             "## Screens\n\n### 登録\n\n"
             "- from: criteria: 2.1\n"
             "- items: criteria: 2.2\n"
@@ -859,20 +847,20 @@ class NextTests(unittest.TestCase):
         )
         self.assertFalse(_sdd.screen_gaps(text))
 
-    def test_shown_items_settle_without_the_word_item(self) -> None:
+    def test_a_bare_input_does_not_name_its_control(self) -> None:
         text = (
             "# Req\n\n## 2. 登録\n\n"
             "1. When ユーザーが一覧画面から登録画面を開く, the システム shall 登録画面へ移る。\n"
             "2. When 登録を開く, the システム shall 対象の本の表示、感想の入力、記録操作を見せる。\n"
             "3. When 追加する, the システム shall 一覧を開く。\n"
-            "4. When 保存に失敗する, the システム shall 理由が見えて登録画面のままにする。\n\n"
+            "4. If バリデーションエラーになる, the システム shall 登録画面を表示したまま、書籍名の項目直下のインラインテキストで理由を示す。\n\n"
             "## Screens\n\n### 登録\n\n"
             "- from: criteria: 2.1\n"
             "- items: criteria: 2.2\n"
             "- goes: criteria: 2.3\n"
             "- failure: criteria: 2.4\n"
         )
-        self.assertFalse(_sdd.screen_gaps(text))
+        self.assertIn("登録.items", _sdd.screen_questions(text))
 
     def test_an_empty_screen_block_returns_to_the_grill(self) -> None:
         text = REQ + "\n### 本詳細\n\n- items:\n- goes:\n- failure:\n"
@@ -889,7 +877,7 @@ class NextTests(unittest.TestCase):
             "1. When ユーザーが感想記録画面で記録を完了する, the システム shall 本詳細画面へ移る。\n"
             "2. When ユーザーが本詳細画面を見る, the システム shall タイトルを見せる。\n"
             "3. When ユーザーが本詳細画面で編集を完了する, the システム shall 本詳細画面のままとする。\n"
-            "4. If 本詳細画面で拒否がある, the システム shall 理由を同じ本詳細画面に見えるようにする。\n\n"
+            "4. If バリデーションエラーになる, the システム shall 本詳細画面を表示したまま、項目直下のインラインテキストで理由を示す。\n\n"
             "## Screens\n\n### 本詳細\n\n"
             "- from: criteria: 1.1\n"
             "- items: criteria: 1.2\n"
@@ -906,7 +894,7 @@ class NextTests(unittest.TestCase):
             "## 1. 一覧\n\n"
             "1. When ユーザーが感想一覧画面を見る, the システム shall 感想を表示する。\n"
             "2. When ユーザーが感想一覧画面で記録を開始する, the システム shall 感想記録画面を開く。\n"
-            "3. If 表示が失敗する, the システム shall 理由を感想一覧画面に表示する。\n\n"
+            "3. If 404エラーになる, the システム shall 感想一覧画面を表示したまま、画面上部のアラートで理由を示す。\n\n"
             "## Screens\n\n### 感想一覧\n\n"
             "- from: out: 最初にこの画面を開く (source: grill:alignment-places)\n"
             "- items: criteria: 1.1\n"
@@ -920,8 +908,8 @@ class NextTests(unittest.TestCase):
             "- from: criteria: 1.4\n",
         )
         linked = linked.replace(
-            "3. If 表示が失敗する, the システム shall 理由を感想一覧画面に表示する。\n",
-            "3. If 表示が失敗する, the システム shall 理由を感想一覧画面に表示する。\n"
+            "3. If 404エラーになる, the システム shall 感想一覧画面を表示したまま、画面上部のアラートで理由を示す。\n",
+            "3. If 404エラーになる, the システム shall 感想一覧画面を表示したまま、画面上部のアラートで理由を示す。\n"
             "4. When ユーザーがメールのリンクを開く, the システム shall 感想一覧画面を開く。\n",
         )
         mail = "## Human choices\n\n- alignment-places: メールのリンクから感想一覧画面を開く\n"
@@ -1043,24 +1031,14 @@ class NextTests(unittest.TestCase):
         text = text.replace("open a session.", "open a session。感想を削除する。")
         self.assertFalse(_sdd.place_gaps(text))
 
-    def test_failed_save_does_not_settle_delete_undo(self) -> None:
+    def test_a_missing_criterion_does_not_settle_a_check(self) -> None:
         text = (
             "# Req\n\n## 1. 感想\n\n"
-            "1. When 保存に失敗する, the システム shall 保存されない。\n"
-            "2. When 利用者が一覧から感想を削除する, the システム shall 確認してから消す。\n\n"
+            "1. When 保存に失敗する, the システム shall 保存されない。\n\n"
             + QUALITY
-            + CHECKS.replace("- destruction: out: 削除や上書きはしない (source: brief)", "- destruction: criteria: 1.1")
+            + CHECKS.replace("- destruction: out: 削除や上書きはしない (source: brief)", "- destruction: criteria: 1.9")
         )
         self.assertIn("destruction", _sdd.check_gaps(text))
-
-    def test_delete_undo_on_the_removal_line_settles(self) -> None:
-        text = (
-            "# Req\n\n## 1. 感想\n\n"
-            "1. When 利用者が一覧から感想を削除する, the システム shall 消したものを戻せない。\n\n"
-            + QUALITY
-            + CHECKS.replace("- destruction: out: 削除や上書きはしない (source: brief)", "- destruction: criteria: 1.1")
-        )
-        self.assertNotIn("destruction", _sdd.check_gaps(text))
 
     def test_a_status_code_is_not_sent_back_by_a_token(self) -> None:
         choose = '"choose": "404 を返す", "rejected": null, "reversible": true, "basis": "requirements"'

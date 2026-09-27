@@ -4,7 +4,7 @@
 
 - E1: requirements.md — Slack が使えないときも注文の確定が止まらない結果がある
 - E2: requirements.md — 届かない通知を送り直し、届かないままなら管理画面で分かる結果がある
-- E3: requirements.md — 同じ注文が2回通知されない結果がある
+- E3 [absence]: requirements.md — 依頼に無い、同じ注文を2回通知しない結果が無い
 - E4: requirements.md — 通知に顧客の氏名・電話番号が含まれない結果がある
 - E5: requirements.md — `## Quality` の performance が、確定から1分以内に届く受け入れ条件を引いている
 - E6: requirements.md — 通知先が未設定のとき、通知せず管理画面で分かる結果がある

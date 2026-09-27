@@ -53,16 +53,16 @@ Do not add intent, scope, or an acceptance bar. When one of those is required, w
 - fixes: pass: <what was compared>
 
 ## Meaning
-- functional: pass: <the bad result, and a quote of the criterion result that fails it>
-- reliability: pass: <the bad result, and the criterion result that fails it>
-- usability: pass: <the bad result, and the criterion result that fails it>
-- performance: pass: <the bad result, and the criterion result that fails it>
-- maintainability: pass: <the bad result, and the criterion result that fails it>
-- security: pass: <the bad result, and the criterion result that fails it>
-- leakage: pass: <the bad result, and the criterion result that fails it>
-- destruction: pass: <the bad result, and the criterion result that fails it>
-- lockout: pass: <the bad result, and the criterion result that fails it>
-- rewrite: pass: <the bad result, and the criterion result that fails it>
+- functional: pass: <the cited criterion or the sourced out>
+- reliability: pass: <the cited criterion or the sourced out>
+- usability: pass: <the cited criterion or the sourced out>
+- performance: pass: <the cited criterion or the sourced out>
+- maintainability: pass: <the cited criterion or the sourced out>
+- security: pass: <the cited criterion or the sourced out>
+- leakage: pass: <the cited criterion or the sourced out>
+- destruction: pass: <the cited criterion or the sourced out>
+- lockout: pass: <the cited criterion or the sourced out>
+- rewrite: pass: <the cited criterion or the sourced out>
 - place: pass: <each action and the place named on that same line>
 - lists: pass: <every kept item the list names>
 - boundary: N/A: <no Boundary out, or pass quoting an exclusion from this feature>

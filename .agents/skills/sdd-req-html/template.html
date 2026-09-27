@@ -68,6 +68,8 @@
 
     {{SLOT_COVERAGE}}
 
+    {{SLOT_GRILL_LEFT}}
+
     <hr class="separator" role="none">
 
     <footer class="req-footer">
@@ -197,7 +199,7 @@ flowchart TD
                   <ul>
                     <li>
                       <span class="req-item-name">NAME</span>
-                      <span class="req-item-kind">入力</span>
+                      <span class="req-item-kind">テキスト入力</span>
                     </li>
                   </ul>
                 </li>
@@ -379,8 +381,8 @@ flowchart TD
         <div class="req-diagram">
           <pre class="mermaid">
 stateDiagram-v2
-  [*] ==> StateA
-  StateA ==> StateB
+  [*] --> StateA
+  StateA --> StateB
           </pre>
         </div>
       </div>

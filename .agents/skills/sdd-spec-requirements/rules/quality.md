@@ -19,11 +19,15 @@ Each value is one or more parts separated by `; `:
 - `out: <reason> (source: brief)`, `(source: grill:<id>)`, or `(source: steering/<file>)` — the characteristic has no condition here, and the brief, a grill choice, or steering says so.
 - `Open question: <what a human must decide>`.
 
-Never write `out:` on your own judgment. Without a source it is an `Open question:`. The requirements review judges whether the cited result fails the bad implementation. A criterion id, by itself, does not.
+Never write `out:` on your own judgment. Without a source it is an `Open question:`. The requirements review judges whether the line cites a criterion that exists, or a sourced `out:`. A criterion id that is not in this file does not. Do not invent a scene for the name.
 
 ## What to derive
 
-Read the feature's elements: its actors and excluded actors, the things it keeps, the actions that change them, the values users type, the outside systems it calls, and when or how often it runs. A question the sources answer becomes a criterion. A question they do not answer becomes an `Open question:` on that characteristic's line. Options offered to a human are results a user sees, never status codes or mechanisms. Do not invent numbers.
+The six names stay abstract words. Do not expand one into a scene: a second save, what remains, a visible reason, who can see an item, or an identity. A name is settled by citing criteria the sources already support, or by `out:` when a source says that name has no condition. An `Open question:` names only a behavior the brief or steering already states. Do not invent numbers.
+
+## EARS coverage
+
+Coverage is the patterns in `.agents/skills/sdd-spec-requirements/rules/ears-format.md`. A behavior the brief or steering already shows uses the keyword for that situation. An unwanted result is `If`. A continuing state is `While`. A response to something that happens is `When`. An optional feature is `Where`. A behavior with no trigger is a bare `shall`. Do not emit a pattern the sources do not contain. The brief does not have to use the English keyword. When that kind is already in the sources and no numbered line uses its keyword, that is the open point. Ask which of those patterns applies. Do not invent the scene or the response in order to fill a kind.
 
 ## When a criterion does not settle the question
 
@@ -44,16 +48,7 @@ A result that can still be satisfied by two outcomes a user would see as differe
 - rewrite:
 ```
 
-Each value is `criteria: <req>.<n>`, `out: <reason> (source: brief|grill:<id>|steering/<file>)`, or `Open question: <what a human must decide>`. A cited criterion settles the line only when its result makes the bad implementation fail:
-
-| key | bad implementation that must fail |
-| --- | --- |
-| leakage | An excluded actor sees or changes a kept item. 「本人だけ」 does not fail this. The result has to say the item is not shown, not changed, or not deleted. |
-| destruction | A mistake, a rejected value, or a second success stores or removes the wrong thing. A confirmation alone does not fail this. The result has to say what remains, what can be restored, or what is not stored. When the user can remove something, a different line that only says a rejected value is not stored does not settle the removal. The removal's own line has to say whether it can come back. |
-| lockout | After a rejection the user cannot continue, or cannot see which value was rejected and why. Returning to a form is not enough. The result has to say the reason is visible or the user can continue. |
-| rewrite | A later change cannot keep the identity of a kept item. The result has to say what identifies it, or what still remains after the change. |
-
-The requirements review judges whether the cited result fails that implementation. A word on the line does not. Do not invent the result. The product is not complete until each cited check has been confirmed on the running system.
+Each value is `criteria: <req>.<n>`, `out: <reason> (source: brief|grill:<id>|steering/<file>)`, or `Open question: <what a human must decide>`. These four names stay abstract, the same way as `## Quality`. A cited criterion settles the line when that criterion exists in this file. Do not expand a name into a scene, and do not invent the result. The product is not complete until each cited check has been confirmed on the running system.
 
 ## Screens
 
@@ -83,8 +78,8 @@ When it adds a screen, one `### <name>` block per screen. The four lines cite cr
 | key | bad implementation that must fail |
 | --- | --- |
 | from | The user cannot open this screen, because nothing named leads here. The result names the other place, or the other concrete opener such as a link the human named, and the move onto this screen. 「最初にこの画面を開く」 does not name an opener. Another screen's destination line does not settle this line. |
-| items | A kept or typed item is missing from the screen, or the list is open. The result names every item the user sees. 「など」 does not fail this. The result does not have to contain the word 項目. |
-| goes | An action opens a different place from the one named. The result names the action and the place it opens, including when the user stays. |
-| failure | After a rejection the reason is invisible, or the user is on a different place. The result names that the reason is visible and which place the user is on. |
+| items | A kept or typed item is missing, the list is open, or a typed item does not name its control. Each item the user types or chooses names one control: `テキスト入力`, `テキストエリア`, `セレクトボックス`, `ラジオボタン`, or `チェックボックス`. `入力` does not name one. A value only shown names `表示`. A pressable control names `ボタン`. 「など」 does not fail this. The result does not have to contain the word 項目. Ask one item's control. The sentence is concrete enough to mark that control up in HTML. |
+| goes | An action navigates to a different screen from the one named. The result names the action and the `遷移先の画面`, including when the displayed screen does not change (`同じ画面のまま`). |
+| failure | Several failures are one `拒否`. `バリデーションエラー`, `404エラー`, `権限エラー`, and `サーバーエラー` are different. Each class this screen can show is its own criterion. One class is settled only when that criterion names the class, the `表示している画面`, where on that screen the reason is shown, and the form: `項目直下のインラインテキスト`, `画面上部のアラート`, or `ダイアログ`. `理由が見える` does not settle it. A class this screen cannot show is `out:` with a source. Ask the class, the `表示している画面`, where the reason is shown, and the form as separate questions. Do not merge the four classes into `拒否`. Do not join two of those decisions in one prompt. |
 
 The criteria themselves stay under a numbered requirement. Do not invent the name, the items, or the places. Ask. The recommended option states all five. The other options for the opening place are places already named, and 「持ち帰る」. Do not offer 「最初にこの画面を開く」, and do not invent a link. The grill skill judges whether these lines are settled. `sdd.py` does not send a screen line back to the grill, and it does not rewrite the criterion. A criterion that says 新しい画面, 新規画面, or 新しいページ is a screen even when the section says `out:`.

@@ -4,6 +4,16 @@ Read this before filling [template.html](template.html). Prefer omission over a 
 
 Strip every `(source: …)` tag from visible text. Keep the sentence it was attached to.
 
+## Grill answers
+
+Read `req-grill.md` `## Human choices` when that file exists. Each choice is one answer. The answer is the text after the colon on the choice line. Ignore `[expands]` before that colon. The question is the indented `質問:` line under it. Skip a choice with no answer. Skip `## DEFERRED` and `## AI Answers`.
+
+Mark a visible piece when it states that answer's decision, including when the requirements shortened or reworded it. The answer string does not have to appear unchanged. A failure form, an item control, or a kind counts: `画面上部のアラート` states an answer that says `画面上部のアラート（汎用メッセージ）`; `テキストエリア` states `テキストエリア（複数行）`; a sentence that the rating is chosen with a star states `星アイコンをクリックして5段階評価を選ぶ`. A line tagged `(source: grill:<id>)` states that choice. Do not mark a piece that only repeats a screen name the answer also uses, unless that piece is the place the question asked. Do not mark a Mermaid label. Wrap the smallest piece that states the decision: one table cell, one list item, one kind, or the response clause. Do not wrap a whole requirement because one clause matches. When one piece states several answers, wrap it once.
+
+The wrap is a `span.req-grill` with `tabindex="0"`. Inside it, after the visible phrase, one `span.req-grill-tip` with `role="tooltip"`. For each answer that piece states, the tip has two paragraphs: `<b>{{LABEL_GRILL_Q}}</b>` and the question, then `<b>{{LABEL_GRILL_A}}</b>` and the answer. Copy both from `req-grill.md`. Do not paraphrase. Do not invent a mark when the piece does not state that decision.
+
+After the coverage section and before the footer, one section `id="grill-left"` for every Human choice that was not marked. The heading is `{{LABEL_GRILL_LEFT}}`. One list, source order. Each item is the question, then the answer. Copy both from `req-grill.md`. Omit the section when every choice was marked, or when `## Human choices` is empty.
+
 ## EARS classification
 
 Keep trigger keywords in English. Classify by the **first** EARS keyword in the AC:
@@ -51,7 +61,7 @@ Any other sentence is an item sentence:
 1. Remove a trailing `が見える` or `を見せる` only.
 2. If it contains `など`, `等`, `etc.`, or `or similar`, one row. The name is the sentence after step 1. Do not split it.
 3. Otherwise separate fields from operations. If the sentence contains `と、`, the left side is fields and the right side is operations. Else if a `と` is followed by a part that contains `操作`, split at that `と`.
-4. Fields: split on `・`. If that side ends with `の入力` or `の変更`, delete the suffix and mark every field `入力`. Otherwise, if the sentence's verb is `見せる` or `見える`, mark them `表示`. If the side has no `・` but has `と` (`本のタイトルと記録日`), split on `と`.
+4. Fields: split on `・`. If the side has no `・` but has `と` (`本のタイトルと記録日`, or `書籍名のテキスト入力と感想のテキストエリア`), split on `と`. A piece that contains `テキスト入力`, `テキストエリア`, `セレクトボックス`, `ラジオボタン`, `チェックボックス`, or `ボタン` keeps that control. Strip a trailing `を見せる` or `が見える` from the name, and do not also mark that piece `表示`. A piece with none of those controls is `表示` when the sentence's verb is `見せる` or `見える`. A piece that only says `の入力` or `の変更` has no kind. Do not mark it `入力`.
 5. Operations: if the side ends with `操作`, delete that one trailing `操作`, then split on `・`. Each piece is `操作`. The name is the piece (`記録完了`, `変更完了`, `変更`, `削除`).
 
 A sentence with `各<noun>` (`各感想`) puts those leaves under one group. The group name is the noun without `各` (`感想`). The group's kind is `{{LABEL_MANY}}`.
@@ -63,7 +73,7 @@ A container is a wider group and has no kind. It exists only when the source nam
 
 Leaves with no container and no `各` stay at the top level. Do not invent a container. Do not print a path. `*.エリア1.感想.本のタイトル` only means the container `エリア1`, the group `感想`, and the leaf `本のタイトル`.
 
-`{{LABEL_KIND}}` is only `入力`, `操作`, `表示`, or a widget word that already appears in that leaf (`アラート`, `ボタン`, `ラジオ`, `チェック`). A widget word in the leaf wins (`検索ボタン` is `ボタン`, not `操作`). `示す` / `見える` / `見せる` are `表示`. `操作` is the kind only when the leaf says `操作` and names no widget. A field list ending in `の入力` or `の変更` is `入力`, not `テキスト` and not `ラジオ`. Do not write `アラート` unless the sentence says `アラート`.
+`{{LABEL_KIND}}` is the control written in that leaf: `テキスト入力`, `テキストエリア`, `セレクトボックス`, `ラジオボタン`, `チェックボックス`, `ボタン`, or `表示`. A control word in the leaf wins (`検索ボタン` is `ボタン`). `示す` / `見える` / `見せる` are `表示` only when the leaf names no control. `の入力` or `の変更` without one of those controls does not become `テキスト入力` or `入力`. Do not invent a control. Do not write `アラート` unless the sentence says `アラート`.
 
 **Failure row**
 
@@ -81,7 +91,7 @@ A sentence is navigation only when it uses one of: `開く`, `移る`, `戻る`,
 - `from`: the other place → this screen. The other place is the `###` name in the sentence, or, when none, the noun phrase immediately before `から` or `で` (English: the phrase after `from`).
 - `goes`: this screen → the other `###` name in the sentence.
 
-The edge label is that sentence. Do not add words. The same ordered pair and the same navigation verb are one edge; keep the shorter sentence as the label.
+The edge label is that sentence without its leading acceptance-criterion number. Do not add words. The same ordered pair and the same navigation verb are one edge; keep the shorter sentence as the label.
 
 ### Screen branch table
 
@@ -92,9 +102,9 @@ This table is not the limited-entry Y / N table. Patterns run down the first col
 | Column | `goes` row | failure row |
 | --- | --- | --- |
 | `{{LABEL_COL_COND}}` | the clause before the destination; if it cannot be separated, the whole sentence | the AC condition, or the `out:` sentence |
-| `{{LABEL_COL_DEST}}` | the target node name | the `###` screen named in the AC response; if the response says the user stays, this screen |
+| `{{LABEL_COL_DEST}}` | the target node name | the screen named in `表示している画面` or before `を表示したまま`; otherwise the `###` screen named in the AC response. `表示したまま` is that screen, not a new transition |
 | `{{LABEL_COL_RESPONSE}}` | the `goes` sentence | the AC response, or the `out:` sentence |
-| `{{LABEL_KIND}}` | `遷移` | `表示` when the response says `示す` / `見える` / `見せる`; `アラート` only when the response says `アラート`; `遷移` when the row only moves and shows nothing |
+| `{{LABEL_KIND}}` | `遷移` | the form written in the response: `項目直下のインラインテキスト`, `ダイアログ`, or `画面上部のアラート`. Do not replace one of those with `表示` because the sentence also says `示す` or `見せる`. `遷移` when the row only moves and names none of those forms |
 
 The pattern cell is the 1-based index alone (`1`, `2`). The column header is already `{{LABEL_PATTERN}}`, so the cell does not repeat that word. Do not use `R1`. Do not fill Y / N / — / ○ here. Omit the table when it would have one row. When the table is present, omit the card's `goes` and `failure` rows so those sentences are not shown twice.
 
@@ -120,16 +130,16 @@ The name cell is the Japanese or English gloss below, never the raw key (`functi
 
 | key | ja name | en name | ja question | en question |
 | --- | --- | --- | --- | --- |
-| functional | 機能 | Function | スコープ内のふるまいが、受け入れ条件の結果になっているか | Does each in-scope behavior show up as a result? |
-| reliability | 信頼性 | Reliability | 失敗、二重の成功、同時の変更のあと、何が残るか | After a failure, a double success, or a concurrent change, what remains? |
-| usability | 使いやすさ | Usability | 拒否されたあとも続けられるか、入力が残るか、操作を始める場所が分かるか | After a rejection, can the user continue, keep what they typed, and see where to start? |
-| performance | 性能 | Performance | 件数や、かかる時間の上限が結果に書いてあるか | Does the result state a count or a time limit? |
-| maintainability | 保守 | Maintenance | 後から直しても、同じものを識別できるか | After a later change, can the same thing still be identified? |
-| security | 安全 | Safety | 本人以外に見せないこと、いつまで保持するかが結果に書いてあるか | Does the result say who else cannot see it, and how long it is kept? |
-| leakage | 漏洩 | Leakage | 対象外の人が、保持したものを見たり変えたりできないか | Can someone outside the allowed set see or change a kept thing? |
-| destruction | 破損 | Damage | ミスや二重の成功で、違うものが残ったり、消えたものが戻ったりしないか | Can a mistake or a second success leave the wrong thing, or bring a removed thing back? |
-| lockout | 行き止まり | Dead end | 拒否されたあと、理由が見えて操作を続けられるか | After a rejection, is the reason visible and can the user continue? |
-| rewrite | 同一性 | Identity | 後から変えても、同じものの識別が残るか | After a later change, does the identity of the same thing remain? |
+| functional | 機能 | Function | 機能として書いた振る舞いが、受け入れ条件か出典のある対象外になっているか | Is the behavior named as function a criterion, or a sourced exclusion? |
+| reliability | 信頼性 | Reliability | 信頼性として書いた振る舞いが、受け入れ条件か出典のある対象外になっているか | Is the behavior named as reliability a criterion, or a sourced exclusion? |
+| usability | 使いやすさ | Usability | 使いやすさとして書いた振る舞いが、受け入れ条件か出典のある対象外になっているか | Is the behavior named as usability a criterion, or a sourced exclusion? |
+| performance | 性能 | Performance | 性能として書いた振る舞いが、受け入れ条件か出典のある対象外になっているか | Is the behavior named as performance a criterion, or a sourced exclusion? |
+| maintainability | 保守性 | Maintenance | 保守性として書いた振る舞いが、受け入れ条件か出典のある対象外になっているか | Is the behavior named as maintainability a criterion, or a sourced exclusion? |
+| security | 安全性 | Safety | 安全性として書いた振る舞いが、受け入れ条件か出典のある対象外になっているか | Is the behavior named as safety a criterion, or a sourced exclusion? |
+| leakage | 漏洩 | Leakage | 漏洩として書いた振る舞いが、受け入れ条件か出典のある対象外になっているか | Is the behavior named as leakage a criterion, or a sourced exclusion? |
+| destruction | 破損 | Damage | 破損として書いた振る舞いが、受け入れ条件か出典のある対象外になっているか | Is the behavior named as damage a criterion, or a sourced exclusion? |
+| lockout | 行き止まり | Dead end | 行き止まりとして書いた振る舞いが、受け入れ条件か出典のある対象外になっているか | Is the behavior named as a dead end a criterion, or a sourced exclusion? |
+| rewrite | 同一性 | Identity | 同一性として書いた振る舞いが、受け入れ条件か出典のある対象外になっているか | Is the behavior named as identity a criterion, or a sourced exclusion? |
 
 ### Exception catalog (document-level)
 
@@ -149,19 +159,20 @@ Emit **inside that requirement** when **all** of:
 
 - The requirement has **two or more** `When` ACs, **or** one `When` plus at least one `If` that is clearly the failure of that same event
 - The ACs can be read as a sequence or branch **without adding** intermediate steps
-- No `## Screens` line cites an AC of this requirement
 
-Node labels: shorten AC condition/response; keep meaning. Edges: only order/branch that the AC text supports (`If` as a no/error branch of a `When` is allowed when the trigger matches).
+The screen transition stays the whole journey. This flowchart is the part those ACs support, including when a `## Screens` line cites them. Node labels: shorten AC condition/response; keep meaning. Edges: only order/branch that the AC text supports (`If` as a no/error branch of a `When` is allowed when the trigger matches).
 
-**Do not emit** for a single lonely `When`, for ubiquitous `shall` lists, for a document-level feature flow stitched across requirements, or for a requirement whose ACs are already cited by a screen. Do not emit a second flowchart inside a screen card.
+Mermaid 11 reads every node and edge label as Markdown. A label that starts with a number, a period, and a space (`3. When`) is a numbered list, which Mermaid rejects and the diagram does not render. Drop that number. Do not start a label with `#`, `*`, `-`, or `>`.
+
+**Do not emit** for a single lonely `When`, for ubiquitous `shall` lists, or for a document-level feature flow stitched across requirements. Do not emit a second flowchart inside a screen card.
 
 ### Mermaid state diagram (`stateDiagram` / `stateDiagram-v2`)
 
 Emit when the requirement has **two or more** `While` ACs, **or** `While` plus `When` that name a state change the AC actually states.
 
-States = named preconditions in `While` clauses. Transitions = only those implied by `When`/`shall` in the **same** requirement.
+States = named preconditions in `While` clauses. Transitions = every `When` or `shall` in the **same** requirement that enters, leaves, or moves between those states. Write each as `StateA --> StateB: label`. The arrow is `-->`. `==>` is a flowchart arrow and draws no line in a state diagram. The label is the shortened event, without a leading number.
 
-**Do not emit** a generic happy-path state machine.
+A diagram that only names states and has no `-->` line is not done. **Do not emit** a generic happy-path state machine, and do not add a state or an edge the text does not state.
 
 ### Decision table (limited-entry)
 
@@ -193,7 +204,8 @@ Shape:
 8. Exception catalog
 9. Per requirement: `<details id="req-N">` (closed) → summary (number, title, AC count, type badges only when the document has more than one type) → purpose card → AC matrix → decision table (if any) → mermaid (if any)
 10. Coverage
-11. Footer (source path)
+11. Unmarked grill answers, when any remain
+12. Footer (source path)
 
 Legend of everyday-language type badges: once, near the index, and only as the type rule above says. No Tabs JS. Never show raw EARS keywords on the page.
 
@@ -218,6 +230,9 @@ Headings and column titles use these strings. `spec.json` `language` `ja` uses t
 | `{{LABEL_COVERAGE}}` | 品質と確認 | Quality and checks |
 | `{{LABEL_COVERAGE_LEAD}}` | それぞれの行で、右の結果が「確かめること」を満たすかを見ます。 | Each row asks whether the result on the right settles the question. |
 | `{{LABEL_COL_QUESTION}}` | 確かめること | Question |
+| `{{LABEL_GRILL_Q}}` | 質問 | Question |
+| `{{LABEL_GRILL_A}}` | 回答 | Answer |
+| `{{LABEL_GRILL_LEFT}}` | 画面に印を付けられなかった回答 | Answers not marked on this page |
 | `{{LABEL_COL_BASIS}}` | この文書の結果 | Result in this document |
 | `{{LABEL_EARS_WHEN}}` | イベント | Event |
 | `{{LABEL_EARS_IF}}` | 例外 | Exception |
@@ -240,7 +255,7 @@ Quality and Checks keys are not shown. Use the gloss table in the Coverage secti
 - Mermaid types other than `flowchart` and `stateDiagram` / `stateDiagram-v2`
 - A cross-requirement flowchart other than the one screen transition
 - A flowchart inside a screen card
-- Naming a widget the sentence does not name (`アラート`, `ボタン`, `ラジオ`, `テキスト`)
+- Naming a control or a failure form the sentence does not name (`テキスト入力`, `セレクトボックス`, `ボタン`, `項目直下のインラインテキスト`, `画面上部のアラート`, `ダイアログ`)
 - Leaving an acceptance sentence in the item column (`が見える` still attached, or a whole `shall` response as one item)
 - Empty sections with placeholder lorem or “TBD” diagrams
 - Changing `requirements.md`

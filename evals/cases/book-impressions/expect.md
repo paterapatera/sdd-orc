@@ -7,7 +7,7 @@
 - E3: requirements.md — 他人の感想を開く・変える・消すとき、中身が表示も変更も削除もされない結果がある
 - E4: requirements.md — 削除の前に確認し、削除は戻せないことが受け入れ条件か Boundary にある
 - E5: requirements.md — 入力が誤っているとき何も保存されず、入力内容を残してフォームに戻る結果がある
-- E6: requirements.md — 二重に送っても1件だけ記録される結果がある
+- E6 [absence]: requirements.md — 依頼に無い、二重に送ったときや2回保存したときの結果が無い
 - E7: requirements.md — `## Quality` の performance が、grill を出典とする `out:` になっている
 - E8: requirements.md — 蔵書・読了とつながないことが Boundary か受け入れ条件にある
 - E9: brief.md — requirements にある操作（閲覧・編集・削除）が brief の Scope In にもある

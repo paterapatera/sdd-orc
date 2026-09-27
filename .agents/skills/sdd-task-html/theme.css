@@ -436,3 +436,70 @@ body.tsk-body {
   white-space: pre;
   font-family: var(--font-mono, ui-monospace, monospace);
 }
+
+.tsk-grill {
+  background: var(--almond);
+  border-radius: 0.2rem;
+  box-decoration-break: clone;
+  position: relative;
+  cursor: help;
+}
+
+.tsk-grill-tip {
+  display: none;
+  position: absolute;
+  z-index: 30;
+  left: 0;
+  bottom: calc(100% + 0.35rem);
+  width: min(22rem, 70vw);
+  margin: 0;
+  padding: 0.6rem 0.75rem;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  border: 1px solid var(--border);
+  border-radius: 0.4rem;
+  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
+  white-space: normal;
+  text-align: left;
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.tsk-grill-tip-line {
+  display: block;
+  margin: 0.15rem 0 0.45rem;
+}
+
+.tsk-grill-tip-line:last-child {
+  margin-bottom: 0;
+}
+
+.tsk-grill:hover .tsk-grill-tip,
+.tsk-grill:focus-within .tsk-grill-tip {
+  display: block;
+}
+
+.tsk-page :is(.card-content, .tsk-pre, .table):has(.tsk-grill:hover),
+.tsk-page :is(.card-content, .tsk-pre, .table):has(.tsk-grill:focus-within) {
+  overflow: visible;
+}
+
+/* shadcn .card sets overflow:hidden; tips render above the highlight */
+.tsk-page .card:has(.tsk-grill:hover),
+.tsk-page .card:has(.tsk-grill:focus-within) {
+  overflow: visible;
+}
+
+.tsk-grill-left {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.tsk-grill-left p {
+  margin: 0.15rem 0 0;
+}

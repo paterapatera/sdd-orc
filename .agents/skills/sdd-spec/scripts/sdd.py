@@ -41,24 +41,17 @@ OPEN_LIST_RE = re.compile(r"など|等も|\betc\b|\bor similar\b", re.I)
 RESIDUAL_OK_RE = re.compile(r"^(なし|該当なし|none|n/?a)$", re.I)
 QUALITY_KEYS = ("functional", "reliability", "usability", "performance", "maintainability", "security")
 CHECK_KEYS = ("leakage", "destruction", "lockout", "rewrite")
-CHECK_OBSERVABLE = {
-    "leakage": re.compile(r"表示しない|見えない|変更できない|削除できない|保存されない"),
-    "destruction": re.compile(r"戻せ|残る|消える|保存されない|一件"),
-    "lockout": re.compile(r"理由|伝わり|続け"),
-    "rewrite": re.compile(r"識別|後から変えても"),
-}
 ACTION_START_RE = re.compile(r"(?:追加|編集|削除|登録)(?:できる|する)")
-DELETE_ACTION_RE = re.compile(r"削除(?:できる|する)")
 PLACE_RE = re.compile(r"一覧|詳細|画面|ページ")
 NEW_SCREEN_RE = re.compile(r"新しい画面(?!は無)|新規の?画面|新しいページ")
 SCREEN_KEYS = ("from", "items", "goes", "failure")
 SCREEN_OBSERVABLE = {
     "from": re.compile(r"開く|移る|遷移|戻る"),
-    "items": re.compile(r"並ぶ|並べ|項目|表示|入力|見せ"),
+    "items": re.compile(r"テキスト入力|テキストエリア|セレクトボックス|ラジオボタン|チェックボックス|ボタン|表示|見せ"),
     "goes": re.compile(r"開く|戻る|のまま|遷移|移る"),
-    "failure": re.compile(r"理由"),
+    "failure": re.compile(r"バリデーションエラー|404エラー|権限エラー|サーバーエラー"),
 }
-UNDO_RE = re.compile(r"戻せ|復元|消えたまま")
+FAILURE_FORM_RE = re.compile(r"項目直下のインラインテキスト|画面上部のアラート|ダイアログ")
 QUANTITY_RE = re.compile(r"\d+(?:\.\d+)?\s*(?:秒|件|回|日|時間|分)")
 MECHANISM_RE = re.compile(r"(?<!\d)(?:401|403|404|302|500)(?!\d)|物理削除|論理削除")
 QUALITY_LINE_RE = re.compile(r"^- (?P<key>[a-z]+):[ \t]*(?P<value>.*)$", re.M)
@@ -331,14 +324,6 @@ def has_open_question(requirements: str | None) -> bool:
     return bool(requirements and "Open question:" in requirements)
 
 
-def rounds_exhausted(text: str | None) -> bool:
-    if not text:
-        return False
-    ai = re.search(r"^AI round:\s*(\d+)\s*$", text, re.M)
-    human = re.search(r"^Human round:\s*(\d+)\s*$", text, re.M)
-    return bool(ai and int(ai.group(1)) >= 10 and human and int(human.group(1)) >= 10)
-
-
 def route_path(brief: str | None, spec: dict | None = None) -> str | None:
     if spec and spec.get("path") in {"none", "update", "new"}:
         return spec["path"]
@@ -587,7 +572,7 @@ def criterion_lines(requirements: str) -> dict[str, str]:
 
 
 def check_gaps(requirements: str) -> list[str]:
-    """Four failures whose `## Checks` line is missing, or whose criterion would not fail the bad implementation."""
+    """Check names whose line is missing, or whose citation is not a criterion in this file."""
     body = section(requirements, "Checks")
     lines = {}
     for match in QUALITY_LINE_RE.finditer(body):
@@ -597,9 +582,7 @@ def check_gaps(requirements: str) -> list[str]:
     for key in CHECK_KEYS:
         value = lines.get(key, "")
         parts = [part.strip() for part in value.split(";") if part.strip()]
-        if not parts or not all(check_part_ok(part, texts, CHECK_OBSERVABLE[key]) for part in parts):
-            gaps.append(key)
-        elif key == "destruction" and destruction_undo_gap(value, texts):
+        if not parts or not all(check_part_ok(part, texts) for part in parts):
             gaps.append(key)
     return gaps
 
@@ -687,11 +670,11 @@ def screen_part_ok(
             return arrival_line(line, name) and from_chosen(name, part, grill, brief)
         if not SCREEN_OBSERVABLE[key].search(line):
             return False
-        if key == "items" and OPEN_LIST_RE.search(line):
+        if key == "items" and (OPEN_LIST_RE.search(line) or (re.search(r"入力", line) and not re.search(r"テキスト入力|テキストエリア", line))):
             return False
         if key == "goes" and not PLACE_RE.search(line):
             return False
-        if key == "failure" and not (PLACE_RE.search(line) or "のまま" in line):
+        if key == "failure" and not (FAILURE_FORM_RE.search(line) and "画面" in line):
             return False
         return True
     return False
@@ -714,18 +697,6 @@ def place_gaps(requirements: str) -> bool:
     if "Open question:" in usability:
         return False
     return True
-
-
-def destruction_undo_gap(value: str, texts: dict[str, str]) -> bool:
-    """A removal is not settled by another line that only says the failed value is not stored."""
-    if not any(DELETE_ACTION_RE.search(line) for line in texts.values()):
-        return False
-    if value.startswith("Open question:"):
-        return False
-    if value.startswith("out:"):
-        return UNDO_RE.search(value) is None
-    refs = [ref.strip() for ref in value[len("criteria:") :].split(",") if ref.strip()] if value.startswith("criteria:") else []
-    return not any(DELETE_ACTION_RE.search(texts.get(ref, "")) and UNDO_RE.search(texts.get(ref, "")) for ref in refs)
 
 
 def quantity_tokens(text: str) -> set[str]:
@@ -770,14 +741,14 @@ def untranscribed_limits(requirements: str | None, design: str | None, grill: st
     return sorted(token for token in found if not quantity_in(req, token))
 
 
-def check_part_ok(part: str, texts: dict[str, str], observable: re.Pattern[str]) -> bool:
+def check_part_ok(part: str, texts: dict[str, str]) -> bool:
     if part.startswith("Open question:"):
         return len(part) > len("Open question:")
     if part.startswith("out:"):
         return bool(OUT_SOURCE_RE.search(part))
     if part.startswith("criteria:"):
         refs = [ref.strip() for ref in part[len("criteria:") :].split(",") if ref.strip()]
-        return bool(refs) and all(ref in texts for ref in refs) and any(observable.search(texts[ref]) for ref in refs)
+        return bool(refs) and all(ref in texts for ref in refs)
     return False
 
 
@@ -1121,8 +1092,7 @@ def requirements_step(repo: Repo, spec: dict | None) -> dict | None:
     changed_outside_validate = recorded_g != req_hash and not validate_owns_edit
     review_nogo = review is not None and first_verdict(review) == "NO-GO" and output_hash == req_hash
     if not verdict_ready or changed_outside_validate or review_nogo or has_open_question(req_text):
-        capped = rounds_exhausted(req_grill) and not changed_outside_validate and not review_nogo
-        if capped or (
+        if (
             grill_state(req_grill, req_hash) == "blocked"
             and not changed_outside_validate
             and not review_nogo
@@ -1139,8 +1109,6 @@ def requirements_step(repo: Repo, spec: dict | None) -> dict | None:
         return {"step": "grill", "escalate": True}
     misused = boundary_out_lines(req_text)
     if misused:
-        if rounds_exhausted(req_grill) and not changed_outside_validate and not review_nogo:
-            return {"stop": "req", "file": "req-grill.md"}
         return {"step": "grill", "escalate": True, "boundary_out": misused}
     findings = mechanical_findings("requirements", req_text)
     if findings:
