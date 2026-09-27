@@ -10,7 +10,7 @@ Read `tasks-grill.md` `## Human choices` when that file exists. Each choice is o
 
 Mark the visible `choose` of the `physical_decisions` entry whose `id` is that choice, including when that sentence shortened or reworded the answer. When the answer is 「このまま（推奨）」, mark the `choose` that stayed. Wrap that `choose` only, not the whole task or the `rejected` line. The answer string does not have to appear unchanged.
 
-The `choose` line is a `div.tsk-choose`, not a `p`. The wrap is a `span.tsk-grill` with `tabindex="0"` inside that div. Inside it, after the visible phrase, one `span.tsk-grill-tip` with `role="tooltip"`. The tip is two `span.tsk-grill-tip-line` elements, not paragraphs. A `p` inside a `p` is invalid, and the browser then empties the tip. The first line is `<b>{{LABEL_GRILL_Q}}</b>` and the question. The second is `<b>{{LABEL_GRILL_A}}</b>` and the answer. Copy both from `tasks-grill.md`. Do not paraphrase. Do not invent a mark when that entry is not on the page.
+The `choose` line is a `div.tsk-choose`, not a `p`. The wrap is a `span.tsk-grill` around the visible phrase inside that div only. Do not emit `span.tsk-grill-tip`, `span.tsk-grill-tip-line`, `role="tooltip"`, or any hover or focus popup. The mark is background highlight only (`theme.css`). Do not put question or answer text inside the wrap. Copy Q&A only into `#grill-left` for choices that were not marked. Do not invent a mark when that entry is not on the page.
 
 Before the footer, one section `id="grill-left"` for every Human choice that was not marked. The heading is `{{LABEL_GRILL_LEFT}}`. One list, source order. Each item is the question, then the answer. Copy both from `tasks-grill.md`. Omit the section when every choice was marked, or when `## Human choices` is empty.
 

@@ -8,6 +8,6 @@ disable-model-invocation: true
 
 Write one static HTML file next to `docs/specs/<feature>/design.md`. Do not change the markdown.
 
-A good preview groups what this design creates and what it updates, by screen or by domain, in the source's own words. A screen is a `## Screens` heading in `requirements.md`. A domain is the stem of a contract path in the Record. A contract or ADR body appears only inside that group, and only when that file is a review surface in `viz-rules.md`. Anything else stays a path. It does not reprint `design.md` heading by heading, and it does not add a component the text does not contain. Read `design-grill.md` `## Human choices` and mark each answer as `viz-rules.md` says, with the question and the answer in the hover bubble. The bar is `viz-rules.md`.
+A good preview groups what this design creates and what it updates, by screen or by domain, in the source's own words. A screen is a `## Screens` heading in `requirements.md`. A domain is the stem of a contract path in the Record. A contract or ADR body appears only inside that group, and only when that file is a review surface in `viz-rules.md`. Anything else stays a path. It does not reprint `design.md` heading by heading, and it does not add a component the text does not contain. Read `design-grill.md` `## Human choices` and mark each answer as `viz-rules.md` says. Follow [viz-rules.md](viz-rules.md) only.
 
 A bad preview turns each design heading into its own section, invents a screen or a domain, or places a change in a group the text does not name.

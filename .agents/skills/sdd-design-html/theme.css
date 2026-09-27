@@ -425,54 +425,11 @@ body.des-body {
   background: var(--almond);
   border-radius: 0.2rem;
   box-decoration-break: clone;
-  position: relative;
-  cursor: help;
 }
 
-.des-grill-tip {
-  display: none;
-  position: absolute;
-  z-index: 30;
-  left: 0;
-  bottom: calc(100% + 0.35rem);
-  width: min(22rem, 70vw);
-  margin: 0;
-  padding: 0.6rem 0.75rem;
-  background: var(--popover);
-  color: var(--popover-foreground);
-  border: 1px solid var(--border);
-  border-radius: 0.4rem;
-  box-shadow: 0 8px 24px rgb(0 0 0 / 12%);
-  white-space: normal;
-  text-align: left;
-  font-size: 0.85rem;
-  font-weight: 400;
-  line-height: 1.45;
-}
-
+.des-grill-tip,
 .des-grill-tip-line {
-  display: block;
-  margin: 0.15rem 0 0.45rem;
-}
-
-.des-grill-tip-line:last-child {
-  margin-bottom: 0;
-}
-
-.des-grill:hover .des-grill-tip,
-.des-grill:focus-within .des-grill-tip {
-  display: block;
-}
-
-.des-page :is(.card-content, .des-pre, .table):has(.des-grill:hover),
-.des-page :is(.card-content, .des-pre, .table):has(.des-grill:focus-within) {
-  overflow: visible;
-}
-
-/* shadcn .card sets overflow:hidden; tips render above the highlight */
-.des-page .card:has(.des-grill:hover),
-.des-page .card:has(.des-grill:focus-within) {
-  overflow: visible;
+  display: none !important;
 }
 
 .des-grill-left {
