@@ -49,6 +49,7 @@ CHECKS = (
     "- rewrite: out: 後から変えられないデータの形は依頼に無い (source: brief)\n"
 )
 SCREENS = "## Screens\n\n- out: 新しい画面は無い (source: brief)\n"
+SORT_OUT = "- sort: out: 並び順の条件は無い (source: brief)\n"
 REQ = "# Req\n\n## 1. Sign in\n\n1. When a user signs in, the system shall open a session.\n\n" + QUALITY + CHECKS + SCREENS
 REVERSIBLE_DESIGN = (
     "# Design\n\n## Record\n\n```json\n"
@@ -832,6 +833,16 @@ class NextTests(unittest.TestCase):
         text = REQ.replace("open a session.", "open a session。新しい画面を開く。")
         self.assertTrue(_sdd.screen_gaps(text))
 
+    def test_an_existing_screen_without_a_block_blocks(self) -> None:
+        text = (
+            "# Req\n\n## 1. 設定\n\n"
+            "1. When 管理者が通知設定画面を見る, the システム shall Slack チャンネル名のテキスト入力を見せる。\n\n"
+            + QUALITY
+            + CHECKS
+            + SCREENS
+        )
+        self.assertIn("Screens.通知設定", _sdd.screen_questions(text))
+
     def test_screen_sheet_settles_items_destination_and_failure(self) -> None:
         text = (
             "# Req\n\n## 2. 登録\n\n"
@@ -842,10 +853,25 @@ class NextTests(unittest.TestCase):
             "## Screens\n\n### 登録\n\n"
             "- from: criteria: 2.1\n"
             "- items: criteria: 2.2\n"
-            "- goes: criteria: 2.3\n"
+            + SORT_OUT
+            + "- goes: criteria: 2.3\n"
             "- failure: criteria: 2.4\n"
         )
         self.assertFalse(_sdd.screen_gaps(text))
+
+    def test_a_list_screen_without_sort_blocks(self) -> None:
+        text = (
+            "## 1. 一覧\n\n"
+            "1. When ユーザーが感想一覧画面を見る, the システム shall 感想を見せる。\n"
+            "2. When ユーザーが感想一覧画面で記録を開始する, the システム shall 感想記録画面を開く。\n"
+            "3. If 404エラーになる, the システム shall 感想一覧画面を表示したまま、画面上部のアラートで理由を示す。\n\n"
+            "## Screens\n\n### 感想一覧\n\n"
+            "- from: criteria: 1.1\n"
+            "- items: criteria: 1.1\n"
+            "- goes: criteria: 1.2\n"
+            "- failure: criteria: 1.3\n"
+        )
+        self.assertIn("感想一覧.sort", _sdd.screen_questions(text))
 
     def test_a_bare_input_does_not_name_its_control(self) -> None:
         text = (
@@ -857,7 +883,8 @@ class NextTests(unittest.TestCase):
             "## Screens\n\n### 登録\n\n"
             "- from: criteria: 2.1\n"
             "- items: criteria: 2.2\n"
-            "- goes: criteria: 2.3\n"
+            + SORT_OUT
+            + "- goes: criteria: 2.3\n"
             "- failure: criteria: 2.4\n"
         )
         self.assertIn("登録.items", _sdd.screen_questions(text))
@@ -881,23 +908,27 @@ class NextTests(unittest.TestCase):
             "## Screens\n\n### 本詳細\n\n"
             "- from: criteria: 1.1\n"
             "- items: criteria: 1.2\n"
-            "- goes: criteria: 1.3\n"
+            + SORT_OUT
+            + "- goes: criteria: 1.3\n"
             "- failure: criteria: 1.4\n"
         )
         named_only = "## Human choices\n\n- book: 画面名は「本詳細」と呼ぶ。記録完了後は「本詳細」へ移る\n"
         self.assertIn("本詳細.from", _sdd.screen_questions(text, named_only, ""))
         chosen = "## Human choices\n\n- book: 感想記録画面から本詳細画面へ移る\n"
-        self.assertEqual(_sdd.screen_questions(text, chosen, ""), [])
+        pending = _sdd.screen_questions(text, chosen, "")
+        self.assertNotIn("本詳細.from", pending)
+        self.assertIn("Screens.感想記録", pending)
 
     def test_starting_here_does_not_name_what_opens_the_screen(self) -> None:
         text = (
             "## 1. 一覧\n\n"
-            "1. When ユーザーが感想一覧画面を見る, the システム shall 感想を表示する。\n"
+            "1. When ユーザーが感想一覧画面を見る, the システム shall 記録日の新しい順に感想を見せる。\n"
             "2. When ユーザーが感想一覧画面で記録を開始する, the システム shall 感想記録画面を開く。\n"
             "3. If 404エラーになる, the システム shall 感想一覧画面を表示したまま、画面上部のアラートで理由を示す。\n\n"
             "## Screens\n\n### 感想一覧\n\n"
             "- from: out: 最初にこの画面を開く (source: grill:alignment-places)\n"
             "- items: criteria: 1.1\n"
+            "- sort: criteria: 1.1\n"
             "- goes: criteria: 1.2\n"
             "- failure: criteria: 1.3\n"
         )
@@ -923,7 +954,8 @@ class NextTests(unittest.TestCase):
             "3. When 保存に失敗する, the システム shall 理由が見えて登録画面のままにする。\n\n"
             "## Screens\n\n### 登録\n\n"
             "- items: criteria: 2.1\n"
-            "- goes: criteria: 2.2\n"
+            + SORT_OUT
+            + "- goes: criteria: 2.2\n"
             "- failure: criteria: 2.3\n"
         )
         self.assertTrue(_sdd.screen_gaps(text))

@@ -44,13 +44,18 @@ CHECK_KEYS = ("leakage", "destruction", "lockout", "rewrite")
 ACTION_START_RE = re.compile(r"(?:追加|編集|削除|登録)(?:できる|する)")
 PLACE_RE = re.compile(r"一覧|詳細|画面|ページ")
 NEW_SCREEN_RE = re.compile(r"新しい画面(?!は無)|新規の?画面|新しいページ")
-SCREEN_KEYS = ("from", "items", "goes", "failure")
+SCREEN_KEYS = ("from", "items", "sort", "goes", "failure")
 SCREEN_OBSERVABLE = {
     "from": re.compile(r"開く|移る|遷移|戻る"),
     "items": re.compile(r"テキスト入力|テキストエリア|セレクトボックス|ラジオボタン|チェックボックス|ボタン|表示|見せ"),
+    "sort": re.compile(r"昇順|降順|新しい順|古い順|並び|順で|順に|先に|末尾|ソート|アルファベット|五十音|あいうえお"),
     "goes": re.compile(r"開く|戻る|のまま|遷移|移る"),
     "failure": re.compile(r"バリデーションエラー|404エラー|権限エラー|サーバーエラー"),
 }
+SORT_BASIS_RE = re.compile(
+    r"記録日|日付|更新日|作成日|登録日|名前|タイトル|名称|更新|作成|登録|時刻|いつ|ID|id|更新時刻|作成時刻"
+)
+LIST_ITEMS_RE = re.compile(r"一覧|リスト|複数件|各[一-龯ァ-ヴー]+|行ごと")
 FAILURE_FORM_RE = re.compile(r"項目直下のインラインテキスト|画面上部のアラート|ダイアログ")
 QUANTITY_RE = re.compile(r"\d+(?:\.\d+)?\s*(?:秒|件|回|日|時間|分)")
 MECHANISM_RE = re.compile(r"(?<!\d)(?:401|403|404|302|500)(?!\d)|物理削除|論理削除")
@@ -616,6 +621,54 @@ def from_chosen(name: str, part: str, grill: str | None, brief: str | None) -> b
     return any(arrival_line(src, name) for src in alignment_sources(grill, brief))
 
 
+def screen_heading_names(requirements: str) -> set[str]:
+    body = section(requirements, "Screens")
+    return set(re.findall(r"^###\s+(\S+)\s*$", body, re.M))
+
+
+def screen_short_name(token: str) -> str:
+    if token.endswith("画面") and len(token) > 2:
+        return token[:-2]
+    return token
+
+
+def screen_criteria_text(part: str, texts: dict[str, str]) -> str:
+    if not part.startswith("criteria:"):
+        return part
+    refs = [ref.strip() for ref in part[len("criteria:") :].split(",") if ref.strip()]
+    return " ".join(texts[ref] for ref in refs if ref in texts)
+
+
+def screen_is_list(name: str, items_part: str, texts: dict[str, str]) -> bool:
+    if name.endswith("一覧") or name.endswith("リスト") or name in {"一覧", "リスト"}:
+        return True
+    items_line = screen_criteria_text(items_part, texts)
+    return bool(items_line and LIST_ITEMS_RE.search(items_line))
+
+
+def screen_mention_counts_as_subject(line: str, token: str, start: int) -> bool:
+    """True when the criterion describes behavior on this screen, not only a hop through it."""
+    end = start + len(token)
+    after = line[end:]
+    if after.startswith("から"):
+        return False
+    if f"{token}のまま" in line or f"{token}を表示したまま" in line:
+        return True
+    when = re.search(r"When ([^,]+),", line)
+    return bool(when and token in when.group(1))
+
+
+def screens_touched(requirements: str) -> set[str]:
+    """Places criteria describe for items, failure, or action while the user is on that screen."""
+    touched: set[str] = set()
+    for line in criterion_lines(requirements).values():
+        for match in KANJI_SCREEN_RE.finditer(line):
+            token = match.group(0)
+            if screen_mention_counts_as_subject(line, token, match.start()):
+                touched.add(screen_short_name(token))
+    return touched
+
+
 def screen_questions(requirements: str, grill: str | None = None, brief: str | None = None) -> list[str]:
     """Screen lines the human has not settled. These go back to the grill, not to a rewrite."""
     body = section(requirements, "Screens")
@@ -628,11 +681,24 @@ def screen_questions(requirements: str, grill: str | None = None, brief: str | N
         for block in blocks[1:]:
             name = block.splitlines()[0].strip() or "screen"
             lines = {match.group("key"): match.group("value").strip() for match in QUALITY_LINE_RE.finditer(block)}
+            is_list = screen_is_list(name, lines.get("items", ""), texts)
             pending.extend(
                 f"{name}.{key}"
                 for key in SCREEN_KEYS
-                if not screen_part_ok(lines.get(key, ""), texts, key, name, grill, brief)
+                if not screen_part_ok(
+                    lines.get(key, ""),
+                    texts,
+                    key,
+                    name,
+                    grill,
+                    brief,
+                    items_part=lines.get("items", ""),
+                    is_list=is_list,
+                )
             )
+        headings = screen_heading_names(requirements)
+        for name in sorted(screens_touched(requirements) - headings):
+            pending.append(f"Screens.{name}")
         return pending
     if "Open question:" in blocks[0]:
         return []
@@ -641,11 +707,14 @@ def screen_questions(requirements: str, grill: str | None = None, brief: str | N
     entries = list(QUALITY_LINE_RE.finditer(blocks[0]))
     if not entries or not all(match.group("key") == "out" and bool(OUT_SOURCE_RE.search(match.group(0))) for match in entries):
         return ["Screens"]
+    missing = screens_touched(requirements) - screen_heading_names(requirements)
+    if missing:
+        return [f"Screens.{name}" for name in sorted(missing)]
     return []
 
 
 def screen_gaps(requirements: str) -> bool:
-    """A new screen is unsettled until its arrival, items, destinations, and failure place are criteria."""
+    """A screen is unsettled until each described place has a block and settled lines."""
     return bool(screen_questions(requirements))
 
 
@@ -656,11 +725,20 @@ def screen_part_ok(
     name: str = "",
     grill: str | None = None,
     brief: str | None = None,
+    *,
+    items_part: str = "",
+    is_list: bool | None = None,
 ) -> bool:
     if part.startswith("Open question:"):
         return len(part) > len("Open question:")
+    if is_list is None:
+        is_list = screen_is_list(name, items_part, texts)
     if key == "from" and part.startswith("out:"):
         return bool(OUT_SOURCE_RE.search(part)) and arrival_line(part, name) and from_chosen(name, part, grill, brief)
+    if key == "sort" and part.startswith("out:"):
+        if is_list:
+            return False
+        return bool(OUT_SOURCE_RE.search(part))
     if part.startswith("criteria:"):
         refs = [ref.strip() for ref in part[len("criteria:") :].split(",") if ref.strip()]
         if not refs or any(ref not in texts for ref in refs):
@@ -671,6 +749,8 @@ def screen_part_ok(
         if not SCREEN_OBSERVABLE[key].search(line):
             return False
         if key == "items" and (OPEN_LIST_RE.search(line) or (re.search(r"入力", line) and not re.search(r"テキスト入力|テキストエリア", line))):
+            return False
+        if key == "sort" and (not SCREEN_OBSERVABLE["sort"].search(line) or not SORT_BASIS_RE.search(line)):
             return False
         if key == "goes" and not PLACE_RE.search(line):
             return False

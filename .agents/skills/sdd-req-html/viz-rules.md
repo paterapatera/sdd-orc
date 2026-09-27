@@ -55,9 +55,9 @@ Read `## Boundary`. Two cards: lines whose key is `in` / `out` (also `**In**` / 
 
 ### Screens
 
-Read `## Screens`. One block per `###` heading. Omit the whole section when there is no `###` heading (including a lone `out:` that says there is no new screen).
+Read `## Screens`. One block per `###` heading. Omit the whole section when there is no `###` heading (including a lone sourced `out:` that says this feature describes no screen).
 
-Screen names are the `###` headings. On each card, `from` is the first row. Then the item table. Then notices, if any. Then the branch table when it has two or more rows. `goes` and `failure` are rows only when the branch table is omitted. Drop a row whose text is empty.
+Screen names are the `###` headings. On each card, `from` is the first row. Then the item table. Then notices, if any. Then a **sort** row when `sort` is present: show the `out:` sentence, or the response clause of each cited AC, in the source words. Omit the row when `sort` is empty. Then the branch table when it has two or more rows. `goes` and `failure` are rows only when the branch table is omitted. Drop a row whose text is empty.
 
 **Items**
 

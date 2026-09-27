@@ -52,9 +52,9 @@ Each value is `criteria: <req>.<n>`, `out: <reason> (source: brief|grill:<id>|st
 
 ## Screens
 
-`requirements.md` ends with `## Screens`, after `## Checks`. A screen here is a visible place this feature adds, which steering and the brief do not already name as a place the user sees. An action added to a place the user already sees is not a screen. That action still needs its start place on its own line.
+`requirements.md` ends with `## Screens`, after `## Checks`. A screen here is a visible place whose arrival onto it, items shown there, navigation from there, or failures shown there this feature's acceptance criteria describe. That includes a place steering or the brief already name, and a place this feature newly introduces. Write one `### <name>` block per such place. The heading is the place name without a trailing `画面` when the criteria use the `○○画面` form. An action still needs its start place on its own criterion line.
 
-When this feature adds no screen, the section is one sourced line:
+When no criterion describes any such place for this feature, the section is one sourced line:
 
 ```markdown
 ## Screens
@@ -64,21 +64,33 @@ When this feature adds no screen, the section is one sourced line:
 
 The source is `brief`, `grill:<id>`, or `steering/<file>`. Never write `out:` on your own judgment. Without a source, write `Open question:`.
 
-When it adds a screen, one `### <name>` block per screen. The four lines cite criteria. A sourced `out:` on `from` settles it only when that line names the opener. A criterion settles its line only when its result makes the bad implementation fail:
+When it describes at least one such place, one `### <name>` block per place. The five lines cite criteria, except `sort` on a non-list screen. A sourced `out:` on `from` settles it only when that line names the opener. A criterion settles its line only when its result makes the bad implementation fail:
 
 ```markdown
 ### 登録
 
 - from: criteria: 2.1
 - items: criteria: 2.2
+- sort: out: 並び順の条件は無い (source: brief)
 - goes: criteria: 2.3
 - failure: criteria: 2.4
+```
+
+```markdown
+### 感想一覧
+
+- from: criteria: 1.1
+- items: criteria: 1.1
+- sort: criteria: 1.2
+- goes: criteria: 1.3
+- failure: criteria: 1.4
 ```
 
 | key | bad implementation that must fail |
 | --- | --- |
 | from | The user cannot open this screen, because nothing named leads here. The result names the other place, or the other concrete opener such as a link the human named, and the move onto this screen. 「最初にこの画面を開く」 does not name an opener. Another screen's destination line does not settle this line. |
 | items | A kept or typed item is missing, the list is open, or a typed item does not name its control. Each item the user types or chooses names one control: `テキスト入力`, `テキストエリア`, `セレクトボックス`, `ラジオボタン`, or `チェックボックス`. `入力` does not name one. A value only shown names `表示`. A pressable control names `ボタン`. 「など」 does not fail this. The result does not have to contain the word 項目. Ask one item's control. The sentence is concrete enough to mark that control up in HTML. |
+| sort | A **list screen** shows rows in the wrong order, or the order rule is missing. A list screen is a `###` name ending in `一覧` or `リスト`, or an `items` line whose cited criteria name a list (`一覧`, `リスト`, `各…`, `複数件`, `行ごと`). On a list screen, the result names the **sort key** (for example `記録日`, `タイトル`, `更新日`) and the **order** (`新しい順`, `古い順`, `昇順`, `降順`, or another rule the human chose). `適切な順` does not settle it. On a non-list screen, `out:` with a source settles it. |
 | goes | An action navigates to a different screen from the one named. The result names the action and the `遷移先の画面`, including when the displayed screen does not change (`同じ画面のまま`). |
 | failure | Several failures are one `拒否`. `バリデーションエラー`, `404エラー`, `権限エラー`, and `サーバーエラー` are different. Each class this screen can show is its own criterion. One class is settled only when that criterion names the class, the `表示している画面`, where on that screen the reason is shown, and the form: `項目直下のインラインテキスト`, `画面上部のアラート`, or `ダイアログ`. `理由が見える` does not settle it. A class this screen cannot show is `out:` with a source. Ask the class, the `表示している画面`, where the reason is shown, and the form as separate questions. Do not merge the four classes into `拒否`. Do not join two of those decisions in one prompt. |
 
