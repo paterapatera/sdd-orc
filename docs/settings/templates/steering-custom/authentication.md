@@ -1,5 +1,0 @@
-# Authentication
-
-- do:
-- never:
-- source:

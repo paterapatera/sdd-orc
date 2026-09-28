@@ -1,5 +1,0 @@
-# Security
-
-- do:
-- never:
-- source:

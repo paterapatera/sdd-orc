@@ -1,5 +1,0 @@
-# Structure
-
-- do:
-- never:
-- source:

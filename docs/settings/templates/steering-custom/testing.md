@@ -1,5 +1,0 @@
-# Testing
-
-- do:
-- never:
-- source:

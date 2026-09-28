@@ -1,6 +1,0 @@
-interface:
-  display_name: "Debug Failure"
-  short_description: "Root-cause debugging with mandatory Phase 0 triage (no code changes until HIGH confidence). Includes investigation prompt template for session bootstrap."
-
-policy:
-  allow_implicit_invocation: false

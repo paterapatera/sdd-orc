@@ -1,5 +1,0 @@
-# Deployment
-
-- do:
-- never:
-- source:

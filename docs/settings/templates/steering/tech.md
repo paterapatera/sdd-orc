@@ -1,5 +1,0 @@
-# Technology
-
-- do:
-- never:
-- source:

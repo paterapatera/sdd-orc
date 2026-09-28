@@ -1,29 +1,136 @@
 ---
 name: sdd-impl
-description: Implement a spec whose ready_for_implementation is true. The parent chooses the next chunk. Do not run implementers in parallel in the same worktree.
+description: 準備済み（status: ready）の docs/specs/<feature>/tasks.md のタスクを、テストを先に書きながら順に実装し、全タスクの完了後に独立したレビューを行って実装PRの本文の案を出す。実装PRのレビュー後は、要件を docs/capabilities/ に取り込み、docs/specs/<feature>/ を削除する後片付けを行う。ユーザーが ready のタスクの実装や、実装PRの後片付けを依頼したとき、または sdd-impl を指定したときに使う。
 disable-model-invocation: true
 ---
 
-# Implementation
+# sdd-impl: 実装と後片付け
 
-`<feature>` is required. Do not guess it. Stop unless `docs/specs/<feature>/spec.json` has `ready_for_implementation: true`.
+`docs/specs/<feature>/tasks.md` の `状態: todo` のタスクを上から順に、テストを先に書いて実装する。
+全タスクが終わったら、テストと独立したレビューで仕上がりを確かめ、実装PRの本文の案を出す。
+実装PRのレビューが終わったら、ユーザーの依頼で後片付け（要件の取り込みと feature ディレクトリの削除）を行う。後片付けの変更は、同じ実装PRに追加してからマージする。
 
-The parent reads `tasks.md`. A task is ready when every id in `depends` has `status` `done` and its own `blocked` is null. Dispatch follows `depends`. `wave` is only a sort hint. There is no packing ceiling. Only one implementer runs in a worktree.
+## やらないこと
 
-Pass the subagent that chunk's tasks, the matching requirements and design excerpts, and the task's `contracts` and `boundary` paths. The implementer builds the shape in `physical` and in each `physical_decisions` entry whose `basis` is `human`. The test checks `done`. Do not pass the full spec. A legacy checkbox file still uses `_Contracts:_` and `_Boundary:_`.
+- 書き込みを伴うgit操作（ブランチ作成、コミット、プッシュ、PR作成、マージ、リベース）。ユーザーが手動で行う。読むだけの操作（`git status`、`git diff`、`git fetch`、`git show`）は使ってよい。
+- requirements.md、design.md、tasks.md の中身の編集。例外は、tasks.md の `状態` を `done` にすることと、後片付けでディレクトリごと削除すること。
+- 設計にない入出力、振る舞い、データ、ライブラリ、本番のファイルを足すこと。見つかったら止まる（「設計と合わないことが見つかったとき」）。
+- テストを通すために、テストの確かめる内容を弱めること、テストを飛ばすこと、消すこと。
+- 実装PRのレビューが終わる前の後片付け。PRの差分から design.md と tasks.md が消え、レビューで読めなくなるため。
 
-A good change has a failing test first, then production code that passes, without breaking existing tests. A test that fails before the production code is RED.
+## 参照ファイル
 
-Before review, the parent checks mechanically:
+- 実装の進め方と、設計との線引き: [references/implementation-rules.md](references/implementation-rules.md)
+- 後片付けの形式: [references/finalize-rules.md](references/finalize-rules.md)
+- 独立したレビューの依頼文: [references/review-prompt.md](references/review-prompt.md)
+- タスクの検証: `python3 <sdd-tasks スキルのディレクトリ>/scripts/validate_tasks.py <tasks.md> --target ready`
+- 後片付けの検証: `python3 <このスキルのディレクトリ>/scripts/check_finalize.py <requirements.md> [--before]`（`--before` は取り込む前の検査）
 
-- The test command runs for this chunk and exits pass or fail
-- The diff has no TBD, TODO, or FIXME
-- The diff has no secret value
-- The diff stays inside the task's `boundary`
-- The test that should fail did fail before the production code
+実装を始める前に implementation-rules.md を、後片付けを始める前に finalize-rules.md を必ず読む。
 
-Then run `sdd-review` once in a fresh subagent. Do not set `status` to `done` until it approves. A legacy checkbox file still uses `[x]`. After approval, do not check the same evidence again.
+このスキルで「既定のブランチ」は、リモートがあれば `git symbolic-ref refs/remotes/origin/HEAD` が指すブランチ（例: `origin/main`）、なければローカルの `main` か `master` を指す。
 
-When no task is open, run `sdd-validate-impl` once.
+## 手順
 
-`git add` only the paths this chunk touched. Do not use a destructive `git reset`. Send a failed implementation to `sdd-debug` in a context that does not have this conversation. Read status only from `phase`, `approvals`, and `ready_for_implementation` in `spec.json`, and from `tasks[].status` in `tasks.md`. A legacy file uses its checkboxes.
+### 対象の決定
+
+1回の実行で扱う feature は1つだけにする。
+
+1. ユーザーが feature（ディレクトリ名、issue番号、ファイル）を指定していれば、それを対象にする。
+2. 指定がなければ、`docs/specs/*/` を調べ、tasks.md が `ready` の feature を一覧にする。各行に feature 名と、`状態: todo` のタスクの数（0なら「実装済み・後片付け待ち」）を書く。
+3. 一覧から1つを、選択肢形式でユーザーに選んでもらう。候補が1つだけでも、推測で決めずに選んでもらう。候補がなければ、その旨と、design.md が approved で tasks.md が ready でない feature があればその一覧を伝えて終わる。
+
+### 0. 状況の判定
+
+- tasks.md がない、または `status: ready` でない → 止まり、sdd-tasks でタスクを作るよう伝える。
+- `状態: todo` のタスクがある → 「1. 準備」から「2. 実装」へ。途中まで終わっていても、「1. 準備」からやり直す。
+- すべて `状態: done` で、後片付けを依頼された（「レビューが終わった」「マージの準備」など） → 「4. 後片付け」
+- すべて `状態: done` で、それ以外 → 「3. 仕上げの確認」
+- どれにも当てはまらない → ユーザーに何をしたいか確認する。
+
+### 1. 準備
+
+1. design.md が `status: approved` であることを確かめる。そうでなければ止まり、sdd-design で承認を済ませるよう伝える。
+2. タスクの検証スクリプトを実行する。エラーがあれば止まり、design.md が変わった可能性があるので sdd-tasks で作り直すよう伝える。
+3. requirements.md の `depends_on` の依存先ごとに、`docs/specs/<依存先の番号>-*/` が作業ツリーに残っていないかを確かめる。残っていれば、依存先の後片付けがこのブランチに入っていない（依存先の実装PRがまだマージされていないか、既定のブランチをこのブランチに取り込んでいない）。止まり、依存先のマージと既定のブランチの取り込みを済ませるよう伝える。
+4. `git status --short` で、この feature と関係のない未コミットの変更がないかを確かめる。あれば、差分が混ざることを伝え、進めてよいかを確認する。
+5. tasks.md のすべての `完了条件` にあるコマンドを1回ずつ実行し、既存のテストが通ることを確かめる。通らない場合は、実装を始めずに止まり、失敗したテストと出力をユーザーに伝える。DBなどの実行環境がなくて動かない場合も同じ。
+
+### 2. 実装
+
+`状態: todo` のタスクを上から順に、implementation-rules.md の「1つのタスクの進め方」に従って行う。
+タスクごとにユーザーの確認は待たず、最後のタスクまで続ける。
+止まる条件（「設計と合わないことが見つかったとき」、テストが通らない原因を直せないとき、実行環境の問題）に当たったら、そこで止まる。
+
+すべてのタスクが `状態: done` になったら「3. 仕上げの確認」へ進む。
+
+### 3. 仕上げの確認
+
+1. すべてのテストを実行する。tasks.md の `完了条件` にあるすべてのコマンドに加えて、package.json などに型チェックとlintのコマンドがあれば実行する。失敗したら直す。直すには設計と合わないことをする必要があるなら、「設計と合わないことが見つかったとき」に進む。
+2. implementation-rules.md の「セルフレビューで必ず確認すること」を1つずつ確かめる。
+3. 独立したレビューを行う。[references/review-prompt.md](references/review-prompt.md) の依頼文で、実装した文脈を持たないレビュー役（サブエージェント）に差分を読ませ、「指摘の扱い」に従って1件ずつ扱う。コードを直した場合は、1 からやり直す。
+4. ユーザーに次の形式で報告する。省略しない。
+
+```markdown
+#### タスク
+- T-01 order-repository: done（テスト 1件）
+（すべてのタスク）
+
+#### テストの結果
+- `npm test`: 通過（42件）
+- `npm run test:e2e`: 通過（6件）
+- `npm run lint`: 通過
+
+#### 設計に書かれていない内部の工夫
+- src/orders/orderCsvService.ts: 金額の整形を formatAmount 関数に分けた
+（ない場合は「なし」）
+
+#### レビューで確かめたこと
+- T-01 D-01: DBから1件ずつ読み出し、全件を配列にまとめていない（src/orders/orderRepository.ts の streamOrders）
+（tasks.md の「レビューで確かめる」すべて。ない場合は「なし」）
+
+#### 独立したレビューの指摘と対応
+- 高 orders-export-api: 期間の終わりの日を含めていない: テストを足して直した
+- 低 テストの名前: 誤り（理由: ...）
+（指摘がない場合は「なし」）
+
+#### 手動確認（ユーザーが行う）
+- auth.accounting-role.ac1: 経理ロールを持たない利用者で注文履歴画面を開き、期間の入力欄とダウンロードボタンがないこと
+（ない場合は「なし」）
+```
+
+5. 実装PRの本文の案を出力する。形式は finalize-rules.md の「実装PRの本文」に従う。
+6. ユーザーに次を伝える。
+   - 変更をコミットし、design.md と tasks.md を含めて実装PRを作ること。
+   - 手動確認がある場合は、PRのレビューまでに行うこと。
+   - レビューが終わったら、マージの前に sdd-impl で後片付けを依頼すること。
+
+### 4. 後片付け
+
+ユーザーが、実装PRのレビューが終わったと伝えたときにだけ行う。finalize-rules.md に従う。
+
+1. tasks.md のすべてのタスクが `状態: done` で、requirements.md と design.md が `approved` であることを確かめる。
+2. リモートがあれば `git fetch` する。`git diff --stat $(git merge-base HEAD <既定のブランチ>) <既定のブランチ> -- docs/capabilities docs/glossary.md docs/adr` で、このブランチの分岐後に既定のブランチでそれらが変わっていないかを確かめる。変わっていれば、他の機能が先にマージされている。止まり、既定のブランチをこのブランチに取り込んでから再開するよう伝える。
+3. 後片付けの検証スクリプトを `--before` で実行する。「変更」の `現行` が今の要件文と一致しない、または変更・削除する要件が `docs/capabilities/` にない、というエラーがあれば止まり、ユーザーに報告する（他の機能が先に同じ要件を変えたか、依存先がまだ取り込まれていない。sdd-req で要件を見直す必要がある）。
+4. 要件を `docs/capabilities/` に取り込む（finalize-rules.md の「要件の取り込み」）。design.md の `種類: 要件の解釈` の技術判断は、`- 解釈:` の行として反映する。
+5. 「（新規）」の用語を `docs/glossary.md` に取り込む（finalize-rules.md の「用語の取り込み」）。
+6. この feature で作ったADR（`feature` がこの feature のもの）が `accepted` であることを確かめる。`proposed` のものがあれば止まり、ユーザーに伝える。
+7. 後片付けの検証スクリプトを（`--before` なしで）実行し、エラーがなくなるまで直す。警告は1件ずつ確かめる。
+8. `docs/specs/<feature>/` をディレクトリごと削除する。
+9. ユーザーに次を報告する。
+   - 取り込んだ要件（追加、変更、削除のID）と、反映した解釈。
+   - 取り込んだ用語。
+   - 後片付けの変更をコミットして同じ実装PRに追加し、マージすること。
+   - `depends_on` にこの issue を含む feature が `docs/specs/` にあれば、その一覧。この実装PRのマージ後に既定のブランチを取り込めば、実装に進めることを伝える。
+
+## 設計と合わないことが見つかったとき
+
+implementation-rules.md の「止まるもの」に当たる場合は、実装で補わずに止まる。
+
+1. 取り組んでいたタスクは `状態: todo` のままにする。書きかけのコードとテストは消さずに残す。
+2. ユーザーに次を報告する。複数ある場合は、まとめて1回で報告する。
+   - タスク番号とコンポーネントID、design.md の該当箇所（見出し、入出力、振る舞い、D-xx）。
+   - 何が合わないか（例: 設計どおりの入出力ではテストが通らない理由、足りないライブラリやファイル）と、そう判断した根拠（エラーの出力、読んだコード）。
+   - 考えられる対応の選択肢。
+   - 書きかけのまま残したファイル。
+3. ユーザーが sdd-design で設計を直して再び approved にし、sdd-tasks で tasks.md を作り直したら、「0. 状況の判定」から再開する。
