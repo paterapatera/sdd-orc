@@ -1,4 +1,4 @@
-# sdd-orc3
+# sdd-orc
 
 AIエージェントに issue の実装を任せるための、仕様駆動開発（SDD）のスキル集。
 Cursor などで使える `.agents/skills/` の形式で書いている（Claude Code 専用にはしない）。
