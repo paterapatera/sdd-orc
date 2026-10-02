@@ -1,0 +1,21 @@
+{
+  "tasks": {
+    "check": "deno run --allow-read --allow-run scripts/check.ts",
+    "verify": "deno run --allow-read scripts/verify.ts",
+    "render": "deno run --allow-read --allow-write=../../.sdd --allow-run=git render/main.ts",
+    "doctor": "deno run --allow-read --allow-run scripts/doctor.ts",
+    "drift": "deno run --allow-read --allow-run=git scripts/drift.ts",
+    "conflicts": "deno run --allow-read --allow-write --allow-env --allow-run=git scripts/conflicts.ts",
+    "next": "deno run --allow-read --allow-run=git scripts/next.ts",
+    "finish-report": "deno run --allow-all scripts/finish-report.ts",
+    "current": "deno run --allow-read --allow-run=git scripts/current.ts",
+    "gate": "deno run --allow-all scripts/gate.ts",
+    "scope": "deno run --allow-read --allow-run=git scripts/scope.ts",
+    "acceptance": "deno run --allow-all scripts/acceptance.ts"
+  },
+  "fmt": {
+    "lineWidth": 120
+  },
+  "lock": false,
+  "nodeModulesDir": "none"
+}

@@ -400,6 +400,108 @@ Adjust layer order to the team's dependency rule (inner packages must not import
 
 ---
 
+## PHP
+
+**Last verified (PHP section):** 2026-10-02 — sebastian/phpcpd is archived (use jscpd); PHPStan 2.x has levels 0–10 and `max` as the alias for the strictest; dead-code via shipmonk/dead-code-detector; cognitive complexity via tomasvotruba/cognitive-complexity. Spot-check current docs before emitting sketches (SKILL freshness rule).
+
+### Defaults (greenfield)
+
+| Role | Default tool |
+|------|----------------|
+| Format | Laravel Pint (Laravel) / PHP-CS-Fixer (non-Laravel) — one only |
+| Types | PHPStan (Larastan for Laravel) at `level: max` + phpstan-strict-rules |
+| SOLID proxies | tomasvotruba/cognitive-complexity (PHPStan rules) |
+| Boundaries | Deptrac (layers, and module-to-module rules for modular monoliths) |
+| Unused | shipmonk/dead-code-detector (PHPStan extension) |
+| Duplication (L) | jscpd (language-agnostic; shared with TS if present) |
+| Refactoring / upgrades (optional) | Rector — not part of `check` unless used in dry-run mode |
+
+### Scale matrix
+
+| Tool | S | M | L |
+|------|---|---|---|
+| Pint (or PHP-CS-Fixer) `--test` | ✅ | ✅ | ✅ |
+| PHPStan / Larastan | level 6+ | `max` | `max` + strict-rules + `checkMissingCallableSignature` etc. |
+| cognitive-complexity | ❌ | ✅ | ✅ (lower thresholds) |
+| Deptrac | optional | ✅ (layers) | ✅ (layers + modules) |
+| dead-code-detector | ❌ | optional | ✅ |
+| jscpd | ❌ | optional | ✅ |
+| Rector (dry-run) | ❌ | optional | optional |
+
+Do not lower the level or narrow `paths` to make the gate pass; fix the code or record the exception explicitly (baseline file reviewed in the proposal's Rollout, never silent `excludePaths`).
+
+### Scripts (M/L, Laravel)
+
+```bash
+./vendor/bin/pint --test                      # format-check
+./vendor/bin/phpstan analyse --memory-limit=1G
+./vendor/bin/deptrac analyse --no-progress
+npx jscpd --config .jscpd.json                # L
+```
+
+`check` = all of the above (non-destructive). Local write: `./vendor/bin/pint` only outside CI.
+
+### Config sketches
+
+**`phpstan.neon` (Larastan, L):**
+
+```neon
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/phpstan/phpstan-strict-rules/rules.neon
+    - vendor/shipmonk/dead-code-detector/rules.neon
+    - vendor/tomasvotruba/cognitive-complexity/config/extension.neon
+
+parameters:
+    level: max
+    paths:
+        - app
+        - Modules            # modular monolith; list every source root, not individual files
+    cognitive_complexity:
+        class: 50
+        function: 8
+```
+
+Use the extension-installer (`phpstan/extension-installer`) instead of manual `includes` when available. Verify the exact include paths and parameter names in each package's README.
+
+**`deptrac.yaml` (layers, `app` shape):**
+
+```yaml
+deptrac:
+  paths: [./app, ./Modules]
+  layers:
+    - name: Domain
+      collectors: [{ type: directory, value: 'Modules/.+/Domain/.*' }]
+    - name: Application
+      collectors: [{ type: directory, value: 'Modules/.+/Application/.*' }]
+    - name: Infrastructure
+      collectors: [{ type: directory, value: 'Modules/.+/Infrastructure/.*' }]
+    - name: Http
+      collectors: [{ type: directory, value: 'Modules/.+/Http/.*' }]
+    - name: Framework
+      collectors: [{ type: classLike, value: '^Illuminate\\.*' }]
+  ruleset:
+    Domain: []
+    Application: [Domain]
+    Infrastructure: [Domain, Application, Framework]
+    Http: [Domain, Application, Framework]
+```
+
+For modular monoliths add a second ruleset (or a second config) where each module may depend only on its own layers plus explicitly public entry points of other modules.
+
+### Rejected by default (PHP)
+
+| Tool | Reason |
+|------|--------|
+| sebastian/phpcpd | archived / unmaintained; use jscpd |
+| PHPMD as primary SOLID proxy | maintenance concerns; overlaps with PHPStan cognitive-complexity rules (keep only if already standard — conflict rules) |
+| Psalm alongside PHPStan | two type checkers for one role |
+| PHP-CS-Fixer alongside Pint | two formatters (Pint already wraps PHP-CS-Fixer rules) |
+| PHPat alongside Deptrac | two primary boundary tools |
+| Paid cloud quality platforms | free/OSS rule |
+
+---
+
 ## Go
 
 ### Defaults (greenfield)
