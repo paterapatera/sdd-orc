@@ -29,8 +29,8 @@ issue の取得、PR/MR の作成、squash マージ、issue へのコメント�
 
 試行で確かめた例（版によって変わり得るので、必ず `--help` で確かめる）:
 
-- `fj pr merge <番号> -M squash -d`（`-M` でマージの方式、`-d` でマージ後にブランチを削除）
 - `gh pr merge <番号> --squash --delete-branch --subject <件名> --body-file <ファイル>`
+- `fj pr merge <番号> -M squash -d`（`-M` でマージの方式、`-d` でマージ後にブランチを削除）
 
 ## CLIが無い、または登録されていない場合
 

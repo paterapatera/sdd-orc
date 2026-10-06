@@ -12,7 +12,7 @@ export type Config = {
   /** 衝突チェックの対象にするリモートブランチの、最終コミットからの日数 */
   staleBranchDays: number;
   /**
-   * issue のIDが数字だけのときに付ける接頭辞（例: "FJ" なら #3 → FJ-3）。
+   * issue のIDが数字だけのときに付ける接頭辞（例: "GH" なら #3 → GH-3）。
    * 決まっていなければ書かない（sdd-start がユーザーに聞く）。
    */
   issueIdPrefix?: string;

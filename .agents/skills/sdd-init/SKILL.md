@@ -127,10 +127,10 @@ sdd-init はプロジェクトの前提を決める一度きりの作業なの�
 ### ホスティングのCLIと issue のID（どちらの案件でも行う）
 
 - 使っているホスティングのCLIを調べる（`gh`、`glab`、`fj`、`tea` のどれが使えるか。`git remote -v` の URL も手がかりにする）。
-  ユーザーに確かめたうえで、`docs/sdd/config.ts` の `forge` に登録する（例: `forge: { cli: "fj" }`）。
+  ユーザーに確かめたうえで、`docs/sdd/config.ts` の `forge` に登録する（例: `forge: { cli: "gh" }`）。
   使い方は `docs/sdd/guides/forge.md` にある。
 - **資格情報を取り出してAPIを直接呼ばない**（`git credential fill`、トークンの読み出し、curl での API 呼び出しなど）。
-- issue のIDに付ける接頭辞（例: `FJ`、`GH`）が決まっていれば、`docs/sdd/config.ts` の `issueIdPrefix` に登録する。
+- issue のIDに付ける接頭辞（例: `GH`、`FJ`）が決まっていれば、`docs/sdd/config.ts` の `issueIdPrefix` に登録する。
 
 ## 5. 型チェックを通す
 
