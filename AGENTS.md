@@ -22,6 +22,7 @@ SDD のスキル（`.agents/skills/`）と、対象リポジトリにコピー�
 | 道具のコピーと hook の設置 | `.agents/skills/sdd-init/scripts/install.ts` |
 | 恒久ドキュメントのひな形 | `.agents/skills/sdd-init/assets/templates/` |
 | 品質ツールの提案 | `.agents/skills/propose-quality-tools/`（更新の手順は `MAINTAIN.md`） |
+| 訓練（試験場での実行と採点、失敗パターンの記録） | `eval/`（使い方は下の「訓練」） |
 
 ## コマンド
 
@@ -80,6 +81,30 @@ deno lint
 - `tests/helpers.ts` の `makeProject`（`docs/sdd` と spec を置いた一時ディレクトリ）、`emptyRepo`・`install`（Git リポジトリへの導入）を使う。
 - サンプルの spec は `tests/fixtures/specs/` にある。`EX-001` が完全モード、`EX-002` が軽量モード。
 - 道具の検出を足したら、検出する場合と検出しない場合の両方をテストする。
+
+## 訓練（`eval/`）
+
+スキルを、仮想案件の試験場（既定は `../eval-sdd`。`SDD_EVAL_TARGET` で変えられる）で実際に動かして採点し、直す。
+`eval/` は対象リポジトリにコピーしない。
+
+```sh
+deno task eval:prepare <問題のID> [--model <モデル名>]   # 試験場を tag の位置に戻し、今のスキルに差し替える
+# 試験場を Cursor で開き、表示された手順でスキルを呼び出す。質問には人役の回答表だけを根拠に答える
+deno task eval:grade                                      # 採点し、eval/runs/<実行ID>/ に記録する
+deno task eval:summary                                    # 問題とスキルの版ごとの合格の回数
+```
+
+| 場所 | 中身 |
+|---|---|
+| `eval/scenarios/<ID>/` | 問題（`scenario.ts`、issue、人役の回答表 `persona.md`、隠したテスト） |
+| `eval/runs/` | 実行の記録（Git の対象外。追記だけで、書き換えない） |
+| `eval/wiki/` | 失敗パターン（`patterns/`）、進化ログ（`logs.md`）、変更の採否（`skill-impact.md`） |
+
+- **試験場は使い捨てとして扱う。** `eval:prepare` は既定のブランチを tag の位置に戻し、ほかのローカルブランチと未追跡のファイルを消す。
+- **実行する AI に、wiki、人役の回答表、隠したテストを見せない。** スキルを直す AI にも、隠したテストの中身は見せず、採点の結果だけを渡す。
+- **1回の変更で直すパターンは1つにする。** 直し方は、道具で検出する（テストも足す）→ ひな形・型で防ぐ → 手順の文章を直す、の順に考える。
+- **採否は `eval/wiki/skill-impact.md` の条件で決め、却下した変更も記録する。** 出力はぶれるので、比べるときは同じモデルで各問題を3回ずつ回す。
+- 隠したテストは、issue と人役の回答表に書いたこと（URL、項目名など外から見える約束）だけを確かめる。
 
 ## コミット
 
