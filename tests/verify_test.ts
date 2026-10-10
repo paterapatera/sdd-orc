@@ -458,3 +458,56 @@ Deno.test("軽量モードでは規約から逸脱できない", async () => {
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "軽量モードでは規約から逸脱できない");
 });
+
+Deno.test("チェックリストに未確定と書いたまま未確定の点が空ならエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(
+    root,
+    "docs/specs/EX-001/requirements.ts",
+    `note: "失敗回数4回→5回目（AC-001）、ロック解除時刻の経過後（AC-004）"`,
+    `note: "失敗回数4回→5回目（AC-001）。表示の件数は未確定（openQuestions）"`,
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "checklist.dataStates に「未確定」とありますが、未確定の点（openQuestions）がありません");
+});
+
+Deno.test("チェックリストで設計に先送りした値があればエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(
+    root,
+    "docs/specs/EX-001/requirements.ts",
+    `note: "入力項目は既存のログイン画面から変わらない"`,
+    `note: "最大文字数は設計で上限を定義"`,
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "checklist.inputValidation に「設計で上限を定義」とあります");
+});
+
+Deno.test("未確定の点が残っている間は、チェックリストの未確定はエラーにしない", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(
+    root,
+    "docs/specs/EX-001/requirements.ts",
+    `note: "失敗回数4回→5回目（AC-001）、ロック解除時刻の経過後（AC-004）"`,
+    `note: "失敗回数4回→5回目（AC-001）。表示の件数は未確定（openQuestions）"`,
+  );
+  await patchFile(root, "docs/specs/EX-001/requirements.ts", "openQuestions: [],", `openQuestions: ["表示の件数"],`);
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+  assertStringIncludes(r.out, "未確定の点が 1 件残っています");
+});
+
+Deno.test("軽量モードでチェックリストに未確定と書いていればエラー", async () => {
+  const root = await makeProject({ specs: ["EX-002"] });
+  await patchFile(
+    root,
+    "docs/specs/EX-002/spec.ts",
+    `note: "入力は変わらない"`,
+    `note: "ページの大きさは未定"`,
+  );
+  const r = await task(root, "verify", "EX-002");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "checklist.inputValidation に「未定」とあります");
+});

@@ -424,6 +424,25 @@ function checkAcceptanceGuide(
   }
 }
 
+const UNRESOLVED_NOTE = /未確定|未定|要確認|openQuestions|(設計|実装)で[^、。]{0,10}?(決め|定め|定義)/;
+
+/** 十分性のチェックリストに「未確定」と書いたまま、質問せずに未確定の点を空にしていないか */
+function checkChecklistResolved(
+  c: Collector,
+  checklist: Readonly<Record<string, { note: string }>>,
+  openQuestions: readonly string[],
+) {
+  if (openQuestions.length > 0) return;
+  for (const [item, { note }] of Object.entries(checklist)) {
+    const hit = note.match(UNRESOLVED_NOTE);
+    if (!hit) continue;
+    c.error(
+      `checklist.${item} に「${hit[0]}」とありますが、未確定の点（openQuestions）がありません。` +
+        "質問して決めた値を受け入れ条件に書き、note を直してください（設計や実装に先送りしない）",
+    );
+  }
+}
+
 function verifyRequirements(
   c: Collector,
   issueId: string,
@@ -451,6 +470,7 @@ function verifyRequirements(
       c.error(`${id} が上書きしている ${nfr.overrides} が docs/sdd/nfr.ts にありません`);
     }
   }
+  checkChecklistResolved(c, r.checklist, r.openQuestions);
   if (r.openQuestions.length > 0) {
     const msg = `未確定の点が ${r.openQuestions.length} 件残っています`;
     if (opts.finish) c.error(msg);
@@ -652,6 +672,7 @@ function verifyQuick(c: Collector, issue: LoadedIssue, opts: VerifyOptions) {
   checkIssueField(c, q.issue, issue.id);
   const acIds = checkFunctional(c, q.expected, "期待する動作（expected）");
   checkInvariants(c, q.invariants, q.noInvariantsReason);
+  checkChecklistResolved(c, q.checklist, []);
   checkIssueCoverage(
     c,
     q.issueCoverage,
