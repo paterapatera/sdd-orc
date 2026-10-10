@@ -1,0 +1,173 @@
+diff --git a/app/Models/Announcement.php b/app/Models/Announcement.php
+new file mode 100644
+index 0000000..44d9a7f
+--- /dev/null
++++ b/app/Models/Announcement.php
+@@ -0,0 +1,10 @@
++<?php
++
++namespace App\Models;
++
++use Illuminate\Database\Eloquent\Model;
++
++class Announcement extends Model
++{
++    protected $fillable = ['title', 'body'];
++}
+diff --git a/database/migrations/2026_10_10_000000_create_announcements_table.php b/database/migrations/2026_10_10_000000_create_announcements_table.php
+new file mode 100644
+index 0000000..051e721
+--- /dev/null
++++ b/database/migrations/2026_10_10_000000_create_announcements_table.php
+@@ -0,0 +1,23 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::create('announcements', function (Blueprint $table) {
++            $table->id();
++            $table->string('title', 100);
++            $table->text('body');
++            $table->timestamps();
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::dropIfExists('announcements');
++    }
++};
+diff --git a/resources/js/components/app-sidebar.tsx b/resources/js/components/app-sidebar.tsx
+index a38aa1d..60205e2 100644
+--- a/resources/js/components/app-sidebar.tsx
++++ b/resources/js/components/app-sidebar.tsx
+@@ -22,6 +22,11 @@ const mainNavItems: NavItem[] = [
+         href: dashboard(),
+         icon: LayoutGrid,
+     },
++    {
++        title: 'お知らせ',
++        href: '/announcements',
++        icon: BookOpen,
++    },
+ ];
+ 
+ const footerNavItems: NavItem[] = [
+diff --git a/resources/js/pages/announcements/index.tsx b/resources/js/pages/announcements/index.tsx
+new file mode 100644
+index 0000000..0d64c50
+--- /dev/null
++++ b/resources/js/pages/announcements/index.tsx
+@@ -0,0 +1,21 @@
++import { Head } from '@inertiajs/react';
++
++type Item = { id: number; title: string; body: string; date: string };
++
++export default function Announcements({ announcements }: { announcements: { data: Item[] } }) {
++    return (
++        <>
++            <Head title="お知らせ" />
++            <div className="p-4">
++                {announcements.data.length === 0 && <p>お知らせはありません</p>}
++                {announcements.data.map((a) => (
++                    <article key={a.id} className="mb-4">
++                        <h2>{a.title}</h2>
++                        <p>{a.date}</p>
++                        <p className="whitespace-pre-line">{a.body}</p>
++                    </article>
++                ))}
++            </div>
++        </>
++    );
++}
+diff --git a/resources/js/pages/dashboard.tsx b/resources/js/pages/dashboard.tsx
+index 3fe0cc7..6a3e346 100644
+--- a/resources/js/pages/dashboard.tsx
++++ b/resources/js/pages/dashboard.tsx
+@@ -1,26 +1,20 @@
+-import { Head } from '@inertiajs/react';
+-import { PlaceholderPattern } from '@/components/ui/placeholder-pattern';
++import { Head, Link } from '@inertiajs/react';
+ import { dashboard } from '@/routes';
+ 
+-export default function Dashboard() {
++type Item = { id: number; title: string; date: string };
++
++export default function Dashboard({ announcements }: { announcements: Item[] }) {
+     return (
+         <>
+             <Head title="Dashboard" />
+-            <div className="flex h-full flex-1 flex-col gap-4 overflow-x-auto rounded-xl p-4">
+-                <div className="grid auto-rows-min gap-4 md:grid-cols-3">
+-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+-                    </div>
+-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+-                    </div>
+-                    <div className="relative aspect-video overflow-hidden rounded-xl border border-sidebar-border/70 dark:border-sidebar-border">
+-                        <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
++            <div className="p-4">
++                {announcements.length === 0 && <p>お知らせはありません</p>}
++                {announcements.map((a) => (
++                    <div key={a.id}>
++                        {a.title} {a.date}
+                     </div>
+-                </div>
+-                <div className="relative min-h-[100vh] flex-1 overflow-hidden rounded-xl border border-sidebar-border/70 md:min-h-min dark:border-sidebar-border">
+-                    <PlaceholderPattern className="absolute inset-0 size-full stroke-neutral-900/20 dark:stroke-neutral-100/20" />
+-                </div>
++                ))}
++                <Link href="/announcements">一覧へ</Link>
+             </div>
+         </>
+     );
+diff --git a/routes/console.php b/routes/console.php
+index 3c9adf1..a2a19ce 100644
+--- a/routes/console.php
++++ b/routes/console.php
+@@ -6,3 +6,20 @@
+ Artisan::command('inspire', function () {
+     $this->comment(Inspiring::quote());
+ })->purpose('Display an inspiring quote');
++
++Artisan::command('announcement:create {title} {body}', function (string $title, string $body) {
++    $v = Illuminate\Support\Facades\Validator::make(
++        ['title' => $title, 'body' => $body],
++        ['title' => 'required|max:100', 'body' => 'required|max:2000'],
++    );
++    if ($v->fails()) {
++        foreach ($v->errors()->all() as $e) {
++            $this->error($e);
++        }
++
++        return 1;
++    }
++    App\Models\Announcement::create(['title' => $title, 'body' => $body]);
++
++    return 0;
++});
+diff --git a/routes/web.php b/routes/web.php
+index 2085b21..db865ce 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -5,7 +5,12 @@
+ Route::inertia('/', 'welcome')->name('home');
+ 
+ Route::middleware(['auth', 'verified'])->group(function () {
+-    Route::inertia('dashboard', 'dashboard')->name('dashboard');
++    Route::get('dashboard', fn () => Inertia\Inertia::render('dashboard', [
++        'announcements' => App\Models\Announcement::latest()->latest('id')->take(3)->get()->map(fn ($a) => ['id' => $a->id, 'title' => $a->title, 'date' => $a->created_at->format('Y-m-d')]),
++    ]))->name('dashboard');
++    Route::get('announcements', fn () => Inertia\Inertia::render('announcements/index', [
++        'announcements' => App\Models\Announcement::latest()->latest('id')->paginate(20)->through(fn ($a) => ['id' => $a->id, 'title' => $a->title, 'body' => $a->body, 'date' => $a->created_at->format('Y-m-d')]),
++    ]))->name('announcements.index');
+ });
+ 
+ require __DIR__.'/settings.php';
