@@ -152,6 +152,24 @@ Deno.test("準備: 出発点に戻し、前の実行のブランチと未追跡�
   assertEquals((await Deno.readTextFile(join(paths.runs, "latest"))).trim(), run.runId);
 });
 
+Deno.test("準備: origin があれば、既定のブランチを出発点に強制 push し、ほかのリモートのブランチを消す", async () => {
+  const paths = await setup();
+  const t = paths.target;
+  const remote = await Deno.makeTempDir({ prefix: "sdd-eval-remote-" });
+  await sh(remote, "init", "-q", "--bare");
+  await sh(t, "remote", "add", "origin", remote);
+  await writeFile(t, "app/x.php", "<?php // 前の実行\n");
+  await sh(t, "commit", "-q", "-am", "前の実行");
+  await sh(t, "push", "-q", "origin", "main", "main:refs/heads/gh-1-old");
+
+  const { run } = await prepareRun(paths, "T-001");
+
+  assertEquals(await sh(remote, "rev-parse", "main"), run.startCommit);
+  assertEquals(await sh(remote, "for-each-ref", "--format=%(refname:short)", "refs/heads"), "main");
+  assertEquals(await sh(t, "rev-parse", "origin/main"), run.startCommit);
+  assertEquals(await sh(t, "for-each-ref", "--format=%(refname:short)", "refs/remotes"), "origin/main");
+});
+
 Deno.test("採点: 修正より前にテストだけのコミットがあるかを確かめる", async () => {
   const paths = await setup();
   const t = paths.target;

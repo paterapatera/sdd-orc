@@ -170,8 +170,23 @@ function stamp(d: Date): string {
 }
 
 /**
+ * origin があれば、既定のブランチを今の HEAD に強制 push し、ほかのリモートのブランチを消す。
+ * スキルは origin の既定のブランチから作業ブランチを作って push するため、remote も出発点に揃えないと、前の実行の状態から始まる。
+ */
+async function resetRemote(target: string, branch: string) {
+  if (!lines(await git(target, "remote")).includes("origin")) return;
+  await git(target, "push", "-q", "--no-verify", "--force", "origin", `HEAD:refs/heads/${branch}`);
+  const others = lines(await git(target, "ls-remote", "--heads", "origin"))
+    .map((l) => l.split("\t")[1].replace("refs/heads/", ""))
+    .filter((b) => b !== branch);
+  if (others.length) await git(target, "push", "-q", "--no-verify", "origin", "--delete", ...others);
+  await git(target, "fetch", "-q", "--prune", "origin");
+}
+
+/**
  * 試験場を問題の出発点に戻し、このリポジトリの今のスキルに差し替える。
  * 試験場は使い捨てとして扱う: 既定のブランチを tag の位置に戻し、ほかのローカルブランチと未追跡のファイルを消す。
+ * origin があれば、リモートの既定のブランチも出発点に強制 push し、ほかのリモートのブランチを消す。
  */
 export async function prepareRun(
   paths: Paths,
@@ -226,6 +241,7 @@ export async function prepareRun(
     const ver = `sdd-orc ${skillsCommit.slice(0, 7)}${dirty ? " と未コミットの変更" : ""}`;
     await git(t, "commit", "-q", "--no-verify", "-m", `chore: SDD のスキルを差し替え（${ver}）`);
   }
+  await resetRemote(t, paths.branch);
 
   const startedAt = opts.now ?? new Date();
   const run: RunInfo = {

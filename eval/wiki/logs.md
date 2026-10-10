@@ -61,3 +61,4 @@
 - 新しいパターン: P-004（drift が SDD の導入で増えた docs/ を報告し、3回とも人に聞いた）。道具を直した。
 - 試験場の問題: remote が本物の GitHub（paterapatera/eval-sdd）のままで、スキルの手順どおりに作業ブランチを push していた。
   GitHub の main が出発点の tag とずれると、sdd-start がずれた origin/main からブランチを作る。扱いを決める。
+- 決定: GitHub のまま使う。eval:prepare が、origin の既定のブランチを出発点に強制 push し、ほかのリモートのブランチを消すようにした。

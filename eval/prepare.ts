@@ -6,6 +6,7 @@
  *   --force  試験場に未コミットの変更があっても消して進める
  *
  * 試験場の場所は環境変数 SDD_EVAL_TARGET（既定は ../eval-sdd）。
+ * 試験場に origin があれば、リモートの既定のブランチを出発点に強制 push し、ほかのリモートのブランチを消す。
  */
 import { join, relative } from "node:path";
 import { parseArgs } from "node:util";
