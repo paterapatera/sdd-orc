@@ -152,6 +152,21 @@ Deno.test("準備: 出発点に戻し、前の実行のブランチと未追跡�
   assertEquals((await Deno.readTextFile(join(paths.runs, "latest"))).trim(), run.runId);
 });
 
+Deno.test("準備: 導入済みの出発点なら pre-commit hook を設置し、導入前なら設置しない", async () => {
+  const before = await setup();
+  await prepareRun(before, "T-001");
+  assertFalse(await exists(join(before.target, ".git/hooks/pre-commit")));
+
+  const after = await setup();
+  const t = after.target;
+  await writeFile(t, "docs/sdd/config.ts", "export default {};\n");
+  await sh(t, "add", ".");
+  await sh(t, "commit", "-q", "-m", "SDDを導入");
+  await sh(t, "tag", "-f", "v0.0.0");
+  await prepareRun(after, "T-001");
+  assert((await Deno.readTextFile(join(t, ".git/hooks/pre-commit"))).includes("managed by sdd-init"));
+});
+
 Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテストは終わったら消す", async () => {
   const paths = await setup();
   const t = paths.target;

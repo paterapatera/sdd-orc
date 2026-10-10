@@ -204,6 +204,20 @@ export async function prepareRun(
   await git(t, "add", "-A", ".agents/skills");
   const skillsTree = await git(t, "rev-parse", `${await git(t, "write-tree")}:.agents/skills`);
 
+  // 導入済みの出発点なら、2人目以降のメンバーと同じく hook だけを設置する
+  if (await exists(join(t, "docs/sdd/config.ts"))) {
+    const install = join(dst, "sdd-init/scripts/install.ts");
+    const r = await exec(Deno.execPath(), [
+      "run",
+      "--allow-read",
+      "--allow-write",
+      "--allow-run=git",
+      install,
+      "--hook-only",
+    ], t);
+    if (r.code !== 0) throw new Error(`pre-commit hook を設置できませんでした: ${r.out.trim()}`);
+  }
+
   const skillsCommit = await git(paths.repo, "rev-parse", "HEAD");
   const skillsDiff = await git(paths.repo, "diff", "HEAD", "--", ".agents/skills");
   const untracked = await git(paths.repo, "ls-files", "--others", "--exclude-standard", "--", ".agents/skills");
