@@ -35,7 +35,8 @@ if (count === 0) {
   Deno.exit(0);
 }
 
-const exclude = [":(exclude)docs/specs", ":(exclude)docs/sdd"];
+const excludedDirs = ["docs/specs/", "docs/sdd/"];
+const exclude = excludedDirs.map((d) => `:(exclude)${d.slice(0, -1)}`);
 const nameStatus = (await gitOut(["diff", "--name-status", arch.basedOn, target, "--", ".", ...exclude])) ?? "";
 const changes = nameStatus.split("\n").filter(Boolean).map((l) => {
   const [status, ...paths] = l.split("\t");
@@ -47,8 +48,13 @@ for (const c of changes) {
   if (isManifest(c.path)) findings.push(`依存関係の定義が変わった: ${c.path}`);
 }
 
+// SDD の導入で docs/ ができただけの場合を、最上位のディレクトリの増加として数えない
 const topDirs = async (rev: string) =>
-  new Set(((await gitOut(["ls-tree", "-d", "--name-only", rev])) ?? "").split("\n").filter(Boolean));
+  new Set(
+    ((await gitOut(["ls-tree", "-r", "--name-only", rev])) ?? "").split("\n")
+      .filter((f) => f.includes("/") && !excludedDirs.some((d) => f.startsWith(d)))
+      .map((f) => f.slice(0, f.indexOf("/"))),
+  );
 const before = await topDirs(arch.basedOn);
 const after = await topDirs(target);
 for (const d of after) if (!before.has(d)) findings.push(`最上位のディレクトリが増えた: ${d}/`);

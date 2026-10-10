@@ -129,6 +129,30 @@ Deno.test("drift: 依存関係・最上位のディレクトリ・モジュー�
   assertStringIncludes(r.out, "モジュール auth のパス src/auth が見つからない");
 });
 
+Deno.test("drift: SDD の導入で増えた docs/ は最上位のディレクトリの増加として数えない", async () => {
+  const root = await emptyRepo();
+  await writeFile(root, "src/auth/auth_service.py", "def login(): pass\n");
+  await sh(root, "add", ".");
+  await sh(root, "commit", "-q", "-m", "init");
+  const before = await sh(root, "rev-parse", "HEAD");
+  await install(root);
+  await writeFile(root, "docs/sdd/architecture.ts", ARCH(before));
+  await sh(root, "add", ".");
+  await sh(root, "commit", "-q", "-m", "SDD を導入");
+  await writeFile(root, "docs/specs/X-1/spec.ts", "export default {};\n");
+  await sh(root, "add", ".");
+  await sh(root, "commit", "-q", "--no-verify", "-m", "spec");
+  let r = await task(root, "drift");
+  assertEquals(r.code, 0, r.out);
+  assertStringIncludes(r.out, "構成に関わる変更は見つかりませんでした");
+
+  await writeFile(root, "docs/guide.md", "# 手引き\n");
+  await sh(root, "add", ".");
+  await sh(root, "commit", "-q", "-m", "docs");
+  r = await task(root, "drift");
+  assertStringIncludes(r.out, "最上位のディレクトリが増えた: docs/");
+});
+
 Deno.test("drift: basedOn が未設定なら案内だけする", async () => {
   const root = await installedRepo();
   await writeFile(root, "docs/sdd/architecture.ts", ARCH("none"));
