@@ -1,7 +1,18 @@
 // doctor、drift、conflicts のテスト
 import { assertEquals, assertStringIncludes } from "@std/assert";
 import { join } from "node:path";
-import { emptyRepo, FIXTURE_SPECS, gitIdentity, install, makeProject, run, sh, task, writeFile } from "./helpers.ts";
+import {
+  emptyRepo,
+  FIXTURE_SPECS,
+  gitIdentity,
+  install,
+  makeProject,
+  patchFile,
+  run,
+  sh,
+  task,
+  writeFile,
+} from "./helpers.ts";
 
 const ARCH = (basedOn: string, modulePath = "src/auth") =>
   `import { defineArchitecture } from "./schema/mod.ts";
@@ -50,7 +61,10 @@ Deno.test("doctor: 導入直後は必須の項目に問題が無い", async () =
 Deno.test("doctor: ブランチの接頭辞に大文字があれば警告する", async () => {
   const root = await installedRepo();
   const path = join(root, "docs/sdd/config.ts");
-  await Deno.writeTextFile(path, (await Deno.readTextFile(path)).replace(`branchPrefix: ""`, `branchPrefix: "Feature/"`));
+  await Deno.writeTextFile(
+    path,
+    (await Deno.readTextFile(path)).replace(`branchPrefix: ""`, `branchPrefix: "Feature/"`),
+  );
   const r = await task(root, "doctor");
   assertStringIncludes(r.out, "! branchPrefix");
 });
@@ -458,6 +472,45 @@ Deno.test("gate: E2E テストは --full のときだけ実行する", async () 
   assertEquals(full.code, 0, full.out);
   assertStringIncludes(full.out, "e2e-ran");
   assertStringIncludes(full.out, "✓ e2e");
+});
+
+Deno.test("gate: --full で通ったら記録し、--if-changed は commands が同じなら実行しない", async () => {
+  const root = await makeProject({ specs: [] });
+  await withCommands(
+    root,
+    `{ format: "echo f >> format.log", check: "echo c >> check.log", test: "true", e2e: "echo e >> e2e.log" }`,
+  );
+  const lineCount = async (f: string) =>
+    (await Deno.readTextFile(join(root, f)).catch(() => "")).split("\n").filter(Boolean).length;
+
+  // 記録が無い → 実行する（format は書き換えるので実行せず、E2E は含める）
+  const first = await task(root, "gate", "--if-changed");
+  assertEquals(first.code, 0, first.out);
+  assertEquals([await lineCount("check.log"), await lineCount("e2e.log"), await lineCount("format.log")], [1, 1, 0]);
+
+  // commands が同じ → 実行しない
+  const second = await task(root, "gate", "--if-changed");
+  assertEquals(second.code, 0, second.out);
+  assertStringIncludes(second.out, "前回すべて通ったときから変わっていません");
+  assertEquals(await lineCount("check.log"), 1);
+
+  // commands が変わった → 実行する
+  await patchFile(root, "docs/sdd/config.ts", `test: "true"`, `test: "true # 変更"`);
+  const third = await task(root, "gate", "--if-changed");
+  assertEquals(third.code, 0, third.out);
+  assertEquals(await lineCount("check.log"), 2);
+});
+
+Deno.test("gate: --if-changed は、失敗したら記録せず、次も実行する", async () => {
+  const root = await makeProject({ specs: [] });
+  await withCommands(root, `{ check: "echo c >> check.log && false", test: "true" }`);
+  assertEquals((await task(root, "gate", "--if-changed")).code, 1);
+  assertEquals((await task(root, "gate", "--if-changed")).code, 1);
+  assertEquals((await Deno.readTextFile(join(root, "check.log"))).split("\n").filter(Boolean).length, 2);
+  // --full でない gate は通っても記録しない
+  await patchFile(root, "docs/sdd/config.ts", `&& false`, ``);
+  assertEquals((await task(root, "gate")).code, 0);
+  assertEquals((await task(root, "gate", "--if-changed")).out.includes("変わっていません"), false);
 });
 
 Deno.test("doctor: E2E テストが未設定なら警告する", async () => {
