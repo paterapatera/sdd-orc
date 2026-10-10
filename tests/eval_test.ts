@@ -12,7 +12,7 @@ import {
   readScores,
   summarize,
 } from "../eval/lib.ts";
-import { emptyRepo, REPO, sh, writeFile } from "./helpers.ts";
+import { emptyRepo, install, REPO, sh, writeFile } from "./helpers.ts";
 
 async function exists(path: string) {
   try {
@@ -227,19 +227,28 @@ Deno.test("採点: unchanged の allowNew は、新しいファイルの追加�
   assertEquals((await keep()).detail, "変わった: app/x.php");
 });
 
-Deno.test("準備: 導入済みの出発点なら pre-commit hook を設置し、導入前なら設置しない", async () => {
+Deno.test("準備: 導入済みの出発点なら道具を今のスキルの版に更新して hook を設置し、導入前なら何もしない", async () => {
   const before = await setup();
   await prepareRun(before, "T-001");
   assertFalse(await exists(join(before.target, ".git/hooks/pre-commit")));
+  assertFalse(await exists(join(before.target, "docs/sdd")));
 
   const after = await setup();
   const t = after.target;
-  await writeFile(t, "docs/sdd/config.ts", "export default {};\n");
+  await install(t);
+  await writeFile(t, "docs/sdd/scripts/drift.ts", "// 古い道具\n");
   await sh(t, "add", ".");
-  await sh(t, "commit", "-q", "-m", "SDDを導入");
+  await sh(t, "commit", "-q", "--no-verify", "-m", "SDDを導入");
+  await Deno.remove(join(t, ".git/hooks/pre-commit"));
   await sh(t, "tag", "-f", "v0.0.0");
+
   await prepareRun(after, "T-001");
   assert((await Deno.readTextFile(join(t, ".git/hooks/pre-commit"))).includes("managed by sdd-init"));
+  assertEquals(
+    await Deno.readTextFile(join(t, "docs/sdd/scripts/drift.ts")),
+    await Deno.readTextFile(join(REPO, ".agents/skills/sdd-init/assets/sdd/scripts/drift.ts")),
+  );
+  assertEquals(await sh(t, "status", "--porcelain"), "");
 });
 
 Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテストは終わったら消す", async () => {

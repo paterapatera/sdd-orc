@@ -219,7 +219,8 @@ export async function prepareRun(
   await git(t, "add", "-A", ".agents/skills");
   const skillsTree = await git(t, "rev-parse", `${await git(t, "write-tree")}:.agents/skills`);
 
-  // 導入済みの出発点なら、2人目以降のメンバーと同じく hook だけを設置する
+  // 導入済みの出発点なら、スキルの更新と同じく install.ts を再実行し、docs/sdd の道具と hook を今のスキルの版にする。
+  // 道具（drift、verify など）は docs/sdd の写しで動くので、スキルだけを差し替えても道具の修正は実行に届かない
   if (await exists(join(t, "docs/sdd/config.ts"))) {
     const install = join(dst, "sdd-init/scripts/install.ts");
     const r = await exec(Deno.execPath(), [
@@ -228,9 +229,9 @@ export async function prepareRun(
       "--allow-write",
       "--allow-run=git",
       install,
-      "--hook-only",
     ], t);
-    if (r.code !== 0) throw new Error(`pre-commit hook を設置できませんでした: ${r.out.trim()}`);
+    if (r.code !== 0) throw new Error(`SDD の道具を更新できませんでした: ${r.out.trim()}`);
+    await git(t, "add", "-A", "docs/sdd", ".gitignore");
   }
 
   const skillsCommit = await git(paths.repo, "rev-parse", "HEAD");

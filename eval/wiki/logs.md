@@ -62,3 +62,12 @@
 - 試験場の問題: remote が本物の GitHub（paterapatera/eval-sdd）のままで、スキルの手順どおりに作業ブランチを push していた。
   GitHub の main が出発点の tag とずれると、sdd-start がずれた origin/main からブランチを作る。扱いを決める。
 - 決定: GitHub のまま使う。eval:prepare が、origin の既定のブランチを出発点に強制 push し、ほかのリモートのブランチを消すようにした。
+
+## 2026-10-10 QUICK-001 × 3回（スキル 42f0482、composer-2.5）
+
+- 結果: 合格 3/3。ただし P-004 の修正は実行に届いていなかった。3回とも drift が docs/ を報告し、確認ポイント2で architecture.ts の扱いを聞いた。
+- 原因（試験場の準備の誤り）: eval:prepare は .agents/skills だけを差し替え、導入済みの出発点では hook だけを設置していた。
+  道具は docs/sdd の写しで動くので、docs/sdd/scripts/drift.ts は v0.1.0 の版のままだった。
+  INIT-001 は導入前の出発点なので、これまでの採否には影響しない。
+- 対策: 導入済みの出発点では install.ts を（--hook-only なしで）再実行し、docs/sdd の道具を今のスキルの版にして、差し替えのコミットに含める。
+  v0.1.1 で更新されるのは drift.ts だけなので、この3回は P-004 の修正前の測定として扱う（P-004 の質問 3/3）。
