@@ -379,7 +379,11 @@ async function evaluate(c: Check, ctx: Ctx): Promise<Omit<CheckResult, "id" | "l
       return missing.length ? { ok: false, detail: `当てはまらない: ${shortList(missing)}` } : { ok: true };
     }
     case "unchanged": {
-      const changed = (await changedFiles(t, ctx.run.startCommit)).filter((f) => matchesAny(f, c.paths));
+      let changed = (await changedFiles(t, ctx.run.startCommit)).filter((f) => matchesAny(f, c.paths));
+      if (c.allowNew) {
+        const existed = new Set(lines(await git(t, "ls-tree", "-r", "--name-only", ctx.run.startCommit)));
+        changed = changed.filter((f) => existed.has(f));
+      }
       return changed.length ? { ok: false, detail: `変わった: ${shortList(changed)}` } : { ok: true };
     }
     case "testFirst": {

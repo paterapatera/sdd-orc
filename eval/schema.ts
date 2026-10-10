@@ -25,8 +25,11 @@ export type Check =
     | { kind: "exists"; paths: readonly string[] }
     /** ファイルが、すべての正規表現（大文字小文字を区別しない）に当てはまる */
     | { kind: "contains"; path: string; patterns: readonly string[] }
-    /** 開始時のコミットから、glob に当てはまるファイルが変わっていない（未追跡のファイルも含む） */
-    | { kind: "unchanged"; paths: readonly string[] }
+    /**
+     * 開始時のコミットから、glob に当てはまるファイルが変わっていない（未追跡のファイルも含む）。
+     * allowNew なら、開始時に無かったファイルの追加は数えない（既存のファイルの変更と削除だけを見る）
+     */
+    | { kind: "unchanged"; paths: readonly string[]; allowNew?: boolean }
     /**
      * code に当てはまるファイルを最初に変えたコミットより前に、tests に当てはまるファイルを変え、
      * code には触れていないコミットがある（再現テストを先にコミットしてから直したか）

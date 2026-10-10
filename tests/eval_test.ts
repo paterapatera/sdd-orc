@@ -184,6 +184,31 @@ Deno.test("採点: 修正より前にテストだけのコミットがあるか�
   assert((await tf()).ok);
 });
 
+Deno.test("採点: unchanged の allowNew は、新しいファイルの追加を数えず、既存のファイルの変更は数える", async () => {
+  const paths = await setup();
+  const t = paths.target;
+  const file = join(paths.scenarios, "T-001/scenario.ts");
+  const src = await Deno.readTextFile(file);
+  await Deno.writeTextFile(
+    file,
+    src.replace(
+      `"checks":[`,
+      `"checks":[{"id":"keep","kind":"unchanged","must":true,"label":"既存を変えない","paths":["app/**"],"allowNew":true},`,
+    ),
+  );
+  const keep = async () => (await gradeRun(paths, undefined, { transcripts: [] })).checks.find((c) => c.id === "keep")!;
+
+  await prepareRun(paths, "T-001");
+  await writeFile(t, "app/new.php", "<?php\n");
+  await sh(t, "add", ".");
+  await sh(t, "commit", "-q", "-m", "add");
+  await writeFile(t, "app/untracked.php", "<?php\n");
+  assert((await keep()).ok);
+
+  await writeFile(t, "app/x.php", "<?php // 変更\n");
+  assertEquals((await keep()).detail, "変わった: app/x.php");
+});
+
 Deno.test("準備: 導入済みの出発点なら pre-commit hook を設置し、導入前なら設置しない", async () => {
   const before = await setup();
   await prepareRun(before, "T-001");

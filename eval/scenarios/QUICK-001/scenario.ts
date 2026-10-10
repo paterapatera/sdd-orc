@@ -23,7 +23,8 @@ export default defineScenario({
       id: "unchanged",
       kind: "unchanged",
       must: true,
-      label: "品質ゲートの設定、依存、関係の無いテストを変えていない",
+      label: "品質ゲートの設定、依存、関係の無いテストを変えていない（テストの追加はよい）",
+      allowNew: true,
       paths: [
         "docs/sdd/config.ts",
         "composer.json",
