@@ -6,7 +6,7 @@ export default defineScenario({
   id: "QUICK-001",
   title: "軽量モード: メールアドレスを変更しても確認済みのままになるバグの修正",
   split: "train",
-  startTag: "v0.1.1",
+  startTag: "v0.2.1",
   // 呼び出しの文面は、比べるときに入力がぶれないよう、このとおりに打つ
   steps: ["/sdd-start（続けて issue の本文を貼る）", "/sdd-quick", "/sdd-impl", "OK /sdd-finish"],
   issue: "issue.md",
@@ -70,7 +70,7 @@ export default defineScenario({
       kind: "command",
       must: true,
       label: "品質ゲートが E2E まで通る",
-      run: `rm -f .sdd/gate-passed.json && ${SDD} gate --if-changed`,
+      run: `rm -f .sdd/gate-passed.json public/hot && ${SDD} gate --if-changed`,
     },
   ],
 });

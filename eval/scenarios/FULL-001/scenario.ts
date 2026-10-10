@@ -7,7 +7,7 @@ export default defineScenario({
   id: "FULL-001",
   title: "完全モード: 運営からのお知らせ（一覧の画面、ダッシュボード、登録のコマンド）",
   split: "train",
-  startTag: "v0.1.0",
+  startTag: "v0.2.0",
   // 呼び出しの文面は、比べるときに入力がぶれないよう、このとおりに打つ
   steps: [
     "/sdd-start（続けて issue の本文を貼る）",
@@ -73,7 +73,8 @@ export default defineScenario({
       label: "受け入れテスト（隠したテスト）: アクセスの制限と、登録のコマンドの入力チェック",
       from: "hidden/feature",
       to: "tests/Feature/Hidden",
-      run: `${SAIL} artisan test --compact tests/Feature/Hidden`,
+      run:
+        `rm -f public/hot && ${SAIL} npm run build >/dev/null && ${SAIL} artisan test --compact tests/Feature/Hidden`,
     },
     {
       id: "hidden-browser",
@@ -82,7 +83,8 @@ export default defineScenario({
       label: "受け入れテスト（隠したテスト）: 一覧とダッシュボードの表示（E2E）",
       from: "hidden/browser",
       to: "tests/Browser/Hidden",
-      run: `${SAIL} npm run build >/dev/null && ${SAIL} artisan test --compact tests/Browser/Hidden`,
+      run:
+        `rm -f public/hot && ${SAIL} npm run build >/dev/null && ${SAIL} artisan test --compact tests/Browser/Hidden`,
     },
     {
       // 整形で崩れを直してから check を通すことの無いよう、format は流さない。コマンドの項目の最後に置く
@@ -90,7 +92,7 @@ export default defineScenario({
       kind: "command",
       must: true,
       label: "品質ゲートが E2E まで通る",
-      run: `rm -f .sdd/gate-passed.json && ${SDD} gate --if-changed`,
+      run: `rm -f .sdd/gate-passed.json public/hot && ${SDD} gate --if-changed`,
     },
   ],
 });

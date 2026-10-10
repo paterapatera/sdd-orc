@@ -210,6 +210,8 @@ export async function prepareRun(
   await git(t, "clean", "-fdq");
   // 無視されているが、前の実行の結果が残ると採点を狂わせるもの
   await removeIfExists(join(t, ".sdd"));
+  // Vite の開発サーバーの印。残ると、ビルドした画面ではなく、止まった開発サーバーを読みに行く
+  await removeIfExists(join(t, "public/hot"));
   await removeIfExists(resolve(t, await git(t, "rev-parse", "--git-path", "hooks/pre-commit")));
 
   const src = join(paths.repo, ".agents/skills");
@@ -579,24 +581,34 @@ export function formatScore(s: Score): string {
   return out.join("\n");
 }
 
-export async function readScores(paths: Paths): Promise<Score[]> {
-  const scores: Score[] = [];
+/**
+ * 採点の結果を読む。実行のディレクトリに excluded.md（外す理由）があれば、excluded に理由を入れる。
+ * 試験場の環境の問題や、人役が回答表の外で口を挟んだ実行を、記録を書き換えずに集計から外すため
+ */
+export async function readScores(paths: Paths): Promise<(Score & { excluded?: string })[]> {
+  const scores: (Score & { excluded?: string })[] = [];
   if (!(await exists(paths.runs))) return scores;
   for await (const e of Deno.readDir(paths.runs)) {
     const file = join(paths.runs, e.name, "score.json");
-    if (e.isDirectory && await exists(file)) scores.push(JSON.parse(await Deno.readTextFile(file)));
+    if (!e.isDirectory || !(await exists(file))) continue;
+    const score: Score & { excluded?: string } = JSON.parse(await Deno.readTextFile(file));
+    const excluded = join(paths.runs, e.name, "excluded.md");
+    if (await exists(excluded)) score.excluded = (await Deno.readTextFile(excluded)).trim();
+    scores.push(score);
   }
   return scores.sort((a, b) => a.runId.localeCompare(b.runId));
 }
 
 /** 問題、スキルの版、モデルごとに、合格した回数をまとめる（採否の判断に使う） */
-export function summarize(scores: readonly Score[]): string {
+export function summarize(scores: readonly (Score & { excluded?: string })[]): string {
   const groups = new Map<string, Score[]>();
+  const excluded = scores.filter((s) => s.excluded !== undefined);
   for (const s of scores) {
+    if (s.excluded !== undefined) continue;
     const key = `${s.scenario}\t${s.split}\t${skillsLabel(s.skills)}\t${s.model ?? "-"}`;
     groups.set(key, [...(groups.get(key) ?? []), s]);
   }
-  if (!groups.size) return "採点済みの実行がありません";
+  if (!groups.size && !excluded.length) return "採点済みの実行がありません";
   const out = ["問題\t分割\tスキル\tモデル\t合格/回数\t平均点\t2問以上の質問（平均）"];
   for (const [key, ss] of [...groups].sort(([a], [b]) => a.localeCompare(b))) {
     const passed = ss.filter((s) => s.passed).length;
@@ -606,6 +618,9 @@ export function summarize(scores: readonly Score[]): string {
       ? (withT.reduce((n, s) => n + s.transcript!.multiQuestionAsks, 0) / withT.length).toFixed(1)
       : "-";
     out.push(`${key}\t${passed}/${ss.length}\t${avg.toFixed(2)}\t${multi}`);
+  }
+  if (excluded.length) {
+    out.push("", `集計から外した実行（excluded.md）: ${excluded.map((s) => s.runId).join("、")}`);
   }
   return out.join("\n");
 }

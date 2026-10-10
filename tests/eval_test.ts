@@ -323,4 +323,12 @@ Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテス�
   const summary = summarize(await readScores(paths));
   assert(summary.includes("T-001\ttrain"));
   assert(summary.includes("\t1/1\t"));
+
+  // excluded.md を置いた実行は集計から外し、外したことを表示する
+  await Deno.writeTextFile(join(paths.runs, run.runId, "excluded.md"), "試験場の環境の問題\n");
+  const scores = await readScores(paths);
+  assertEquals(scores[0].excluded, "試験場の環境の問題");
+  const without = summarize(scores);
+  assertFalse(without.includes("T-001\ttrain"));
+  assert(without.includes(`集計から外した実行（excluded.md）: ${run.runId}`));
 });
