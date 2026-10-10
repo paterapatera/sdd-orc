@@ -152,6 +152,38 @@ Deno.test("準備: 出発点に戻し、前の実行のブランチと未追跡�
   assertEquals((await Deno.readTextFile(join(paths.runs, "latest"))).trim(), run.runId);
 });
 
+Deno.test("採点: 修正より前にテストだけのコミットがあるかを確かめる", async () => {
+  const paths = await setup();
+  const t = paths.target;
+  const file = join(paths.scenarios, "T-001/scenario.ts");
+  const src = await Deno.readTextFile(file);
+  await Deno.writeTextFile(
+    file,
+    src.replace(
+      `"checks":[`,
+      `"checks":[{"id":"tf","kind":"testFirst","must":true,"label":"テストが先","tests":["tests/**"],"code":["app/**"]},`,
+    ),
+  );
+  const commit = async (path: string, msg: string) => {
+    await writeFile(t, path, msg + "\n");
+    await sh(t, "add", ".");
+    await sh(t, "commit", "-q", "-m", msg);
+  };
+  const tf = async () => (await gradeRun(paths, undefined, { transcripts: [] })).checks.find((c) => c.id === "tf")!;
+
+  await prepareRun(paths, "T-001");
+  assertEquals((await tf()).detail, "修正のコミットが無い");
+  await commit("docs/specs/X/spec.ts", "spec");
+  await commit("app/x.php", "fix");
+  assertFalse((await tf()).ok);
+
+  await prepareRun(paths, "T-001", { force: true });
+  await commit("docs/specs/X/spec.ts", "spec");
+  await commit("tests/x_test.php", "test");
+  await commit("app/x.php", "fix");
+  assert((await tf()).ok);
+});
+
 Deno.test("準備: 導入済みの出発点なら pre-commit hook を設置し、導入前なら設置しない", async () => {
   const before = await setup();
   await prepareRun(before, "T-001");

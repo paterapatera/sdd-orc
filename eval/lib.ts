@@ -382,6 +382,21 @@ async function evaluate(c: Check, ctx: Ctx): Promise<Omit<CheckResult, "id" | "l
       const changed = (await changedFiles(t, ctx.run.startCommit)).filter((f) => matchesAny(f, c.paths));
       return changed.length ? { ok: false, detail: `変わった: ${shortList(changed)}` } : { ok: true };
     }
+    case "testFirst": {
+      const commits = lines(await git(t, "rev-list", "--reverse", `${ctx.run.startCommit}..HEAD`));
+      let testOnly: string | undefined;
+      for (const sha of commits) {
+        const files = lines(await git(t, "diff-tree", "--no-commit-id", "--name-only", "-r", sha));
+        const short = sha.slice(0, 7);
+        if (files.some((f) => matchesAny(f, c.code))) {
+          return testOnly
+            ? { ok: true, detail: `${testOnly} でテスト、${short} で修正` }
+            : { ok: false, detail: `${short} で修正したが、それより前にテストだけのコミットが無い` };
+        }
+        if (!testOnly && files.some((f) => matchesAny(f, c.tests))) testOnly = short;
+      }
+      return { ok: false, detail: "修正のコミットが無い" };
+    }
     case "hiddenTests": {
       const dst = join(t, c.to);
       if (await exists(dst)) return { ok: false, detail: `${c.to} が既にある（隠したテストを置けない）` };
@@ -397,7 +412,7 @@ async function evaluate(c: Check, ctx: Ctx): Promise<Omit<CheckResult, "id" | "l
 
 /** 採点の直前の作業ツリーを、バンドルに含めるための参照 */
 const WORKTREE_REF = "refs/eval/worktree";
-const READ_ONLY = new Set<Check["kind"]>(["exists", "contains", "unchanged"]);
+const READ_ONLY = new Set<Check["kind"]>(["exists", "contains", "unchanged", "testFirst"]);
 
 /** コマンドが書き換えた作業ツリーを、採点の直前の状態に戻す（採点し直しても同じ結果になるように） */
 async function restoreWorktree(target: string, worktree: string, untrackedBefore: Set<string>) {

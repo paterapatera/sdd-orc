@@ -13,7 +13,7 @@ type CheckBase = {
 
 /**
  * 実行の後に、試験場のリポジトリで機械的に確かめること。
- * ファイルを読むだけの項目（exists、contains、unchanged）を先に判定し、command と hiddenTests はその後に書いた順に実行する。
+ * ファイルを読むだけの項目（exists、contains、unchanged、testFirst）を先に判定し、command と hiddenTests はその後に書いた順に実行する。
  * コマンドが書き換えたファイルは、採点の最後に元に戻す。
  */
 export type Check =
@@ -27,6 +27,11 @@ export type Check =
     | { kind: "contains"; path: string; patterns: readonly string[] }
     /** 開始時のコミットから、glob に当てはまるファイルが変わっていない（未追跡のファイルも含む） */
     | { kind: "unchanged"; paths: readonly string[] }
+    /**
+     * code に当てはまるファイルを最初に変えたコミットより前に、tests に当てはまるファイルを変え、
+     * code には触れていないコミットがある（再現テストを先にコミットしてから直したか）
+     */
+    | { kind: "testFirst"; tests: readonly string[]; code: readonly string[] }
     /**
      * 問題のディレクトリの from を試験場の to にコピーして run を実行する。終わったら必ず消す。
      * 中身は実行する AI にも、スキルを直す AI にも見せない。
