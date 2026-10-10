@@ -4,7 +4,7 @@
  * 使い方: deno task --config docs/sdd/deno.json current [--id-only]
  *   --id-only  issue の ID だけを表示する
  *
- * ブランチ名は `<branchPrefix><ID を小文字にしたもの>-<slug>`（例: feature/gh-2-print-date）。
+ * ブランチ名は `<branchPrefix><ID を小文字にしたもの>-<slug>`（例: gh-2-print-date。既定の接頭辞は空）。
  * ID には大文字やハイフンが含まれ得るので、docs/specs にあるディレクトリ名と大文字小文字を区別せずに照合する。
  */
 import { join } from "node:path";

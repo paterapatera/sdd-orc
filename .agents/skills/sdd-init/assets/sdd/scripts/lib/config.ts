@@ -6,7 +6,7 @@ import { exists, SDD_DIR } from "./paths.ts";
 const DEFAULT_CONFIG: Config = {
   schemaVersion: "",
   tracker: "manual",
-  branchPrefix: "feature/",
+  branchPrefix: "",
   staleBranchDays: 30,
 };
 

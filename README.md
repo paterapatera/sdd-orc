@@ -59,7 +59,7 @@ Cursor などで使える `.agents/skills/` の形式で書いている（Claude
 ### 完全モード（新機能、大きな仕様変更）
 
 ```
-1. /sdd-start    issue を取り込み、feature/<小文字の issue ID>-<slug> ブランチを作る
+1. /sdd-start    issue を取り込み、<小文字の issue ID>-<slug> ブランチを作る
 2. /sdd-req      requirements.ts を作る ── 人が要件（受け入れ条件）を HTML で確認する
 3. /sdd-design   design.ts を作る（要件などから決められない設計上の選択だけを質問する）
 4. /sdd-tasks    tasks.ts を作る（人の確認なし）

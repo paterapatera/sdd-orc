@@ -50,7 +50,7 @@ Deno.test("doctor: 導入直後は必須の項目に問題が無い", async () =
 Deno.test("doctor: ブランチの接頭辞に大文字があれば警告する", async () => {
   const root = await installedRepo();
   const path = join(root, "docs/sdd/config.ts");
-  await Deno.writeTextFile(path, (await Deno.readTextFile(path)).replace(`"feature/"`, `"Feature/"`));
+  await Deno.writeTextFile(path, (await Deno.readTextFile(path)).replace(`branchPrefix: ""`, `branchPrefix: "Feature/"`));
   const r = await task(root, "doctor");
   assertStringIncludes(r.out, "! branchPrefix");
 });
@@ -144,7 +144,7 @@ async function team() {
 
 /** 他の人が、SDDのブランチ（EX-001: auth_service.py を変更する設計）を push する */
 async function pushSddBranch(other: string, opts: { date?: string } = {}) {
-  await sh(other, "switch", "-q", "-c", "feature/EX-001-lockout");
+  await sh(other, "switch", "-q", "-c", "EX-001-lockout");
   for (const f of ["issue.md", "requirements.ts", "design.ts"]) {
     await writeFile(other, `docs/specs/EX-001/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
   }
@@ -154,17 +154,17 @@ async function pushSddBranch(other: string, opts: { date?: string } = {}) {
   const r = await new Deno.Command("git", { args: ["commit", "-q", "--no-verify", "-m", "EX-001"], cwd: other, env })
     .output();
   if (r.code !== 0) throw new Error("commit に失敗しました");
-  await sh(other, "push", "-q", "origin", "feature/EX-001-lockout");
+  await sh(other, "push", "-q", "origin", "EX-001-lockout");
 }
 
 Deno.test("conflicts: 他のSDDブランチの予定の影響範囲との重なりを検出する", async () => {
   const { me, other } = await team();
   await pushSddBranch(other);
-  await sh(me, "switch", "-q", "-c", "feature/EX-009-profile");
+  await sh(me, "switch", "-q", "-c", "EX-009-profile");
   // design.ts の impact.modify にある auth_service.py は、まだ変更されていない（予定だけ）
   const r = await task(me, "conflicts", "--paths", "src/auth/auth_service.py,src/profile/view.py");
   assertEquals(r.code, 0, r.out);
-  assertStringIncludes(r.out, "origin/feature/EX-001-lockout（SDD: EX-001");
+  assertStringIncludes(r.out, "origin/EX-001-lockout（SDD: EX-001");
   assertStringIncludes(r.out, "[重なり] src/auth/auth_service.py（予定）");
 });
 
@@ -176,7 +176,7 @@ Deno.test("conflicts: 自分の spec の影響範囲と、SDD以外のブラン�
   await sh(other, "commit", "-q", "-am", "hotfix");
   await sh(other, "push", "-q", "origin", "hotfix/login");
 
-  await sh(me, "switch", "-q", "-c", "feature/EX-001-lockout");
+  await sh(me, "switch", "-q", "-c", "EX-001-lockout");
   for (const f of ["issue.md", "requirements.ts", "design.ts"]) {
     await writeFile(me, `docs/specs/EX-001/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
   }
@@ -189,11 +189,11 @@ Deno.test("conflicts: 自分の spec の影響範囲と、SDD以外のブラン�
 Deno.test("conflicts: 古いブランチと自分のブランチは対象外", async () => {
   const { me, other } = await team();
   await pushSddBranch(other, { date: "2020-01-01T00:00:00" });
-  await sh(me, "switch", "-q", "-c", "feature/EX-009-profile");
+  await sh(me, "switch", "-q", "-c", "EX-009-profile");
   await writeFile(me, "src/profile/view.py", "pass\n");
   await sh(me, "add", ".");
   await sh(me, "commit", "-q", "-m", "wip");
-  await sh(me, "push", "-q", "-u", "origin", "feature/EX-009-profile");
+  await sh(me, "push", "-q", "-u", "origin", "EX-009-profile");
   const r = await task(me, "conflicts", "--paths", "src/auth/auth_service.py");
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, "作業中のブランチ: 0 件");
@@ -339,7 +339,7 @@ Deno.test("current: 小文字のブランチ名から、大文字のIDのディ�
   await sh(root, "init", "-q", "-b", "main");
   await gitIdentity(root);
   await sh(root, "commit", "-q", "--allow-empty", "-m", "init");
-  await sh(root, "switch", "-q", "-c", "feature/ex-002-search-count");
+  await sh(root, "switch", "-q", "-c", "ex-002-search-count");
   const r = await task(root, "current");
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, "issue: EX-002");
@@ -353,7 +353,7 @@ Deno.test("current: 対応するspecが無ければ失敗する", async () => {
   await sh(root, "init", "-q", "-b", "main");
   await gitIdentity(root);
   await sh(root, "commit", "-q", "--allow-empty", "-m", "init");
-  await sh(root, "switch", "-q", "-c", "feature/ex-0011-other");
+  await sh(root, "switch", "-q", "-c", "ex-0011-other");
   const r = await task(root, "current");
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "対応する docs/specs/<ID> がありません");
@@ -361,7 +361,7 @@ Deno.test("current: 対応するspecが無ければ失敗する", async () => {
 
 Deno.test("finish-report: 依存関係の定義が変わったのにADRにする設計判断が無ければエラー", async () => {
   const root = await installedRepo();
-  await sh(root, "switch", "-q", "-c", "feature/ex-001-lockout");
+  await sh(root, "switch", "-q", "-c", "ex-001-lockout");
   for (const f of ["issue.md", "requirements.ts", "design.ts", "tasks.ts"]) {
     await writeFile(root, `docs/specs/EX-001/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
   }
@@ -392,7 +392,7 @@ Deno.test("finish-report: 依存関係の定義が変わったのにADRにする
 
 async function quickBranch(): Promise<string> {
   const root = await installedRepo();
-  await sh(root, "switch", "-q", "-c", "feature/ex-002-search-count");
+  await sh(root, "switch", "-q", "-c", "ex-002-search-count");
   for (const f of ["issue.md", "spec.ts"]) {
     await writeFile(root, `docs/specs/EX-002/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-002", f)));
   }
@@ -562,7 +562,7 @@ Deno.test("finish-report: 品質ゲートを緩めた変更と、採用済みの
   );
   await sh(root, "add", ".");
   await sh(root, "commit", "-q", "--no-verify", "-m", "chore: 準備");
-  await sh(root, "switch", "-q", "-c", "feature/ex-002-search-count");
+  await sh(root, "switch", "-q", "-c", "ex-002-search-count");
   for (const f of ["issue.md", "spec.ts"]) {
     await writeFile(root, `docs/specs/EX-002/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-002", f)));
   }

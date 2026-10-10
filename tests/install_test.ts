@@ -63,7 +63,7 @@ Deno.test("更新では道具を差し替え、恒久ドキュメントは残す
   await patchFile(root, "docs/sdd/schema/ids.ts", "export type FrId", "// 手で変えた\nexport type FrId");
   await writeFile(root, "docs/sdd/scripts/old.ts", "// 古いファイル\n");
   await patchFile(root, "docs/sdd/config.ts", `schemaVersion: "0.8.0"`, `schemaVersion: "0.0.1"`);
-  await patchFile(root, "docs/sdd/config.ts", `branchPrefix: "feature/"`, `branchPrefix: "topic/"`);
+  await patchFile(root, "docs/sdd/config.ts", `branchPrefix: ""`, `branchPrefix: "topic/"`);
   await writeFile(root, "docs/sdd/architecture.ts", "// プロジェクトの構成\n");
 
   const r = await install(root);

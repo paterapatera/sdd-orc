@@ -7,7 +7,7 @@ export type Config = {
   schemaVersion: string;
   /** issueトラッカー。今は手動の取り込みだけに対応する */
   tracker: "manual";
-  /** 作業ブランチの接頭辞（例: "feature/"） */
+  /** 作業ブランチの接頭辞。空文字なら無し（例: gh-2-print-date）。付けるときは "topic/" のように末尾を / にする */
   branchPrefix: string;
   /** 衝突チェックの対象にするリモートブランチの、最終コミットからの日数 */
   staleBranchDays: number;

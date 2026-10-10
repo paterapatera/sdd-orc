@@ -48,7 +48,7 @@ sdd-init はプロジェクトの前提を決める一度きりの作業なの�
    - https://docs.deno.com/runtime/getting_started/installation/
    - Deno 2 以上が必要。
 3. `git status --porcelain` で作業ツリーを確認する。未コミットの変更があれば、続けてよいかをユーザーに確認する。
-4. 既定のブランチ（main など）にいる場合は、作業ブランチ（例: `feature/sdd-init`。ブランチ名はすべて小文字）を作ってよいかを確認して作る。
+4. 既定のブランチ（main など）にいる場合は、作業ブランチ（例: `sdd-init`。ブランチ名はすべて小文字）を作ってよいかを確認して作る。
    恒久ドキュメントは通常のPR/MRで main に入れる。
 
 ## 2. 導入済みかを判定する

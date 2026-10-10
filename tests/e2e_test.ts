@@ -23,7 +23,7 @@ Deno.test("軽量モード: 導入から完了処理（specの削除）まで", 
   assertEquals((await task(root, "doctor")).code, 0);
 
   // sdd-start: ブランチを作り、issue.md を取り込む
-  await sh(root, "switch", "-q", "-c", "feature/EX-002-search-count");
+  await sh(root, "switch", "-q", "-c", "ex-002-search-count");
   await writeFile(root, "docs/specs/EX-002/issue.md", await Deno.readTextFile(join(FIXTURE_SPECS, "EX-002/issue.md")));
   await sh(root, "add", ".");
   await sh(root, "commit", "-q", "-m", "EX-002: issueを取り込み");

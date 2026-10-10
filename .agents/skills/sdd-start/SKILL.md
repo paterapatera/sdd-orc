@@ -93,9 +93,9 @@ IDはディレクトリ名とブランチ名に使う。
 
 ## 5. 作業ブランチを作る
 
-1. ブランチ名は `<branchPrefix><IDを小文字にしたもの>-<slug>` にし、**すべて小文字**にする（例: ID が `GH-2` なら `feature/gh-2-print-date`）。
+1. ブランチ名は `<branchPrefix><IDを小文字にしたもの>-<slug>` にし、**すべて小文字**にする（例: ID が `GH-2` なら `gh-2-print-date`）。
    大文字を含むと、リモートでは小文字、ローカルでは大文字のブランチが別々に存在する状態になりやすいため。
-   - `branchPrefix` は `docs/sdd/config.ts` の値（既定は `feature/`）。
+   - `branchPrefix` は `docs/sdd/config.ts` の値（既定は空文字。接頭辞は付けない）。
    - `slug` はissueの内容を表す英小文字・数字・ハイフンの短い語（2〜5語）。確認ポイント2で案を示す。
    - specのディレクトリ名（`docs/specs/<ID>`）は、IDの表記のまま（大文字を含んでよい）。
      他のスキルは `deno task current` でブランチ名からIDを特定する（大文字小文字を区別しない）。
