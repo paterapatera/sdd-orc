@@ -7,7 +7,8 @@ export default defineScenario({
   title: "軽量モード: メールアドレスを変更しても確認済みのままになるバグの修正",
   split: "train",
   startTag: "v0.1.1",
-  steps: ["/sdd-start", "/sdd-quick", "/sdd-impl", "/sdd-finish"],
+  // 呼び出しの文面は、比べるときに入力がぶれないよう、このとおりに打つ
+  steps: ["/sdd-start（続けて issue の本文を貼る）", "/sdd-quick", "/sdd-impl", "OK /sdd-finish"],
   issue: "issue.md",
   persona: "persona.md",
   checks: [
