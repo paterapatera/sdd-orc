@@ -325,6 +325,27 @@ export function analyzeTranscripts(texts: readonly string[]): TranscriptStats {
   return s;
 }
 
+/** チャットの記録から、AI が実行したシェルのコマンドを取り出す */
+export function shellCommands(texts: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const text of texts) {
+    for (const line of lines(text)) {
+      let entry: { role?: string; message?: { content?: unknown } };
+      try {
+        entry = JSON.parse(line);
+      } catch {
+        continue;
+      }
+      const content = entry.message?.content;
+      if (entry.role !== "assistant" || !Array.isArray(content)) continue;
+      for (const part of content) {
+        if (part?.type === "tool_use" && typeof part.input?.command === "string") out.push(part.input.command);
+      }
+    }
+  }
+  return out;
+}
+
 async function findTranscripts(dir: string, since: Date): Promise<string[]> {
   if (!(await exists(dir))) return [];
   const found: string[] = [];
@@ -369,7 +390,7 @@ function shortList(items: string[], max = 10): string {
   return items.slice(0, max).join("、") + (items.length > max ? ` ほか ${items.length - max} 件` : "");
 }
 
-type Ctx = { paths: Paths; run: RunInfo; scenario: Scenario; dir: string };
+type Ctx = { paths: Paths; run: RunInfo; scenario: Scenario; dir: string; transcripts: readonly string[] };
 
 async function evaluate(c: Check, ctx: Ctx): Promise<Omit<CheckResult, "id" | "label" | "must">> {
   const t = ctx.paths.target;
@@ -418,6 +439,14 @@ async function evaluate(c: Check, ctx: Ctx): Promise<Omit<CheckResult, "id" | "l
       }
       return { ok: false, detail: "修正のコミットが無い" };
     }
+    case "noCommand": {
+      if (!ctx.transcripts.length) return { ok: false, detail: "チャットの記録が無い" };
+      const res = c.patterns.map((p) => new RegExp(p, "i"));
+      const found = shellCommands(ctx.transcripts).filter((cmd) => res.some((re) => re.test(cmd)));
+      return found.length
+        ? { ok: false, detail: `実行した: ${shortList(found.map((f) => f.replace(/\s+/g, " ").slice(0, 120)), 3)}` }
+        : { ok: true };
+    }
     case "hiddenTests": {
       const dst = join(t, c.to);
       if (await exists(dst)) return { ok: false, detail: `${c.to} が既にある（隠したテストを置けない）` };
@@ -433,7 +462,7 @@ async function evaluate(c: Check, ctx: Ctx): Promise<Omit<CheckResult, "id" | "l
 
 /** 採点の直前の作業ツリーを、バンドルに含めるための参照 */
 const WORKTREE_REF = "refs/eval/worktree";
-const READ_ONLY = new Set<Check["kind"]>(["exists", "contains", "unchanged", "testFirst"]);
+const READ_ONLY = new Set<Check["kind"]>(["exists", "contains", "unchanged", "testFirst", "noCommand"]);
 
 /** コマンドが書き換えた作業ツリーを、採点の直前の状態に戻す（採点し直しても同じ結果になるように） */
 async function restoreWorktree(target: string, worktree: string, untrackedBefore: Set<string>) {
@@ -460,7 +489,12 @@ export async function gradeRun(
   const run = await readRun(paths, runId);
   const scenario = await loadScenario(paths, run.scenario);
   const dir = join(paths.runs, run.runId);
-  const ctx: Ctx = { paths, run, scenario, dir };
+
+  const files = opts.transcripts ??
+    (paths.transcripts ? await findTranscripts(paths.transcripts, new Date(run.startedAt)) : []);
+  const texts: string[] = [];
+  for (const f of files) texts.push(await Deno.readTextFile(f));
+  const ctx: Ctx = { paths, run, scenario, dir, transcripts: texts };
 
   const t = paths.target;
   const commits = lines(await git(t, "log", "--reverse", "--format=%h %s", `${run.startCommit}..HEAD`));
@@ -489,16 +523,11 @@ export async function gradeRun(
   }
   const checks = scenario.checks.map((c) => results.get(c.id)!);
 
-  const files = opts.transcripts ??
-    (paths.transcripts ? await findTranscripts(paths.transcripts, new Date(run.startedAt)) : []);
   let transcript: TranscriptStats | undefined;
   if (files.length) {
     await Deno.mkdir(join(dir, "transcripts"), { recursive: true });
-    const texts: string[] = [];
-    for (const f of files) {
-      const text = await Deno.readTextFile(f);
-      texts.push(text);
-      await Deno.writeTextFile(join(dir, "transcripts", basename(f)), text);
+    for (const [i, f] of files.entries()) {
+      await Deno.writeTextFile(join(dir, "transcripts", basename(f)), texts[i]);
     }
     transcript = analyzeTranscripts(texts);
   }

@@ -13,7 +13,7 @@ type CheckBase = {
 
 /**
  * 実行の後に、試験場のリポジトリで機械的に確かめること。
- * ファイルを読むだけの項目（exists、contains、unchanged、testFirst）を先に判定し、command と hiddenTests はその後に書いた順に実行する。
+ * ファイルを読むだけの項目（exists、contains、unchanged、testFirst、noCommand）を先に判定し、command と hiddenTests はその後に書いた順に実行する。
  * コマンドが書き換えたファイルは、採点の最後に元に戻す。
  */
 export type Check =
@@ -35,6 +35,11 @@ export type Check =
      * code には触れていないコミットがある（再現テストを先にコミットしてから直したか）
      */
     | { kind: "testFirst"; tests: readonly string[]; code: readonly string[] }
+    /**
+     * チャットの記録で、AI が実行したシェルのコマンドに、patterns（大文字小文字を区別しない正規表現）に当たるものが無い。
+     * 人役の回答表で断ったこと（PR の作成など）を、聞かずに行っていないかを見る。記録が無ければ不合格
+     */
+    | { kind: "noCommand"; patterns: readonly string[] }
     /**
      * 問題のディレクトリの from を試験場の to にコピーして run を実行する。終わったら必ず消す。
      * 中身は実行する AI にも、スキルを直す AI にも見せない。

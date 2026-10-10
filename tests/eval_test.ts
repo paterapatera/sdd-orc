@@ -202,6 +202,38 @@ Deno.test("採点: 修正より前にテストだけのコミットがあるか�
   assert((await tf()).ok);
 });
 
+Deno.test("採点: noCommand は、チャットの記録で禁止したコマンドを実行していれば不合格にする", async () => {
+  const paths = await setup();
+  const file = join(paths.scenarios, "T-001/scenario.ts");
+  const src = await Deno.readTextFile(file);
+  await Deno.writeTextFile(
+    file,
+    src.replace(
+      `"checks":[`,
+      `"checks":[{"id":"np","kind":"noCommand","must":true,"label":"PR を作らない","patterns":["\\\\bgh\\\\s+pr\\\\s+create\\\\b"]},`,
+    ),
+  );
+  const chat = async (...commands: string[]) => {
+    const path = join(await Deno.makeTempDir(), "chat.jsonl");
+    const entry = (command: string) =>
+      JSON.stringify({
+        role: "assistant",
+        message: { content: [{ type: "tool_use", name: "Shell", input: { command } }] },
+      });
+    await Deno.writeTextFile(path, commands.map(entry).join("\n") + "\n");
+    return path;
+  };
+  const np = async (transcripts: string[]) =>
+    (await gradeRun(paths, undefined, { transcripts })).checks.find((c) => c.id === "np")!;
+
+  await prepareRun(paths, "T-001");
+  assertEquals((await np([])).detail, "チャットの記録が無い");
+  assert((await np([await chat("gh pr list", "git push")])).ok);
+  const ng = await np([await chat("git push && gh pr create --title x")]);
+  assertFalse(ng.ok);
+  assertEquals(ng.detail, "実行した: git push && gh pr create --title x");
+});
+
 Deno.test("採点: unchanged の allowNew は、新しいファイルの追加を数えず、既存のファイルの変更は数える", async () => {
   const paths = await setup();
   const t = paths.target;
