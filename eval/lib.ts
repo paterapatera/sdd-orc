@@ -191,7 +191,7 @@ async function resetRemote(target: string, branch: string) {
 export async function prepareRun(
   paths: Paths,
   scenarioId: string,
-  opts: { force?: boolean; model?: string; now?: Date } = {},
+  opts: { force?: boolean; model?: string; now?: Date; skillsCommit?: string } = {},
 ): Promise<{ run: RunInfo; scenario: Scenario; issue?: string }> {
   const scenario = await loadScenario(paths, scenarioId);
   const t = paths.target;
@@ -214,10 +214,26 @@ export async function prepareRun(
   await removeIfExists(join(t, "public/hot"));
   await removeIfExists(resolve(t, await git(t, "rev-parse", "--git-path", "hooks/pre-commit")));
 
-  const src = join(paths.repo, ".agents/skills");
+  // skillsCommit を指定したら、そのコミットのスキルを使う（変更の前の版で val の基準を取るため）
+  let src = join(paths.repo, ".agents/skills");
+  let archived: string | undefined;
+  if (opts.skillsCommit) {
+    archived = await Deno.makeTempDir();
+    const r = await exec("sh", [
+      "-c",
+      `git -C "$1" archive "$2" .agents/skills | tar -x -C "$3"`,
+      "sh",
+      paths.repo,
+      opts.skillsCommit,
+      archived,
+    ], paths.repo);
+    if (r.code !== 0) throw new Error(`スキルを ${opts.skillsCommit} から取り出せませんでした: ${r.out.trim()}`);
+    src = join(archived, ".agents/skills");
+  }
   const dst = join(t, ".agents/skills");
   await removeIfExists(dst);
   await copyDir(src, dst);
+  if (archived) await Deno.remove(archived, { recursive: true });
   await git(t, "add", "-A", ".agents/skills");
   const skillsTree = await git(t, "rev-parse", `${await git(t, "write-tree")}:.agents/skills`);
 
@@ -236,9 +252,11 @@ export async function prepareRun(
     await git(t, "add", "-A", "docs/sdd", ".gitignore");
   }
 
-  const skillsCommit = await git(paths.repo, "rev-parse", "HEAD");
-  const skillsDiff = await git(paths.repo, "diff", "HEAD", "--", ".agents/skills");
-  const untracked = await git(paths.repo, "ls-files", "--others", "--exclude-standard", "--", ".agents/skills");
+  const skillsCommit = await git(paths.repo, "rev-parse", opts.skillsCommit ?? "HEAD");
+  const skillsDiff = opts.skillsCommit ? "" : await git(paths.repo, "diff", "HEAD", "--", ".agents/skills");
+  const untracked = opts.skillsCommit
+    ? ""
+    : await git(paths.repo, "ls-files", "--others", "--exclude-standard", "--", ".agents/skills");
   const dirty = !!(skillsDiff || untracked);
   if ((await exec("git", ["diff", "--cached", "--quiet"], t)).code !== 0) {
     const ver = `sdd-orc ${skillsCommit.slice(0, 7)}${dirty ? " と未コミットの変更" : ""}`;

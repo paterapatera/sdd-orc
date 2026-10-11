@@ -89,6 +89,7 @@ deno lint
 
 ```sh
 deno task eval:prepare <問題のID> [--model <モデル名>]   # 試験場を tag の位置に戻し、今のスキルに差し替える
+deno task eval:prepare <問題のID> --skills <コミット>    # 変更の前の版のスキルで回す（新しい val の問題の基準を取るとき）
 # 試験場を Cursor で開き、表示された手順でスキルを呼び出す。質問には人役の回答表だけを根拠に答える
 deno task eval:grade                                      # 採点し、eval/runs/<実行ID>/ に記録する
 deno task eval:summary                                    # 問題とスキルの版ごとの合格の回数

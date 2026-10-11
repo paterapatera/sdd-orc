@@ -1,9 +1,10 @@
 /**
  * 試験場を問題の出発点に戻し、このリポジトリの今のスキル（未コミットの変更を含む）に差し替える。
  *
- * 使い方: deno task eval:prepare <問題のID> [--model <モデル名>] [--force]
- *   --model  実行に使うモデルを記録する（比べるときに揃えるため）
- *   --force  試験場に未コミットの変更があっても消して進める
+ * 使い方: deno task eval:prepare <問題のID> [--model <モデル名>] [--skills <コミット>] [--force]
+ *   --model   実行に使うモデルを記録する（比べるときに揃えるため）
+ *   --skills  今のスキルではなく、sdd-orc のそのコミットのスキルを使う（変更の前の版で基準を取るため）
+ *   --force   試験場に未コミットの変更があっても消して進める
  *
  * 試験場の場所は環境変数 SDD_EVAL_TARGET（既定は ../eval-sdd）。
  * 試験場に origin があれば、リモートの既定のブランチを出発点に強制 push し、ほかのリモートのブランチを消す。
@@ -15,17 +16,21 @@ import { defaultPaths, prepareRun } from "./lib.ts";
 const { values, positionals } = parseArgs({
   args: Deno.args,
   allowPositionals: true,
-  options: { model: { type: "string" }, force: { type: "boolean" } },
+  options: { model: { type: "string" }, skills: { type: "string" }, force: { type: "boolean" } },
 });
 const id = positionals[0];
 if (!id) {
-  console.error("使い方: deno task eval:prepare <問題のID> [--model <モデル名>] [--force]");
+  console.error("使い方: deno task eval:prepare <問題のID> [--model <モデル名>] [--skills <コミット>] [--force]");
   Deno.exit(2);
 }
 
 const paths = defaultPaths();
 try {
-  const { run, scenario, issue } = await prepareRun(paths, id, { force: values.force, model: values.model });
+  const { run, scenario, issue } = await prepareRun(paths, id, {
+    force: values.force,
+    model: values.model,
+    skillsCommit: values.skills,
+  });
   const dir = join(paths.scenarios, scenario.id);
   const skills = `sdd-orc ${run.skills.commit.slice(0, 7)}${run.skills.dirty ? " と未コミットの変更" : ""}`;
   console.log(`試験場を準備しました: ${run.runId}`);

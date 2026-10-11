@@ -154,6 +154,18 @@ Deno.test("準備: 出発点に戻し、前の実行のブランチと未追跡�
   assertEquals((await Deno.readTextFile(join(paths.runs, "latest"))).trim(), run.runId);
 });
 
+Deno.test("準備: --skills を指定したら、そのコミットのスキルを使い、未コミットの変更なしとして記録する", async () => {
+  const paths = await setup();
+  // 6a55822 は、sdd-req に日時のタイムゾーンを足す（32073e6）前のコミット
+  const before = "6a558225542c3c87a6da16f3e6dd5c05135b1691";
+  const { run } = await prepareRun(paths, "T-001", { skillsCommit: before });
+  const req = await Deno.readTextFile(join(paths.target, ".agents/skills/sdd-req/SKILL.md"));
+  assertFalse(req.includes("日時のタイムゾーン"));
+  assertEquals(run.skills.commit, before);
+  assertFalse(run.skills.dirty);
+  assertEquals(await sh(paths.target, "status", "--porcelain"), "");
+});
+
 Deno.test("準備: origin があれば、既定のブランチを出発点に強制 push し、ほかのリモートのブランチを消す", async () => {
   const paths = await setup();
   const t = paths.target;
