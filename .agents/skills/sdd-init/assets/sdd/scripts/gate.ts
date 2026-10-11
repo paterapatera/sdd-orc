@@ -14,10 +14,22 @@
  * --full ですべて通ったら、commands の内容を .sdd/gate-passed.json に記録する（--if-changed が比べる）。
  *
  * 終了コード: すべて成功なら0、失敗があれば1。commands が1つも無ければ0（警告を表示する）。
+ * 実行で .agents/ か docs/sdd/ が変わったときも1（スキルと道具を整形の対象にしない）。
  */
 import { join } from "node:path";
 import { loadConfig } from "./lib/config.ts";
+import { git } from "./lib/git.ts";
 import { ROOT } from "./lib/paths.ts";
+
+/** 品質ゲートの前後で、SDD のスキルと道具が書き換わっていないかを比べる */
+async function sddWorktree(): Promise<{ names: Set<string>; body: string } | undefined> {
+  const status = await git(["status", "--porcelain", "--untracked-files=all", "--", ".agents", "docs/sdd"]);
+  if (status.code !== 0) return undefined;
+  const diff = await git(["diff", "HEAD", "--", ".agents", "docs/sdd"]);
+  if (diff.code !== 0) return undefined;
+  const names = new Set(status.out.split("\n").map((l) => l.slice(3).trim()).filter(Boolean));
+  return { names, body: status.out + "\n" + diff.out };
+}
 
 const { commands = {} } = await loadConfig();
 const ifChanged = Deno.args.includes("--if-changed");
@@ -55,6 +67,7 @@ if (ifChanged) {
   );
 }
 
+const before = await sddWorktree();
 const shell = Deno.build.os === "windows" ? ["cmd", "/c"] : ["sh", "-c"];
 const results: { name: string; cmd: string; ok: boolean }[] = [];
 for (const [name, cmd] of configured) {
@@ -74,12 +87,24 @@ console.log("\n■ 品質ゲートの結果");
 for (const r of results) console.log(`  ${r.ok ? "✓" : "✕"} ${r.name}: ${r.cmd}`);
 if (missing.length) console.log(`  ! 未設定: ${missing.join("、")}`);
 const failed = results.filter((r) => !r.ok);
-console.log(failed.length ? `\n失敗が ${failed.length} 件あります` : "\nすべて成功しました");
-if (!failed.length && full) {
+// 整形が SDD のスキルと道具まで書き換えると、タスクのコミットに関係のない差分が混ざる
+const after = await sddWorktree();
+const sddRewritten = !!before && !!after && before.body !== after.body;
+if (sddRewritten && before && after) {
+  const added = [...after.names].filter((n) => !before.names.has(n));
+  const where = added.length ? added.join("、") : ".agents/ または docs/sdd/ の内容";
+  console.log(
+    `\n[エラー] 品質ゲートが SDD のスキルか道具を書き換えました: ${where}` +
+      "（.agents/ と docs/sdd/ は品質ツールの対象から外してください）",
+  );
+}
+const failureCount = failed.length + (sddRewritten ? 1 : 0);
+console.log(failureCount ? `\n失敗が ${failureCount} 件あります` : "\nすべて成功しました");
+if (!failureCount && full) {
   await Deno.mkdir(join(ROOT, ".sdd"), { recursive: true });
   await Deno.writeTextFile(
     PASSED,
     JSON.stringify({ commands: fingerprint, passedAt: new Date().toISOString() }) + "\n",
   );
 }
-Deno.exit(failed.length ? 1 : 0);
+Deno.exit(failureCount ? 1 : 0);

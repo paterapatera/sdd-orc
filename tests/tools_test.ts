@@ -363,6 +363,29 @@ Deno.test("gate: check が無ければ lint と typecheck を実行する", asyn
   assertStringIncludes(r.out, "未設定: format");
 });
 
+Deno.test("gate: 実行で docs/sdd か .agents が変わったら失敗する", async () => {
+  const root = await installedRepo();
+  await withCommands(root, `{ format: "printf '\\n' >> docs/sdd/config.ts", test: "true" }`);
+  await sh(root, "add", "docs/sdd/config.ts");
+  await sh(root, "commit", "-q", "-m", "config");
+  const r = await task(root, "gate");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "[エラー] 品質ゲートが SDD のスキルか道具を書き換えました");
+  assertStringIncludes(r.out, "docs/sdd/config.ts");
+  assertStringIncludes(r.out, "失敗が 1 件あります");
+});
+
+Deno.test("gate: アプリのファイルだけが変わったときと、実行前から docs/sdd が汚れているときは警告しない", async () => {
+  const root = await installedRepo();
+  await withCommands(root, `{ format: "echo app > app.txt", test: "true" }`);
+  await sh(root, "add", "docs/sdd/config.ts");
+  await sh(root, "commit", "-q", "-m", "config");
+  await Deno.writeTextFile(join(root, "docs/sdd/config.ts"), "\n", { append: true });
+  const r = await task(root, "gate");
+  assertEquals(r.code, 0, r.out);
+  assertEquals(r.out.includes("スキルか道具を書き換えました"), false, r.out);
+});
+
 Deno.test("gate: commands が無ければ警告して終わる", async () => {
   const root = await makeProject({ specs: [] });
   const r = await task(root, "gate");
