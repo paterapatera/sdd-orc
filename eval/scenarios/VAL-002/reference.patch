@@ -1,0 +1,137 @@
+diff --git a/app/Http/Controllers/MemberController.php b/app/Http/Controllers/MemberController.php
+new file mode 100644
+index 0000000..0a80a82
+--- /dev/null
++++ b/app/Http/Controllers/MemberController.php
+@@ -0,0 +1,23 @@
++<?php
++
++namespace App\Http\Controllers;
++
++use App\Models\User;
++use Inertia\Inertia;
++use Inertia\Response;
++
++class MemberController extends Controller
++{
++    public function show(User $user): Response
++    {
++        $since = $user->created_at?->timezone('Asia/Tokyo');
++
++        return Inertia::render('members/show', [
++            'member' => [
++                'name' => $user->name,
++                'bio' => $user->bio,
++                'since' => $since ? "{$since->year}年{$since->month}月から利用" : null,
++            ],
++        ]);
++    }
++}
+diff --git a/app/Http/Requests/Settings/ProfileUpdateRequest.php b/app/Http/Requests/Settings/ProfileUpdateRequest.php
+index a80eea4..9346ea0 100644
+--- a/app/Http/Requests/Settings/ProfileUpdateRequest.php
++++ b/app/Http/Requests/Settings/ProfileUpdateRequest.php
+@@ -14,6 +14,9 @@ class ProfileUpdateRequest extends SettingsFormRequest
+      */
+     public function rules(): array
+     {
+-        return $this->profileRules($this->authenticatedUser()->id);
++        return [
++            ...$this->profileRules($this->authenticatedUser()->id),
++            'bio' => ['sometimes', 'nullable', 'string', 'max:160'],
++        ];
+     }
+ }
+diff --git a/app/Models/User.php b/app/Models/User.php
+index 08f45b4..84b7900 100644
+--- a/app/Models/User.php
++++ b/app/Models/User.php
+@@ -18,6 +18,7 @@
+  * @property int $id
+  * @property string $name
+  * @property string $email
++ * @property string|null $bio
+  * @property Carbon|null $email_verified_at
+  * @property string $password
+  * @property string|null $two_factor_secret
+@@ -27,7 +28,7 @@
+  * @property Carbon|null $created_at
+  * @property Carbon|null $updated_at
+  */
+-#[Fillable(['name', 'email', 'password'])]
++#[Fillable(['name', 'email', 'password', 'bio'])]
+ #[Hidden(['password', 'two_factor_secret', 'two_factor_recovery_codes', 'remember_token'])]
+ class User extends Authenticatable implements MustVerifyEmail, PasskeyUser
+ {
+diff --git a/database/migrations/2026_10_11_000001_add_bio_to_users_table.php b/database/migrations/2026_10_11_000001_add_bio_to_users_table.php
+new file mode 100644
+index 0000000..e485325
+--- /dev/null
++++ b/database/migrations/2026_10_11_000001_add_bio_to_users_table.php
+@@ -0,0 +1,22 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::table('users', function (Blueprint $table) {
++            $table->text('bio')->nullable();
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::table('users', function (Blueprint $table) {
++            $table->dropColumn('bio');
++        });
++    }
++};
+diff --git a/resources/js/pages/members/show.tsx b/resources/js/pages/members/show.tsx
+new file mode 100644
+index 0000000..bbf1b54
+--- /dev/null
++++ b/resources/js/pages/members/show.tsx
+@@ -0,0 +1,26 @@
++import { Head } from '@inertiajs/react';
++
++type Member = { name: string; bio: string | null; since: string | null };
++
++export default function MemberShow({ member }: { member: Member }) {
++    return (
++        <>
++            <Head title={member.name} />
++            <div className="space-y-4 p-4">
++                <h1 className="text-xl font-semibold">{member.name}</h1>
++                {member.since && (
++                    <p className="text-sm text-muted-foreground">
++                        {member.since}
++                    </p>
++                )}
++                {member.bio ? (
++                    <p className="whitespace-pre-wrap">{member.bio}</p>
++                ) : (
++                    <p className="text-sm text-muted-foreground">
++                        自己紹介はまだありません
++                    </p>
++                )}
++            </div>
++        </>
++    );
++}
+diff --git a/routes/web.php b/routes/web.php
+index 2085b21..fd3c64e 100644
+--- a/routes/web.php
++++ b/routes/web.php
+@@ -6,6 +6,7 @@
+ 
+ Route::middleware(['auth', 'verified'])->group(function () {
+     Route::inertia('dashboard', 'dashboard')->name('dashboard');
++    Route::get('members/{user}', [App\Http\Controllers\MemberController::class, 'show'])->name('members.show');
+ });
+ 
+ require __DIR__.'/settings.php';
