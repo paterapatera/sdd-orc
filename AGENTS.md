@@ -95,7 +95,7 @@ deno task eval:grade                                      # 採点し、eval/run
 deno task eval:login                                      # eval:auto の前に1回だけ。Cursor にログインし、SDK の鍵を保存する
 deno task eval:auto                                       # （試作）準備した実行を Cursor SDK で進めて採点する。人役も AI が回答表だけを根拠に務める
 deno task eval:summary                                    # 問題とスキルの版ごとの合格の回数
-deno task eval:impact --pattern <パターン> --target <問題> --before <コミット> --after <コミット> --change "<要約>" --write
+deno task eval:impact --pattern <パターン> --target <問題> --before <コミット> --after <コミット> --change "<要約>" [--driver auto] --write
                                                           # 変更の前と後を比べて採否を判定し、skill-impact.md に書き足す
 ```
 

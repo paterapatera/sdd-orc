@@ -21,6 +21,7 @@ const { values } = parseArgs({
     before: { type: "string" },
     after: { type: "string" },
     change: { type: "string" },
+    driver: { type: "string", default: "manual" },
     write: { type: "boolean", default: false },
   },
 });
@@ -37,6 +38,8 @@ try {
   if (!pattern || !target || !before || !after || !change) {
     throw new Error("--pattern、--target、--before、--after、--change を指定してください");
   }
+  const driver = values.driver;
+  if (driver !== "manual" && driver !== "auto") throw new Error("--driver は manual か auto にしてください");
   const version = async (commit: string) => ({
     label: await git("rev-parse", "--short=7", commit),
     tree: await git("rev-parse", `${commit}:.agents/skills`),
@@ -65,6 +68,7 @@ try {
     after: await version(after),
     target,
     splitOf,
+    driver,
   });
   console.log(`判定: ${result.decision}`);
   for (const r of result.reasons) console.log(`  - ${r}`);

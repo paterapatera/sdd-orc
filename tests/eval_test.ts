@@ -344,8 +344,11 @@ Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテス�
   const sameTree = { ...base, runId: "x-2", passed: false, skills: { ...base.skills, commit: "f".repeat(40) } };
   const otherTree = { ...base, runId: "x-3", skills: { ...base.skills, commit: "e".repeat(40), tree: "0".repeat(40) } };
   const merged = summarize([base, sameTree, otherTree]);
-  assert(merged.includes("ddddddd=fffffff\t-\t1/2\t"), merged);
-  assert(merged.includes("eeeeeee\t-\t1/1\t"), merged);
+  assert(merged.includes("ddddddd=fffffff\t-\t手\t1/2\t"), merged);
+  assert(merged.includes("eeeeeee\t-\t手\t1/1\t"), merged);
+  // 手と自動は、スキルが同じでも分ける
+  const auto = { ...base, runId: "x-4", driver: "auto" as const };
+  assert(summarize([base, auto]).includes("ddddddd\t-\t自動\t1/1\t"));
 
   // excluded.md を置いた実行は集計から外し、外したことを表示する
   await Deno.writeTextFile(join(paths.runs, run.runId, "excluded.md"), "試験場の環境の問題\n");
@@ -381,6 +384,7 @@ Deno.test("採否: 狙った問題の合格が増え、val が減っていなけ
     after: { label: "bbbbbbb", tree: NEW },
     target: "T-1",
     splitOf: { "T-1": "train", "V-1": "val" } as const,
+    driver: "manual" as const,
   };
   const target = [...runs("T-1", OLD, [true, false, false]), ...runs("T-1", NEW, [true, true, false])];
   const val = (after: boolean[]) => [...runs("V-1", OLD, [true, true, false]), ...runs("V-1", NEW, after)];
@@ -388,6 +392,12 @@ Deno.test("採否: 狙った問題の合格が増え、val が減っていなけ
   const ok = judgeImpact([...target, ...val([true, false, true])], input);
   assertEquals(ok.decision, "採用");
   assert(ok.row.includes("| T-1: 1/3 → 2/3 | V-1: 2/3 → 2/3 | 採用 |"), ok.row);
+
+  // 自動の実行は、手で比べるときに数えない
+  const autoRuns = runs("V-1", NEW, [false, false, false]).map((s) => ({ ...s, driver: "auto" as const }));
+  assertEquals(judgeImpact([...target, ...val([true, false, true]), ...autoRuns], input).decision, "採用");
+  const onlyAuto = judgeImpact([...target, ...val([true, false, true])], { ...input, driver: "auto" });
+  assertEquals(onlyAuto.decision, "保留");
 
   const valDown = judgeImpact([...target, ...val([true, false, false])], input);
   assertEquals(valDown.decision, "却下");

@@ -160,7 +160,13 @@ export type RunInfo = {
   /** tree は、試験場にコピーしたスキルの Git のツリーハッシュ（未コミットの変更があっても、中身が同じなら同じ値） */
   skills: { commit: string; dirty: boolean; tree?: string };
   model?: string;
+  /** 誰が実行したか。eval:auto なら "auto"、人が Cursor で回したなら省く */
+  driver?: Driver;
 };
+
+export type Driver = "manual" | "auto";
+export const driverOf = (s: { driver?: Driver }): Driver => s.driver ?? "manual";
+const DRIVER_LABEL: Record<Driver, string> = { manual: "手", auto: "自動" };
 
 function stamp(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
@@ -388,6 +394,7 @@ export type Score = {
   split: Split;
   skills: RunInfo["skills"];
   model?: string;
+  driver?: Driver;
   /** must の項目がすべて合格 */
   passed: boolean;
   /** 合格した項目の割合 */
@@ -558,6 +565,7 @@ export async function gradeRun(
     split: run.split,
     skills: run.skills,
     ...(run.model ? { model: run.model } : {}),
+    ...(run.driver ? { driver: run.driver } : {}),
     passed: checks.every((c) => c.ok || !c.must),
     score: checks.length ? checks.filter((c) => c.ok).length / checks.length : 1,
     checks,
@@ -579,7 +587,9 @@ function skillsLabel(s: RunInfo["skills"]): string {
 
 export function formatScore(s: Score): string {
   const out = [
-    `■ ${s.runId}（${s.scenario}、${s.split}、スキル ${skillsLabel(s.skills)}${s.model ? `、${s.model}` : ""}）`,
+    `■ ${s.runId}（${s.scenario}、${s.split}、スキル ${skillsLabel(s.skills)}${s.model ? `、${s.model}` : ""}${
+      s.driver === "auto" ? "、自動" : ""
+    }）`,
     `  結果: ${s.passed ? "合格" : "不合格"}（${s.checks.filter((c) => c.ok).length}/${s.checks.length} 項目）`,
   ];
   for (const c of s.checks) {
@@ -618,7 +628,7 @@ export async function readScores(paths: Paths): Promise<(Score & { excluded?: st
 }
 
 /**
- * 問題、スキルの版、モデルごとに、合格した回数をまとめる（採否の判断に使う）。
+ * 問題、スキルの版、モデル、実行のしかた（手か自動か）ごとに、合格した回数をまとめる（採否の判断に使う）。
  * sdd-orc のコミットが違っても、コピーしたスキルの中身（tree）が同じなら同じ版として数え、版の欄にコミットを `=` でつなぐ
  */
 export function summarize(scores: readonly (Score & { excluded?: string })[]): string {
@@ -626,16 +636,18 @@ export function summarize(scores: readonly (Score & { excluded?: string })[]): s
   const excluded = scores.filter((s) => s.excluded !== undefined);
   for (const s of scores) {
     if (s.excluded !== undefined) continue;
-    const key = `${s.scenario}\t${s.split}\t${s.skills.tree ?? skillsLabel(s.skills)}\t${s.model ?? "-"}`;
+    const key = `${s.scenario}\t${s.split}\t${s.skills.tree ?? skillsLabel(s.skills)}\t${s.model ?? "-"}\t${
+      driverOf(s)
+    }`;
     groups.set(key, [...(groups.get(key) ?? []), s]);
   }
   if (!groups.size && !excluded.length) return "採点済みの実行がありません";
   const rows = [...groups.values()].map((ss) => {
     const s = ss[0];
     const label = [...new Set(ss.map((x) => skillsLabel(x.skills)))].join("=");
-    return [`${s.scenario}\t${s.split}\t${label}\t${s.model ?? "-"}`, ss] as const;
+    return [`${s.scenario}\t${s.split}\t${label}\t${s.model ?? "-"}\t${DRIVER_LABEL[driverOf(s)]}`, ss] as const;
   });
-  const out = ["問題\t分割\tスキル\tモデル\t合格/回数\t平均点\t2問以上の質問（平均）"];
+  const out = ["問題\t分割\tスキル\tモデル\t実行\t合格/回数\t平均点\t2問以上の質問（平均）"];
   for (const [key, ss] of rows.sort(([a], [b]) => a.localeCompare(b))) {
     const passed = ss.filter((s) => s.passed).length;
     const avg = ss.reduce((n, s) => n + s.score, 0) / ss.length;
@@ -667,6 +679,8 @@ export type ImpactInput = {
   target: string;
   /** 問題ごとの今の分割（実行した時点ではなく、今の scenario.ts の分割で判断する） */
   splitOf: Readonly<Record<string, Split>>;
+  /** 比べる実行のしかた。人役が違うと結果がぶれるので、手と自動を混ぜない */
+  driver: Driver;
 };
 
 export type ImpactResult = { decision: "採用" | "却下" | "保留"; reasons: string[]; row: string };
@@ -676,8 +690,15 @@ export const IMPACT_MIN_RUNS = 3;
 
 type Tally = { passed: number; runs: number };
 
-function tally(scores: readonly (Score & { excluded?: string })[], scenario: string, tree: string): Tally {
-  const ss = scores.filter((s) => s.excluded === undefined && s.scenario === scenario && s.skills.tree === tree);
+function tally(
+  scores: readonly (Score & { excluded?: string })[],
+  scenario: string,
+  tree: string,
+  driver: Driver,
+): Tally {
+  const ss = scores.filter((s) =>
+    s.excluded === undefined && s.scenario === scenario && s.skills.tree === tree && driverOf(s) === driver
+  );
   return { passed: ss.filter((s) => s.passed).length, runs: ss.length };
 }
 
@@ -698,18 +719,18 @@ export function judgeImpact(scores: readonly (Score & { excluded?: string })[], 
   const enough = (t: Tally) => t.runs >= IMPACT_MIN_RUNS;
 
   const scenarios = [...new Set(scores.map((s) => s.scenario))].filter((id) =>
-    tally(scores, id, input.before.tree).runs || tally(scores, id, input.after.tree).runs
+    tally(scores, id, input.before.tree, input.driver).runs || tally(scores, id, input.after.tree, input.driver).runs
   ).sort();
   const cells: Record<"train" | "val", string[]> = { train: [], val: [] };
   for (const id of scenarios) {
-    const b = tally(scores, id, input.before.tree);
-    const a = tally(scores, id, input.after.tree);
+    const b = tally(scores, id, input.before.tree, input.driver);
+    const a = tally(scores, id, input.after.tree, input.driver);
     const split = input.splitOf[id] ?? "train";
     if (split !== "holdout") cells[split].push(`${id}: ${fmtTally(b)} → ${fmtTally(a)}`);
   }
 
-  const tb = tally(scores, input.target, input.before.tree);
-  const ta = tally(scores, input.target, input.after.tree);
+  const tb = tally(scores, input.target, input.before.tree, input.driver);
+  const ta = tally(scores, input.target, input.after.tree, input.driver);
   if (!enough(tb) || !enough(ta)) {
     lower("保留");
     reasons.push(
@@ -726,8 +747,8 @@ export function judgeImpact(scores: readonly (Score & { excluded?: string })[], 
     reasons.push("val の問題が無い");
   }
   for (const id of vals) {
-    const b = tally(scores, id, input.before.tree);
-    const a = tally(scores, id, input.after.tree);
+    const b = tally(scores, id, input.before.tree, input.driver);
+    const a = tally(scores, id, input.after.tree, input.driver);
     if (!enough(b) || !enough(a)) {
       lower("保留");
       reasons.push(
@@ -740,8 +761,10 @@ export function judgeImpact(scores: readonly (Score & { excluded?: string })[], 
   }
 
   const cell = (xs: string[]) => (xs.length ? xs.join("。") : "（未計測）");
-  const row = `| ${input.date} | ${input.pattern} | ${input.change}（${input.before.label} → ${input.after.label}） | ${
-    input.files.map((f) => `\`${f}\``).join("、") || "（スキルの変更なし）"
-  } | ${cell(cells.train)} | ${cell(cells.val)} | ${decision}${reasons.length ? `（${reasons.join("。")}）` : ""} |`;
+  const row = `| ${input.date} | ${input.pattern} | ${input.change}（${input.before.label} → ${input.after.label}、${
+    DRIVER_LABEL[input.driver]
+  }） | ${input.files.map((f) => `\`${f}\``).join("、") || "（スキルの変更なし）"} | ${cell(cells.train)} | ${
+    cell(cells.val)
+  } | ${decision}${reasons.length ? `（${reasons.join("。")}）` : ""} |`;
   return { decision, reasons, row };
 }

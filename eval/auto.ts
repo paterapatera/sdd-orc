@@ -36,6 +36,10 @@ if (!runId) {
 }
 const dir = join(paths.runs, runId);
 const run: RunInfo = JSON.parse(await Deno.readTextFile(join(dir, "run.json")));
+if (run.driver !== "auto") {
+  run.driver = "auto";
+  await Deno.writeTextFile(join(dir, "run.json"), JSON.stringify(run, null, 2) + "\n");
+}
 const scenario = await loadScenario(paths, run.scenario);
 const scenarioDir = join(paths.scenarios, scenario.id);
 
