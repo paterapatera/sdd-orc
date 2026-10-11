@@ -92,19 +92,25 @@ deno task eval:prepare <問題のID> [--model <モデル名>]   # 試験場を t
 # 試験場を Cursor で開き、表示された手順でスキルを呼び出す。質問には人役の回答表だけを根拠に答える
 deno task eval:grade                                      # 採点し、eval/runs/<実行ID>/ に記録する
 deno task eval:summary                                    # 問題とスキルの版ごとの合格の回数
+deno task eval:impact --pattern <パターン> --target <問題> --before <コミット> --after <コミット> --change "<要約>" --write
+                                                          # 変更の前と後を比べて採否を判定し、skill-impact.md に書き足す
 ```
 
 | 場所 | 中身 |
 |---|---|
 | `eval/scenarios/<ID>/` | 問題（`scenario.ts`、issue、人役の回答表 `persona.md`、隠したテスト） |
 | `eval/runs/` | 実行の記録（Git の対象外。追記だけで、書き換えない） |
-| `eval/wiki/` | 失敗パターン（`patterns/`）、進化ログ（`logs.md`）、変更の採否（`skill-impact.md`） |
+| `eval/wiki/` | 失敗パターン（`patterns/`）、うまくいったやり方（`strategies/`）、進化ログ（`logs.md`）、変更の採否（`skill-impact.md`） |
 
 - **試験場は使い捨てとして扱う。** `eval:prepare` は既定のブランチを tag の位置に戻し、ほかのローカルブランチと未追跡のファイルを消す。
  origin があれば、リモートの既定のブランチも出発点に強制 push し、ほかのリモートのブランチを消す（スキルが origin から作業ブランチを作り、push するため）。
 - **実行する AI に、wiki、人役の回答表、隠したテストを見せない。** スキルを直す AI にも、隠したテストの中身は見せず、採点の結果だけを渡す。
 - **1回の変更で直すパターンは1つにする。** 直し方は、道具で検出する（テストも足す）→ ひな形・型で防ぐ → 手順の文章を直す、の順に考える。
-- **採否は `eval/wiki/skill-impact.md` の条件で決め、却下した変更も記録する。** 出力はぶれるので、比べるときは同じモデルで各問題を3回ずつ回す。
+- **採否は `deno task eval:impact` で判定し、却下した変更も記録する。** 条件は `eval/wiki/skill-impact.md` にある。
+  出力はぶれるので、比べるときは同じモデルで各問題を3回ずつ回す。却下なら、スキルの変更を `git revert` で戻す（wiki は戻さない）。
+- **val の問題は、採否の点数だけに使う。** val の実行の記録（transcripts、repo.bundle、ログ）を読んで直す根拠にしない。
+  読んでしまった val の問題は train に移し、代わりの val の問題を作る。
+- **wiki には、失敗のパターンだけでなく、合格した実行でうまくいったやり方も残す**（`eval/wiki/strategies/`）。
 - 隠したテストは、issue と人役の回答表に書いたこと（URL、項目名など外から見える約束）だけを確かめる。
 
 ## コミット

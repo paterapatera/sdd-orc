@@ -6,7 +6,7 @@ const SAIL = "./vendor/bin/sail";
 export default defineScenario({
   id: "VAL-001",
   title: "完全モード: 自分のログイン履歴を設定の画面で見る（件数、日時の形、タイムゾーン、2段階認証の扱い）",
-  split: "val",
+  split: "train",
   startTag: "v0.2.0",
   // 呼び出しの文面は、比べるときに入力がぶれないよう、このとおりに打つ
   steps: [

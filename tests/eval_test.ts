@@ -5,11 +5,13 @@ import {
   analyzeTranscripts,
   defaultPaths,
   gradeRun,
+  judgeImpact,
   loadScenario,
   matchesAny,
   type Paths,
   prepareRun,
   readScores,
+  type Score,
   summarize,
 } from "../eval/lib.ts";
 import { emptyRepo, install, REPO, sh, writeFile } from "./helpers.ts";
@@ -340,4 +342,58 @@ Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテス�
   const without = summarize(scores);
   assertFalse(without.includes("T-001\ttrain"));
   assert(without.includes(`集計から外した実行（excluded.md）: ${run.runId}`));
+});
+
+Deno.test("採否: 狙った問題の合格が増え、val が減っていなければ採用。足りなければ保留、条件を外れれば却下", () => {
+  const OLD = "a".repeat(40);
+  const NEW = "b".repeat(40);
+  let n = 0;
+  const runs = (scenario: string, tree: string, results: boolean[]): Score[] =>
+    results.map((passed) => ({
+      runId: `r-${n++}`,
+      scenario,
+      split: "train",
+      skills: { commit: tree, dirty: false, tree },
+      passed,
+      score: passed ? 1 : 0,
+      checks: [],
+      commits: [],
+      gradedAt: "",
+    }));
+  const input = {
+    date: "2026-10-11",
+    pattern: "P-009",
+    change: "テストの変更",
+    files: [".agents/skills/sdd-req/SKILL.md"],
+    before: { label: "aaaaaaa", tree: OLD },
+    after: { label: "bbbbbbb", tree: NEW },
+    target: "T-1",
+    splitOf: { "T-1": "train", "V-1": "val" } as const,
+  };
+  const target = [...runs("T-1", OLD, [true, false, false]), ...runs("T-1", NEW, [true, true, false])];
+  const val = (after: boolean[]) => [...runs("V-1", OLD, [true, true, false]), ...runs("V-1", NEW, after)];
+
+  const ok = judgeImpact([...target, ...val([true, false, true])], input);
+  assertEquals(ok.decision, "採用");
+  assert(ok.row.includes("| T-1: 1/3 → 2/3 | V-1: 2/3 → 2/3 | 採用 |"), ok.row);
+
+  const valDown = judgeImpact([...target, ...val([true, false, false])], input);
+  assertEquals(valDown.decision, "却下");
+  assert(valDown.reasons.some((r) => r.includes("V-1 の合格が減った")));
+
+  const noGain = judgeImpact([
+    ...runs("T-1", OLD, [true, true, false]),
+    ...runs("T-1", NEW, [true, false, true]),
+    ...val([true, true, true]),
+  ], input);
+  assertEquals(noGain.decision, "却下");
+  assert(noGain.reasons.some((r) => r.includes("T-1 の合格が増えていない")));
+
+  const few = judgeImpact([...target, ...runs("V-1", OLD, [true, true, false]), ...runs("V-1", NEW, [true])], input);
+  assertEquals(few.decision, "保留");
+  assert(few.reasons.some((r) => r.includes("V-1 の回数が足りない（前 3 回、後 1 回")));
+
+  const noVal = judgeImpact(target, { ...input, splitOf: { "T-1": "train" } });
+  assertEquals(noVal.decision, "保留");
+  assert(noVal.reasons.includes("val の問題が無い"));
 });

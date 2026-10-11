@@ -632,3 +632,98 @@ export function summarize(scores: readonly (Score & { excluded?: string })[]): s
   }
   return out.join("\n");
 }
+
+// ---------------------------------------------------------------------------
+// 採否
+
+export type ImpactVersion = { label: string; tree: string };
+
+export type ImpactInput = {
+  date: string;
+  pattern: string;
+  change: string;
+  files: readonly string[];
+  before: ImpactVersion;
+  after: ImpactVersion;
+  /** 狙ったパターンが出た問題 */
+  target: string;
+  /** 問題ごとの今の分割（実行した時点ではなく、今の scenario.ts の分割で判断する） */
+  splitOf: Readonly<Record<string, Split>>;
+};
+
+export type ImpactResult = { decision: "採用" | "却下" | "保留"; reasons: string[]; row: string };
+
+/** 比べるときに要る、版ごとの回数 */
+export const IMPACT_MIN_RUNS = 3;
+
+type Tally = { passed: number; runs: number };
+
+function tally(scores: readonly (Score & { excluded?: string })[], scenario: string, tree: string): Tally {
+  const ss = scores.filter((s) => s.excluded === undefined && s.scenario === scenario && s.skills.tree === tree);
+  return { passed: ss.filter((s) => s.passed).length, runs: ss.length };
+}
+
+const fmtTally = (t: Tally) => (t.runs ? `${t.passed}/${t.runs}` : "未計測");
+const rate = (t: Tally) => t.passed / t.runs;
+
+/**
+ * スキルの変更の前と後で、問題ごとの合格の回数を比べ、skill-impact.md の1行と採否を作る。
+ * 採用の条件: 狙った問題で合格の割合が増え、すべての val の問題で減っていない（どちらも各版 IMPACT_MIN_RUNS 回以上）。
+ * 回数が足りなければ保留、条件を満たさなければ却下にする。
+ */
+export function judgeImpact(scores: readonly (Score & { excluded?: string })[], input: ImpactInput): ImpactResult {
+  const reasons: string[] = [];
+  let decision: ImpactResult["decision"] = "採用";
+  const lower = (d: ImpactResult["decision"]) => {
+    if (d === "却下" || (d === "保留" && decision === "採用")) decision = d;
+  };
+  const enough = (t: Tally) => t.runs >= IMPACT_MIN_RUNS;
+
+  const scenarios = [...new Set(scores.map((s) => s.scenario))].filter((id) =>
+    tally(scores, id, input.before.tree).runs || tally(scores, id, input.after.tree).runs
+  ).sort();
+  const cells: Record<"train" | "val", string[]> = { train: [], val: [] };
+  for (const id of scenarios) {
+    const b = tally(scores, id, input.before.tree);
+    const a = tally(scores, id, input.after.tree);
+    const split = input.splitOf[id] ?? "train";
+    if (split !== "holdout") cells[split].push(`${id}: ${fmtTally(b)} → ${fmtTally(a)}`);
+  }
+
+  const tb = tally(scores, input.target, input.before.tree);
+  const ta = tally(scores, input.target, input.after.tree);
+  if (!enough(tb) || !enough(ta)) {
+    lower("保留");
+    reasons.push(
+      `狙った問題 ${input.target} の回数が足りない（前 ${tb.runs} 回、後 ${ta.runs} 回。各 ${IMPACT_MIN_RUNS} 回以上）`,
+    );
+  } else if (rate(ta) <= rate(tb)) {
+    lower("却下");
+    reasons.push(`狙った問題 ${input.target} の合格が増えていない（${fmtTally(tb)} → ${fmtTally(ta)}）`);
+  }
+
+  const vals = Object.entries(input.splitOf).filter(([, s]) => s === "val").map(([id]) => id).sort();
+  if (!vals.length) {
+    lower("保留");
+    reasons.push("val の問題が無い");
+  }
+  for (const id of vals) {
+    const b = tally(scores, id, input.before.tree);
+    const a = tally(scores, id, input.after.tree);
+    if (!enough(b) || !enough(a)) {
+      lower("保留");
+      reasons.push(
+        `val の問題 ${id} の回数が足りない（前 ${b.runs} 回、後 ${a.runs} 回。各 ${IMPACT_MIN_RUNS} 回以上）`,
+      );
+    } else if (rate(a) < rate(b)) {
+      lower("却下");
+      reasons.push(`val の問題 ${id} の合格が減った（${fmtTally(b)} → ${fmtTally(a)}）`);
+    }
+  }
+
+  const cell = (xs: string[]) => (xs.length ? xs.join("。") : "（未計測）");
+  const row = `| ${input.date} | ${input.pattern} | ${input.change}（${input.before.label} → ${input.after.label}） | ${
+    input.files.map((f) => `\`${f}\``).join("、") || "（スキルの変更なし）"
+  } | ${cell(cells.train)} | ${cell(cells.val)} | ${decision}${reasons.length ? `（${reasons.join("。")}）` : ""} |`;
+  return { decision, reasons, row };
+}

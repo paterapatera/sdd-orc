@@ -6,7 +6,8 @@
     "test": "deno test --allow-read --allow-write --allow-run --allow-env --allow-net tests/",
     "eval:prepare": "deno run --allow-read --allow-write --allow-run --allow-env eval/prepare.ts",
     "eval:grade": "deno run --allow-read --allow-write --allow-run --allow-env eval/grade.ts",
-    "eval:summary": "deno run --allow-read --allow-env eval/summary.ts"
+    "eval:summary": "deno run --allow-read --allow-env eval/summary.ts",
+    "eval:impact": "deno run --allow-read --allow-write --allow-run=git --allow-env eval/impact.ts"
   },
   "fmt": {
     "lineWidth": 120,
