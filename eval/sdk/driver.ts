@@ -165,7 +165,8 @@ const agent = await Agent.create({
 });
 console.log(`agent ${agent.agentId}`);
 try {
-  for (const step of input.steps) {
+  for (const [i, step] of input.steps.entries()) {
+    const acceptanceNext = /^OK\b/.test(input.steps[i + 1] ?? "");
     let message = stepMessage(step);
     for (let turn = 0;; turn++) {
       if (turn >= input.maxTurns) throw new Error(`「${step}」が ${input.maxTurns} 往復で終わりませんでした`);
@@ -181,13 +182,18 @@ try {
       const last = result.result ?? "";
       console.log(last.slice(-400));
       const reply = await nextMessage(last);
-      // 次の工程の呼び出しは、問題の手順の文面どおりに送る（人役が書くと、同じスキルが2回呼ばれる）
-      if (reply.includes(NEXT) || /\/sdd-/.test(reply)) break;
+      // 次の工程の呼び出しと受け入れテストの結果は、問題の手順の文面どおりに送る（人役が書くと、同じスキルが2回呼ばれる）
+      if (reply.includes(NEXT) || /\/sdd-/.test(reply) || (acceptanceNext && /^OK\b/.test(reply))) break;
       message = reply;
     }
   }
+} catch (e) {
+  console.error(e instanceof Error ? e.message : e);
+  process.exitCode = 1;
 } finally {
   save();
-  await agent.close();
   rmSync(personaHome, { recursive: true, force: true });
+  // SDK の後片付けが終わらず、プロセスが残ることがある
+  await Promise.race([agent.close(), new Promise((r) => setTimeout(r, 30_000))]);
+  process.exit();
 }

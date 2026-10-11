@@ -66,10 +66,9 @@ await Deno.writeTextFile(inputFile, JSON.stringify(input));
 console.log(`実行: ${runId}（${scenario.id}、モデル ${input.model}）`);
 const code = await sh("node", ["--no-warnings", "driver.ts", inputFile]);
 await Deno.remove(inputFile);
-if (code !== 0) {
-  console.error(`エージェントの操作が失敗しました（終了コード ${code}）。記録は ${dir} にあります`);
-  Deno.exit(1);
-}
+// 失敗しても採点する（次の実行の準備で試験場が戻されると、採点できなくなる）。外すかは excluded.md で決める
+if (code !== 0) console.error(`エージェントの操作が失敗しました（終了コード ${code}）。途中の状態で採点します`);
 
 const score = await gradeRun(paths, runId, { transcripts: [join(dir, "auto.jsonl")] });
 console.log("\n" + formatScore(score));
+if (code !== 0) Deno.exit(1);
