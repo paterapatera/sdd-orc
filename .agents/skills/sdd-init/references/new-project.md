@@ -68,4 +68,4 @@
 
 - 基盤issueは1人で担当し、マージしてから機能issueの並行開発を始める。
 - 基盤issueも sdd-start から通常のフロー（完全モード）で進める。sdd-init の続きとして直接実装して main にコミットしない。
-- 基盤issueの作成は、`forge` を登録していれば了承を得てCLIで行ってよい。
+- 基盤issueの作成は、issue の取得先が `manual` でなければ、了承を得てその CLI で行ってよい（省略時は `gh`。`docs/sdd/guides/issues.md`）。

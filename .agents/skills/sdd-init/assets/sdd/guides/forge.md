@@ -1,6 +1,7 @@
 # ホスティングのCLIの使い方
 
-issue の取得、PR/MR の作成、squash マージ、issue へのコメントは、`docs/sdd/config.ts` の `forge.cli` に登録したCLIで行う。
+PR/MR の作成と squash マージは、`docs/sdd/config.ts` の `forge.cli` に登録したCLIで行う。
+issue の取得、作成、コメント、クローズは `docs/sdd/guides/issues.md`（省略時は `gh`。`forge` とは別のサービスでもよい）。
 
 | CLI | ホスティング |
 |---|---|
@@ -22,10 +23,8 @@ issue の取得、PR/MR の作成、squash マージ、issue へのコメント�
 
 | 行うこと | 確かめる点 |
 |---|---|
-| issue の取得 | 本文とコメントの両方を取得する（例: `gh issue view <番号> --comments`） |
 | PR/MR の作成 | タイトル、本文（ファイルで渡す）、作成元と作成先のブランチ |
 | squash マージ | **マージの方式を squash に指定する**（既定の方式に任せない）。**コミットメッセージを指定する**（`assets/squash-message.md` で作ったもの）。**マージ後に作業ブランチを削除する** |
-| issue へのコメント | 本文をファイルで渡す |
 
 試行で確かめた例（版によって変わり得るので、必ず `--help` で確かめる）:
 

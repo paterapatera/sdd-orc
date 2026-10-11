@@ -1,6 +1,7 @@
 // 型定義が誤りを型エラーとして検出できることを確かめる。
 // `@ts-expect-error` の直後の行で型エラーが起きなければ、型チェックが失敗する。
 import {
+  defineConfig,
   defineDesign,
   defineQuickSpec,
   defineRequirements,
@@ -427,6 +428,23 @@ defineTasks<typeof reqs, typeof design>()({
     // プロジェクト全体の非機能要件（BNFR-xxx）も verifies に書ける
     "T-001": { ...task, refs: ["FR-001"], verifies: ["AC-001", "BNFR-001"] },
   },
+});
+
+defineConfig({
+  schemaVersion: "0.9.0",
+  tracker: "manual",
+  branchPrefix: "",
+  staleBranchDays: 30,
+  issues: { cli: "backlog" },
+  forge: { cli: "gh" },
+});
+defineConfig({
+  schemaVersion: "0.9.0",
+  tracker: "manual",
+  branchPrefix: "",
+  staleBranchDays: 30,
+  // @ts-expect-error issue の取得先は gh / fj / jira / backlog / manual
+  issues: { cli: "github" },
 });
 
 Deno.test("型定義のテストは型チェックで行う", () => {});

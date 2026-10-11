@@ -17,7 +17,13 @@ export type Config = {
    */
   issueIdPrefix?: string;
   /**
-   * ホスティングのCLI。issue の取得、PR/MR の作成、squash マージ、issue へのコメントに使う
+   * issue の取得先。省略時は gh（GitHub）。
+   * manual はチャットに貼られた本文だけを使い、CLIでは取りに行かない。
+   * PR/MR は forge で、issue とは別のサービスでもよい（使い方は docs/sdd/guides/issues.md）。
+   */
+  issues?: { cli: "gh" | "fj" | "jira" | "backlog" | "manual" };
+  /**
+   * PR/MR のホスティングのCLI。PR/MR の作成と squash マージに使う
    * （使い方は docs/sdd/guides/forge.md）。資格情報を取り出してAPIを直接呼ぶことはしない。
    */
   forge?: { cli: "gh" | "glab" | "fj" | "tea" };

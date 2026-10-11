@@ -48,6 +48,26 @@ async function completeTasks(tasksPath: string) {
 
 // --- doctor ---
 
+Deno.test("doctor: issue の CLI が無ければ警告し、manual ならその CLI を見ない", async () => {
+  const root = await installedRepo();
+  const path = join(root, "docs/sdd/config.ts");
+  const original = await Deno.readTextFile(path);
+  await Deno.writeTextFile(
+    path,
+    original.replace('tracker: "manual",', 'tracker: "manual",\n  issues: { cli: "sdd-missing-issue-cli" },'),
+  );
+  const missing = await task(root, "doctor");
+  assertEquals(missing.code, 0, missing.out);
+  assertStringIncludes(missing.out, "sdd-missing-issue-cli が見つかりません");
+  await Deno.writeTextFile(
+    path,
+    original.replace('tracker: "manual",', 'tracker: "manual",\n  issues: { cli: "manual" },'),
+  );
+  const manual = await task(root, "doctor");
+  assertEquals(manual.out.includes("sdd-missing-issue-cli"), false, manual.out);
+  assertStringIncludes(manual.out, "issue は手動で取り込む");
+});
+
 Deno.test("doctor: 導入直後は必須の項目に問題が無い", async () => {
   const root = await installedRepo();
   const r = await task(root, "doctor");

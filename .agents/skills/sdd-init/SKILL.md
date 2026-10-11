@@ -127,9 +127,12 @@ sdd-init はプロジェクトの前提を決める一度きりの作業なの�
 
 ### ホスティングのCLIと issue のID（どちらの案件でも行う）
 
-- 使っているホスティングのCLIを調べる（`gh`、`glab`、`fj`、`tea` のどれが使えるか。`git remote -v` の URL も手がかりにする）。
+- issue の取得先をユーザーに確かめる（`gh`、`fj`、`jira`、`backlog`、チャットに貼るだけなら `manual`）。
+  省略すると `gh` で取りに行く。`forge` と違う場合だけ `docs/sdd/config.ts` の `issues` に登録する
+  （例: `issues: { cli: "backlog" }`）。使い方は `docs/sdd/guides/issues.md` にある。
+- PR/MR のホスティングのCLIを調べる（`gh`、`glab`、`fj`、`tea` のどれが使えるか。`git remote -v` の URL も手がかりにする）。
   ユーザーに確かめたうえで、`docs/sdd/config.ts` の `forge` に登録する（例: `forge: { cli: "gh" }`）。
-  使い方は `docs/sdd/guides/forge.md` にある。
+  使い方は `docs/sdd/guides/forge.md` にある。issue の取得先とは別でよい。
 - **資格情報を取り出してAPIを直接呼ばない**（`git credential fill`、トークンの読み出し、curl での API 呼び出しなど）。
 - issue のIDに付ける接頭辞（例: `GH`、`FJ`）が決まっていれば、`docs/sdd/config.ts` の `issueIdPrefix` に登録する。
 
@@ -181,7 +184,7 @@ sdd-init の後は、**アプリのコードを直接 main にコミットせず
 1. sdd-init の PR/MR をマージする（squash）。
 2. 基盤issue（機能の開発の前に、雛形・共通の部品・品質ツールとテスト・画面の土台を作るissue）を issueトラッカーに作る。
    文面は `references/new-project.md` の「基盤issueを案内する」で作ったもの。
-   `forge` を登録していれば、了承を得てCLIで作ってよい（`docs/sdd/guides/forge.md`）。
+   issue の取得先が `manual` でなければ、了承を得てその CLI で作ってよい（省略時は `gh`。`docs/sdd/guides/issues.md`）。
 3. 基盤issueを `/sdd-start <issue の番号>` から完全モードで進める（品質ツール、テストのツール、画面の土台の導入もこのissueで行う）。
 4. 基盤issueをマージしてから、機能のissueの並行開発を始める。
 

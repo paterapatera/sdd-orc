@@ -127,7 +127,33 @@ if (config.ui === undefined) {
   });
 }
 
-// ホスティングのCLI（PR/MRの作成、squash マージ、issue の取得とコメントに使う）
+async function cliRuns(cli: string): Promise<boolean | "missing"> {
+  try {
+    const { code } = await new Deno.Command(cli, { args: ["--version"], stdout: "null", stderr: "null" }).output();
+    return code === 0;
+  } catch {
+    return "missing";
+  }
+}
+
+// issue の取得先（省略時は gh。PR/MR の forge とは別でよい）
+const issueCli = config.issues?.cli ?? "gh";
+if (issueCli === "manual") {
+  items.push({ level: "ok", label: "issue は手動で取り込む" });
+} else {
+  const found = await cliRuns(issueCli);
+  items.push(
+    found === true ? { level: "ok", label: `issue のCLI（${issueCli}）` } : {
+      level: "warn",
+      label: "issue のCLI",
+      detail: found === "missing"
+        ? `${issueCli} が見つかりません（docs/sdd/guides/issues.md）`
+        : `${issueCli} --version が失敗しました`,
+    },
+  );
+}
+
+// ホスティングのCLI（PR/MRの作成と squash マージに使う）
 if (!config.forge) {
   items.push({
     level: "warn",
@@ -135,17 +161,16 @@ if (!config.forge) {
     detail: "config.ts の forge がありません。gh / glab / fj / tea のどれを使うかを sdd-init で登録してください",
   });
 } else {
-  try {
-    const { code } = await new Deno.Command(config.forge.cli, { args: ["--version"], stdout: "null", stderr: "null" })
-      .output();
-    items.push(
-      code === 0
-        ? { level: "ok", label: `ホスティングのCLI（${config.forge.cli}）` }
-        : { level: "warn", label: "ホスティングのCLI", detail: `${config.forge.cli} --version が失敗しました` },
-    );
-  } catch {
-    items.push({ level: "warn", label: "ホスティングのCLI", detail: `${config.forge.cli} が見つかりません` });
-  }
+  const found = await cliRuns(config.forge.cli);
+  items.push(
+    found === true ? { level: "ok", label: `ホスティングのCLI（${config.forge.cli}）` } : {
+      level: "warn",
+      label: "ホスティングのCLI",
+      detail: found === "missing"
+        ? `${config.forge.cli} が見つかりません`
+        : `${config.forge.cli} --version が失敗しました`,
+    },
+  );
 }
 
 // pre-commit hook（.git/hooks か、既存のhook管理の設定に組み込まれているか）

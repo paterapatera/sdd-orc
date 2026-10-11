@@ -22,7 +22,8 @@ HTML や zip を issue や PR/MR に添付することは**しない**。
 
 対象リポジトリの手引き:
 
-- `docs/sdd/guides/forge.md`: ホスティングのCLI（PR/MR の作成、squash マージ、issue へのコメント）の使い方
+- `docs/sdd/guides/forge.md`: ホスティングのCLI（PR/MR の作成、squash マージ）の使い方
+- `docs/sdd/guides/issues.md`: issue の取得、コメント、クローズ（省略時は `gh`。`forge` とは別でよい）
 - `docs/sdd/guides/review-feedback.md`: PR/MR を作った後に変更が入った場合
 
 `docs/sdd/deno.json` のタスクは、リポジトリのルートで `deno task --config docs/sdd/deno.json <タスク名>` として実行する。
@@ -111,8 +112,9 @@ git rm -r docs/specs/<ID>
    了承が無い、または `forge` が無い場合は、タイトルと本文の案を渡す。
 3. `assets/squash-message.md` をもとに、squash マージのコミットメッセージの案を作る（PR/MR の URL を入れる）。
 
-**マージと issue のクローズは、ユーザーに頼まれた場合だけ行う。** 頼まれたら `docs/sdd/guides/forge.md` に従い、
+**マージと issue のクローズは、ユーザーに頼まれた場合だけ行う。** マージを頼まれたら `docs/sdd/guides/forge.md` に従い、
 squash を指定し、手順5-3のメッセージを渡し、マージ後に作業ブランチを削除する。
+issue のクローズを頼まれたら `docs/sdd/guides/issues.md` に従う（`manual` のときはユーザーに頼む）。
 
 ## 6. 報告する
 
@@ -122,6 +124,6 @@ squash を指定し、手順5-3のメッセージを渡し、マージ後に作�
 - PR/MR の URL（または本文の案）と、squash マージのコミットメッセージの案
 - issue に投稿するコメントの文面（`assets/issue-comment.md` をもとに作る）。
   **issue のコメントは issue の関係者に向けて書く。** SDD の内部の手順（drift、basedOn、spec の削除など）は書かない。
-  `forge` があり、ユーザーに頼まれた場合は、CLIで投稿する
+  `issues.cli` が `manual` でなければ、ユーザーに頼まれた場合は `docs/sdd/guides/issues.md` の CLI で投稿する（省略時は `gh`）
 
 PR/MR を作った後に変更が入った場合は、`docs/sdd/guides/review-feedback.md` の「PR/MR を作った後に変更が入った場合」に従う。

@@ -21,7 +21,8 @@ Cursor などで使える `.agents/skills/` の形式で書いている（Claude
 | 実行環境 | Deno 2 以上（https://docs.deno.com/runtime/getting_started/installation/） |
 | AI のツール | `.agents/skills/` を読めるもの（Cursor で動作を確認済み） |
 | Git | squash マージで取り込む運用 |
-| ホスティングの CLI（任意） | `gh` / `glab` / `fj` / `tea`。登録すると issue の取得、PR/MR の作成、squash マージを CLI で行う |
+| issue の CLI | 省略時は `gh`。`fj` / `jira` / `backlog` も指定できる。`manual` は貼られた本文だけを使う。PR/MR の CLI とは別でよい |
+| PR/MR の CLI（任意） | `gh` / `glab` / `fj` / `tea`。登録すると PR/MR の作成と squash マージを CLI で行う |
 
 ## スキル
 
