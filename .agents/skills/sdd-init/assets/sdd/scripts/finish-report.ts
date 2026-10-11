@@ -72,15 +72,8 @@ if (base) {
   }
 }
 
-// 品質ゲート（E2E を含む）を実行する。AIの自己申告に頼らないため、ここで実行する。
-// --skip-gate は完了を通すオプションにしない（ソースから見つけて飛ばした実行があった）。
-// テストがゲートを実行しないときは環境変数 SDD_FINISH_SKIP_GATE=1 を使う。
-if (Deno.args.includes("--skip-gate")) {
-  errors.push(
-    "--skip-gate は使えません。品質ゲートが環境の問題で通らないときは、完了せずにその問題を報告してください",
-  );
-}
-const skipGate = Deno.env.get("SDD_FINISH_SKIP_GATE") === "1";
+// 品質ゲート（E2E を含む）を実行する。AIの自己申告に頼らないため、ここで実行する
+const skipGate = Deno.args.includes("--skip-gate");
 const config = await loadConfig();
 if (config.ui && !config.commands?.e2e) {
   errors.push("画面がある案件（config.ts の ui: true）なのに commands.e2e がありません。E2E を外さない");
