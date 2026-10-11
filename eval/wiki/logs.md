@@ -218,3 +218,4 @@
 
 - 20261010-132655-INIT-001 は Sail 経由で `vp check --fix`（`npm run check:fix`）を実行し、導入した `docs/sdd/` の引用符と字下げが資材から変わっていた。Pint（`composer lint`）は PHP だけを整形する。
 - `gate` の実行後に、`.agents/` か `docs/sdd/` が実行前より変わっていたら失敗にする（終了コード 1）。警告だけでは書き換えが止まらないため。
+- 自動実行で INIT-001 は 1/3 → 3/3、VAL-002 は合格 0 のまま。eval:impact は採用。スキルの変更は残した。
