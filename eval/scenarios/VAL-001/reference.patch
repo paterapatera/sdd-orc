@@ -1,0 +1,191 @@
+diff --git a/app/Http/Controllers/Settings/LoginHistoryController.php b/app/Http/Controllers/Settings/LoginHistoryController.php
+new file mode 100644
+index 0000000..64c08b1
+--- /dev/null
++++ b/app/Http/Controllers/Settings/LoginHistoryController.php
+@@ -0,0 +1,28 @@
++<?php
++
++namespace App\Http\Controllers\Settings;
++
++use App\Http\Controllers\Controller;
++use App\Models\LoginHistory;
++use Illuminate\Http\Request;
++use Inertia\Inertia;
++use Inertia\Response;
++
++class LoginHistoryController extends Controller
++{
++    public function index(Request $request): Response
++    {
++        $entries = LoginHistory::where('user_id', $request->user()->getAuthIdentifier())
++            ->orderByDesc('logged_in_at')
++            ->orderByDesc('id')
++            ->limit(10)
++            ->get()
++            ->map(fn (LoginHistory $h) => [
++                'id' => $h->id,
++                'loggedInAt' => $h->logged_in_at->timezone('Asia/Tokyo')->format('Y-m-d H:i'),
++                'ipAddress' => $h->ip_address,
++            ]);
++
++        return Inertia::render('settings/login-history', ['entries' => $entries]);
++    }
++}
+diff --git a/app/Listeners/RecordLoginHistory.php b/app/Listeners/RecordLoginHistory.php
+new file mode 100644
+index 0000000..a7f2b8a
+--- /dev/null
++++ b/app/Listeners/RecordLoginHistory.php
+@@ -0,0 +1,18 @@
++<?php
++
++namespace App\Listeners;
++
++use App\Models\LoginHistory;
++use Illuminate\Auth\Events\Login;
++
++class RecordLoginHistory
++{
++    public function handle(Login $event): void
++    {
++        LoginHistory::create([
++            'user_id' => $event->user->getAuthIdentifier(),
++            'ip_address' => request()->ip(),
++            'logged_in_at' => now(),
++        ]);
++    }
++}
+diff --git a/app/Models/LoginHistory.php b/app/Models/LoginHistory.php
+new file mode 100644
+index 0000000..48b039d
+--- /dev/null
++++ b/app/Models/LoginHistory.php
+@@ -0,0 +1,17 @@
++<?php
++
++namespace App\Models;
++
++use Illuminate\Database\Eloquent\Model;
++
++class LoginHistory extends Model
++{
++    public $timestamps = false;
++
++    protected $fillable = ['user_id', 'ip_address', 'logged_in_at'];
++
++    protected function casts(): array
++    {
++        return ['logged_in_at' => 'datetime'];
++    }
++}
+diff --git a/database/migrations/2026_10_11_000000_create_login_histories_table.php b/database/migrations/2026_10_11_000000_create_login_histories_table.php
+new file mode 100644
+index 0000000..b275acb
+--- /dev/null
++++ b/database/migrations/2026_10_11_000000_create_login_histories_table.php
+@@ -0,0 +1,24 @@
++<?php
++
++use Illuminate\Database\Migrations\Migration;
++use Illuminate\Database\Schema\Blueprint;
++use Illuminate\Support\Facades\Schema;
++
++return new class extends Migration
++{
++    public function up(): void
++    {
++        Schema::create('login_histories', function (Blueprint $table) {
++            $table->id();
++            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
++            $table->string('ip_address', 45)->nullable();
++            $table->timestamp('logged_in_at');
++            $table->index(['user_id', 'logged_in_at']);
++        });
++    }
++
++    public function down(): void
++    {
++        Schema::dropIfExists('login_histories');
++    }
++};
+diff --git a/resources/js/layouts/settings/layout.tsx b/resources/js/layouts/settings/layout.tsx
+index efd7904..f8e090a 100644
+--- a/resources/js/layouts/settings/layout.tsx
++++ b/resources/js/layouts/settings/layout.tsx
+@@ -21,6 +21,11 @@ const sidebarNavItems: NavItem[] = [
+         href: editSecurity(),
+         icon: null,
+     },
++    {
++        title: 'ログイン履歴',
++        href: '/settings/login-history',
++        icon: null,
++    },
+     {
+         title: 'Appearance',
+         href: editAppearance(),
+diff --git a/resources/js/pages/settings/login-history.tsx b/resources/js/pages/settings/login-history.tsx
+new file mode 100644
+index 0000000..b3a6f0a
+--- /dev/null
++++ b/resources/js/pages/settings/login-history.tsx
+@@ -0,0 +1,38 @@
++import { Head } from '@inertiajs/react';
++import Heading from '@/components/heading';
++
++type Entry = { id: number; loggedInAt: string; ipAddress: string | null };
++
++export default function LoginHistory({ entries }: { entries: Entry[] }) {
++    return (
++        <>
++            <Head title="ログイン履歴" />
++
++            <div className="space-y-6">
++                <Heading
++                    variant="small"
++                    title="ログイン履歴"
++                    description="最近のログイン（新しい順に10件）"
++                />
++                {entries.length === 0 ? (
++                    <p className="text-sm text-muted-foreground">
++                        ログイン履歴はありません
++                    </p>
++                ) : (
++                    <ul className="divide-y text-sm">
++                        {entries.map((e) => (
++                            <li key={e.id} className="flex gap-4 py-2">
++                                <span>{e.loggedInAt}</span>
++                                <span>{e.ipAddress}</span>
++                            </li>
++                        ))}
++                    </ul>
++                )}
++            </div>
++        </>
++    );
++}
++
++LoginHistory.layout = {
++    breadcrumbs: [{ title: 'ログイン履歴', href: '/settings/login-history' }],
++};
+diff --git a/routes/settings.php b/routes/settings.php
+index d74f967..02a731a 100644
+--- a/routes/settings.php
++++ b/routes/settings.php
+@@ -1,5 +1,6 @@
+ <?php
+ 
++use App\Http\Controllers\Settings\LoginHistoryController;
+ use App\Http\Controllers\Settings\ProfileController;
+ use App\Http\Controllers\Settings\SecurityController;
+ use Illuminate\Auth\Middleware\RequirePassword;
+@@ -10,6 +11,8 @@
+ 
+     Route::get('settings/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+     Route::patch('settings/profile', [ProfileController::class, 'update'])->name('profile.update');
++
++    Route::get('settings/login-history', [LoginHistoryController::class, 'index'])->name('login-history.index');
+ });
+ 
+ Route::middleware(['auth', 'verified'])->group(function () {
