@@ -1,13 +1,16 @@
 {
   "imports": {
-    "@std/assert": "jsr:@std/assert@1"
+    "@std/assert": "jsr:@std/assert@1",
+    "@cursor/sdk": "npm:@cursor/sdk@1.0.37"
   },
   "tasks": {
     "test": "deno test --allow-read --allow-write --allow-run --allow-env --allow-net tests/",
     "eval:prepare": "deno run --allow-read --allow-write --allow-run --allow-env eval/prepare.ts",
     "eval:grade": "deno run --allow-read --allow-write --allow-run --allow-env eval/grade.ts",
     "eval:summary": "deno run --allow-read --allow-env eval/summary.ts",
-    "eval:impact": "deno run --allow-read --allow-write --allow-run=git --allow-env eval/impact.ts"
+    "eval:impact": "deno run --allow-read --allow-write --allow-run=git --allow-env eval/impact.ts",
+    "eval:auto": "deno run --allow-all eval/auto.ts",
+    "eval:login": "cd eval/sdk && npm ci --silent && node --input-type=module -e \"import { Cursor } from '@cursor/sdk'; await Cursor.auth.login();\""
   },
   "fmt": {
     "lineWidth": 120,

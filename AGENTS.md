@@ -92,6 +92,8 @@ deno task eval:prepare <問題のID> [--model <モデル名>]   # 試験場を t
 deno task eval:prepare <問題のID> --skills <コミット>    # 変更の前の版のスキルで回す（新しい val の問題の基準を取るとき）
 # 試験場を Cursor で開き、表示された手順でスキルを呼び出す。質問には人役の回答表だけを根拠に答える
 deno task eval:grade                                      # 採点し、eval/runs/<実行ID>/ に記録する
+deno task eval:login                                      # eval:auto の前に1回だけ。Cursor にログインし、SDK の鍵を保存する
+deno task eval:auto                                       # （試作）準備した実行を Cursor SDK で進めて採点する。人役も AI が回答表だけを根拠に務める
 deno task eval:summary                                    # 問題とスキルの版ごとの合格の回数
 deno task eval:impact --pattern <パターン> --target <問題> --before <コミット> --after <コミット> --change "<要約>" --write
                                                           # 変更の前と後を比べて採否を判定し、skill-impact.md に書き足す
