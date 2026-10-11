@@ -45,7 +45,8 @@ ${input.issue}`;
 async function askPersona(kind: string, task: string): Promise<string> {
   const result = await Agent.prompt(`${PERSONA_RULES}\n\n# いまの依頼\n${task}`, {
     apiKey,
-    model: { id: input.model },
+    // composer-2.5 は SDK の既定が Fast（fast: "true" が isDefault）。fast を明示しないと Fast で動く
+    model: { id: input.model, params: [{ id: "fast", value: "false" }] },
     local: { cwd: personaHome },
     tools: [],
   });
@@ -157,9 +158,12 @@ function stepMessage(step: string): string {
   return /issue の本文/.test(step) ? `${text}\n\n${input.issue}` : text;
 }
 
+const model = { id: input.model, params: [{ id: "fast", value: "false" }] };
+console.log(`model ${JSON.stringify(model)}`);
 const agent = await Agent.create({
   apiKey,
-  model: { id: input.model },
+  // composer-2.5 は SDK の既定が Fast（fast: "true" が isDefault）。fast を明示しないと Fast で動く
+  model,
   local: { cwd: input.target, settingSources: ["project"], customTools: { AskQuestion: askQuestionTool } },
   disallowedTools: ["askQuestion"],
 });
