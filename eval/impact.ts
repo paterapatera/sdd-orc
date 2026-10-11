@@ -45,7 +45,18 @@ try {
   for await (const e of Deno.readDir(paths.scenarios)) {
     if (e.isDirectory) splitOf[e.name] = (await loadScenario(paths, e.name)).split;
   }
-  const result = judgeImpact(await readScores(paths), {
+  // 試験場の .gitattributes が改行を揃えるので、試験場で取った tree は sdd-orc の tree と一致しない。
+  // 未コミットの変更が無い実行は、記録した sdd-orc のコミットから tree を取り直す
+  const trees = new Map<string, string>();
+  const scores = await readScores(paths);
+  for (const s of scores) {
+    if (s.skills.dirty) continue;
+    if (!trees.has(s.skills.commit)) {
+      trees.set(s.skills.commit, await git("rev-parse", `${s.skills.commit}:.agents/skills`));
+    }
+    s.skills = { ...s.skills, tree: trees.get(s.skills.commit) };
+  }
+  const result = judgeImpact(scores, {
     date: new Date().toISOString().slice(0, 10),
     pattern,
     change,
