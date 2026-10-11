@@ -599,18 +599,26 @@ export async function readScores(paths: Paths): Promise<(Score & { excluded?: st
   return scores.sort((a, b) => a.runId.localeCompare(b.runId));
 }
 
-/** 問題、スキルの版、モデルごとに、合格した回数をまとめる（採否の判断に使う） */
+/**
+ * 問題、スキルの版、モデルごとに、合格した回数をまとめる（採否の判断に使う）。
+ * sdd-orc のコミットが違っても、コピーしたスキルの中身（tree）が同じなら同じ版として数え、版の欄にコミットを `=` でつなぐ
+ */
 export function summarize(scores: readonly (Score & { excluded?: string })[]): string {
   const groups = new Map<string, Score[]>();
   const excluded = scores.filter((s) => s.excluded !== undefined);
   for (const s of scores) {
     if (s.excluded !== undefined) continue;
-    const key = `${s.scenario}\t${s.split}\t${skillsLabel(s.skills)}\t${s.model ?? "-"}`;
+    const key = `${s.scenario}\t${s.split}\t${s.skills.tree ?? skillsLabel(s.skills)}\t${s.model ?? "-"}`;
     groups.set(key, [...(groups.get(key) ?? []), s]);
   }
   if (!groups.size && !excluded.length) return "採点済みの実行がありません";
+  const rows = [...groups.values()].map((ss) => {
+    const s = ss[0];
+    const label = [...new Set(ss.map((x) => skillsLabel(x.skills)))].join("=");
+    return [`${s.scenario}\t${s.split}\t${label}\t${s.model ?? "-"}`, ss] as const;
+  });
   const out = ["問題\t分割\tスキル\tモデル\t合格/回数\t平均点\t2問以上の質問（平均）"];
-  for (const [key, ss] of [...groups].sort(([a], [b]) => a.localeCompare(b))) {
+  for (const [key, ss] of rows.sort(([a], [b]) => a.localeCompare(b))) {
     const passed = ss.filter((s) => s.passed).length;
     const avg = ss.reduce((n, s) => n + s.score, 0) / ss.length;
     const withT = ss.filter((s) => s.transcript);
