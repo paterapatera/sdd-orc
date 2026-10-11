@@ -656,12 +656,27 @@ Deno.test("finish-report: 品質ゲートを緩めた変更と、採用済みの
   await writeFile(root, "src/search/pagination.py", "x = 1  # type: ignore\n");
   await sh(root, "add", ".");
   await sh(root, "commit", "-q", "--no-verify", "-m", "fix(EX-002): T-002 直す");
-  const r = await task(root, "finish-report", "EX-002", "--skip-gate");
+  const r = await run(
+    Deno.execPath(),
+    ["task", "--quiet", "--config", "docs/sdd/deno.json", "finish-report", "EX-002"],
+    root,
+    { SDD_FINISH_SKIP_GATE: "1" },
+  );
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "phpstan.neon の level が max → 5 です");
   assertStringIncludes(r.out, "品質ゲートの設定を緩めた可能性があります: phpstan.neon「excludePaths:」");
   assertStringIncludes(r.out, "採用済みの ADR を書き換えています: docs/sdd/adr/ADR-0001.ts");
   assertStringIncludes(r.out, "検出を抑止するコメントを追加しています: src/search/pagination.py");
+  assertEquals(r.out.includes("--skip-gate は使えません"), false, r.out);
+});
+
+Deno.test("finish-report: --skip-gate を付けると完了の条件のエラーになり、品質ゲートは実行する", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  const r = await task(root, "finish-report", "EX-001", "--skip-gate");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "--skip-gate は使えません");
+  assertStringIncludes(r.out, "■ 品質ゲート（deno task gate --full）を実行します");
+  assertStringIncludes(r.out, "エラー 5 件");
 });
 
 // --- doctor: gate の根拠と、画面のある案件の E2E ---

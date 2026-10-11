@@ -40,9 +40,19 @@ export async function patchFile(root: string, path: string, from: string, to: st
 
 export type RunResult = { code: number; out: string };
 
-export async function run(cmd: string, args: string[], cwd: string): Promise<RunResult> {
-  const { code, stdout, stderr } = await new Deno.Command(cmd, { args, cwd, stdout: "piped", stderr: "piped" })
-    .output();
+export async function run(
+  cmd: string,
+  args: string[],
+  cwd: string,
+  extraEnv?: Record<string, string>,
+): Promise<RunResult> {
+  const { code, stdout, stderr } = await new Deno.Command(cmd, {
+    args,
+    cwd,
+    stdout: "piped",
+    stderr: "piped",
+    ...(extraEnv ? { env: { ...Deno.env.toObject(), ...extraEnv } } : {}),
+  }).output();
   const dec = new TextDecoder();
   return { code, out: dec.decode(stdout) + dec.decode(stderr) };
 }
