@@ -48,7 +48,7 @@ export default defineScenario({
         "vite.config.ts",
         ".github/**",
         "tests/Feature/Auth/**",
-        "tests/Feature/Settings/**",
+        "tests/Feature/Settings/SecurityTest.php",
         "tests/Browser/WelcomeTest.php",
       ],
     },
