@@ -155,10 +155,16 @@ Deno.test("改善案: 実装の差分に、失敗の回にだけ出る語が増�
 Deno.test("改善案: 手順と deno タスクが、改善案の確認を指している", async () => {
   const root = join(import.meta.dirname!, "..");
   const skill = await Deno.readTextFile(join(root, ".cursor/skills/close-pattern/SKILL.md"));
+  const fix = await Deno.readTextFile(join(root, ".cursor/skills/optimize-fix/SKILL.md"));
   const agents = await Deno.readTextFile(join(root, "AGENTS.md"));
   const tasks = await Deno.readTextFile(join(root, "deno.json"));
   assert(skill.includes("deno task eval:propose"));
   assert(skill.includes("出さない"));
+  assert(skill.includes("optimize-fix"));
+  assert(fix.includes("deno task eval:propose"));
+  assert(fix.includes("原則"));
+  assert(fix.includes("勾配"));
+  assert(agents.includes("optimize-fix"));
   assert(agents.includes("deno task eval:propose"));
   assert(tasks.includes('"eval:propose"'));
 });

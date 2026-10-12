@@ -23,6 +23,7 @@ SDD のスキル（`.agents/skills/`）と、対象リポジトリにコピー�
 | 恒久ドキュメントのひな形 | `.agents/skills/sdd-init/assets/templates/` |
 | 品質ツールの提案 | `.agents/skills/propose-quality-tools/`（更新の手順は `MAINTAIN.md`） |
 | 訓練（試験場での実行と採点、失敗パターンの記録） | `eval/`（使い方は下の「訓練」） |
+| スキルの最適な修正の依頼 | `.cursor/skills/optimize-fix/SKILL.md`（採否まで進めるのは `.cursor/skills/close-pattern/SKILL.md`） |
 
 ## コマンド
 
