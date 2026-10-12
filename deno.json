@@ -9,7 +9,7 @@
     "eval:grade": "deno run --allow-read --allow-write --allow-run --allow-env eval/grade.ts",
     "eval:summary": "deno run --allow-read --allow-env eval/summary.ts",
     "eval:impact": "deno run --allow-read --allow-write --allow-run=git --allow-env eval/impact.ts",
-    "eval:propose": "deno run --allow-read --allow-run=git eval/propose.ts",
+    "eval:propose": "deno run --allow-read --allow-run=git --allow-env=INIT_CWD eval/propose.ts",
     "eval:auto": "deno run --allow-all eval/auto.ts",
     "eval:login": "cd eval/sdk && npm ci --silent && node --input-type=module -e \"import { Cursor } from '@cursor/sdk'; await Cursor.auth.login();\""
   },

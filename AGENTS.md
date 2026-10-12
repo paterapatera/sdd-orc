@@ -23,7 +23,7 @@ SDD のスキル（`.agents/skills/`）と、対象リポジトリにコピー�
 | 恒久ドキュメントのひな形 | `.agents/skills/sdd-init/assets/templates/` |
 | 品質ツールの提案 | `.agents/skills/propose-quality-tools/`（更新の手順は `MAINTAIN.md`） |
 | 訓練（試験場での実行と採点、失敗パターンの記録） | `eval/`（使い方は下の「訓練」） |
-| スキルの最適な修正の依頼 | `.cursor/skills/optimize-fix/SKILL.md`（採否まで進めるのは `.cursor/skills/close-pattern/SKILL.md`） |
+| スキルへの依頼（「〇〇機能も追加したい」「〇〇が出ないから出るようにして」） | `.cursor/skills/optimize-fix/SKILL.md`（記録は `eval/wiki/requests/`。訓練のパターンを閉じるのは `.cursor/skills/close-pattern/SKILL.md`） |
 
 ## コマンド
 
@@ -97,6 +97,8 @@ deno task eval:login                                      # eval:auto の前に1
 deno task eval:auto                                       # （試作）準備した実行を Cursor SDK で進めて採点する。人役も AI が回答表だけを根拠に務める
 deno task eval:summary                                    # 問題とスキルの版ごとの合格の回数
 deno task eval:propose --pattern <パターン>               # 改善案が原則・勾配・候補の条件を満たすか、実装の差分に失敗の回の語が無いかを確かめる
+deno task eval:propose --file eval/wiki/requests/<依頼>.md
+                                                          # 依頼の改善案を確かめ、「## 結果」があれば採否を判定する
 deno task eval:impact --pattern <パターン> --target <問題> --before <コミット> --after <コミット> --change "<要約>" [--driver auto] --write
                                                           # 変更の前と後を比べて採否を判定し、skill-impact.md に書き足す
 ```
@@ -119,6 +121,7 @@ deno task eval:impact --pattern <パターン> --target <問題> --before <コ�
   通る候補が無ければ、その回は変更を出さない。これは訓練の完了ではない。val の合格が 0 のあいだは、未知の問題で通ったことにはしない。
 - **採否は `deno task eval:impact` で判定し、却下した変更も記録する。** 条件は `eval/wiki/skill-impact.md` にある。使うのは val の合格した回数で、train の増減だけでは採用しない。
   出力はぶれるので、同じ問を同じモデルで3回ずつ回す。この3回は、その問が運で合格したかを見るためのもので、別の未知の問への汎化にはしない。val が2問以上になってから、各問で割合が上回ったときだけ採用する。却下なら、スキルの変更を `git revert` で戻す（wiki は戻さない）。
+- **ユーザーの依頼（機能の追加、出ない振る舞いを出す）は、optimize-fix の依頼の経路で直す。** 依頼は要件なので、出したい場面と出してはいけない場面の事例を人に確かめてから直す。採否は、変えたスキルで事例を流し直して決める（`deno task eval:propose --file`）。val の点数は使わず、合格が減っていないかは次の訓練で見る。
 - **val の問題は、採否の点数だけに使う。** val の実行の記録（transcripts、repo.bundle、ログ）を読んで直す根拠にしない。
   読んでしまった val の問題は train に移し、その点数は汎化の証拠にしない。代わりの val は、既存の val の記録を読まずに作る。
 - **wiki には、失敗のパターンだけでなく、合格した実行でうまくいったやり方も残す**（`eval/wiki/strategies/`）。

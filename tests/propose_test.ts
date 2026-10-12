@@ -1,7 +1,7 @@
 // スキルを変える前の改善案（eval/propose.ts）
 import { assert, assertEquals } from "@std/assert";
 import { join } from "node:path";
-import { addedLines, checkProposal } from "../eval/propose.ts";
+import { addedLines, checkProposal, judgeReplay } from "../eval/propose.ts";
 
 const FAIL = "20261010-113010-INIT-001";
 const FAIL2 = "20261010-114316-INIT-001";
@@ -33,7 +33,10 @@ ${rows.join("\n")}
 `;
 }
 
-function errorsOf(markdown: string, options?: { knownRuns?: ReadonlySet<string>; addedText?: string }): string[] {
+function errorsOf(
+  markdown: string,
+  options?: { knownRuns?: ReadonlySet<string>; addedText?: string; requireCases?: boolean },
+): string[] {
   const result = checkProposal(markdown, options);
   assert(!result.ok);
   return result.errors;
@@ -152,6 +155,114 @@ Deno.test("改善案: 実装の差分に、失敗の回にだけ出る語が増�
   );
 });
 
+function caseFile(options?: { cases?: string[]; rows?: string[]; results?: string[] | null; select?: string }): string {
+  const cases = options?.cases ?? [
+    "| E-1 | 落ちた | sdd-init で品質ゲートを登録する | 登録したコマンドを実行してから登録する |",
+    "| E-2 | 落ちた | sdd-init でコマンドを変えて登録し直す | 変えたコマンドを実行してから登録する |",
+    "| E-3 | 通った | sdd-init でコマンドを登録しない | コマンドを実行しない |",
+  ];
+  const rows = options?.rows ?? [
+    "| 1 | 道具 | 登録したコマンドを実行し、失敗なら中止する | E-1、E-2 | なし |",
+    "| 2 | 手順 | 終える前に、登録したコマンドを対象の環境で実行する | E-1 | E-3 |",
+  ];
+  const results = options?.results === null ? "" : `
+## 結果
+
+| ID | 後 |
+|---|---|
+${(options?.results ?? ["| E-1 | 通った |", "| E-2 | 通った |", "| E-3 | 通った |"]).join("\n")}
+`;
+  return `# R-099
+
+## 事例
+
+| ID | 今 | 場面 | 期待 |
+|---|---|---|---|
+${cases.join("\n")}
+
+${proposal({ rows, select: options?.select }).replace("# P-099\n", "")}
+${results}`;
+}
+
+Deno.test("依頼の経路: 事例の ID で候補を当て、選んだ候補が拾う事例を返す", () => {
+  const result = checkProposal(caseFile(), { requireCases: true });
+  assert(result.ok);
+  assertEquals(result.selected, 1);
+  assertEquals(result.targets, ["E-1", "E-2"]);
+  assertEquals(result.cases?.get("E-3"), "通った");
+});
+
+Deno.test("依頼の経路: 事例が無い、事例に無い ID、今の食い違い、落ちた事例か通った事例が無い、期待が空、ときは失敗にする", () => {
+  assert(errorsOf(proposal(), { requireCases: true }).some((e) => e.includes("「## 事例」がありません")));
+  assert(
+    errorsOf(caseFile({
+      rows: [
+        "| 1 | 道具 | 登録したコマンドを実行し、失敗なら中止する | E-9 | なし |",
+        "| 2 | 手順 | 終える前に、登録したコマンドを対象の環境で実行する | E-1 | E-3 |",
+      ],
+    })).some((e) => e.includes("E-9 が、事例にありません")),
+  );
+  assert(
+    errorsOf(caseFile({
+      rows: [
+        "| 1 | 道具 | 登録したコマンドを実行し、失敗なら中止する | E-1 | なし |",
+        "| 2 | 手順 | 終える前に、登録したコマンドを対象の環境で実行する | E-1 | E-2 |",
+      ],
+    })).some((e) => e.includes("E-2 は、事例では「落ちた」")),
+  );
+  assert(
+    errorsOf(caseFile({ cases: ["| E-3 | 通った | sdd-init でコマンドを登録しない | コマンドを実行しない |"] }))
+      .some((e) => e.includes("落ちた事例が1件もありません")),
+  );
+  assert(
+    errorsOf(caseFile({
+      cases: [
+        "| E-1 | 落ちた | sdd-init で品質ゲートを登録する | 登録したコマンドを実行してから登録する |",
+        "| E-2 | 落ちた | sdd-init でコマンドを変えて登録し直す | 変えたコマンドを実行してから登録する |",
+      ],
+      rows: [
+        "| 1 | 道具 | 登録したコマンドを実行し、失敗なら中止する | E-1、E-2 | なし |",
+        "| 2 | 道具 | 登録したコマンドを、変えたときにも実行する | E-2 | なし |",
+      ],
+    })).some((e) => e.includes("通った事例が1件もありません")),
+  );
+  assert(
+    errorsOf(caseFile({
+      cases: [
+        "| E-1 | 落ちた | sdd-init で品質ゲートを登録する |  |",
+        "| E-3 | 通った | sdd-init でコマンドを登録しない | コマンドを実行しない |",
+      ],
+    })).some((e) => e.includes("E-1 の期待が空です")),
+  );
+});
+
+Deno.test("依頼の経路: 流し直した結果から、採用・却下・保留を判定する", () => {
+  const judge = (markdown: string) => {
+    const result = checkProposal(markdown, { requireCases: true });
+    assert(result.ok);
+    return judgeReplay(markdown, result);
+  };
+  assertEquals(judge(caseFile({ results: null })), null);
+  assertEquals(judge(caseFile()), { ok: true, decision: "採用", reasons: [] });
+
+  const notFixed = judge(caseFile({ results: ["| E-1 | 通った |", "| E-2 | 落ちた |", "| E-3 | 通った |"] }));
+  assert(notFixed?.ok && notFixed.decision === "却下");
+  assert(notFixed.reasons.some((r) => r.includes("E-2 が、まだ落ちる")));
+
+  const regressed = judge(caseFile({ results: ["| E-1 | 通った |", "| E-2 | 通った |", "| E-3 | 落ちた |"] }));
+  assert(regressed?.ok && regressed.decision === "却下");
+  assert(regressed.reasons.some((r) => r.includes("通っていた E-3 が落ちた")));
+
+  const pending = judge(caseFile({ results: ["| E-1 | 通った |", "| E-2 | 再現できない |"] }));
+  assert(pending?.ok && pending.decision === "保留");
+  assert(pending.reasons.some((r) => r.includes("E-2 を再現できない")));
+  assert(pending.reasons.some((r) => r.includes("E-3 を流し直していない")));
+
+  const unknown = judge(caseFile({ results: ["| E-7 | 通った |"] }));
+  assert(unknown && !unknown.ok);
+  assert(unknown.errors.some((e) => e.includes("E-7 が、事例にありません")));
+});
+
 Deno.test("改善案: 手順と deno タスクが、改善案の確認を指している", async () => {
   const root = join(import.meta.dirname!, "..");
   const skill = await Deno.readTextFile(join(root, ".cursor/skills/close-pattern/SKILL.md"));
@@ -164,6 +275,9 @@ Deno.test("改善案: 手順と deno タスクが、改善案の確認を指し�
   assert(fix.includes("deno task eval:propose"));
   assert(fix.includes("原則"));
   assert(fix.includes("勾配"));
+  assert(fix.includes("--file eval/wiki/requests/"));
+  assert(fix.includes("## 結果"));
+  assert(fix.includes("出してはいけない場面"));
   assert(agents.includes("optimize-fix"));
   assert(agents.includes("deno task eval:propose"));
   assert(tasks.includes('"eval:propose"'));

@@ -51,7 +51,7 @@ disable-model-invocation: true
 
 ### 3. 考えてから、選ばれた1件だけを直す
 
-1回の変更で直すパターンは1つ。`.cursor/skills/optimize-fix/SKILL.md` を読んで、その手順で改善案を書く。対象のパターンは決まっているので、optimize-fix の確認ポイント1は飛ばす。
+1回の変更で直すパターンは1つ。`.cursor/skills/optimize-fix/SKILL.md` を読んで、その手順で改善案を書く。対象のパターンは決まっているので、optimize-fix の確認ポイント1と2は飛ばし、訓練の経路で進める。
 
 `deno task eval:propose --pattern <P-00>` が成功し、`選ぶ` が `出さない` でないときだけ、手順4へ進む。`出さない` ならスキルは変えず、調べた結果を `logs.md` に残して終わる。実装は手順5までしない。
 
