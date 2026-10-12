@@ -101,6 +101,9 @@ export default defineRequirements({
     outOfScope: { result: "considered", note: "管理者による手動のロック解除を対象外にした" },
   },
   assumptions: ["失敗回数はアカウント単位で数え、IPアドレス単位では数えない", "既存のアカウントは失敗回数0から数え始める"],
+  values: [],
+  noValuesReason: "入力は既存のログイン画面から変わらず、新しく出す表示は固定の文言（AC-003）だけで、値によって形が変わるものが無い",
+  answers: {},
   openQuestions: [],
   outOfScope: ["管理者による手動のロック解除"],
 });

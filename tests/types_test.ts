@@ -30,7 +30,7 @@ const nfrReview = {
   "セキュリティ": nfrNa,
   "システム環境・エコロジー": nfrNa,
 } as const;
-const reqExtra = { nfrReview, issueCoverage: [], checklist } as const;
+const reqExtra = { nfrReview, issueCoverage: [], checklist, values: [], answers: {} } as const;
 const quickExtra = { issueCoverage: [], checklist, conventionsCompliance: {} } as const;
 
 const reqs = defineRequirements({
@@ -445,6 +445,116 @@ defineConfig({
   staleBranchDays: 30,
   // @ts-expect-error issue の取得先は gh / fj / jira / backlog / manual
   issues: { cli: "github" },
+});
+
+const valueReq = {
+  ...reqExtra,
+  issue: "X-1",
+  summary: "s",
+  functional: { "FR-001": { title: "a", ears: { pattern: "ubiquitous", response: "r" }, acceptance: [ac("AC-001")] } },
+  nonFunctional: {},
+  invariants: {},
+  assumptions: [],
+  openQuestions: [],
+  outOfScope: [],
+} as const;
+const display = { long: { open: true }, lineBreak: { open: true }, empty: { open: true } } as const;
+
+defineRequirements({
+  ...valueReq,
+  values: [
+    {
+      target: "t",
+      kind: "textDisplay",
+      aspects: {
+        long: { decidedBy: ["AC-001"], basis: { issue: "q" } },
+        lineBreak: { open: true },
+        empty: { notApplicable: "n", basis: { answer: "ANS-001" } },
+      },
+    },
+  ],
+  answers: { "ANS-001": { target: "t", aspect: "a", answer: "n" } },
+  openQuestions: [{ target: "t", aspect: "a" }],
+});
+
+defineRequirements({
+  ...valueReq,
+  values: [
+    {
+      target: "t",
+      kind: "listDisplay",
+      // @ts-expect-error 種類の観点（tie）が欠けている
+      aspects: {
+        items: { open: true },
+        order: { open: true },
+        empty: { open: true },
+        pageSize: { open: true },
+        rest: { open: true },
+      },
+    },
+  ],
+});
+
+defineRequirements({
+  ...valueReq,
+  // @ts-expect-error 存在しない受け入れ条件で決めたことにしている
+  values: [{
+    target: "t",
+    kind: "textDisplay",
+    aspects: { ...display, long: { decidedBy: ["AC-009"], basis: { issue: "q" } } },
+  }],
+});
+
+defineRequirements({
+  ...valueReq,
+  // @ts-expect-error 値の種類が無い
+  values: [{ target: "t", kind: "colorInput", aspects: display }],
+});
+
+defineRequirements({
+  ...valueReq,
+  // @ts-expect-error 決めた扱いに出どころが無い
+  values: [{ target: "t", kind: "textDisplay", aspects: { ...display, long: { decidedBy: ["AC-001"] } } }],
+});
+
+defineRequirements({
+  ...valueReq,
+  // @ts-expect-error 未確定は true だけで、質問の文は書かない
+  values: [{ target: "t", kind: "textDisplay", aspects: { ...display, long: { open: "どう見せるか" } } }],
+});
+
+defineRequirements({
+  ...valueReq,
+  values: [{
+    target: "t",
+    kind: "textDisplay",
+    // @ts-expect-error 関係しない扱いの出どころは人の回答だけ
+    aspects: { ...display, long: { notApplicable: "n", basis: { issue: "q" } } },
+  }],
+});
+
+defineRequirements({
+  ...valueReq,
+  // @ts-expect-error answers に無い回答を出どころにしている
+  values: [{
+    target: "t",
+    kind: "textDisplay",
+    aspects: { ...display, long: { decidedBy: ["AC-001"], basis: { answer: "ANS-009" } } },
+  }],
+});
+
+defineRequirements({
+  ...valueReq,
+  answers: {
+    // @ts-expect-error 回答の ID の形式が違う
+    "Q-1": { target: "t", aspect: "a", answer: "n" },
+  },
+});
+
+defineRequirements({
+  ...valueReq,
+  // @ts-expect-error 未確定の点は対象と観点の組で書く
+  openQuestions: ["表示の件数"],
 });
 
 Deno.test("型定義のテストは型チェックで行う", () => {});

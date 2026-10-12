@@ -12,7 +12,7 @@ import type {
   Tasks,
 } from "../../schema/mod.ts";
 import { importDefault, loadConfig } from "./config.ts";
-import { exists, SDD_DIR, SPECS_DIR } from "./paths.ts";
+import { exists, ROOT, SDD_DIR, SPECS_DIR } from "./paths.ts";
 
 // 実行時に読み込むspecの型。IDはすべて string として扱う。
 export type LooseRequirements = Requirements;
@@ -37,6 +37,8 @@ export type LoadedIssue = {
   quick?: LooseQuickSpec;
   /** 読み込みに失敗したファイルとその理由 */
   loadErrors: { file: SpecFile; message: string }[];
+  /** requirements.ts の values が出どころに挙げたファイルのうち、リポジトリに無いもの */
+  missingBasisFiles?: Set<string>;
 };
 
 /** docs/specs にあるissueのIDの一覧 */
@@ -71,12 +73,27 @@ export async function loadIssue(id: string): Promise<LoadedIssue> {
   issue.design = await load<LooseDesign>("design.ts");
   issue.tasks = await load<LooseTasks>("tasks.ts");
   issue.quick = await load<LooseQuickSpec>("spec.ts");
+  if (issue.requirements) issue.missingBasisFiles = await missingBasisFiles(issue.requirements);
 
   const full = [issue.requirements, issue.design, issue.tasks].some((x) => x !== undefined) ||
     issue.loadErrors.some((e) => e.file !== "spec.ts");
   const quick = issue.quick !== undefined || issue.loadErrors.some((e) => e.file === "spec.ts");
   issue.mode = full && quick ? "mixed" : full ? "full" : quick ? "quick" : "none";
   return issue;
+}
+
+async function missingBasisFiles(r: LooseRequirements): Promise<Set<string>> {
+  const paths = new Set<string>();
+  for (const v of r.values ?? []) {
+    for (const d of Object.values((v.aspects ?? {}) as Readonly<Record<string, { basis?: { code?: unknown } }>>)) {
+      if (typeof d.basis?.code === "string") paths.add(d.basis.code);
+    }
+  }
+  const missing = new Set<string>();
+  for (const p of paths) {
+    if (!(await exists(join(ROOT, p)))) missing.add(p);
+  }
+  return missing;
 }
 
 /** docs/sdd/nfr.ts の基準があるカテゴリ。ファイルが無ければ undefined */

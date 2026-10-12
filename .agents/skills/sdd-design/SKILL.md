@@ -57,7 +57,7 @@ disable-model-invocation: true
 `docs(<ID>): 要件を作成` としてコミットし、push してから進める。
 
 1. `deno task current` で issue の ID とモードを特定する。完全モードでなければ止まる。
-2. `docs/specs/<ID>/requirements.ts` があり、`deno task verify <ID>` のエラーが無く、`openQuestions` が空であることを確かめる。
+2. `docs/specs/<ID>/requirements.ts` があり、`deno task verify <ID>` のエラーが無く、未確定の点（`openQuestions` と `values` の `open`）が残っていないことを確かめる。
    満たさなければ sdd-req を案内して止まる。
 3. `design.ts` がすでにあれば、作り直すのではなく、手直しとして扱う。
 

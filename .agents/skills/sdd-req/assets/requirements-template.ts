@@ -89,7 +89,29 @@ export default defineRequirements({
     consistency: { result: "considered", note: "<矛盾や用語の揺れを点検した結果>" },
     outOfScope: { result: "considered", note: "<何を対象外にしたか>" },
   },
+  // この issue が作る・変える入力と表示を1つずつ書く（変えない既存のものは書かない）。
+  // kind を選ぶと、その種類の観点がすべて必須になる（docs/sdd/schema/values.ts の VALUE_KINDS）。
+  // 決めた扱い（decidedBy）には出どころ（basis）を書く。推測は出どころにならない。
+  //   issue: issue.md からそのまま引用 / code: 既存の振る舞いを決めているファイルのパス / answer: answers の ID
+  // 関係しない（notApplicable）は、人がそう答えたときだけ書き、出どころはその回答の ID にする。
+  // issue に書かれていないことは関係しない理由にならない。決まっていなければ { open: true } にする（質問は対象と観点の名前で1件ずつ聞く）。
+  // 該当が無ければ [] にし、noValuesReason に理由を書く
+  values: [
+    {
+      target: "<入力欄や表示の名前>",
+      kind: "textDisplay",
+      aspects: {
+        long: { decidedBy: ["AC-002"], basis: { issue: "<issue.md の文をそのまま>" } },
+        lineBreak: { open: true },
+        empty: { decidedBy: ["AC-002"], basis: { code: "<既存のファイルのパス>" } },
+      },
+    },
+  ],
+  // 質問への人の回答。質問して答えを得たら、ID を振って書く。まだ回答が無ければ {}。
+  // 例: "ANS-001": { target: "<入力欄や表示の名前>", aspect: "<観点の名前>", answer: "<人が答えた内容>" }
+  answers: {},
   assumptions: ["<前提>"],
+  // 入力と表示の観点以外の未確定の点。1件に1つの対象の1つの観点。例: { target: "<画面や操作の名前>", aspect: "<遷移先>" }
   openQuestions: [],
   outOfScope: ["<対象外とする範囲>"],
 });

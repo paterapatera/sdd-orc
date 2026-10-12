@@ -13,6 +13,8 @@ export type NfrId = `NFR-${number}`;
 export type InvId = `INV-${number}`;
 /** 受け入れ条件 */
 export type AcId = `AC-${number}`;
+/** 人の回答（requirements.ts の answers） */
+export type AnsId = `ANS-${number}`;
 /** 実装タスク */
 export type TaskId = `T-${number}`;
 /** プロジェクト全体の非機能要件（docs/sdd/nfr.ts） */

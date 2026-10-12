@@ -104,3 +104,33 @@ Deno.test("設計の十分性（実現方法、守り方、チェックリスト
   assertStringIncludes(html, "戻し方（リリースで失敗したときの戻し方、マイグレーションの巻き戻し）");
   assertStringIncludes(html, "要件外の異常");
 });
+
+Deno.test("入力と表示の観点、出どころ、人の回答、未確定の観点を表示する", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(
+    root,
+    "docs/specs/EX-001/requirements.ts",
+    `values: [],\n  noValuesReason: "入力は既存のログイン画面から変わらず、新しく出す表示は固定の文言（AC-003）だけで、値によって形が変わるものが無い",\n  answers: {},`,
+    `values: [{ target: "ロック中の案内", kind: "textDisplay", aspects: { ` +
+      `long: { decidedBy: ["AC-003"], basis: { issue: "ロック中はログインできないことが画面で分かる" } }, ` +
+      `lineBreak: { notApplicable: "1行の固定文", basis: { answer: "ANS-001" } }, empty: { open: true } } }],\n` +
+      `  answers: { "ANS-001": { target: "ロック中の案内", aspect: "改行を含む値の見せ方", answer: "固定の1行なので改行は無い" } },`,
+  );
+  await patchFile(
+    root,
+    "docs/specs/EX-001/requirements.ts",
+    "openQuestions: [],",
+    `openQuestions: [{ target: "ロック中の画面", aspect: "解除の案内" }],`,
+  );
+  const r = await task(root, "render", "EX-001");
+  assertEquals(r.code, 0, r.out);
+  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
+  assertStringIncludes(html, "入力と表示の観点");
+  assertStringIncludes(html, "長い値の見せ方");
+  assertStringIncludes(html, `<span class="tag">issue</span> ロック中はログインできないことが画面で分かる`);
+  assertStringIncludes(html, `data-copy="ANS-001"`);
+  assertStringIncludes(html, "固定の1行なので改行は無い");
+  assertStringIncludes(html, "<h4>人の回答</h4>");
+  assertStringIncludes(html, "<li>ロック中の案内: 値が空のときの表示</li>");
+  assertStringIncludes(html, "<li>ロック中の画面: 解除の案内</li>");
+});

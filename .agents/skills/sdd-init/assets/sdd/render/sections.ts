@@ -1,5 +1,6 @@
 import {
   type AcceptanceGuide,
+  type Answer,
   CHECKLIST_LABELS,
   type ChecklistItem,
   DESIGN_CHECKLIST_LABELS,
@@ -12,6 +13,8 @@ import {
   type NonFunctionalRequirement,
   type SufficiencyChecklist,
   type Task,
+  VALUE_KINDS,
+  type ValueCheck,
 } from "../schema/mod.ts";
 import type { LoadedIssue, LooseDesign, LooseQuickSpec, LooseRequirements, LooseTasks } from "../scripts/lib/load.ts";
 import type { Diagnostic } from "../scripts/lib/rules.ts";
@@ -264,10 +267,73 @@ ${nfr}
 ${opts.noInvariantsReason ? `<p>変えてはいけない振る舞いが無い理由: ${esc(opts.noInvariantsReason)}</p>` : ""}`;
 }
 
+type AspectRow = { target: string; kind: string; aspect: string; decision: Record<string, unknown> };
+
+function aspectRows(values: readonly ValueCheck[] | undefined): AspectRow[] {
+  const kinds = VALUE_KINDS as Readonly<Record<string, { label: string; aspects: Readonly<Record<string, string>> }>>;
+  return (values ?? []).flatMap((v) =>
+    Object.entries((v.aspects ?? {}) as Readonly<Record<string, Record<string, unknown>>>).map(([a, decision]) => ({
+      target: v.target,
+      kind: kinds[v.kind]?.label ?? v.kind,
+      aspect: kinds[v.kind]?.aspects[a] ?? a,
+      decision,
+    }))
+  );
+}
+
+type Answers = Readonly<Record<string, Answer>>;
+
+function basisHtml(basis: unknown, answers: Answers): string {
+  const b = (basis ?? {}) as Record<string, unknown>;
+  if (typeof b.issue === "string") return `<span class="tag">issue</span> ${esc(b.issue)}`;
+  if (typeof b.code === "string") return `<span class="tag">コード</span> <code>${esc(b.code)}</code>`;
+  if (typeof b.answer === "string") {
+    const a = answers[b.answer];
+    return `<span class="tag">回答</span> ${idBadges([b.answer])} ${
+      a ? esc(a.answer) : statusLabel("error", "回答の記録なし")
+    }`;
+  }
+  return statusLabel("error", "出どころなし");
+}
+
+/** 質問への人の回答の一覧 */
+function answersHtml(answers: Answers): string {
+  const entries = Object.entries(answers);
+  if (entries.length === 0) return `<p class="muted">なし</p>`;
+  return table(
+    ["ID", "対象", "観点", "回答"],
+    entries.map(([id, a]) => [idBadges([id]), esc(a.target), esc(a.aspect), esc(a.answer)]),
+  );
+}
+
+/** 入力と表示の観点ごとの扱いと、その出どころ */
+function valuesHtml(rows: AspectRow[], noValuesReason: string | undefined, answers: Answers): string {
+  if (rows.length === 0) {
+    return noValuesReason ? `<p>入力と表示が無い理由: ${esc(noValuesReason)}</p>` : `<p class="muted">なし</p>`;
+  }
+  return table(
+    ["対象", "種類", "観点", "扱い", "出どころ"],
+    rows.map((row) => {
+      const d = row.decision;
+      const head = [esc(row.target), esc(row.kind), esc(row.aspect)];
+      if (d.open === true) return [...head, statusLabel("warning", "未確定"), ""];
+      const decision = Array.isArray(d.decidedBy)
+        ? idBadges(d.decidedBy as string[])
+        : `${statusLabel("todo", "該当しない")} ${esc(String(d.notApplicable ?? ""))}`;
+      return [...head, decision, basisHtml(d.basis, answers)];
+    }),
+  );
+}
+
 export function requirementsSection(r: LooseRequirements): Section {
-  const open = r.openQuestions.length
+  const rows = aspectRows(r.values);
+  const unresolved = [
+    ...r.openQuestions.map((q) => `${q.target}: ${q.aspect}`),
+    ...rows.filter((row) => row.decision.open === true).map((row) => `${row.target}: ${row.aspect}`),
+  ];
+  const open = unresolved.length
     ? `<div class="callout callout-warning">${statusLabel("warning", "未確定")} レビューまでに解消が必要です。${
-      list(r.openQuestions)
+      list(unresolved)
     }</div>`
     : `<p class="muted">なし</p>`;
   const html = `<section id="requirements"><h2>要件</h2>
@@ -286,6 +352,8 @@ ${
       noInvariantsReason: r.noInvariantsReason,
     })
   }
+<h4>入力と表示の観点</h4>${valuesHtml(rows, r.noValuesReason, r.answers ?? {})}
+<h4>人の回答</h4>${answersHtml(r.answers ?? {})}
 <h3 id="req-other">前提・未確定の点・対象外</h3>
 <h4>前提</h4>${list(r.assumptions)}
 <h4>未確定の点</h4>${open}

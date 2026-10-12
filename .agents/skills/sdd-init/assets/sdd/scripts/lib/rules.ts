@@ -4,8 +4,11 @@ import type {
   IssueCoverageItem,
   NfrReview,
   NonFunctionalRequirement,
+  OpenQuestion,
   Task,
+  ValueCheck,
 } from "../../schema/mod.ts";
+import { VALUE_KINDS } from "../../schema/mod.ts";
 import type { LoadedIssue, LooseDesign, LooseRequirements, LooseTasks, SpecFile } from "./load.ts";
 
 export type Diagnostic = {
@@ -27,6 +30,8 @@ export type VerifyOptions = {
   conventions?: Map<string, "gate" | "manual">;
   /** config.ts の ui（画面があるか） */
   ui?: boolean;
+  /** requirements.ts の values が出どころに挙げたファイルのうち、リポジトリに無いもの */
+  missingBasisFiles?: Set<string>;
 };
 
 /** 規約から逸脱していることを示す言い回し（conventionsCompliance に書かれていたら、守り方ではなく逸脱の説明である） */
@@ -128,6 +133,7 @@ const ID_FORMATS = {
   NFR: { re: /^NFR-\d{3}$/, label: "非機能要件", example: "NFR-001" },
   INV: { re: /^INV-\d{3}$/, label: "変えてはいけない振る舞い", example: "INV-001" },
   AC: { re: /^AC-\d{3}$/, label: "受け入れ条件", example: "AC-001" },
+  ANS: { re: /^ANS-\d{3}$/, label: "人の回答", example: "ANS-001" },
   T: { re: /^T-\d{3}$/, label: "タスク", example: "T-001" },
 } as const;
 
@@ -254,6 +260,123 @@ function checkInvariants(
     );
   }
   if (!empty && noInvariantsReason) c.warn("invariants があるのに noInvariantsReason も書かれています");
+}
+
+/** 引用の照合用。空白と Markdown のコードの記号の違いは見ない */
+const bare = (t: string) => t.replace(/[\s`]+/g, "");
+
+type LooseDecision = { decidedBy?: unknown; notApplicable?: unknown; open?: unknown; basis?: Record<string, unknown> };
+
+/**
+ * 入力と表示の一覧（values）を確かめ、未確定の観点を「対象の観点」の形で返す。
+ * 種類の観点の欠けと余り、存在しない ID の参照、確かめられない出どころをエラーにする。
+ */
+function checkValues(
+  c: Collector,
+  r: LooseRequirements,
+  refs: Set<string>,
+  issueMd: string | undefined,
+  missingFiles: Set<string> | undefined,
+): string[] {
+  const answers = r.answers as Readonly<Record<string, unknown>> | undefined;
+  if (!answers) c.error("人の回答（answers）がありません。まだ回答が無ければ {} にしてください");
+  else checkIdFormat(c, Object.keys(answers), ID_FORMATS.ANS);
+  const values = r.values as readonly ValueCheck[] | undefined;
+  if (!values) {
+    c.error("入力と表示の一覧（values）がありません。該当しない場合は [] にし、noValuesReason に理由を書いてください");
+    return [];
+  }
+  if (values.length === 0 && !r.noValuesReason) {
+    c.error("入力と表示の一覧（values）が空です。該当しない場合は noValuesReason に理由を書いてください");
+  }
+  if (values.length > 0 && r.noValuesReason) c.warn("values があるのに noValuesReason も書かれています");
+  const kinds = VALUE_KINDS as Readonly<Record<string, { aspects: Readonly<Record<string, string>> }>>;
+  const issueText = issueMd === undefined ? undefined : bare(issueMd);
+  const open: string[] = [];
+  values.forEach((v, i) => {
+    const where = `values[${i}]（${v.target}）`;
+    const kind = kinds[v.kind];
+    if (!kind) {
+      c.error(`${where}の種類「${v.kind}」がありません。${Object.keys(VALUE_KINDS).join("、")} から選んでください`);
+      return;
+    }
+    const aspects = (v.aspects ?? {}) as Readonly<Record<string, LooseDecision>>;
+    const missing = Object.keys(kind.aspects).filter((a) => !(a in aspects));
+    if (missing.length > 0) {
+      c.error(
+        `${where}に観点の扱いがありません: ${missing.map((a) => `${a}（${kind.aspects[a]}）`).join("、")}。` +
+          "決めた受け入れ条件（decidedBy）、人が関係しないと答えた理由（notApplicable）、未確定（open）のどれかを書いてください",
+      );
+    }
+    for (const [a, d] of Object.entries(aspects)) {
+      const label = kind.aspects[a];
+      if (!label) {
+        c.error(`${where}の観点「${a}」は種類 ${v.kind} にありません`);
+        continue;
+      }
+      if (d.open === true) {
+        open.push(`${v.target}の${label}`);
+        continue;
+      }
+      for (const ref of Array.isArray(d.decidedBy) ? d.decidedBy as string[] : []) {
+        if (!refs.has(ref)) c.error(`${where}の観点 ${a} が参照している ${ref} がありません`);
+      }
+      const basis = d.basis ?? {};
+      if (d.notApplicable !== undefined && typeof basis.answer !== "string") {
+        c.error(
+          `${where}の観点 ${a}（${label}）を関係しない扱いにできるのは、人がそう答えたときだけです。` +
+            "issue に書かれていないことは関係しない理由になりません。open にして質問し、回答を answers に書いて ID を出どころにしてください",
+        );
+        continue;
+      }
+      if (typeof basis.issue === "string") {
+        if (issueText !== undefined && !issueText.includes(bare(basis.issue))) {
+          c.error(
+            `${where}の観点 ${a}（${label}）の出どころ「${basis.issue}」が issue.md にありません。` +
+              "issue.md の文をそのまま引用するか、決まっていなければ open にして質問してください",
+          );
+        }
+      } else if (typeof basis.code === "string") {
+        if (missingFiles?.has(basis.code)) {
+          c.error(
+            `${where}の観点 ${a}（${label}）の出どころのファイル ${basis.code} がありません。` +
+              "既存の振る舞いを決めているファイルを書くか、決まっていなければ open にして質問してください",
+          );
+        }
+      } else if (typeof basis.answer === "string") {
+        if (answers && !(basis.answer in answers)) {
+          c.error(
+            `${where}の観点 ${a}（${label}）の出どころの回答 ${basis.answer} が answers にありません。` +
+              "人に質問して得た回答を answers に書くか、まだ聞いていなければ open にして質問してください",
+          );
+        }
+      } else {
+        c.error(
+          `${where}の観点 ${a}（${label}）に出どころ（issue、code、answer のどれか）がありません。` +
+            "推測で決めず、open にして質問してください",
+        );
+      }
+    }
+  });
+  return open;
+}
+
+const MULTIPLE_POINTS = /[、，,・／/]|および|ならびに|[^\sぁ-ん]と[^\sぁ-ん]|[^\sぁ-ん]や[^\sぁ-ん]/;
+
+/** 未確定の点の観点に、複数の点を並べていないか */
+function checkOpenQuestions(c: Collector, openQuestions: readonly OpenQuestion[]) {
+  openQuestions.forEach((q, i) => {
+    if (typeof q !== "object" || q === null) {
+      c.error(`openQuestions[${i}] は { target, aspect } の形で書いてください`);
+      return;
+    }
+    const hit = q.aspect.match(MULTIPLE_POINTS);
+    if (!hit) return;
+    c.error(
+      `openQuestions[${i}]（${q.target}）の観点「${q.aspect}」に、複数の点が並んでいます（「${hit[0]}」）。` +
+        "1件に1つの観点だけを書き、残りは別の件に分けてください",
+    );
+  });
 }
 
 /** issue.md の「受け入れ条件」の箇条書きを取り出す（「未記載」「なし」なら空） */
@@ -430,7 +553,7 @@ const UNRESOLVED_NOTE = /未確定|未定|要確認|openQuestions|(設計|実装
 function checkChecklistResolved(
   c: Collector,
   checklist: Readonly<Record<string, { note: string }>>,
-  openQuestions: readonly string[],
+  openQuestions: readonly unknown[],
 ) {
   if (openQuestions.length > 0) return;
   for (const [item, { note }] of Object.entries(checklist)) {
@@ -470,9 +593,18 @@ function verifyRequirements(
       c.error(`${id} が上書きしている ${nfr.overrides} が docs/sdd/nfr.ts にありません`);
     }
   }
-  checkChecklistResolved(c, r.checklist, r.openQuestions);
-  if (r.openQuestions.length > 0) {
-    const msg = `未確定の点が ${r.openQuestions.length} 件残っています`;
+  const openAspects = checkValues(
+    c,
+    r,
+    new Set([...acIds, ...Object.keys(r.invariants)]),
+    issueMd,
+    opts.missingBasisFiles,
+  );
+  checkOpenQuestions(c, r.openQuestions);
+  const unresolved = [...r.openQuestions, ...openAspects];
+  checkChecklistResolved(c, r.checklist, unresolved);
+  if (unresolved.length > 0) {
+    const msg = `未確定の点が ${unresolved.length} 件残っています`;
     if (opts.finish) c.error(msg);
     else c.warn(msg);
   }
@@ -722,7 +854,7 @@ export function verifyIssue(issue: LoadedIssue, opts: VerifyOptions = {}): Diagn
       c.error("軽量モード（spec.ts）と完全モード（requirements.ts など）のファイルが混在しています");
       break;
     case "full":
-      verifyFull(c, issue, opts);
+      verifyFull(c, issue, { ...opts, missingBasisFiles: issue.missingBasisFiles });
       if (opts.finish && !issue.tasks) c.at("tasks.ts").error("tasks.ts が無いため完了処理を行えません");
       break;
     case "quick":

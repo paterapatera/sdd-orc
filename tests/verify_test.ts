@@ -493,7 +493,12 @@ Deno.test("未確定の点が残っている間は、チェックリストの未
     `note: "失敗回数4回→5回目（AC-001）、ロック解除時刻の経過後（AC-004）"`,
     `note: "失敗回数4回→5回目（AC-001）。表示の件数は未確定（openQuestions）"`,
   );
-  await patchFile(root, "docs/specs/EX-001/requirements.ts", "openQuestions: [],", `openQuestions: ["表示の件数"],`);
+  await patchFile(
+    root,
+    "docs/specs/EX-001/requirements.ts",
+    "openQuestions: [],",
+    `openQuestions: [{ target: "ロック中の画面", aspect: "表示の件数" }],`,
+  );
   const r = await task(root, "verify", "EX-001");
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, "未確定の点が 1 件残っています");
@@ -510,4 +515,189 @@ Deno.test("軽量モードでチェックリストに未確定と書いていれ
   const r = await task(root, "verify", "EX-002");
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "checklist.inputValidation に「未定」とあります");
+});
+
+const REQ = "docs/specs/EX-001/requirements.ts";
+
+/** サンプルの values と answers を置き換える */
+async function setValues(root: string, values: string, answers = "{}") {
+  const path = `${root}/${REQ}`;
+  const text = await Deno.readTextFile(path);
+  const next = text.replace(
+    /values: \[\],\n\s*noValuesReason: "[^"]*",\n\s*answers: \{\},/,
+    `values: ${values},\n  answers: ${answers},`,
+  );
+  if (next === text) throw new Error("values が見つかりません");
+  await Deno.writeTextFile(path, next);
+}
+
+const display = (aspects: string) => `[{ target: "ロック中の案内", kind: "textDisplay", aspects: { ${aspects} } }]`;
+
+Deno.test("values が空で理由も無ければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(root, REQ, "noValuesReason:", "// noValuesReason:");
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "入力と表示の一覧（values）が空です");
+});
+
+Deno.test("values の観点がすべて確かめられる出どころで決まっていれば通る", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await setValues(
+    root,
+    display(
+      `long: { decidedBy: ["AC-003"], basis: { issue: "ロック中はログインできないことが画面で分かる" } }, ` +
+        `lineBreak: { decidedBy: ["AC-003"], basis: { code: "docs/sdd/config.ts" } }, ` +
+        `empty: { notApplicable: "案内は常に出る", basis: { answer: "ANS-001" } }`,
+    ),
+    `{ "ANS-001": { target: "ロック中の案内", aspect: "値が空のときの表示", answer: "案内は常に出るので空は無い" } }`,
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+  assertStringIncludes(r.out, "エラー 0 件");
+});
+
+Deno.test("values の観点が欠けていればエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await setValues(root, display(`long: { open: true }`));
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    "values[0]（ロック中の案内）に観点の扱いがありません: lineBreak（改行を含む値の見せ方）、empty（値が空のときの表示）",
+  );
+});
+
+Deno.test("values の種類、観点、参照する ID が無ければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await setValues(
+    root,
+    `[{ target: "a", kind: "colorInput", aspects: {} }, { target: "b", kind: "textDisplay", aspects: { long: { open: true }, lineBreak: { open: true }, empty: { open: true }, color: { open: true } } }, ` +
+      `{ target: "c", kind: "textDisplay", aspects: { long: { decidedBy: ["AC-009"], basis: { issue: "15分間ロックする" } }, lineBreak: { open: true }, empty: { open: true } } }]`,
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "values[0]（a）の種類「colorInput」がありません");
+  assertStringIncludes(r.out, "values[1]（b）の観点「color」は種類 textDisplay にありません");
+  assertStringIncludes(r.out, "values[2]（c）の観点 long が参照している AC-009 がありません");
+});
+
+Deno.test("values の出どころが確かめられなければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await setValues(
+    root,
+    display(
+      `long: { decidedBy: ["AC-003"], basis: { issue: "案内は200文字まで" } }, ` +
+        `lineBreak: { decidedBy: ["AC-003"], basis: { code: "src/missing.ts" } }, ` +
+        `empty: { decidedBy: ["AC-003"] }`,
+    ),
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "観点 long（長い値の見せ方）の出どころ「案内は200文字まで」が issue.md にありません");
+  assertStringIncludes(r.out, "観点 lineBreak（改行を含む値の見せ方）の出どころのファイル src/missing.ts がありません");
+  assertStringIncludes(r.out, "観点 empty（値が空のときの表示）に出どころ（issue、code、answer のどれか）がありません");
+});
+
+Deno.test("values の issue からの引用は、空白と記号の違いを見ない", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await setValues(
+    root,
+    display(
+      `long: { decidedBy: ["AC-003"], basis: { issue: "5回続けて失敗したら 15分間ロックする" } }, lineBreak: { open: true }, empty: { open: true }`,
+    ),
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+});
+
+Deno.test("関係しない扱いの出どころが人の回答でなければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await setValues(
+    root,
+    display(
+      `long: { notApplicable: "issue に無い", basis: { issue: "ロック中はログインできないことが画面で分かる" } }, ` +
+        `lineBreak: { notApplicable: "既存の画面のまま", basis: { code: "docs/sdd/config.ts" } }, empty: { open: true }`,
+    ),
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "観点 long（長い値の見せ方）を関係しない扱いにできるのは、人がそう答えたときだけです");
+  assertStringIncludes(
+    r.out,
+    "観点 lineBreak（改行を含む値の見せ方）を関係しない扱いにできるのは、人がそう答えたときだけです",
+  );
+});
+
+Deno.test("出どころの回答が answers に無ければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await setValues(
+    root,
+    display(
+      `long: { notApplicable: "短い", basis: { answer: "ANS-002" } }, lineBreak: { decidedBy: ["AC-003"], basis: { answer: "ANS-001" } }, empty: { open: true }`,
+    ),
+    `{ "ANS-001": { target: "ロック中の案内", aspect: "改行を含む値の見せ方", answer: "改行しない" }, "ANS-1": { target: "x", aspect: "y", answer: "z" } }`,
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "観点 long（長い値の見せ方）の出どころの回答 ANS-002 が answers にありません");
+  assertStringIncludes(r.out, "人の回答のID「ANS-1」の形式が違います");
+  assert(!r.out.includes("ANS-001 が answers にありません"), r.out);
+});
+
+Deno.test("answers が無ければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(root, REQ, "answers: {},\n", "");
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "人の回答（answers）がありません");
+});
+
+Deno.test("values の未確定の観点は未確定の点に数え、--finish ではエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await setValues(
+    root,
+    display(
+      `long: { decidedBy: ["AC-003"], basis: { code: "docs/sdd/config.ts" } }, lineBreak: { decidedBy: ["AC-003"], basis: { code: "docs/sdd/config.ts" } }, empty: { open: true }`,
+    ),
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+  assertStringIncludes(r.out, "未確定の点が 1 件残っています");
+  const f = await task(root, "verify", "--finish", "EX-001");
+  assertEquals(f.code, 1, f.out);
+  assertStringIncludes(f.out, "[エラー] requirements.ts: 未確定の点が 1 件残っています");
+});
+
+Deno.test("openQuestions の観点に複数の点を並べるとエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(
+    root,
+    REQ,
+    "openQuestions: [],",
+    `openQuestions: [{ target: "ロック中の画面", aspect: "表示の件数と並び順" }, { target: "ロック中の画面", aspect: "文言・色" }],`,
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    "openQuestions[0]（ロック中の画面）の観点「表示の件数と並び順」に、複数の点が並んでいます",
+  );
+  assertStringIncludes(
+    r.out,
+    "openQuestions[1]（ロック中の画面）の観点「文言・色」に、複数の点が並んでいます（「・」）",
+  );
+});
+
+Deno.test("openQuestions の観点で、ひらがなの「と」「や」は並びとみなさない", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(
+    root,
+    REQ,
+    "openQuestions: [],",
+    `openQuestions: [{ target: "ロック中の画面", aspect: "ロックされたときの案内" }, { target: "解除", aspect: "解除をやり直すときの結果" }],`,
+  );
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+  assertStringIncludes(r.out, "未確定の点が 2 件残っています");
 });

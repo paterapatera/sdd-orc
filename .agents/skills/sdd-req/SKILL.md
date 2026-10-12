@@ -68,6 +68,16 @@ disable-model-invocation: true
 - issue とコードから決められないことは推測で埋めず、`openQuestions` に書く。選択肢と推奨も考えておく。
   利用者から見える振る舞い（文言、並び順、遷移先、既存の画面の扱い、不正な入力への対応）で issue に明記されていないものは、
   既存のコードに既定の動きがあっても `openQuestions` に書く。
+- この issue が作る・変える入力と表示を、`values` に1つずつ書く（変えない既存のものは書かない）。
+  値の種類（`kind`）を選ぶと、その種類の観点がすべて必須になる（欠けると型エラー）。観点ごとに、次のどれかを書く。
+  - 決めた（`decidedBy` に受け入れ条件の ID）。`basis` に出どころを書く。
+    出どころは、issue.md からそのまま引用した文（`issue`）、既存の振る舞いを決めているファイルのパス（`code`）、人の回答の ID（`answer`）のどれかである。
+    verify が、引用は issue.md にあるか、ファイルはあるか、回答の ID は `answers` にあるかを確かめる。推測は出どころにならない。
+  - 関係しない（`notApplicable` に理由）。人がそう答えたときだけ書き、`basis` はその回答の ID にする（それ以外は verify がエラーにする）。
+    issue に書かれていないことは、関係しない理由にならない。
+  - 決まっていない（`{ open: true }`）。質問の文は書かない（人には、対象と観点の名前のとおりに1点だけ聞く）。
+- `answers` は、質問して得た人の回答だけを書く（ID は `ANS-001` から）。最初は `{}` にする。
+- `openQuestions` には、入力と表示の観点以外の未確定の点を、`{ target, aspect }` で1件に1つの観点だけ書く（複数の点を並べると verify がエラーにする）。
 - 受け入れ条件には確かめ方（`verifiedBy`）を付ける。人が確かめるもの（human）は、画面で分かる形で `then` を書く。
   HTTPステータスやログなど人に確かめにくいものは automated にする。
 - issue のコメントで対象外とされたものは `outOfScope` に書く。
@@ -105,14 +115,20 @@ deno task render <ID>
 守ること（試行で崩れた点）: 機能の大枠は質問したのに、日付の形を実装で、入力の上限を設計で、AI が決めた回があった。
 並び順と件数を1つの質問にまとめ、並び順だけ答えられると、件数を推奨で埋めた回もあった。どれも受け入れテストで回答と食い違った。
 日時の形だけを質問してタイムゾーンを聞かず、設計でサーバーの設定（UTC）に合わせた回もあった（利用者は日本時間を求めていた）。
+観点を文章の一覧で渡した回は、書き手が思い出した観点しか点検しなかった。観点の扱いを自由な文で書かせた回は、
+聞いていない観点を「関係しない」や中身の合わない受け入れ条件で決めたことにし、質問の文に2点以上を入れた。
+関係しない扱いに issue の文を出どころとして書かせた回は、観点と関係の無い文を引用し、「issue に無い」を理由に観点を外した。
+観点は `values` の種類が出し、扱いには出どころを書き、関係しないかどうかも人に聞き、未確定は観点の名前で聞く。
 
-`openQuestions` が空でなければ、`docs/sdd/guides/asking-questions.md` の手順で、**1件ずつ**質問する。
+`values` の `open` も未確定の点である。`openQuestions` か `values` の `open` が残っていれば、
+`docs/sdd/guides/asking-questions.md` の手順で、**1件ずつ**質問する。1つの質問で聞くのは、その件の観点1つだけにする。
 
 1. 他の質問に最も影響するものを1件選び、選択肢と推奨を添えて聞く。返答を終えて回答を待つ。
-2. 回答を requirements.ts に反映し、`openQuestions` から消す。残りの未確定の点を見直す
+2. 回答を `answers` に ID を振って書き、requirements.ts に反映して `openQuestions` から消す（`values` の観点なら、受け入れ条件に書いて
+   `decidedBy` と `basis: { answer: "ANS-xxx" }` に変える。関係しないと答えたら `notApplicable` と、その回答の ID にする）。残りの未確定の点を見直す
    （回答で決まったものは消し、前提が変わったものは聞き方を変え、新しく必要になったものは加える）。
 3. `deno task check <ID>` と `deno task verify <ID>` を通す。
-4. `openQuestions` が空になるまで1〜3を繰り返す。
+4. `openQuestions` も `values` の `open` も無くなるまで1〜3を繰り返す。
 
 ## 6. 確認ポイント2: 要件全体を確認してもらう
 
@@ -128,7 +144,7 @@ deno task render <ID>
 
 ## 7. コミットして push する
 
-1. `deno task check <ID>`、`deno task verify <ID>`、`deno task render <ID>` を実行する（`openQuestions` は空であること）。
+1. `deno task check <ID>`、`deno task verify <ID>`、`deno task render <ID>` を実行する（`openQuestions` も `values` の `open` も残っていないこと）。
 2. `docs/specs/<ID>/` をコミットする（`spec.ts` から切り替えた場合は、その削除も含める）。コミットメッセージは `docs(<ID>): 要件を作成`。
 3. `git push -u origin <ブランチ名>` で push する（他の人の衝突チェックに見えるようにするため）。リモートが無ければ省く。
 

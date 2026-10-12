@@ -62,7 +62,7 @@ Deno.test("更新では道具を差し替え、恒久ドキュメントは残す
   await install(root);
   await patchFile(root, "docs/sdd/schema/ids.ts", "export type FrId", "// 手で変えた\nexport type FrId");
   await writeFile(root, "docs/sdd/scripts/old.ts", "// 古いファイル\n");
-  await patchFile(root, "docs/sdd/config.ts", `schemaVersion: "0.9.0"`, `schemaVersion: "0.0.1"`);
+  await patchFile(root, "docs/sdd/config.ts", `schemaVersion: "0.10.0"`, `schemaVersion: "0.0.1"`);
   await patchFile(root, "docs/sdd/config.ts", `branchPrefix: ""`, `branchPrefix: "topic/"`);
   await writeFile(root, "docs/sdd/architecture.ts", "// プロジェクトの構成\n");
 
@@ -70,11 +70,11 @@ Deno.test("更新では道具を差し替え、恒久ドキュメントは残す
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, "[更新] docs/sdd/schema/ids.ts");
   assertStringIncludes(r.out, "[削除] docs/sdd/scripts/old.ts");
-  assertStringIncludes(r.out, "schemaVersion 0.0.1 → 0.9.0");
+  assertStringIncludes(r.out, "schemaVersion 0.0.1 → 0.10.0");
   assertEquals((await Deno.readTextFile(join(root, "docs/sdd/schema/ids.ts"))).includes("手で変えた"), false);
   assertEquals(await exists(join(root, "docs/sdd/scripts/old.ts")), false);
   const config = await Deno.readTextFile(join(root, "docs/sdd/config.ts"));
-  assertStringIncludes(config, `schemaVersion: "0.9.0"`);
+  assertStringIncludes(config, `schemaVersion: "0.10.0"`);
   assertStringIncludes(config, `branchPrefix: "topic/"`);
   assertEquals(await Deno.readTextFile(join(root, "docs/sdd/architecture.ts")), "// プロジェクトの構成\n");
 });

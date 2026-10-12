@@ -25,10 +25,13 @@ Deno.test("完全モードのひな形（要件・設計・タスク）は、組
     ["sdd-tasks/assets/tasks-template.ts", "tasks.ts"],
   ];
   for (const [src, dst] of templates) {
-    const text = await Deno.readTextFile(join(SKILLS, src));
-    await writeFile(root, `docs/specs/EX-200/${dst}`, text.replaceAll("<ID>", "EX-200"));
+    const text = (await Deno.readTextFile(join(SKILLS, src)))
+      .replaceAll("<ID>", "EX-200")
+      .replaceAll("<issue.md の文をそのまま>", "長い名前は省略して表示する")
+      .replaceAll("<既存のファイルのパス>", "docs/sdd/config.ts");
+    await writeFile(root, `docs/specs/EX-200/${dst}`, text);
   }
-  await writeFile(root, "docs/specs/EX-200/issue.md", "# EX-200 テスト\n");
+  await writeFile(root, "docs/specs/EX-200/issue.md", "# EX-200 テスト\n\n長い名前は省略して表示する。\n");
   const check = await task(root, "check", "EX-200");
   assertEquals(check.code, 0, check.out);
   const verify = await task(root, "verify", "EX-200");
