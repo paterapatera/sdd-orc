@@ -359,7 +359,7 @@ Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテス�
   assert(without.includes(`集計から外した実行（excluded.md）: ${run.runId}`));
 });
 
-Deno.test("採否: 狙った問題の合格が増え、val が減っていなければ採用。足りなければ保留、条件を外れれば却下", () => {
+Deno.test("採否: val の合格割合だけで決める。train の増減では却下しない", () => {
   const OLD = "a".repeat(40);
   const NEW = "b".repeat(40);
   let n = 0;
@@ -403,13 +403,13 @@ Deno.test("採否: 狙った問題の合格が増え、val が減っていなけ
   assertEquals(valDown.decision, "却下");
   assert(valDown.reasons.some((r) => r.includes("V-1 の合格が減った")));
 
-  const noGain = judgeImpact([
+  // train が増えていなくても、val が減っていなければ採用する
+  const trainFlat = judgeImpact([
     ...runs("T-1", OLD, [true, true, false]),
     ...runs("T-1", NEW, [true, false, true]),
-    ...val([true, true, true]),
+    ...val([true, false, true]),
   ], input);
-  assertEquals(noGain.decision, "却下");
-  assert(noGain.reasons.some((r) => r.includes("T-1 の合格が増えていない")));
+  assertEquals(trainFlat.decision, "採用");
 
   const few = judgeImpact([...target, ...runs("V-1", OLD, [true, true, false]), ...runs("V-1", NEW, [true])], input);
   assertEquals(few.decision, "保留");
@@ -418,4 +418,40 @@ Deno.test("採否: 狙った問題の合格が増え、val が減っていなけ
   const noVal = judgeImpact(target, { ...input, splitOf: { "T-1": "train" } });
   assertEquals(noVal.decision, "保留");
   assert(noVal.reasons.includes("val の問題が無い"));
+
+  // 変更前が 0 のままでは、減っていないことにはならない
+  const valZero = judgeImpact([
+    ...target,
+    ...runs("V-1", OLD, [false, false, false]),
+    ...runs("V-1", NEW, [false, false, false]),
+  ], input);
+  assertEquals(valZero.decision, "却下");
+  assert(valZero.reasons.some((r) => r.includes("V-1 の合格が 0 のまま（0/3 → 0/3）")));
+
+  const valRaised = judgeImpact([
+    ...target,
+    ...runs("V-1", OLD, [false, false, false]),
+    ...runs("V-1", NEW, [false, true, false]),
+  ], input);
+  assertEquals(valRaised.decision, "採用");
+
+  const two = { ...input, splitOf: { "T-1": "train", "V-1": "val", "V-2": "val" } as const };
+  const tie = judgeImpact([
+    ...target,
+    ...runs("V-1", OLD, [true, true, false]),
+    ...runs("V-1", NEW, [true, false, true]),
+    ...runs("V-2", OLD, [true, false, false]),
+    ...runs("V-2", NEW, [false, true, false]),
+  ], two);
+  assertEquals(tie.decision, "却下");
+  assert(tie.reasons.some((r) => r.includes("上回っていない")));
+
+  const bothUp = judgeImpact([
+    ...target,
+    ...runs("V-1", OLD, [true, false, false]),
+    ...runs("V-1", NEW, [true, true, false]),
+    ...runs("V-2", OLD, [false, false, false]),
+    ...runs("V-2", NEW, [true, false, false]),
+  ], two);
+  assertEquals(bothUp.decision, "採用");
 });

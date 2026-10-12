@@ -706,8 +706,10 @@ const fmtTally = (t: Tally) => (t.runs ? `${t.passed}/${t.runs}` : "未計測");
 const rate = (t: Tally) => t.passed / t.runs;
 
 /**
- * スキルの変更の前と後で、問題ごとの合格の回数を比べ、skill-impact.md の1行と採否を作る。
- * 採用の条件: 狙った問題で合格の割合が増え、すべての val の問題で減っていない（どちらも各版 IMPACT_MIN_RUNS 回以上）。
+ * スキルの変更の前と後で、val の合格の割合を比べ、skill-impact.md の1行と採否を作る。
+ * 採用の条件は val だけ（各版 IMPACT_MIN_RUNS 回以上）。train の割合は表に残し、採否には使わない。
+ * val が 1 問のとき: 変更前が 0 なら変更後に 1 回以上合格していること。0 より大きいなら減っていないこと。
+ * val が 2 問以上のとき: 各問題で割合が上回っていること。
  * 回数が足りなければ保留、条件を満たさなければ却下にする。
  */
 export function judgeImpact(scores: readonly (Score & { excluded?: string })[], input: ImpactInput): ImpactResult {
@@ -729,23 +731,12 @@ export function judgeImpact(scores: readonly (Score & { excluded?: string })[], 
     if (split !== "holdout") cells[split].push(`${id}: ${fmtTally(b)} → ${fmtTally(a)}`);
   }
 
-  const tb = tally(scores, input.target, input.before.tree, input.driver);
-  const ta = tally(scores, input.target, input.after.tree, input.driver);
-  if (!enough(tb) || !enough(ta)) {
-    lower("保留");
-    reasons.push(
-      `狙った問題 ${input.target} の回数が足りない（前 ${tb.runs} 回、後 ${ta.runs} 回。各 ${IMPACT_MIN_RUNS} 回以上）`,
-    );
-  } else if (rate(ta) <= rate(tb)) {
-    lower("却下");
-    reasons.push(`狙った問題 ${input.target} の合格が増えていない（${fmtTally(tb)} → ${fmtTally(ta)}）`);
-  }
-
   const vals = Object.entries(input.splitOf).filter(([, s]) => s === "val").map(([id]) => id).sort();
   if (!vals.length) {
     lower("保留");
     reasons.push("val の問題が無い");
   }
+  const strict = vals.length >= 2;
   for (const id of vals) {
     const b = tally(scores, id, input.before.tree, input.driver);
     const a = tally(scores, id, input.after.tree, input.driver);
@@ -757,6 +748,12 @@ export function judgeImpact(scores: readonly (Score & { excluded?: string })[], 
     } else if (rate(a) < rate(b)) {
       lower("却下");
       reasons.push(`val の問題 ${id} の合格が減った（${fmtTally(b)} → ${fmtTally(a)}）`);
+    } else if (rate(b) === 0 && rate(a) === 0) {
+      lower("却下");
+      reasons.push(`val の問題 ${id} の合格が 0 のまま（${fmtTally(b)} → ${fmtTally(a)}）`);
+    } else if (strict && rate(a) <= rate(b)) {
+      lower("却下");
+      reasons.push(`val の問題 ${id} の合格が上回っていない（${fmtTally(b)} → ${fmtTally(a)}）`);
     }
   }
 
