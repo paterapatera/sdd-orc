@@ -3,7 +3,9 @@
  * SDK は Deno では動かない（ripgrep の場所と、fetch のストリーミングの送信）ため、ここだけ Node で動かす。
  *
  * 使い方: node eval/sdk/driver.ts <入力の JSON ファイル>
- * 入力: { target, outDir, model, maxTurns, steps: string[], persona, issue }
+ * 入力: { target, outDir, model, maxTurns, steps: string[], persona, issue, modelParams?, personaModel?, personaModelParams? }
+ *   modelParams      実行する AI のモデルの引数（推論の強さなど）。省略時は fast=false だけ
+ *   personaModel     人役のモデル。省略時は実行する AI と同じモデルと引数（モデルどうしを比べるときは固定する）
  * 書くもの（outDir）: auto.jsonl（Cursor の agent-transcripts と同じ形）、persona.jsonl、auto-raw.json
  */
 import { appendFileSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
@@ -19,11 +21,21 @@ type Input = {
   steps: string[];
   persona: string;
   issue: string;
+  modelParams?: ModelParam[];
+  personaModel?: string;
+  personaModelParams?: ModelParam[];
 };
+type ModelParam = { id: string; value: string };
 
 const NEXT = "<<次へ>>";
 const input: Input = JSON.parse(readFileSync(process.argv[2], "utf8"));
 const apiKey = process.env.CURSOR_API_KEY || undefined;
+// composer-2.5 は SDK の既定が Fast（fast: "true" が isDefault）。fast を明示しないと Fast で動く
+const FAST_OFF: ModelParam[] = [{ id: "fast", value: "false" }];
+const model = { id: input.model, params: input.modelParams ?? FAST_OFF };
+const personaModel = input.personaModel
+  ? { id: input.personaModel, params: input.personaModelParams ?? FAST_OFF }
+  : model;
 
 // ---------------------------------------------------------------------------
 // 人役
@@ -45,8 +57,7 @@ ${input.issue}`;
 async function askPersona(kind: string, task: string): Promise<string> {
   const result = await Agent.prompt(`${PERSONA_RULES}\n\n# いまの依頼\n${task}`, {
     apiKey,
-    // composer-2.5 は SDK の既定が Fast（fast: "true" が isDefault）。fast を明示しないと Fast で動く
-    model: { id: input.model, params: [{ id: "fast", value: "false" }] },
+    model: personaModel,
     local: { cwd: personaHome },
     tools: [],
   });
@@ -158,11 +169,10 @@ function stepMessage(step: string): string {
   return /issue の本文/.test(step) ? `${text}\n\n${input.issue}` : text;
 }
 
-const model = { id: input.model, params: [{ id: "fast", value: "false" }] };
 console.log(`model ${JSON.stringify(model)}`);
+if (personaModel !== model) console.log(`persona ${JSON.stringify(personaModel)}`);
 const agent = await Agent.create({
   apiKey,
-  // composer-2.5 は SDK の既定が Fast（fast: "true" が isDefault）。fast を明示しないと Fast で動く
   model,
   local: { cwd: input.target, settingSources: ["project"], customTools: { AskQuestion: askQuestionTool } },
   disallowedTools: ["askQuestion"],
