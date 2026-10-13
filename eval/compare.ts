@@ -3,10 +3,12 @@
  * 採点はしない（成果物を人が比べるため）。eval/runs/ の集計（summary）には入らない。
  *
  * 使い方: deno run --allow-all eval/compare.ts [--out <ディレクトリ>] [--workers <並列の数>] [--models <名前,...>] [--stages start,req,design,tasks]
- *          [--worker-from <写しの番号>] [--timeout <分>] [--summary-only]
+ *          [--worker-from <写しの番号>] [--timeout <分>] [--summary-only] [--refresh-skills]
  *   --out を既存のディレクトリにすると、終わった実行（成果物をコミットした result.json がある）を飛ばして続きから回す。
  *   --worker-from を変えると、別の写し（w<番号>から）を使う。動いている比較と並べて、やり直しを回すため。
  *   --summary-only は、実行せずに summary.md と artifacts/ だけを作り直す。
+ *   --refresh-skills は、各実行の前に、このリポジトリの今のスキルと道具（install.ts）を試験場へ入れ直す。
+ *     工程の入力のスナップショットには、準備したときのスキルが入っているため。差し替えのコミットは、モデルの作業の前にする。
  *
  * 進め方:
  *   1. 試験場を eval:prepare と同じく出発点に戻し、並列の数だけ写しを作る（../eval-sdd-cmp/w<n>）。
@@ -69,6 +71,7 @@ const { values } = parseArgs({
     "worker-from": { type: "string", default: "1" },
     timeout: { type: "string", default: "180" },
     "summary-only": { type: "boolean" },
+    "refresh-skills": { type: "boolean" },
     models: { type: "string" },
     stages: { type: "string", default: STAGES.map((s) => s.name).join(",") },
   },
@@ -166,6 +169,31 @@ async function restore(wt: string, dir: string) {
   }
 }
 
+/** 試験場のスキルと docs/sdd の道具を、このリポジトリの今の版に入れ直す（モデルの作業の前） */
+async function refreshSkills(wt: string) {
+  const src = join(paths.repo, ".agents/skills");
+  const dst = join(wt, ".agents/skills");
+  await remove(dst);
+  const cp = await run("cp", ["-a", src, dst], wt);
+  if (cp.code !== 0) throw new Error(`スキルをコピーできませんでした: ${cp.out}`);
+  await git(wt, "add", "-A", ".agents/skills");
+  if (await exists(join(wt, "docs/sdd/config.ts"))) {
+    const r = await run(Deno.execPath(), [
+      "run",
+      "--allow-read",
+      "--allow-write",
+      "--allow-run=git",
+      join(dst, "sdd-init/scripts/install.ts"),
+    ], wt);
+    if (r.code !== 0) throw new Error(`SDD の道具を更新できませんでした: ${r.out}`);
+    await git(wt, "add", "-A", "docs/sdd", ".gitignore");
+  }
+  if ((await run("git", ["diff", "--cached", "--quiet"], wt)).code !== 0) {
+    const skillsCommit = (await git(paths.repo, "rev-parse", "HEAD")).slice(0, 7);
+    await git(wt, "commit", "-q", "--no-verify", "-m", `chore: SDD のスキルを差し替え（sdd-orc ${skillsCommit}）`);
+  }
+}
+
 // ---------------------------------------------------------------------------
 // 準備
 
@@ -222,6 +250,7 @@ async function runOne(stage: Stage, model: Model, input: string, wt: string): Pr
   await remove(dir);
   await Deno.mkdir(dir, { recursive: true });
   await restore(wt, input);
+  if (values["refresh-skills"]) await refreshSkills(wt);
   const startCommit = await git(wt, "rev-parse", "HEAD");
   const inputFile = join(dir, "driver-input.json");
   await Deno.writeTextFile(
@@ -393,16 +422,26 @@ async function writeSummary() {
       );
     }
   }
+  const refresh = await Deno.readTextFile(join(out, "refresh.json")).catch(() => "");
   const head = `# ${SCENARIO} のモデル比較\n\n` +
     `- 基準（次の工程の入力）: ${BASELINE}\n- 人役: ${PERSONA.id}（${
       PERSONA.params.map((x) => `${x.id}=${x.value}`).join(", ")
     }）\n` +
     `- 各工程は新しいチャットで、スキルを1つだけ呼んだ\n` +
-    `- 成果物は artifacts/<工程>/<モデル>.ts と .html に並べた\n\n`;
+    `- 成果物は artifacts/<工程>/<モデル>.ts と .html に並べた\n` +
+    (refresh ? `- ${refresh.trim()}\n` : "") +
+    `\n`;
   await Deno.writeTextFile(join(out, "summary.md"), head + rows.join("\n") + "\n");
 }
 
 await Deno.mkdir(out, { recursive: true });
+if (values["refresh-skills"]) {
+  const skillsCommit = (await git(paths.repo, "rev-parse", "HEAD")).slice(0, 7);
+  await Deno.writeTextFile(
+    join(out, "refresh.json"),
+    `各実行の前に、このリポジトリのスキル ${skillsCommit} と道具を入れ直した。\n`,
+  );
+}
 log(`出力: ${out}`);
 if (values["summary-only"]) {
   await writeSummary();
