@@ -1,11 +1,20 @@
 {
-  "name": "sdd-orc",
+  "name": "@paterapatera/sdd-orc",
   "version": "0.1.0",
-  "private": true,
   "description": "Cursor、Codex、Claude Code へ SDD のスキルを入れる",
+  "license": "MIT",
+  "author": "patera",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/paterapatera/sdd-orc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/paterapatera/sdd-orc/issues"
+  },
+  "homepage": "https://github.com/paterapatera/sdd-orc#readme",
   "type": "module",
   "bin": {
-    "sdd-orc": "./cli/install.mjs"
+    "sdd-orc": "cli/install.mjs"
   },
   "files": [
     "cli",
@@ -13,5 +22,8 @@
   ],
   "engines": {
     "node": ">=20"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

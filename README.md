@@ -47,12 +47,12 @@ Cursor などで使える `.agents/skills/` の形式で書いている（Claude
 1. 対象リポジトリのルートで、スキルをコピーする。未指定なら `.agents/skills/`。`--agent` の名前がドットディレクトリになる。`--agent cursor` は `.cursor/skills/`、`--agent claude` は `.claude/skills/`（Claude Code）。
 
    ```sh
-   npx github:<owner>/sdd-orc
-   bunx github:<owner>/sdd-orc
-   npx github:<owner>/sdd-orc --agent cursor --agent claude
+   npx @paterapatera/sdd-orc
+   bunx @paterapatera/sdd-orc
+   npx @paterapatera/sdd-orc --agent cursor --agent claude
    ```
 
-   ホームへ入れるときは `--global`。公開するまでは、このリポジトリを指して `node cli/install.mjs --dir <対象>` を実行する。
+   ホームへ入れるときは `--global`。開発中は `node cli/install.mjs --dir <対象>` でも同じ。
 2. 対象リポジトリで `/sdd-init` を実行する。`docs/sdd/` に道具（型定義、検証スクリプト、HTML の生成、AI 向けの手引き）が入り、pre-commit hook が設置され、恒久ドキュメント（構成、規約、非機能要件、ADR）が作られる。
 3. 2人目以降のメンバーは、pre-commit hook だけ各自設置する必要がある。
 

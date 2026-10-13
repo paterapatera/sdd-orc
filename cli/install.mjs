@@ -2,7 +2,7 @@
 /**
  * .agents/skills のスキルを、対象ディレクトリへコピーする。
  *
- *   npx sdd-orc
+ *   npx @paterapatera/sdd-orc
  *   node cli/install.mjs --dir <対象> [--agent <名前>] [--global] [--dry-run]
  *
  * インストール先は .<名前>/skills。--agent cursor なら .cursor/skills、未指定なら .agents/skills。
