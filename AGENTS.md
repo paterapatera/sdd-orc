@@ -20,6 +20,7 @@ SDD のスキル（`.agents/skills/`）と、対象リポジトリにコピー�
 | 検証・品質ゲートなどの道具 | `.agents/skills/sdd-init/assets/sdd/scripts/`（共通の処理は `scripts/lib/`） |
 | 人向けの HTML | `.agents/skills/sdd-init/assets/sdd/render/` |
 | 道具のコピーと hook の設置 | `.agents/skills/sdd-init/scripts/install.ts` |
+| スキルの配布（npx / bunx） | `cli/install.mjs` |
 | 恒久ドキュメントのひな形 | `.agents/skills/sdd-init/assets/templates/` |
 | 品質ツールの提案 | `.agents/skills/propose-quality-tools/`（更新の手順は `MAINTAIN.md`） |
 | 訓練（試験場での実行と採点、失敗パターンの記録） | `eval/`（使い方は下の「訓練」） |

@@ -44,10 +44,17 @@ Cursor などで使える `.agents/skills/` の形式で書いている（Claude
 
 ### 導入する
 
-1. このリポジトリの `.agents/skills/` を、対象リポジトリの `.agents/skills/` にコピーする。
+1. 対象リポジトリのルートで、スキルをコピーする。未指定なら `.agents/skills/`。`--agent` の名前がドットディレクトリになる。`--agent cursor` は `.cursor/skills/`、`--agent claude` は `.claude/skills/`（Claude Code）。
+
+   ```sh
+   npx github:<owner>/sdd-orc
+   bunx github:<owner>/sdd-orc
+   npx github:<owner>/sdd-orc --agent cursor --agent claude
+   ```
+
+   ホームへ入れるときは `--global`。公開するまでは、このリポジトリを指して `node cli/install.mjs --dir <対象>` を実行する。
 2. 対象リポジトリで `/sdd-init` を実行する。`docs/sdd/` に道具（型定義、検証スクリプト、HTML の生成、AI 向けの手引き）が入り、pre-commit hook が設置され、恒久ドキュメント（構成、規約、非機能要件、ADR）が作られる。
-3. 作られたものを通常の PR で main に入れる。
-4. 2人目以降のメンバーは、pre-commit hook だけを設置する。
+3. 2人目以降のメンバーは、pre-commit hook だけ各自設置する必要がある。
 
    ```sh
    deno run --allow-read --allow-write --allow-run=git .agents/skills/sdd-init/scripts/install.ts --hook-only
@@ -55,7 +62,7 @@ Cursor などで使える `.agents/skills/` の形式で書いている（Claude
 
 新規案件では、機能の開発の前に **基盤issue**（雛形、共通の部品、品質ツールとテスト、画面の土台を作る issue）を1人で進め、マージしてから並行開発を始める。
 
-スキルを更新したときは、新しい `.agents/skills/` をコピーしてから `/sdd-init` をもう一度実行すると、道具が新しい版に置き換わる（恒久ドキュメントには触れない）。
+スキルを更新したときは、同じコマンドをもう一度実行してから `/sdd-init` を実行すると、道具が新しい版に置き換わる（恒久ドキュメントには触れない）。
 
 ### 完全モード（新機能、大きな仕様変更）
 
@@ -99,7 +106,7 @@ Cursor などで使える `.agents/skills/` の形式で書いている（Claude
 
 ```
 <対象リポジトリ>/
-├── .agents/skills/              # スキル本体（このリポジトリからコピーしたもの）
+├── .agents/skills/              # スキル本体（--agent を省いたとき。--agent cursor なら .cursor/skills/）
 ├── docs/
 │   ├── sdd/                     # 恒久（main に入れる）
 │   │   ├── config.ts            # トラッカー、ブランチの接頭辞、品質ゲートのコマンドなど
@@ -121,6 +128,7 @@ pre-commit hook は spec のファイルがステージされたときだけ動�
 ## このリポジトリの構成
 
 ```
+cli/install.mjs                # npx / bunx でスキルを対象リポジトリへコピーする
 .agents/skills/
 ├── sdd-init/
 │   ├── assets/sdd/          # 対象リポジトリの docs/sdd/ にコピーする道具
@@ -144,7 +152,6 @@ deno lint
 
 ## 未決事項
 
-- スキルを各リポジトリへ配る方法（今は手でコピーする。更新と版の管理）
-- Cursor 以外のツールでの `.agents/skills/` と `disable-model-invocation` への対応状況
+- Cursor 以外のツールでの `disable-model-invocation` への対応状況
 - issue トラッカーとの自動連携（今は issue の内容を手で渡す）
 - `sdd-render`（前回の確認からの変更点の表示）と `sdd-status`（今の工程と次にすべきことの表示）の作成

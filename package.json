@@ -1,0 +1,17 @@
+{
+  "name": "sdd-orc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Cursor、Codex、Claude Code へ SDD のスキルを入れる",
+  "type": "module",
+  "bin": {
+    "sdd-orc": "./cli/install.mjs"
+  },
+  "files": [
+    "cli",
+    ".agents/skills"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

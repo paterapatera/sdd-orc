@@ -30,5 +30,7 @@
   "exclude": [
     ".sdd/",
     "eval/runs/"
-  ]
+  ],
+  // package.json があると Deno が @types/node を node_modules から読もうとする。依存は足さない。
+  "nodeModulesDir": "none"
 }
