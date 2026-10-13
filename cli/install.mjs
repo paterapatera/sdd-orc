@@ -8,6 +8,7 @@
  * インストール先は .<名前>/skills。--agent cursor なら .cursor/skills、未指定なら .agents/skills。
  * 再実行では、この CLI が入れたスキルだけを消してから置き直す。
  */
+import { realpathSync } from "node:fs";
 import { cp, mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, relative, resolve, sep } from "node:path";
@@ -167,7 +168,12 @@ export async function installSkills(options = {}) {
 function isDirectRun() {
   const entry = process.argv[1];
   if (!entry) return false;
-  return import.meta.url === pathToFileURL(entry).href;
+  const script = fileURLToPath(import.meta.url);
+  try {
+    return realpathSync(entry) === realpathSync(script);
+  } catch {
+    return import.meta.url === pathToFileURL(entry).href;
+  }
 }
 
 if (isDirectRun()) {

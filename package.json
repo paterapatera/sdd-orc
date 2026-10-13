@@ -1,6 +1,6 @@
 {
   "name": "@paterapatera/sdd-orc",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Cursor、Codex、Claude Code へ SDD のスキルを入れる",
   "license": "MIT",
   "author": "patera",

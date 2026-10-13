@@ -1,4 +1,5 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes } from "@std/assert";
+import { symlink } from "node:fs/promises";
 import { join } from "node:path";
 import { installSkills, MANIFEST_NAME } from "../cli/install.mjs";
 import { REPO } from "./helpers.ts";
@@ -103,6 +104,25 @@ Deno.test("インストール先が正本と同じときは何も消さない", 
     "正本",
   );
   assert(await exists(join(SOURCE, "sdd-init/SKILL.md")));
+});
+
+Deno.test("node_modules/.bin 経由の symlink でも CLI が動く", async () => {
+  const root = await Deno.makeTempDir({ prefix: "sdd-cli-" });
+  const binDir = join(root, "bin");
+  const cli = join(REPO, "cli/install.mjs");
+  await Deno.mkdir(binDir, { recursive: true });
+  const shim = join(binDir, "sdd-orc");
+  await symlink(cli, shim);
+  const result = await new Deno.Command("node", {
+    args: [shim, "--dry-run", "--dir", root, "--agent", "cursor"],
+    cwd: root,
+    stdout: "piped",
+    stderr: "piped",
+  }).output();
+  const out = new TextDecoder().decode(result.stdout);
+  const err = new TextDecoder().decode(result.stderr);
+  assertEquals(result.code, 0, err);
+  assertStringIncludes(out, "追加 .cursor/skills/sdd-init");
 });
 
 Deno.test("node から --dry-run すると追加予定だけを表示する", async () => {
