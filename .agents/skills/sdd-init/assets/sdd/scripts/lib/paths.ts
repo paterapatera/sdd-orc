@@ -8,6 +8,10 @@ export const ROOT = resolve(SDD_DIR, "../..");
 export const SPECS_DIR = join(ROOT, "docs", "specs");
 /** 人向けのHTMLの出力先（.gitignore の対象） */
 export const OUT_DIR = join(ROOT, ".sdd", "out");
+/** verify が未回答として人に見せた構成の回答の記録（.gitignore の対象） */
+export const ASKED_DIR = join(ROOT, ".sdd", "asked");
+/** ユーザーが答えたと書き手が申告した構成の回答の記録（.gitignore の対象） */
+export const ANSWERED_DIR = join(ROOT, ".sdd", "answered");
 
 /** ルートからの相対パス（表示用） */
 export function rel(path: string): string {

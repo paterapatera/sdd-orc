@@ -5,6 +5,7 @@ export default defineDesign<typeof requirements>()({
   overview: "ログインの失敗回数をDBに記録し、しきい値を超えたらロック解除時刻を設定する。",
   asIs: "AuthService.login はパスワードを照合して結果を返すだけで、失敗回数は記録していない。",
   toBe: "AuthService.login が照合の前にロック状態を確認し、失敗時は LoginAttemptRepository に記録する。ロックの判定は LockoutPolicy に切り出す。",
+  answers: {},
   components: {
     AuthService: {
       kind: "modified",
@@ -16,11 +17,13 @@ export default defineDesign<typeof requirements>()({
       kind: "new",
       responsibility: "失敗回数からロックするかどうかと、ロック解除の時刻を決める",
       files: ["src/auth/lockout_policy.py"],
+      placement: { component: "AuthService" },
     },
     LoginAttemptRepository: {
       kind: "new",
       responsibility: "失敗回数とロック解除の時刻を保存する",
       files: ["src/auth/login_attempt_repository.py"],
+      placement: { component: "AuthService" },
     },
   },
   dependencies: [

@@ -1,5 +1,6 @@
 import { assert, assertEquals, assertStringIncludes } from "@std/assert";
-import { makeProject, patchFile, task, writeFile } from "./helpers.ts";
+import { join } from "node:path";
+import { gitIdentity, makeProject, patchFile, sh, task, writeFile } from "./helpers.ts";
 
 Deno.test("サンプルのspecは型チェックと検証を通る", async () => {
   const root = await makeProject();
@@ -700,4 +701,494 @@ Deno.test("openQuestions の観点で、ひらがなの「と」「や」は並�
   const r = await task(root, "verify", "EX-001");
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, "未確定の点が 2 件残っています");
+});
+
+const DESIGN = "docs/specs/EX-001/design.ts";
+const ARCHITECTURE = `import { defineArchitecture } from "./schema/mod.ts";
+export default defineArchitecture({
+  basedOn: "0000000000000000000000000000000000000000",
+  updatedAt: "2026-01-01",
+  summary: "認証は src/auth/、請求は src/billing/ に置く。",
+  stack: [],
+  modules: {
+    auth: { path: "src/auth/", responsibility: "認証" },
+    billing: { path: "src/billing/", responsibility: "請求" },
+    frontend: { path: "web/src/", responsibility: "画面" },
+  },
+  notes: ["ログインの失敗の扱いは src/auth/ に置く。", "web/src/auth は生成物なので手で直さない。"],
+});
+`;
+const adr = (status: string, decision = "認証の部品は src/auth/ に置く") =>
+  `import { defineAdr } from "../schema/mod.ts";
+export default defineAdr({
+  id: "ADR-0001", title: "t", status: "${status}", date: "2026-01-01",
+  context: "c", decision: "${decision}", consequences: "c", alternatives: [],
+});
+`;
+/** verify が未回答として一覧に出し、ユーザーが答えたと申告した記録を置く（人に聞いたあとに answer を書いた状態にする） */
+async function markAsked(root: string, ids: string[]) {
+  await writeFile(root, ".sdd/asked/EX-001.json", JSON.stringify(ids));
+  await writeFile(root, ".sdd/answered/EX-001.json", JSON.stringify(ids));
+}
+/** design.ts の answers を差し替え、回答の ID を書いた ADR になる判断を足す */
+async function addStructureAnswers(root: string, answers: string, cited: string, asked = true) {
+  if (asked) await markAsked(root, [...answers.matchAll(/"(ANS-\d+)"/g)].map((m) => m[1]));
+  await patchFile(root, DESIGN, "answers: {},", `answers: { ${answers} },`);
+  await patchFile(
+    root,
+    DESIGN,
+    `{\n      title: "失敗回数の保存先",`,
+    `{
+      title: "構成",
+      decidedBy: "user",
+      answers: [${cited}],
+      context: "c",
+      decision: "d",
+      alternatives: [],
+      adr: true,
+    },
+    {
+      title: "失敗回数の保存先",`,
+  );
+}
+const PLACEMENT_ANSWER =
+  `"ANS-001": { about: { placement: ["src/storage/", "migrations/"] }, question: "q", answer: "a" }`;
+const LINK_ANSWER = `"ANS-002": { about: { link: [["src/auth/"], ["src/storage/"]] }, question: "q", answer: "a" }`;
+
+Deno.test("新しいコンポーネントに置き場所の根拠が無ければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(root, DESIGN, `placement: { component: "AuthService" },`, "");
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "新しいコンポーネント LockoutPolicy に placement（置き場所の根拠）がありません");
+});
+
+Deno.test("置き場所の引用は、architecture.ts にあり、モジュールのパスを1つだけ含む文でなければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
+  const quote = (text: string) =>
+    patchFile(root, DESIGN, `placement: { component: "AuthService" },`, `placement: { architecture: "${text}" },`);
+
+  await quote("認証は src/auth/、請求は src/billing/ に置く。");
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "modules のパスを1つだけ含む文にしてください（含むパス: src/auth/、src/billing/）");
+
+  await patchFile(root, DESIGN, `認証は src/auth/、請求は src/billing/ に置く。`, "認証は src/auth/");
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "引用「認証は src/auth/」は、architecture.ts の記述の一部を切り出しています");
+
+  await patchFile(root, DESIGN, `"認証は src/auth/"`, `"認証は src/auth/ に置く。"`);
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "が、architecture.ts の summary・layers・notes にありません");
+
+  await patchFile(root, DESIGN, "認証は src/auth/ に置く。", "web/src/auth は生成物なので手で直さない。");
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "modules のパスを1つだけ含む文にしてください（含むパス: なし）");
+
+  await patchFile(root, DESIGN, "web/src/auth は生成物なので手で直さない。", "画面は web/src/ に置く。");
+  await patchFile(root, "docs/sdd/architecture.ts", `notes: [`, `notes: ["画面は web/src/ に置く。", `);
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "引用は web/src/ を指しますが、ファイル src/auth/lockout_policy.py はその下にありません");
+
+  await patchFile(root, DESIGN, "画面は web/src/ に置く。", "ログインの失敗の扱いは src/auth/ に置く。");
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+
+  await patchFile(
+    root,
+    "docs/sdd/architecture.ts",
+    `"ログインの失敗の扱いは src/auth/ に置く。"`,
+    `"画面は web/src/ に置く。ログインの失敗の扱いは src/auth/ に置く。"`,
+  );
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+});
+
+Deno.test("既存のコンポーネントを置き場所の根拠にするなら、同じモジュールになければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
+  for (let i = 0; i < 2; i++) {
+    await patchFile(root, DESIGN, `"src/auth/lockout_policy.py"`, `"src/billing/lockout_policy.py"`);
+  }
+  const r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    "置き場所の根拠の AuthService と、ファイル src/billing/lockout_policy.py が architecture.ts の同じモジュールにも",
+  );
+  assertEquals(r.out.includes("LoginAttemptRepository の置き場所"), false, r.out);
+});
+
+Deno.test("根拠の部品のモジュールに依存するモジュールの、同じ拡張子の既存のファイルがある場所なら、根拠にできる", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
+  for (let i = 0; i < 2; i++) {
+    await patchFile(root, DESIGN, `"src/auth/lockout_policy.py"`, `"src/billing/lockout_policy.py"`);
+  }
+  await writeFile(root, "src/billing/invoice.py", "");
+  await sh(root, "init", "-q", "-b", "main");
+  await gitIdentity(root);
+  await sh(root, "add", "-A");
+  await sh(root, "commit", "-q", "-m", "base");
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "依存する（dependsOn）モジュールの前例のある場所");
+
+  const arch = (auth: string, billing: string) =>
+    ARCHITECTURE
+      .replace(`responsibility: "認証" }`, `responsibility: "認証", dependsOn: [${auth}] }`)
+      .replace(`responsibility: "請求" }`, `responsibility: "請求", dependsOn: [${billing}] }`);
+  await writeFile(root, "docs/sdd/architecture.ts", arch(`"billing"`, ""));
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "依存する（dependsOn）モジュールの前例のある場所");
+
+  await writeFile(root, "docs/sdd/architecture.ts", arch("", `"auth"`));
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+
+  await patchFile(root, DESIGN, `placement: { component: "AuthService" },`, "");
+  r = await task(root, "verify", "EX-001");
+  assertStringIncludes(r.out, `根拠にできる候補: { component: "AuthService" }`);
+  await patchFile(
+    root,
+    DESIGN,
+    `files: ["src/billing/lockout_policy.py"],`,
+    `files: ["src/billing/lockout_policy.py"],\n      placement: { component: "AuthService" },`,
+  );
+
+  await Deno.remove(join(root, "src/billing/invoice.py"));
+  await writeFile(root, "src/billing/invoice.ts", "");
+  await sh(root, "add", "-A");
+  await sh(root, "commit", "-q", "-m", "no precedent");
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "依存する（dependsOn）モジュールの前例のある場所");
+});
+
+Deno.test("恒久ドキュメントか回答を根拠にした新しいコンポーネントは根拠にでき、部品を根拠にした新しいコンポーネントは根拠にできない", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
+  await patchFile(
+    root,
+    DESIGN,
+    `    { from: "AuthService", to: "LoginAttemptRepository", label: "記録" },`,
+    `    { from: "LockoutPolicy", to: "LoginAttemptRepository", label: "記録" },`,
+  );
+  await patchFile(
+    root,
+    DESIGN,
+    `files: ["src/auth/login_attempt_repository.py"],\n      placement: { component: "AuthService" },`,
+    `files: ["src/auth/login_attempt_repository.py"],\n      placement: { component: "LockoutPolicy" },`,
+  );
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    '根拠のコンポーネント LockoutPolicy は、既存のもの（kind: "modified"）でも、answer、adr、architecture を置き場所の根拠にした新しいコンポーネントでもありません',
+  );
+
+  await patchFile(
+    root,
+    DESIGN,
+    `files: ["src/auth/lockout_policy.py"],\n      placement: { component: "AuthService" },`,
+    `files: ["src/auth/lockout_policy.py"],\n      placement: { architecture: "ログインの失敗の扱いは src/auth/ に置く。" },`,
+  );
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+});
+
+Deno.test("既存のコンポーネントを置き場所の根拠にするなら、新しいコンポーネントと依存でつながっていなければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
+  await patchFile(root, DESIGN, `    { from: "AuthService", to: "LockoutPolicy", label: "判定" },\n`, "");
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "置き場所の根拠の AuthService と LockoutPolicy のあいだに依存がありません");
+  assertEquals(r.out.includes("LoginAttemptRepository の置き場所"), false, r.out);
+
+  await patchFile(root, DESIGN, `placement: { component: "AuthService" },`, "");
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertEquals(r.out.includes(`{ component: "AuthService" }`), false, r.out);
+});
+
+Deno.test("置き場所を決めている恒久ドキュメントを、設計の有無にかかわらず表示する", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
+  await writeFile(root, "docs/sdd/adr/ADR-0001.ts", adr("accepted"));
+  await writeFile(
+    root,
+    "docs/sdd/adr/ADR-0002.ts",
+    adr("accepted", "画面のフレームワークを使う").replace(`"ADR-0001"`, `"ADR-0002"`),
+  );
+  await writeFile(
+    root,
+    "docs/sdd/adr/ADR-0003.ts",
+    adr("superseded", "請求は src/billing/ に置く").replace(`"ADR-0001"`, `"ADR-0003"`),
+  );
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+  assertStringIncludes(r.out, "■ 置き場所を決めている恒久ドキュメント");
+  assertStringIncludes(r.out, "ADR-0001: t 認証の部品は src/auth/ に置く");
+  assertStringIncludes(r.out, "architecture.ts: ログインの失敗の扱いは src/auth/ に置く。");
+  for (const absent of ["ADR-0002", "ADR-0003", "web/src/auth は生成物", "認証は src/auth/、請求は"]) {
+    assertEquals(r.out.includes(absent), false, `${absent}\n${r.out}`);
+  }
+
+  await Deno.remove(join(root, "docs/specs/EX-001/tasks.ts"));
+  await Deno.remove(join(root, DESIGN));
+  r = await task(root, "verify", "EX-001");
+  assertStringIncludes(r.out, "ADR-0001: t 認証の部品は src/auth/ に置く");
+});
+
+Deno.test("置き場所の根拠が無ければ、根拠にできる ADR と architecture.ts の記述を挙げる", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
+  await writeFile(root, "docs/sdd/adr/ADR-0001.ts", adr("accepted"));
+  await patchFile(root, DESIGN, `placement: { component: "AuthService" },`, "");
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    `根拠にできる候補: { adr: "ADR-0001" }、{ architecture: "ログインの失敗の扱いは src/auth/ に置く。" }、{ component: "AuthService" }`,
+  );
+
+  for (let i = 0; i < 2; i++) {
+    await patchFile(root, DESIGN, `"src/auth/lockout_policy.py"`, `"src/storage/lockout_policy.py"`);
+  }
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "どれからも決まりません。ユーザーに1件ずつ質問し、回答を answers に書いてその ID を指す");
+});
+
+Deno.test("人の回答を置き場所の根拠にするなら、answers にあり、そのパスへの回答でなければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  const placement = (basis: string) =>
+    patchFile(root, DESIGN, `placement: { component: "AuthService" },`, `placement: ${basis},`);
+  await placement(`{ answer: "ANS-001" }`);
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "根拠の回答 ANS-001 が answers にありません");
+
+  await addStructureAnswers(root, PLACEMENT_ANSWER, `"ANS-001"`);
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    "根拠の回答 ANS-001 は src/storage/、migrations/ への回答ですが、ファイル src/auth/lockout_policy.py はその下にありません",
+  );
+
+  for (let i = 0; i < 2; i++) {
+    await patchFile(root, DESIGN, `"src/auth/lockout_policy.py"`, `"src/storage/lockout_policy.py"`);
+  }
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+  assertEquals(r.out.includes("が書いています"), false, r.out);
+
+  await writeFile(root, "docs/sdd/adr/ADR-0001.ts", adr("accepted", "保存の部品は src/storage/ に置く"));
+  r = await task(root, "verify", "EX-001");
+  assertStringIncludes(r.out, "構成の回答 ANS-001 の場所 src/storage/ は、accepted の ADR-0001 が書いています");
+});
+
+Deno.test("未回答の構成の回答はエラーにし、回答があれば人に確かめる一覧に出す", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.out.includes("人に確かめる構成の回答"), false, r.out);
+
+  for (let i = 0; i < 2; i++) {
+    await patchFile(root, DESIGN, `"src/auth/lockout_policy.py"`, `"src/storage/lockout_policy.py"`);
+  }
+  await patchFile(root, DESIGN, `placement: { component: "AuthService" },`, `placement: { answer: "ANS-001" },`);
+  await addStructureAnswers(
+    root,
+    `"ANS-001": { about: { placement: ["src/storage/"] }, question: "判定の部品をどこに置くか", answer: "src/storage/ に置く" }`,
+    `"ANS-001"`,
+    false,
+  );
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "構成の回答 ANS-001 は、verify が未回答として一覧に出していないのに answer があります");
+
+  await patchFile(root, DESIGN, `answer: "src/storage/ に置く"`, `proposal: "src/storage/ に置く"`);
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "構成の回答 ANS-001（置き場所 src/storage/）は未回答です");
+  assertStringIncludes(r.out, "■ EX-001 の人に確かめる構成の回答");
+  assertStringIncludes(r.out, "質問: 判定の部品をどこに置くか");
+  assertStringIncludes(r.out, "回答: 未回答（書き手の案: src/storage/ に置く）");
+  assertStringIncludes(r.out, "根拠にしているもの: 部品 LockoutPolicy");
+  assertEquals(JSON.parse(await Deno.readTextFile(join(root, ".sdd/asked/EX-001.json"))), ["ANS-001"]);
+
+  await patchFile(root, DESIGN, `proposal: "src/storage/ に置く"`, `answer: "src/storage/ に置く"`);
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "構成の回答 ANS-001 の answer は、ユーザーの回答として記録されていません");
+
+  r = await task(root, "verify", "--answered", "ANS-009", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    "ANS-009 は verify が未回答として一覧に出していないので、ユーザーの回答として記録できません",
+  );
+
+  r = await task(root, "verify", "--answered", "ANS-001", "EX-001");
+  assertEquals(r.code, 0, r.out);
+  assertStringIncludes(r.out, "ユーザーの回答として記録しました: ANS-001");
+  assertEquals(JSON.parse(await Deno.readTextFile(join(root, ".sdd/answered/EX-001.json"))), ["ANS-001"]);
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+  assertStringIncludes(r.out, "■ EX-001 の人に確かめる構成の回答");
+  assertStringIncludes(r.out, "回答: src/storage/ に置く");
+
+  await sh(root, "init", "-q", "-b", "main");
+  await gitIdentity(root);
+  await sh(root, "add", "-A");
+  await sh(root, "commit", "-q", "-m", "design");
+  await Deno.remove(join(root, ".sdd"), { recursive: true });
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+});
+
+Deno.test("未回答の置き場所の項目が2件以上あればエラーにし、1件ならそのエラーは出さない", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  const open = (id: string, path: string) =>
+    `"${id}": { about: { placement: ["${path}"] }, question: "q", proposal: "p" }`;
+  await addStructureAnswers(
+    root,
+    `${open("ANS-001", "src/storage/")}, ${open("ANS-002", "migrations/")}`,
+    `"ANS-001", "ANS-002"`,
+    false,
+  );
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "未回答の置き場所の項目が 2 件あります（ANS-001、ANS-002）");
+
+  await patchFile(root, DESIGN, `, ${open("ANS-002", "migrations/")}`, "");
+  await patchFile(root, DESIGN, `"ANS-001", "ANS-002"`, `"ANS-001"`);
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertEquals(r.out.includes("未回答の置き場所の項目が"), false, r.out);
+});
+
+Deno.test("構成の回答は、ADR になるユーザーの判断が ID を書き、requirements.ts の回答と ID が重ならなければエラーにならない", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await markAsked(root, ["ANS-001"]);
+  await patchFile(root, DESIGN, "answers: {},", `answers: { ${PLACEMENT_ANSWER} },`);
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    '構成の回答 ANS-001 を、adr: true・decidedBy: "user" の設計判断のどれも answers に書いていません',
+  );
+
+  await patchFile(
+    root,
+    DESIGN,
+    `title: "失敗回数の保存先",`,
+    `title: "失敗回数の保存先",\n      answers: ["ANS-001"],`,
+  );
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    '設計判断「失敗回数の保存先」は構成の回答から決めたので、adr: true・decidedBy: "user" にしてください',
+  );
+
+  await patchFile(root, DESIGN, `      answers: ["ANS-001"],\n`, "");
+  await patchFile(root, DESIGN, `answers: { ${PLACEMENT_ANSWER} },`, "answers: {},");
+  await addStructureAnswers(root, PLACEMENT_ANSWER, `"ANS-001"`);
+  await patchFile(
+    root,
+    "docs/specs/EX-001/requirements.ts",
+    "answers: {},",
+    `answers: { "ANS-001": { target: "t", aspect: "a", answer: "a" } },`,
+  );
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "回答 ANS-001 は requirements.ts の answers と同じ ID です");
+
+  await patchFile(root, "docs/specs/EX-001/requirements.ts", `"ANS-001": { target`, `"ANS-009": { target`);
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+});
+
+Deno.test("ADR を置き場所の根拠にするなら、accepted で、ファイルのある場所のパスを書いていなければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(root, DESIGN, `placement: { component: "AuthService" },`, `placement: { adr: "ADR-0001" },`);
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "根拠 ADR-0001 が docs/sdd/adr にありません");
+
+  await writeFile(root, "docs/sdd/adr/ADR-0001.ts", adr("proposed"));
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "根拠 ADR-0001 は accepted ではありません（proposed）");
+
+  await writeFile(root, "docs/sdd/adr/ADR-0001.ts", adr("accepted", "画面は web/src/ のフレームワークで作る"));
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    "根拠 ADR-0001 は、title と decision にファイル src/auth/lockout_policy.py のある場所のパスを書いていません",
+  );
+
+  await writeFile(root, "docs/sdd/adr/ADR-0001.ts", adr("accepted"));
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+});
+
+Deno.test("どのモジュールにも入らない新しいコンポーネントとのつなぎ方は、根拠が無ければエラー", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
+  for (let i = 0; i < 2; i++) {
+    await patchFile(
+      root,
+      DESIGN,
+      `"src/auth/login_attempt_repository.py"`,
+      `"src/storage/login_attempt_repository.py"`,
+    );
+  }
+  await addStructureAnswers(root, `${PLACEMENT_ANSWER}, ${LINK_ANSWER}`, `"ANS-001", "ANS-002"`);
+  await patchFile(
+    root,
+    DESIGN,
+    `files: ["src/storage/login_attempt_repository.py"],\n      placement: { component: "AuthService" },`,
+    `files: ["src/storage/login_attempt_repository.py"],\n      placement: { answer: "ANS-001" },`,
+  );
+  let r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    "依存 AuthService → LoginAttemptRepository は、architecture.ts のどのモジュールにも入らない LoginAttemptRepository と、ほかのコンポーネントのつなぎ方です",
+  );
+  assertEquals(r.out.includes("依存 AuthService → LockoutPolicy"), false, r.out);
+
+  await patchFile(root, DESIGN, `label: "記録" }`, `label: "記録", basis: { answer: "ANS-001" } }`);
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(r.out, "置き場所の回答はつなぎ方の根拠になりません");
+
+  await patchFile(root, DESIGN, `basis: { answer: "ANS-001" }`, `basis: { answer: "ANS-002" }`);
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 0, r.out);
+
+  await patchFile(
+    root,
+    DESIGN,
+    `    { from: "AuthService", to: "LoginAttemptRepository", label: "記録", basis: { answer: "ANS-002" } },\n`,
+    "",
+  );
+  r = await task(root, "verify", "EX-001");
+  assertEquals(r.code, 1, r.out);
+  assertStringIncludes(
+    r.out,
+    "どのモジュールにも入らない新しいファイル（src/storage/login_attempt_repository.py）と、" +
+      "既存のモジュールのファイル（src/auth/lockout_policy.py、src/auth/auth_service.py）を、同じ設計で作る・変えます",
+  );
 });

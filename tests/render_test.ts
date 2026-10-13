@@ -18,6 +18,9 @@ Deno.test("完全モードのHTMLを生成できる", async () => {
   // 依存関係の図
   assertStringIncludes(html, "<svg");
   assertStringIncludes(html, "LoginAttemptRepository");
+  // 新しいコンポーネントの置き場所の根拠
+  assertStringIncludes(html, "置き場所の根拠");
+  assertStringIncludes(html, `data-copy="AuthService" title="クリックでコピー">AuthService</button> とつながる`);
   // 外部のファイルを読み込まない（1ファイルで完結する）
   assertEquals(/<(script|link)[^>]+(src|href)=/.test(html), false);
 });
@@ -133,4 +136,22 @@ Deno.test("入力と表示の観点、出どころ、人の回答、未確定の
   assertStringIncludes(html, "<h4>人の回答</h4>");
   assertStringIncludes(html, "<li>ロック中の案内: 値が空のときの表示</li>");
   assertStringIncludes(html, "<li>ロック中の画面: 解除の案内</li>");
+});
+
+Deno.test("構成の回答を表示し、未回答には書き手の案とラベルを添える", async () => {
+  const root = await makeProject({ specs: ["EX-001"] });
+  await patchFile(
+    root,
+    "docs/specs/EX-001/design.ts",
+    "answers: {},",
+    `answers: { "ANS-001": { about: { placement: ["src/auth/"] }, question: "判定の部品をどこに置くか", answer: "src/auth/ に置く" }, ` +
+      `"ANS-002": { about: { placement: ["src/storage/"] }, question: "保存の部品をどこに置くか", proposal: "src/storage/ に置く" } },`,
+  );
+  const r = await task(root, "render", "EX-001");
+  assertEquals(r.code, 0, r.out);
+  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
+  assertStringIncludes(html, "<h4>構成の判断への人の回答</h4>");
+  assertStringIncludes(html, "src/auth/ に置く");
+  assertStringIncludes(html, "未回答");
+  assertStringIncludes(html, "書き手の案: src/storage/ に置く");
 });

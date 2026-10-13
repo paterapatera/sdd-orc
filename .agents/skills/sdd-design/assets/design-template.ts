@@ -8,11 +8,24 @@ export default defineDesign<typeof requirements>()({
   overview: "<設計の要点を2〜3文で>",
   asIs: "<変更する部分が今どうなっているか。新しく作る場合は「新規作成」>",
   toBe: "<変更後にどうなるか>",
+  // 構成の判断（置き場所、つなぎ方）について人に質問して得た回答。ID は requirements.ts の answers と通し番号にする。無ければ {}
+  // 例: "ANS-003": { about: { placement: ["<パス>"] }, question: "<聞いた質問>", answer: "<人の回答>" }
+  //     placement は回答が指す場所のすべて。つなぎ方なら { link: [["<一方の側のパス>"], ["<もう一方の側のパス>"]] }。回答は adr: true・decidedBy: "user" の判断の answers にも書く
+  //     まず answer を書かず proposal: "<書き手の案>" で残す。verify が一覧に出した項目を設計の終わりの確認ポイントで聞き、回答を answer に書く
+  //     置き場所の未回答は1件にまとめ、その機能が使う場所（前例どおりの場所も含む）をすべて placement に書く
+  answers: {},
   components: {
     ComponentA: {
       kind: "new",
       responsibility: "<責務>",
       files: ["<作成するファイル>"], // すべて impact に含める
+      // 置き場所の根拠。AI の判断は根拠にならない。次のどれか（verify が確かめる）
+      // - { component: "ComponentB" }: このコンポーネントと依存でつながる、既存のコンポーネントか、answer・adr・architecture を根拠にした新しいコンポーネント。
+      //   同じモジュール（architecture.ts の modules）か、そのモジュールに依存するモジュールの、同じ拡張子の既存のファイルがあるディレクトリに置くこと
+      // - { architecture: "<architecture.ts の summary・layers・notes の記述の全体か、「。」で区切った1文の全体>" }: modules のパスを1つだけ含む文
+      // - { adr: "ADR-0001" }: accepted の ADR で、title か decision がこのファイルのある場所のパスを書いているもの
+      // - { answer: "ANS-001" }: 上のどれからも決まらなければ質問し、answers に about: { placement: ["<パス>"] } で書いた回答
+      placement: { component: "ComponentB" },
     },
     ComponentB: {
       kind: "modified",
@@ -21,6 +34,8 @@ export default defineDesign<typeof requirements>()({
       asIs: "<現状>",
     },
   },
+  // 片方が architecture.ts のどのモジュールにも入らない新しいコンポーネントなら、basis を書く。
+  // { adr } か、置き場所とは別に質問して answers に about: { link: [[…], […]] } で書いた回答の { answer }
   dependencies: [
     { from: "ComponentB", to: "ComponentA", label: "<何のために使うか>" },
   ],
@@ -48,6 +63,7 @@ export default defineDesign<typeof requirements>()({
     {
       title: "<何を決めたか>",
       // ユーザーに質問して決めたら "user"。adr: true の判断と、規約・ADR からの逸脱（deviates）は "user" でなければならない
+      // 構成の回答から決めた判断は、answers: ["ANS-003"] のように回答の ID を書き、adr: true・decidedBy: "user" にする
       decidedBy: "ai",
       context: "<背景と課題>",
       decision: "<決めたこと>",

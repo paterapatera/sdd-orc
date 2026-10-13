@@ -1,7 +1,7 @@
 {
   "tasks": {
     "check": "deno run --allow-read --allow-run scripts/check.ts",
-    "verify": "deno run --allow-read scripts/verify.ts",
+    "verify": "deno run --allow-read --allow-write=../../.sdd --allow-run=git scripts/verify.ts",
     "render": "deno run --allow-read --allow-write=../../.sdd --allow-run=git render/main.ts",
     "doctor": "deno run --allow-read --allow-run scripts/doctor.ts",
     "drift": "deno run --allow-read --allow-run=git scripts/drift.ts",

@@ -1,10 +1,47 @@
-import type { AdrId, ConvId, NonEmpty } from "./ids.ts";
+import type { AdrId, AnsId, ConvId, NonEmpty } from "./ids.ts";
 import type { AcIdOf, DesignTargetIdOf, Requirements } from "./requirements.ts";
 
-/** コンポーネント（モジュール、クラス、サービスなど、設計の単位） */
-export type Component = {
-  /** 新しく作るか、既存のものを変更するか */
-  kind: "new" | "modified";
+/**
+ * 構成の判断への人の回答（design.ts の answers）。about に、何の判断への回答かを書く。
+ * - placement: 回答で決まった置き場所のパス（例: ["src/billing/"]。回答が複数の場所を指すなら、そのすべて）
+ * - link: つなぐ両側の置き場所のパス（例: [["src/billing/"], ["src/core/", "web/src/"]]）
+ * 回答は、この判断の根拠にだけなる（verify が、回答のパスと、指したコンポーネントや依存のファイルが合うかを確かめる）
+ * まだ聞いていなければ answer を書かず、proposal に書き手の案を書く（verify は、設計の終わりの確認ポイントで聞く項目として出す）
+ */
+export type StructureAnswer =
+  & {
+    about: { placement: NonEmpty<string> } | { link: readonly [NonEmpty<string>, NonEmpty<string>] };
+    /** 人に聞く（聞いた）質問 */
+    question: string;
+  }
+  & (
+    /** 人が答えた内容（要約してよいが、人が答えていないことは足さない） */
+    | { answer: string }
+    /** 未回答。書き手の案（人に聞くときに推奨として示す） */
+    | { proposal: string }
+  );
+
+/**
+ * 構成の判断（新しいコンポーネントの置き場所、モジュールの外とのつなぎ方）の根拠。
+ * 書き手（AI）の判断は根拠にならない。恒久ドキュメントから1つに決まらなければ、ユーザーに質問して回答を answers に書き、その ID を指す。
+ * - adr: accepted の ADR の ID。ADR の title か decision が、ファイルのある場所のパスを書いていること
+ * - answer: answers の ID（verify が回答の about と合うかを確かめる）
+ */
+export type StructureBasis<A extends string = AnsId> = { adr: AdrId } | { answer: A };
+
+/**
+ * 新しいコンポーネントの置き場所の根拠。StructureBasis に加えて、次も使える（verify が確かめる）。
+ * - architecture: docs/sdd/architecture.ts の summary・layers・notes の文からの引用。modules のパスを1つだけ含み、
+ *   コンポーネントのファイルがすべてそのパスの下にあること
+ * - component: この design の既存のコンポーネント（kind: "modified"）の名前。ファイルが architecture.ts の同じモジュールの下
+ *   （architecture.ts が無ければ同じディレクトリ）にあること
+ */
+export type PlacementBasis<A extends string = AnsId> =
+  | StructureBasis<A>
+  | { architecture: string }
+  | { component: string };
+
+type ComponentBase = {
   /** 責務 */
   responsibility: string;
   /** 対応するファイル（リポジトリのルートからの相対パス）。すべて impact に含める（verify が確かめる） */
@@ -12,6 +49,11 @@ export type Component = {
   /** 既存のものを変更する場合、現状どうなっているか */
   asIs?: string;
 };
+
+/** コンポーネント（モジュール、クラス、サービスなど、設計の単位）。新しく作るか（new）、既存のものを変更するか（modified） */
+export type Component<A extends string = AnsId> =
+  | (ComponentBase & { kind: "new"; placement: PlacementBasis<A> })
+  | (ComponentBase & { kind: "modified" });
 
 type InterfaceBase<C extends string> = {
   component: C;
@@ -54,10 +96,13 @@ export type DataModel =
  * - `deviates`: 規約（CONV-xxx）や ADR（ADR-xxxx）から逸脱する場合に、その ID を書く
  * - `relaxesQualityGate`: 品質ゲートを緩める（除外の追加、レベルの引き下げなど）場合に、その設定ファイルのパスを書く。
  *   ここに無いのに緩めると、finish-report がエラーにする
+ * - `answers`: この判断のもとになった構成の人の回答（answers の ID）。構成の回答はどれも、adr: true・decidedBy: "user" の
+ *   判断のどれかがここに書く（完了時に ADR になる。verify が確かめる）
  */
-export type Decision = {
+export type Decision<A extends string = AnsId> = {
   title: string;
   decidedBy: "user" | "ai";
+  answers?: readonly A[];
   deviates?: { conventions?: readonly ConvId[]; adrs?: readonly AdrId[] };
   relaxesQualityGate?: readonly string[];
   /** 背景と課題 */
@@ -114,16 +159,29 @@ export type DesignChecklist = Readonly<
 >;
 
 /** 設計（docs/specs/<issue>/design.ts） */
-export type Design<R extends Requirements, C extends string> = {
+export type Design<R extends Requirements, C extends string, A extends AnsId = never> = {
   /** 設計の概要 */
   overview: string;
   /** 現状。新しく作る場合は「新規作成」と書く */
   asIs: string;
   /** 変更後の姿 */
   toBe: string;
-  components: Readonly<Record<C, Component>>;
-  /** コンポーネント間の依存（from が to を使う）。図の生成に使う */
-  dependencies: readonly { from: NoInfer<C>; to: NoInfer<C>; label?: string }[];
+  /**
+   * 構成の判断への人の回答。ID は requirements.ts の answers と通し番号にする（重ねない）。まだ無ければ {}。
+   * answer には人に質問して得た回答だけを書く。聞いていない判断は answer を書かずに proposal で残す
+   */
+  answers: Readonly<Record<A, StructureAnswer>>;
+  components: Readonly<Record<C, Component<NoInfer<A>>>>;
+  /**
+   * コンポーネント間の依存（from が to を使う）。図の生成に使う。
+   * 片方が、architecture.ts のどのモジュールのパスにも入らない新しいコンポーネントなら、basis が必須（verify が確かめる）
+   */
+  dependencies: readonly {
+    from: NoInfer<C>;
+    to: NoInfer<C>;
+    label?: string;
+    basis?: StructureBasis<NoInfer<A>>;
+  }[];
   interfaces: Readonly<Record<string, InterfaceDef<NoInfer<C>>>>;
   dataModels: Readonly<Record<string, DataModel>>;
   errorHandling: readonly ErrorHandling<DesignTargetIdOf<R> | AcIdOf<R["functional"]>>[];
@@ -133,7 +191,7 @@ export type Design<R extends Requirements, C extends string> = {
     modify: readonly string[];
     delete?: readonly string[];
   };
-  decisions: readonly Decision[];
+  decisions: readonly Decision<NoInfer<A>>[];
   /**
    * 追跡用の対応関係。すべての機能要件と非機能要件について、
    * それを実現するコンポーネントを1つ以上書く（漏れると型エラーになる）。
@@ -163,7 +221,7 @@ export type Design<R extends Requirements, C extends string> = {
  * ```
  */
 export function defineDesign<R extends Requirements>() {
-  return <const C extends string>(d: Design<R, C>): Design<R, C> => d;
+  return <const C extends string, const A extends AnsId = never>(d: Design<R, C, A>): Design<R, C, A> => d;
 }
 
 /** 設計のコンポーネント名 */

@@ -118,6 +118,7 @@ const base = {
   overview: "o",
   asIs: "a",
   toBe: "t",
+  answers: {},
   interfaces: {},
   dataModels: {},
   errorHandling: [],
@@ -137,7 +138,7 @@ const base = {
     sharedFiles: dna,
   },
 } as const;
-const comp = { kind: "new", responsibility: "r", files: [] } as const;
+const comp = { kind: "new", responsibility: "r", files: [], placement: { adr: "ADR-0001" } } as const;
 
 const design = defineDesign<typeof reqs>()({
   ...base,
@@ -176,6 +177,114 @@ defineDesign<typeof reqs>()({
   // @ts-expect-error 依存関係で存在しないコンポーネントを参照している
   dependencies: [{ from: "A", to: "Z" }],
   traceability: { "FR-001": ["A"], "FR-002": ["A"] },
+});
+
+const structureAnswers = {
+  "ANS-001": { about: { placement: ["src/x/"] }, question: "q", answer: "a" },
+  "ANS-002": { about: { link: [["src/x/"], ["src/core/", "web/src/"]] }, question: "q", answer: "a" },
+} as const;
+
+defineDesign<typeof reqs>()({
+  ...base,
+  answers: structureAnswers,
+  components: {
+    A: { kind: "modified", responsibility: "r", files: [] },
+    B: { kind: "new", responsibility: "r", files: [], placement: { component: "A" } },
+    C: { kind: "new", responsibility: "r", files: [], placement: { architecture: "引用" } },
+    D: { kind: "new", responsibility: "r", files: [], placement: { answer: "ANS-001" } },
+  },
+  dependencies: [{ from: "A", to: "D", basis: { answer: "ANS-002" } }, {
+    from: "A",
+    to: "B",
+    basis: { adr: "ADR-0001" },
+  }],
+  decisions: [
+    {
+      title: "t",
+      decidedBy: "user",
+      answers: ["ANS-001", "ANS-002"],
+      context: "c",
+      decision: "d",
+      alternatives: [],
+      adr: true,
+    },
+  ],
+  traceability: { "FR-001": ["A"], "FR-002": ["B", "C", "D"] },
+});
+
+defineDesign<typeof reqs>()({
+  ...base,
+  answers: structureAnswers,
+  components: {
+    // @ts-expect-error 根拠の回答は answers にある ID だけ
+    A: { kind: "new", responsibility: "r", files: [], placement: { answer: "ANS-009" } },
+  },
+  dependencies: [],
+  traceability: { "FR-001": ["A"], "FR-002": ["A"] },
+});
+
+defineDesign<typeof reqs>()({
+  ...base,
+  components: {
+    // @ts-expect-error 設計判断の title は置き場所の根拠にならない（人の回答は answers の ID で指す）
+    A: { kind: "new", responsibility: "r", files: [], placement: { decision: "置き場所" } },
+  },
+  dependencies: [],
+  traceability: { "FR-001": ["A"], "FR-002": ["A"] },
+});
+
+defineDesign<typeof reqs>()({
+  ...base,
+  // @ts-expect-error 回答の about は placement（パスの一覧）か link（両側のパスの一覧）
+  answers: { "ANS-001": { about: { link: [["src/x/"]] }, question: "q", answer: "a" } },
+  components: { A: comp },
+  dependencies: [],
+  traceability: { "FR-001": ["A"], "FR-002": ["A"] },
+});
+
+defineDesign<typeof reqs>()({
+  ...base,
+  answers: { "ANS-001": { about: { placement: ["src/x/"] }, question: "q", proposal: "p" } },
+  components: { A: { kind: "new", responsibility: "r", files: [], placement: { answer: "ANS-001" } } },
+  dependencies: [],
+  traceability: { "FR-001": ["A"], "FR-002": ["A"] },
+});
+
+defineDesign<typeof reqs>()({
+  ...base,
+  // @ts-expect-error 回答は answer（人の回答）か proposal（未回答のときの書き手の案）のどちらかが要る
+  answers: { "ANS-001": { about: { placement: ["src/x/"] }, question: "q" } },
+  components: { A: comp },
+  dependencies: [],
+  traceability: { "FR-001": ["A"], "FR-002": ["A"] },
+});
+
+defineDesign<typeof reqs>()({
+  ...base,
+  components: {
+    // @ts-expect-error 新しいコンポーネントには置き場所の根拠（placement）が要る
+    A: { kind: "new", responsibility: "r", files: [] },
+  },
+  dependencies: [],
+  traceability: { "FR-001": ["A"], "FR-002": ["A"] },
+});
+
+defineDesign<typeof reqs>()({
+  ...base,
+  components: {
+    // @ts-expect-error AI の判断は置き場所の根拠にならない
+    A: { kind: "new", responsibility: "r", files: [], placement: { decidedBy: "ai" } },
+  },
+  dependencies: [],
+  traceability: { "FR-001": ["A"], "FR-002": ["A"] },
+});
+
+defineDesign<typeof reqs>()({
+  ...base,
+  components: { A: comp, B: comp },
+  // @ts-expect-error つなぎ方の根拠は ADR か人の回答だけ（既存のコンポーネントは根拠にならない）
+  dependencies: [{ from: "A", to: "B", basis: { component: "A" } }],
+  traceability: { "FR-001": ["A"], "FR-002": ["B"] },
 });
 
 const task = { title: "t", kind: "test", description: "d", status: "todo" } as const;

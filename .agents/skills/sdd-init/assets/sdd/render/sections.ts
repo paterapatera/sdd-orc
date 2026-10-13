@@ -387,8 +387,20 @@ function impactHtml(
   }`;
 }
 
+/** 構成の判断の根拠（置き場所、つなぎ方）を1行で表す */
+function structureBasisHtml(b: Readonly<Record<string, string>> | undefined): string {
+  if (!b) return `<span class="muted">—</span>`;
+  if ("adr" in b) return idBadge(b.adr);
+  if ("answer" in b) return `人の回答 ${idBadge(b.answer)}`;
+  if ("architecture" in b) return `architecture.ts「${esc(b.architecture)}」`;
+  if ("component" in b) return `${idBadge(b.component, "comp")} とつながる（同じモジュールか、前例のある場所）`;
+  return `<span class="muted">—</span>`;
+}
+
 export function designSection(d: LooseDesign): Section {
   const comps = Object.entries(d.components);
+  const linked = d.dependencies.filter((x) => x.basis);
+  const structureAnswers = Object.entries(d.answers ?? {});
   const diagram = dependencyDiagram(d.components, d.dependencies);
   const html = `<section id="design"><h2>設計</h2>
 <p>${esc(d.overview)}</p>
@@ -404,15 +416,41 @@ ${
   }
 ${
     table(
-      ["名前", "種別", "責務", "ファイル", "現状"],
+      ["名前", "種別", "責務", "ファイル", "置き場所の根拠", "現状"],
       comps.map(([name, c]) => [
         idBadge(name, "comp"),
         c.kind === "new" ? "新規" : "変更",
         esc(c.responsibility),
         c.files.map((f) => `<code>${esc(f)}</code>`).join("<br>") || `<span class="muted">なし</span>`,
+        c.kind === "new" ? structureBasisHtml(c.placement) : `<span class="muted">—</span>`,
         c.asIs ? esc(c.asIs) : `<span class="muted">—</span>`,
       ]),
     )
+  }${
+    linked.length
+      ? `<h4>モジュールの外とのつなぎ方</h4>${
+        table(
+          ["使う側", "使われる側", "根拠"],
+          linked.map((x) => [idBadge(x.from, "comp"), idBadge(x.to, "comp"), structureBasisHtml(x.basis)]),
+        )
+      }`
+      : ""
+  }${
+    structureAnswers.length
+      ? `<h4>構成の判断への人の回答</h4>${
+        table(
+          ["ID", "対象", "質問", "回答"],
+          structureAnswers.map(([id, a]) => [
+            idBadge(id),
+            "placement" in a.about
+              ? `置き場所 ${a.about.placement.map((p) => `<code>${esc(p)}</code>`).join("、")}`
+              : `つなぎ方 ${a.about.link.map((s) => s.map((p) => `<code>${esc(p)}</code>`).join("、")).join(" と ")}`,
+            esc(a.question),
+            "answer" in a ? esc(a.answer) : `${statusLabel("error", "未回答")} 書き手の案: ${esc(a.proposal)}`,
+          ]),
+        )
+      }`
+      : ""
   }
 <h3 id="design-interfaces">インターフェース</h3>
 ${

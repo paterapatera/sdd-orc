@@ -32,6 +32,24 @@ export type VerifyOptions = {
   ui?: boolean;
   /** requirements.ts の values が出どころに挙げたファイルのうち、リポジトリに無いもの */
   missingBasisFiles?: Set<string>;
+  /**
+   * docs/sdd/architecture.ts の modules のパスと、引用できる文。dependsOn はモジュールのパスから、そのモジュールが
+   * 依存するモジュールのパスへの対応。ファイルが無ければ undefined
+   */
+  architecture?: {
+    modulePaths: readonly string[];
+    texts: readonly string[];
+    dependsOn?: ReadonlyMap<string, readonly string[]>;
+  };
+  /** docs/sdd/adr の ADR の ID と、status、title と decision の文。ディレクトリが無ければ undefined */
+  adrs?: Map<string, { status: string; text: string }>;
+  /**
+   * 構成の回答の記録（verify が未回答として一覧に出した ID、直前のコミットにある ID、ユーザーが答えたと書き手が
+   * --answered で申告した ID）。undefined なら確かめない。answered が undefined なら申告は確かめない
+   */
+  answerRecords?: { asked: Set<string>; committed: Set<string>; answered?: Set<string> };
+  /** Git が追跡しているファイル（リポジトリからの相対パス）。undefined なら前例のある場所を根拠にしない */
+  trackedFiles?: readonly string[];
 };
 
 /** 規約から逸脱していることを示す言い回し（conventionsCompliance に書かれていたら、守り方ではなく逸脱の説明である） */
@@ -42,6 +60,7 @@ type AnyDecision = {
   title: string;
   decidedBy: "user" | "ai";
   adr: boolean;
+  answers?: readonly string[];
   deviates?: { conventions?: readonly string[]; adrs?: readonly string[] };
   context: string;
   decision: string;
@@ -78,6 +97,434 @@ function checkDecisions(c: Collector, decisions: readonly AnyDecision[], opts: V
         } に触れています。逸脱するなら deviates に書き、ユーザーに質問して決める`,
       );
     }
+  }
+}
+
+const asDir = (p: string) => `${p.replace(/^\.\//, "").replace(/\/+$/, "")}/`;
+const dirOf = (f: string) => f.slice(0, f.lastIndexOf("/") + 1);
+
+/** 文に、パスそのものが1つの語として出てくるか（a/b/c は a/ も c/ も書いたことにならない） */
+function mentionsPath(text: string, path: string): boolean {
+  const p = asDir(path).slice(0, -1);
+  if (!p) return false;
+  const escaped = p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![\\w./-])${escaped}(?!/?[\\w.-])`).test(text);
+}
+
+/** 文に、パスそのものか、その下のパスが1つの語として出てくるか */
+function mentionsUnder(text: string, path: string): boolean {
+  const p = asDir(path).slice(0, -1);
+  if (!p) return false;
+  const escaped = p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return new RegExp(`(?<![\\w./-])${escaped}(?:/|(?![\\w.-]))`).test(text);
+}
+
+/** ファイルが入る architecture.ts のモジュールのパス（最も深いもの）。どれにも入らなければ undefined */
+function moduleOf(file: string, modulePaths: readonly string[]): string | undefined {
+  return modulePaths.map(asDir).filter((p) => file.startsWith(p)).sort((a, b) => b.length - a.length)[0];
+}
+
+/** ファイルがすべて入るディレクトリのパス（浅い順） */
+function commonDirs(files: readonly string[]): string[] {
+  if (!files.length) return [];
+  const parts = files[0].split("/").slice(0, -1);
+  return parts.map((_, i) => `${parts.slice(0, i + 1).join("/")}/`).filter((d) => files.every((f) => f.startsWith(d)));
+}
+
+/** ファイルがすべて、パスのどれかの下にあるか */
+const under = (files: readonly string[], paths: string | readonly string[]) =>
+  files.every((f) => [paths].flat().some((p) => f.startsWith(asDir(p))));
+
+type AnyComponent = { kind: "new" | "modified"; files: readonly string[]; placement?: Record<string, string> };
+type AnyDependency = { from: string; to: string; basis?: Record<string, string> };
+type AnyStructureAnswer = {
+  about: { placement?: readonly string[]; link?: readonly (readonly string[])[] };
+  question: string;
+  answer?: string;
+  proposal?: string;
+};
+
+const ASK_STRUCTURE =
+  "ユーザーに1件ずつ質問し、回答を answers に書いてその ID を指す（構成の判断は AI では決めない）。" +
+  "まだ聞いていなければ、answer を書かずに proposal（書き手の案）で answers に残し、設計の終わりの確認ポイントで聞く";
+
+/** 構成の回答の対象を1行で表す */
+function aboutText(a: AnyStructureAnswer): string {
+  if (a.about.placement) return `置き場所 ${a.about.placement.map(asDir).join("、")}`;
+  return `つなぎ方 ${(a.about.link ?? []).map((s) => s.map(asDir).join("、")).join(" と ")}`;
+}
+
+/**
+ * 設計の終わりの確認ポイントで人に見せる、構成の回答の一覧。answers が無ければ空。
+ * 書き手がまとめ直さずにそのまま見せられるよう、質問、回答（未回答なら書き手の案）、対象、指している部品と依存を出す
+ */
+export function structureAnswerList(issue: LoadedIssue): string[] {
+  const d = issue.design;
+  const answers = (d?.answers ?? {}) as Readonly<Record<string, AnyStructureAnswer>>;
+  const components = (d?.components ?? {}) as Readonly<Record<string, AnyComponent>>;
+  const dependencies = (d?.dependencies ?? []) as readonly AnyDependency[];
+  return Object.entries(answers).flatMap(([id, a]) => {
+    const cited = [
+      ...Object.entries(components).filter(([, x]) => x.placement?.answer === id).map(([n]) => `部品 ${n}`),
+      ...dependencies.filter((x) => x.basis?.answer === id).map((x) => `依存 ${x.from} → ${x.to}`),
+    ];
+    return [
+      `${id}（${aboutText(a)}）`,
+      `    質問: ${a.question}`,
+      a.answer === undefined ? `    回答: 未回答（書き手の案: ${a.proposal ?? "なし"}）` : `    回答: ${a.answer}`,
+      `    根拠にしているもの: ${cited.join("、") || "なし"}`,
+    ];
+  });
+}
+
+/** 未回答の構成の回答の ID（verify が一覧に出したら記録し、記録のある ID にだけ answer を書ける） */
+export function unansweredStructureIds(issue: LoadedIssue): string[] {
+  const answers = (issue.design?.answers ?? {}) as Readonly<Record<string, AnyStructureAnswer>>;
+  return Object.entries(answers).filter(([, a]) => a.answer === undefined).map(([id]) => id);
+}
+
+/** architecture.ts の引用が、記述の全体か、記述を「。」で区切った1文の全体か */
+function quotesWhole(texts: readonly string[], quote: string): boolean {
+  const q = quote.trim();
+  return texts.some((t) => t.trim() === q || t.split(/(?<=。)/).some((s) => s.trim() === q));
+}
+
+/** ADR が構成の判断の根拠になるかを確かめる。accepted で、title か decision がファイルのある場所のパスを書いていること */
+function checkAdrBasis(
+  c: Collector,
+  where: string,
+  id: string,
+  sides: readonly (readonly string[])[],
+  opts: VerifyOptions,
+) {
+  const adr = opts.adrs?.get(id);
+  if (!adr) c.error(`${where}の根拠 ${id} が docs/sdd/adr にありません`);
+  else if (adr.status !== "accepted") c.error(`${where}の根拠 ${id} は accepted ではありません（${adr.status}）`);
+  else {
+    const missing = sides.filter((files) => !commonDirs(files).some((d) => mentionsPath(adr.text, d)));
+    if (missing.length) {
+      c.error(
+        `${where}の根拠 ${id} は、title と decision にファイル ${
+          missing.flat().join("、")
+        } のある場所のパスを書いていません。` +
+          `置き場所を決めていない ADR は根拠になりません。ほかに根拠が無ければ、${ASK_STRUCTURE}`,
+      );
+    }
+  }
+}
+
+/**
+ * 置き場所を決めている恒久ドキュメント。モジュールのパス（architecture.ts が無ければ、何かのパス）を書いた
+ * accepted の ADR と、モジュールのパスを1つだけ含む architecture.ts の記述
+ */
+export function placementSources(opts: VerifyOptions): string[] {
+  const arch = opts.architecture;
+  const adrs = [...(opts.adrs ?? [])]
+    .filter(([, a]) =>
+      a.status === "accepted" &&
+      (arch ? arch.modulePaths.some((m) => mentionsUnder(a.text, m)) : /(?<![\w./-])[\w.-]+\/[\w./-]*/.test(a.text))
+    )
+    .map(([id, a]) => `${id}: ${a.text.replace(/\s+/g, " ")}`);
+  const quotes = (arch?.texts ?? [])
+    .filter((t) => arch!.modulePaths.filter((m) => mentionsPath(t, m)).length === 1)
+    .map((t) => `architecture.ts: ${t}`);
+  return [...adrs, ...quotes];
+}
+
+/** 2つのコンポーネントのあいだに依存があるか（向きは問わない） */
+const linked = (dependencies: readonly AnyDependency[], a: string, b: string) =>
+  dependencies.some((d) => (d.from === a && d.to === b) || (d.from === b && d.to === a));
+
+const extOf = (f: string) => /\.[^./]+$/.exec(f)?.[0] ?? "";
+
+/** 既存のコンポーネントか、恒久ドキュメントか回答を置き場所の根拠にした新しいコンポーネントか */
+const hasBasis = (x: AnyComponent) =>
+  x.kind === "modified" || (x.placement !== undefined && !("component" in x.placement));
+
+/**
+ * 新しいコンポーネントのファイルのうち、根拠の部品 ref に仕える場所に無いもの。仕える場所は、ref と architecture.ts の
+ * 同じモジュール（architecture.ts が無ければ同じディレクトリ）か、ref のモジュールに依存するモジュールの、
+ * 同じ拡張子の追跡されたファイルがすでにあるディレクトリ
+ */
+function filesOutside(
+  files: readonly string[],
+  ref: AnyComponent,
+  homeOf: (f: string) => string | undefined,
+  opts: VerifyOptions,
+): string[] {
+  const homes = new Set(ref.files.map(homeOf).filter((h) => h !== undefined));
+  const kinds = new Set((opts.trackedFiles ?? []).map((t) => `${dirOf(t)}\0${extOf(t)}`));
+  const deps = opts.architecture?.dependsOn;
+  return files.filter((f) => {
+    const h = homeOf(f);
+    if (h === undefined) return true;
+    if (homes.has(h)) return false;
+    const servesRef = (deps?.get(h) ?? []).some((m) => homes.has(m));
+    return !(servesRef && kinds.has(`${dirOf(f)}\0${extOf(f)}`));
+  });
+}
+
+/** 根拠の無い新しいコンポーネントに、根拠にできる ADR、architecture.ts の記述、根拠のある部品を挙げる */
+function placementCandidates(
+  name: string,
+  comp: AnyComponent,
+  components: Readonly<Record<string, AnyComponent>>,
+  dependencies: readonly AnyDependency[],
+  homeOf: (f: string) => string | undefined,
+  opts: VerifyOptions,
+): string[] {
+  const dirs = commonDirs(comp.files);
+  const adrs = [...(opts.adrs ?? [])]
+    .filter(([, a]) => a.status === "accepted" && dirs.some((d) => mentionsPath(a.text, d)))
+    .map(([id]) => `{ adr: "${id}" }`);
+  const arch = opts.architecture;
+  const quotes = (arch?.texts ?? []).filter((t) => {
+    const paths = arch!.modulePaths.filter((m) => mentionsPath(t, m));
+    return paths.length === 1 && under(comp.files, paths[0]);
+  }).map((t) => `{ architecture: "${t}" }`);
+  const refs = Object.entries(components)
+    .filter(([n, x]) =>
+      n !== name && hasBasis(x) && linked(dependencies, name, n) &&
+      filesOutside(comp.files, x, homeOf, opts).length === 0
+    )
+    .map(([n]) => `{ component: "${n}" }`);
+  return [...adrs, ...quotes, ...refs];
+}
+
+/**
+ * 構成の判断の根拠を確かめる。新しいコンポーネントの置き場所と、どのモジュールにも入らない新しいコンポーネントの
+ * つなぎ方は、恒久ドキュメントから1つに決まるか、その判断についての人の回答（answers）でなければならない
+ */
+function checkStructure(
+  c: Collector,
+  d: {
+    components: Readonly<Record<string, AnyComponent>>;
+    dependencies: readonly AnyDependency[];
+    decisions: readonly AnyDecision[];
+    answers?: Readonly<Record<string, AnyStructureAnswer>>;
+    impact: { create: readonly string[]; modify: readonly string[]; delete?: readonly string[] };
+  },
+  requirementAnswers: readonly string[],
+  opts: VerifyOptions,
+) {
+  const { components, dependencies, decisions } = d;
+  const answers = d.answers ?? {};
+  if (!d.answers) c.error("構成の判断への人の回答（answers）がありません。まだ回答が無ければ {} にしてください");
+  checkIdFormat(c, Object.keys(answers), ID_FORMATS.ANS);
+  for (const id of Object.keys(answers)) {
+    if (requirementAnswers.includes(id)) {
+      c.error(
+        `回答 ${id} は requirements.ts の answers と同じ ID です。requirements.ts の answers と通し番号にしてください`,
+      );
+    }
+    const cited = decisions.filter((x) => x.answers?.includes(id));
+    if (!cited.some((x) => x.adr && x.decidedBy === "user")) {
+      c.error(
+        `構成の回答 ${id} を、adr: true・decidedBy: "user" の設計判断のどれも answers に書いていません（完了時に ADR にする）`,
+      );
+    }
+  }
+  for (const x of decisions) {
+    for (const id of x.answers ?? []) {
+      if (!(id in answers)) {
+        c.error(`設計判断「${x.title}」の answers にある ${id} が、design.ts の answers にありません`);
+      }
+    }
+    if (x.answers?.length && (!x.adr || x.decidedBy !== "user")) {
+      c.error(`設計判断「${x.title}」は構成の回答から決めたので、adr: true・decidedBy: "user" にしてください`);
+    }
+  }
+
+  const openPlacements = Object.entries(answers).filter(([, a]) => a.answer === undefined && a.about.placement);
+  if (openPlacements.length > 1) {
+    c.error(
+      `未回答の置き場所の項目が ${openPlacements.length} 件あります（${
+        openPlacements.map(([id]) => id).join("、")
+      }）。` +
+        `置き場所は機能ごとに1件で聞き、それに伴う前例どおりの場所も同じ項目の placement に書いて、1件にまとめてください`,
+    );
+  }
+  for (const [id, a] of Object.entries(answers)) {
+    if (a.answer === undefined) {
+      c.error(
+        `構成の回答 ${id}（${aboutText(a)}）は未回答です。設計の終わりの確認ポイントで、` +
+          `verify が出す「人に確かめる構成の回答」の一覧を見せ、ユーザーに1件ずつ聞いて answer に書いてください`,
+      );
+    } else if (opts.answerRecords && !opts.answerRecords.committed.has(id)) {
+      const { asked, answered } = opts.answerRecords;
+      if (!asked.has(id)) {
+        c.error(
+          `構成の回答 ${id} は、verify が未回答として一覧に出していないのに answer があります。` +
+            `聞いていない判断に answer を書かない。answer を消して proposal（書き手の案）で残し、verify を実行して、` +
+            `出た一覧を設計の終わりの確認ポイントで見せてから聞いてください`,
+        );
+      } else if (answered && !answered.has(id)) {
+        c.error(
+          `構成の回答 ${id} の answer は、ユーザーの回答として記録されていません。` +
+            `確認ポイントで一覧を見せてユーザーが答えたなら、verify に --answered ${id} を付けて実行して記録してください。` +
+            `ユーザーが答えていなければ、answer を消して proposal（書き手の案）で残し、確認ポイントで聞いてください`,
+        );
+      }
+    }
+    for (const path of a.about.placement ?? []) {
+      const adrs = [...(opts.adrs ?? [])]
+        .filter(([, x]) => x.status === "accepted" && mentionsPath(x.text, path))
+        .map(([adrId]) => adrId);
+      if (adrs.length) {
+        c.warn(
+          `構成の回答 ${id} の場所 ${asDir(path)} は、accepted の ${adrs.join("、")} が書いています。` +
+            `ADR で決まるなら、質問せずに { adr: "…" } を根拠にする`,
+        );
+      }
+    }
+  }
+
+  const answerOf = (where: string, id: string): AnyStructureAnswer | undefined => {
+    const a = answers[id];
+    if (!a) {
+      c.error(
+        `${where}の根拠の回答 ${id} が answers にありません。ユーザーに質問して得た回答を answers に書いてください`,
+      );
+    }
+    return a;
+  };
+
+  const arch = opts.architecture;
+  const homeOf = (f: string) => arch ? moduleOf(f, arch.modulePaths) : dirOf(f);
+  for (const [name, comp] of Object.entries(components)) {
+    if (comp.kind !== "new") continue;
+    const where = `新しいコンポーネント ${name} の置き場所`;
+    const p = comp.placement;
+    if (!p) {
+      const candidates = placementCandidates(name, comp, components, dependencies, homeOf, opts);
+      c.error(
+        `新しいコンポーネント ${name} に placement（置き場所の根拠）がありません。` +
+          (candidates.length
+            ? `根拠にできる候補: ${candidates.join("、")}。合うものが無ければ、${ASK_STRUCTURE}`
+            : `accepted の ADR、architecture.ts の記述、依存でつながる根拠のある部品（同じモジュールか、` +
+              `その部品のモジュールに依存するモジュールの前例のある場所）のどれからも決まりません。${ASK_STRUCTURE}`),
+      );
+    } else if ("answer" in p) {
+      const a = answerOf(where, p.answer);
+      if (a && a.about.placement === undefined) {
+        c.error(`${where}の根拠の回答 ${p.answer} は、置き場所（about.placement）への回答ではありません`);
+      } else if (a && !under(comp.files, a.about.placement!)) {
+        const paths = a.about.placement!;
+        c.error(
+          `${where}の根拠の回答 ${p.answer} は ${paths.map(asDir).join("、")} への回答ですが、` +
+            `ファイル ${comp.files.filter((f) => !under([f], paths)).join("、")} はその下にありません`,
+        );
+      }
+    } else if ("adr" in p) {
+      checkAdrBasis(c, where, p.adr, [comp.files], opts);
+    } else if ("architecture" in p) {
+      const paths = arch?.modulePaths.filter((m) => mentionsPath(p.architecture, m)) ?? [];
+      if (!arch) c.error(`${where}の根拠に architecture.ts の引用がありますが、docs/sdd/architecture.ts がありません`);
+      else if (!arch.texts.some((t) => t.includes(p.architecture))) {
+        c.error(`${where}の引用「${p.architecture}」が、architecture.ts の summary・layers・notes にありません`);
+      } else if (!quotesWhole(arch.texts, p.architecture)) {
+        c.error(
+          `${where}の引用「${p.architecture}」は、architecture.ts の記述の一部を切り出しています。` +
+            `記述の全体か、「。」で区切った1文の全体を引用してください。その文が置き場所を1つに決めないなら、${ASK_STRUCTURE}`,
+        );
+      } else if (paths.length !== 1) {
+        c.error(
+          `${where}の引用「${p.architecture}」は、architecture.ts の modules のパスを1つだけ含む文にしてください` +
+            `（含むパス: ${paths.join("、") || "なし"}）。置き場所が1つに決まらないなら、${ASK_STRUCTURE}`,
+        );
+      } else {
+        const outside = comp.files.filter((f) => !f.startsWith(asDir(paths[0])));
+        if (outside.length) {
+          c.error(`${where}の引用は ${paths[0]} を指しますが、ファイル ${outside.join("、")} はその下にありません`);
+        }
+      }
+    } else if ("component" in p) {
+      const ref = components[p.component];
+      if (!ref) c.error(`${where}の根拠のコンポーネント「${p.component}」がありません`);
+      else if (p.component === name || !hasBasis(ref)) {
+        c.error(
+          `${where}の根拠のコンポーネント ${p.component} は、既存のもの（kind: "modified"）でも、` +
+            `answer、adr、architecture を置き場所の根拠にした新しいコンポーネントでもありません`,
+        );
+      } else if (!linked(dependencies, name, p.component)) {
+        c.error(
+          `${where}の根拠の ${p.component} と ${name} のあいだに依存がありません。` +
+            `根拠にできるのは、新しいコンポーネントを使うか、新しいコンポーネントが使う根拠のある部品だけです。` +
+            `ほかに根拠が無ければ、${ASK_STRUCTURE}`,
+        );
+      } else {
+        const outside = filesOutside(comp.files, ref, homeOf, opts);
+        if (outside.length) {
+          c.error(
+            `${where}の根拠の ${p.component} と、ファイル ${outside.join("、")} が` +
+              (arch
+                ? ` architecture.ts の同じモジュールにも、${p.component} のモジュールに依存する（dependsOn）モジュールの` +
+                  `前例のある場所（同じ拡張子の既存のファイルがあるディレクトリ）にもありません。`
+                : "同じディレクトリにありません。") +
+              `ほかに根拠が無ければ、${ASK_STRUCTURE}`,
+          );
+        }
+      }
+    } else {
+      c.error(`${where}の根拠は、answer、adr、architecture、component のどれかにしてください`);
+    }
+  }
+
+  if (!arch) return;
+  const outsideModules = new Set(
+    Object.entries(components)
+      .filter(([, comp]) =>
+        comp.kind === "new" && comp.files.length > 0 &&
+        comp.files.every((f) => moduleOf(f, arch.modulePaths) === undefined)
+      )
+      .map(([name]) => name),
+  );
+  for (const dep of dependencies) {
+    if (outsideModules.has(dep.from) === outsideModules.has(dep.to)) continue;
+    const where = `依存 ${dep.from} → ${dep.to} `;
+    const sides = [components[dep.from]?.files ?? [], components[dep.to]?.files ?? []];
+    const b = dep.basis;
+    if (!b) {
+      const outside = outsideModules.has(dep.from) ? dep.from : dep.to;
+      c.error(
+        `${where}は、architecture.ts のどのモジュールにも入らない ${outside} と、ほかのコンポーネントのつなぎ方です。` +
+          `accepted の ADR で決まっていなければ、置き場所とは別に${ASK_STRUCTURE}（basis に書く）`,
+      );
+    } else if ("answer" in b) {
+      const a = answerOf(where, b.answer);
+      const link = a?.about.link;
+      if (a && !link) {
+        c.error(
+          `${where}の根拠の回答 ${b.answer} は、つなぎ方（about.link）への回答ではありません。` +
+            `置き場所の回答はつなぎ方の根拠になりません。置き場所とは別に${ASK_STRUCTURE}`,
+        );
+      } else if (
+        link && !(under(sides[0], link[0]) && under(sides[1], link[1])) &&
+        !(under(sides[0], link[1]) && under(sides[1], link[0]))
+      ) {
+        c.error(
+          `${where}の根拠の回答 ${b.answer} は ${
+            link.map((s) => s.map(asDir).join("、")).join(" と ")
+          } のつなぎ方への回答ですが、` +
+            `${dep.from} と ${dep.to} のファイルがそれぞれの側の下にありません`,
+        );
+      }
+    } else if ("adr" in b) checkAdrBasis(c, where, b.adr, sides, opts);
+    else c.error(`${where}の根拠は、answer か adr にしてください`);
+  }
+
+  // つなぎ方を求めるかは、書き手が省ける dependencies ではなく、作る・変えるファイルから決める
+  const outsideFiles = [...outsideModules].flatMap((n) => components[n].files);
+  const touched = [...d.impact.create, ...d.impact.modify, ...(d.impact.delete ?? [])]
+    .filter((f) => moduleOf(f, arch.modulePaths) !== undefined);
+  const based = dependencies.some((dep) => outsideModules.has(dep.from) !== outsideModules.has(dep.to) && dep.basis);
+  if (outsideFiles.length && touched.length && !based) {
+    c.error(
+      `architecture.ts のどのモジュールにも入らない新しいファイル（${outsideFiles.join("、")}）と、` +
+        `既存のモジュールのファイル（${touched.join("、")}）を、同じ設計で作る・変えます。` +
+        `両者のつなぎ方を accepted の ADR か人の回答で決め、つなぐコンポーネントのあいだの依存の basis に書いてください。` +
+        `ADR で決まっていなければ、置き場所とは別に${ASK_STRUCTURE}`,
+    );
   }
 }
 
@@ -652,6 +1099,18 @@ function verifyDesign(c: Collector, r: LooseRequirements, d: LooseDesign, opts: 
   checkImpact(c, d.impact);
   checkConventionsCompliance(c, d.conventionsCompliance, opts.conventions, d.decisions as readonly AnyDecision[]);
   checkDecisions(c, d.decisions as readonly AnyDecision[], opts);
+  checkStructure(
+    c,
+    {
+      components: d.components as Readonly<Record<string, AnyComponent>>,
+      dependencies: d.dependencies as readonly AnyDependency[],
+      decisions: d.decisions as readonly AnyDecision[],
+      answers: d.answers as Readonly<Record<string, AnyStructureAnswer>> | undefined,
+      impact: d.impact,
+    },
+    Object.keys(r.answers ?? {}),
+    opts,
+  );
 
   // 影響範囲とコンポーネントのファイルの照合（影響範囲の漏れは、衝突の検出と実装範囲の管理を無効にする）
   const impactFiles = new Set([...d.impact.create, ...d.impact.modify, ...(d.impact.delete ?? [])]);
