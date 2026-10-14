@@ -17,6 +17,10 @@ Issue: <issue の URL。無ければ ID だけ>
 <verifiedBy: "human" の受け入れ条件ごとに、ID と「前提 → 操作 → 期待する結果」を1行ずつ>
 - AC-001 <前提> → <操作> → <期待する結果>
 
+人が確かめる変えてはいけない振る舞い（合格済み。規約には写さない）:
+<verifiedBy: "human" の invariants ごとに、ID と behavior。無ければ「なし」>
+- INV-001 <behavior>
+
 自動テストで確かめているもの:
 <verifiedBy: "automated" の受け入れ条件と変えてはいけない振る舞いの ID と、短い説明>
 

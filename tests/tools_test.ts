@@ -670,6 +670,81 @@ Deno.test("acceptance: 準備のコマンドや画面の確認が失敗したら
   assertStringIncludes(failed.out, "終了コード 3");
 });
 
+const conventions = (rule: string) =>
+  `import { defineConventions } from "./schema/mod.ts";
+export default defineConventions({
+  "CONV-001": { topic: "ログ", rule: ${JSON.stringify(rule)}, enforcedBy: "manual" },
+});
+`;
+
+Deno.test("finish-report: 不変条件を規約に写すとエラーにし、写していない規約はエラーにしない", async () => {
+  const behavior = "1ページ目の件数表示は「1〜20件目」のまま変わらない";
+  const root = await quickBranch();
+  await writeFile(root, "docs/sdd/conventions.ts", conventions("ログにはリクエストIDを含める"));
+  const unrelated = await task(root, "finish-report", "EX-002", "--skip-gate");
+  assertEquals(unrelated.out.includes("rule に写しています"), false, unrelated.out);
+
+  await writeFile(root, "docs/sdd/conventions.ts", conventions(behavior));
+  const copied = await task(root, "finish-report", "EX-002", "--skip-gate");
+  assertEquals(copied.code, 1, copied.out);
+  assertStringIncludes(copied.out, "INV-001 の振る舞いを規約 CONV-001 の rule に写しています");
+});
+
+Deno.test("finish-report: 分岐点から変えていない規約は、振る舞いと同じ文面でもエラーにしない", async () => {
+  const root = await installedRepo();
+  await writeFile(
+    root,
+    "docs/sdd/conventions.ts",
+    conventions("1ページ目の件数表示は「1〜20件目」のまま変わらない"),
+  );
+  await sh(root, "add", ".");
+  await sh(root, "commit", "-q", "--no-verify", "-m", "docs: 規約");
+  await sh(root, "switch", "-q", "-c", "ex-002-search-count");
+  for (const f of ["issue.md", "spec.ts"]) {
+    await writeFile(root, `docs/specs/EX-002/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-002", f)));
+  }
+  await sh(root, "add", ".");
+  await sh(root, "commit", "-q", "--no-verify", "-m", "docs(EX-002): specを作成（軽量モード）");
+  const r = await task(root, "finish-report", "EX-002", "--skip-gate");
+  assertEquals(r.out.includes("rule に写しています"), false, r.out);
+});
+
+Deno.test("finish-report: テストの除外が残っていればエラーにし、relaxesQualityGate にそのファイルがあればエラーにしない", async () => {
+  const root = await installedRepo();
+  await sh(root, "switch", "-q", "-c", "ex-001-lockout");
+  for (const f of ["issue.md", "requirements.ts", "design.ts", "tasks.ts"]) {
+    await writeFile(root, `docs/specs/EX-001/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
+  }
+  await writeFile(root, "scripts/gate-test.sh", "#!/bin/sh\nphpunit --exclude-group slow\n");
+  await patchFile(
+    root,
+    "docs/sdd/config.ts",
+    "staleBranchDays: 30,",
+    `staleBranchDays: 30,\n  commands: { test: "bash scripts/gate-test.sh" },`,
+  );
+  const blocked = await task(root, "finish-report", "EX-001", "--skip-gate");
+  assertEquals(blocked.code, 1, blocked.out);
+  assertStringIncludes(blocked.out, "品質ゲートでテストを除外しています: scripts/gate-test.sh: --exclude-group");
+
+  await patchFile(
+    root,
+    "docs/specs/EX-001/design.ts",
+    "adr: false,",
+    `adr: false,\n      relaxesQualityGate: ["docs/sdd/config.ts"],`,
+  );
+  const wrongFile = await task(root, "finish-report", "EX-001", "--skip-gate");
+  assertStringIncludes(wrongFile.out, "scripts/gate-test.sh: --exclude-group");
+
+  await patchFile(
+    root,
+    "docs/specs/EX-001/design.ts",
+    `relaxesQualityGate: ["docs/sdd/config.ts"],`,
+    `relaxesQualityGate: ["scripts/gate-test.sh"],`,
+  );
+  const allowed = await task(root, "finish-report", "EX-001", "--skip-gate");
+  assertEquals(allowed.out.includes("品質ゲートでテストを除外しています"), false, allowed.out);
+});
+
 // --- finish-report: 品質ゲートを緩めた変更と ADR の書き換え ---
 
 Deno.test("finish-report: 品質ゲートを緩めた変更と、採用済みの ADR の書き換えをエラーにする", async () => {

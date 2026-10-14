@@ -4,7 +4,8 @@
  * 使い方: deno task --config docs/sdd/deno.json finish-report <ISSUE>
  *
  * 表示する内容:
- *   - 完了の条件（verify --finish）を満たしているか
+ *   - 完了の条件（verify --finish）を満たしているか。
+ *     この issue の不変条件を規約の rule に写したとき、品質ゲートがテストを除外したままのときもエラーにする
  *   - ADRに記録する設計判断（design.ts の decisions で adr: true のもの）と、次のADRの番号
  *   - architecture.ts のモジュールに含まれない場所に作ったファイル
  *   - 非機能要件のうち、プロジェクト全体の基準（nfr.ts）にするか検討が要るもの
@@ -146,6 +147,31 @@ if (impact) {
   for (const f of scope.outside) errors.push(`影響範囲（impact）に無い変更があります: ${f}（spec を直してください）`);
 }
 
+// この issue の不変条件を、規約の rule に写していないか（このブランチで足した・変えた rule だけを見る）
+const invariants = { ...(issue.requirements?.invariants ?? {}), ...(issue.quick?.invariants ?? {}) };
+const convPath = join(SDD_DIR, "conventions.ts");
+const currentRules = await conventionRules(convPath);
+const previousRules = base ? await conventionRulesAt(base) : new Map<string, string>();
+for (const [cid, rule] of currentRules) {
+  if (previousRules.get(cid) === rule) continue;
+  for (const [iid, inv] of Object.entries(invariants)) {
+    if (!ruleCopiesBehavior(rule, inv.behavior)) continue;
+    errors.push(
+      `${iid} の振る舞いを規約 ${cid} の rule に写しています（この issue だけの振る舞いは規約にしない。` +
+        `プロジェクト全体の基準は nfr.ts、設計判断は ADR に、受け入れた文面のまま移す）`,
+    );
+  }
+}
+
+// 品質ゲートのコマンドに残っているテストの除外（warn のままでは完了しない）
+const skips = await findGateSkips(config.commands);
+for (const s of skips) {
+  if (justified.has(skipFile(s))) continue;
+  errors.push(
+    `品質ゲートでテストを除外しています: ${s}（除外を戻す。戻せないときは、そのファイルを decisions の relaxesQualityGate に書き、ユーザーの確認を得てから完了する）`,
+  );
+}
+
 console.log(`■ 完了の条件（verify --finish）: ${errors.length ? `エラー ${errors.length} 件` : "満たしています"}`);
 for (const e of errors) console.log(`  [エラー] ${e}`);
 
@@ -205,9 +231,13 @@ for (const [nid, n] of nfrs) {
   );
 }
 
-// 5. 手で守る規約と、品質ゲートでの除外
+// 5. PR 本文に残す振る舞いと、手で守る規約
+console.log("\n■ PR本文に抜き出す変えてはいけない振る舞い（verifiedBy: human。規約には写さない）");
+const humanInvariants = Object.entries(invariants).filter(([, inv]) => inv.verifiedBy === "human");
+if (humanInvariants.length === 0) console.log("  なし");
+for (const [iid, inv] of humanInvariants) console.log(`  ${iid} ${inv.behavior}`);
+
 console.log('\n■ 手で守る規約（conventions.ts の enforcedBy: "manual"）');
-const convPath = join(SDD_DIR, "conventions.ts");
 const compliance = (issue.design?.conventionsCompliance ?? issue.quick?.conventionsCompliance ?? {}) as Record<
   string,
   string
@@ -224,13 +254,8 @@ if (!(await exists(convPath))) {
   }
   console.log("  実装がこの守り方どおりになっているかを、コードで確かめる");
 }
-const skips = await findGateSkips(config.commands);
 for (const s of weakening?.suppressions ?? []) {
   console.log(`[警告] 検出を抑止するコメントを追加しています: ${s.file}「${s.line}」（本当に必要かを確かめる）`);
-}
-if (skips.length) {
-  console.log("\n■ 品質ゲートでテストを除外している設定（除外したテストは受け入れ条件の根拠にならない）");
-  for (const s of skips) console.log(`  [警告] ${s}`);
 }
 
 // 6. コミット
@@ -241,3 +266,40 @@ console.log(
 );
 
 Deno.exit(errors.length ? 1 : 0);
+
+/** 空白の違いを除いて、rule が振る舞いの文面を含んでいるか */
+function ruleCopiesBehavior(rule: string, behavior: string): boolean {
+  const r = rule.replace(/\s+/g, " ").trim();
+  const b = behavior.replace(/\s+/g, " ").trim();
+  if (b.length < 8) return r === b;
+  return r.includes(b);
+}
+
+async function conventionRules(path: string): Promise<Map<string, string>> {
+  if (!(await exists(path))) return new Map();
+  const conv = await importDefault<Record<string, { rule?: string }>>(path);
+  const rules = new Map<string, string>();
+  for (const [id, c] of Object.entries(conv)) {
+    if (typeof c?.rule === "string") rules.set(id, c.rule);
+  }
+  return rules;
+}
+
+/** 分岐点の conventions.ts を一時ファイルから読む。無ければ空 */
+async function conventionRulesAt(rev: string): Promise<Map<string, string>> {
+  const text = await gitOut(["show", `${rev}:docs/sdd/conventions.ts`]);
+  if (!text) return new Map();
+  const path = join(SDD_DIR, ".conventions-base.ts");
+  await Deno.writeTextFile(path, text);
+  try {
+    return await conventionRules(path);
+  } finally {
+    await Deno.remove(path).catch(() => {});
+  }
+}
+
+/** 除外の出どころ。commands に書いてあれば config.ts、スクリプトならそのパス */
+function skipFile(skip: string): string {
+  const where = skip.split(":")[0]?.trim() ?? skip;
+  return where.startsWith("commands.") ? "docs/sdd/config.ts" : where;
+}
