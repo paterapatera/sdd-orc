@@ -16,10 +16,9 @@ type CheckBase = {
  * ファイルを読むだけの項目（exists、contains、unchanged、testFirst、noCommand）を先に判定し、command と hiddenTests はその後に書いた順に実行する。
  * コマンドが書き換えたファイルは、採点の最後に元に戻す。
  */
-export type Check =
-  & CheckBase
-  & (
-    /** 試験場のルートで sh -c で実行し、終了コード0なら合格 */
+export type Check = CheckBase &
+  /** 試験場のルートで sh -c で実行し、終了コード0なら合格 */
+  (
     | { kind: "command"; run: string }
     /** すべてのパスがある */
     | { kind: "exists"; paths: readonly string[] }

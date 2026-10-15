@@ -72,8 +72,7 @@ export default defineScenario({
       label: "受け入れテスト（隠したテスト）: 見られる人の制限",
       from: "hidden/feature",
       to: "tests/Feature/Hidden",
-      run:
-        `rm -f public/hot && ${SAIL} npm run build >/dev/null && ${SAIL} artisan test --compact tests/Feature/Hidden`,
+      run: `rm -f public/hot && ${SAIL} npm run build >/dev/null && ${SAIL} artisan test --compact tests/Feature/Hidden`,
     },
     {
       id: "hidden-browser",
@@ -82,8 +81,7 @@ export default defineScenario({
       label: "受け入れテスト（隠したテスト）: 記録するログイン、日時の形とタイムゾーン、件数、0件、メニュー（E2E）",
       from: "hidden/browser",
       to: "tests/Browser/Hidden",
-      run:
-        `rm -f public/hot && ${SAIL} npm run build >/dev/null && ${SAIL} artisan test --compact tests/Browser/Hidden`,
+      run: `rm -f public/hot && ${SAIL} npm run build >/dev/null && ${SAIL} artisan test --compact tests/Browser/Hidden`,
     },
     {
       // 整形で崩れを直してから check を通すことの無いよう、format は流さない。コマンドの項目の最後に置く

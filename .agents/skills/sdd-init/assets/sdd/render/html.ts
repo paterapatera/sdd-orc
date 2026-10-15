@@ -22,9 +22,9 @@ export function idKindOf(id: string): IdKind {
 
 /** クリックでコピーできるIDのバッジ */
 export function idBadge(id: string, kind: IdKind = idKindOf(id)): string {
-  return `<button type="button" class="id id-${kind}" data-copy="${esc(id)}" title="クリックでコピー">${
-    esc(id)
-  }</button>`;
+  return `<button type="button" class="id id-${kind}" data-copy="${esc(id)}" title="クリックでコピー">${esc(
+    id,
+  )}</button>`;
 }
 
 export function idBadges(ids: readonly string[]): string {
@@ -45,11 +45,11 @@ export function list(items: readonly string[], ordered = false): string {
 
 export function table(headers: readonly string[], rows: readonly (readonly string[])[], cls = ""): string {
   if (rows.length === 0) return `<p class="muted">なし</p>`;
-  return `<div class="table-wrap"><table class="${cls}"><thead><tr>${
-    headers.map((h) => `<th>${esc(h)}</th>`).join("")
-  }</tr></thead><tbody>${
-    rows.map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`).join("")
-  }</tbody></table></div>`;
+  return `<div class="table-wrap"><table class="${cls}"><thead><tr>${headers
+    .map((h) => `<th>${esc(h)}</th>`)
+    .join("")}</tr></thead><tbody>${rows
+    .map((r) => `<tr>${r.map((c) => `<td>${c}</td>`).join("")}</tr>`)
+    .join("")}</tbody></table></div>`;
 }
 
 export type NavItem = { id: string; label: string; children?: NavItem[] };
@@ -63,11 +63,11 @@ export type Page = {
 };
 
 function renderNav(items: NavItem[]): string {
-  return `<ul>${
-    items.map((i) =>
-      `<li><a href="#${esc(i.id)}">${esc(i.label)}</a>${i.children?.length ? renderNav(i.children) : ""}</li>`
-    ).join("")
-  }</ul>`;
+  return `<ul>${items
+    .map(
+      (i) => `<li><a href="#${esc(i.id)}">${esc(i.label)}</a>${i.children?.length ? renderNav(i.children) : ""}</li>`,
+    )
+    .join("")}</ul>`;
 }
 
 export function renderPage(p: Page): string {

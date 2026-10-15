@@ -7,7 +7,7 @@
 | `patterns/<ID>.md` | 失敗のしかたを1件ずつ | 実行の記録を読んだ AI と人 |
 | `strategies/<ID>.md` | 合格した実行でうまくいったやり方を1件ずつ | 同上 |
 | `logs.md` | 実行のたびの要約（何を回し、何が分かったか） | 同上 |
-| `skill-impact.md` | スキルの変更の提案と、採点の結果、採否 | `deno task eval:impact --write`（それより前は手で書いた） |
+| `skill-impact.md` | スキルの変更の提案と、採点の結果、採否 | `bun eval/impact.ts --write`（それより前は手で書いた） |
 | `requests/<ID>.md` | `.agents/skills` のスキルへの依頼（機能の追加、出ない振る舞いを出す）の記録。事例、改善案、流し直した結果 | optimize-fix |
 
 ## パターンの一覧
@@ -57,7 +57,7 @@
 
 ## 改善案
 
-close-pattern が、スキルを変える前に書く。`deno task eval:propose --pattern <ID>` が通るまでスキルは変えない。
+close-pattern が、スキルを変える前に書く。`bun eval/propose.ts --pattern <ID>` が通るまでスキルは変えない。
 
 - 原則: （固有の語を消しても残る1文）
 - 固有: （この失敗の回にだけ出る語。`、` で区切る）

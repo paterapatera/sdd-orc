@@ -54,17 +54,21 @@ export function markdownToHtml(md: string, headingOffset = 2): string {
       continue;
     }
     if (line.startsWith("|") && i + 1 < lines.length && /^\|?\s*:?-{3,}/.test(lines[i + 1])) {
-      const cells = (l: string) => l.replace(/^\||\|$/g, "").split("|").map((c) => c.trim());
+      const cells = (l: string) =>
+        l
+          .replace(/^\||\|$/g, "")
+          .split("|")
+          .map((c) => c.trim());
       const head = cells(line);
       i += 2;
       const rows: string[][] = [];
       while (i < lines.length && lines[i].startsWith("|")) rows.push(cells(lines[i++]));
       out.push(
-        `<div class="table-wrap"><table><thead><tr>${
-          head.map((h) => `<th>${inline(h)}</th>`).join("")
-        }</tr></thead><tbody>${
-          rows.map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`).join("")
-        }</tbody></table></div>`,
+        `<div class="table-wrap"><table><thead><tr>${head
+          .map((h) => `<th>${inline(h)}</th>`)
+          .join("")}</tr></thead><tbody>${rows
+          .map((r) => `<tr>${r.map((c) => `<td>${inline(c)}</td>`).join("")}</tr>`)
+          .join("")}</tbody></table></div>`,
       );
       continue;
     }

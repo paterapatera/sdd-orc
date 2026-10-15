@@ -34,17 +34,18 @@ export async function findWeakening(): Promise<Weakening | undefined> {
   const base = await branchBase();
   if (!base) return undefined;
   const result: Weakening = { config: [], levels: [], suppressions: [] };
-  const diff = (await gitOut([
-    "diff",
-    "--unified=0",
-    "--no-color",
-    base,
-    "HEAD",
-    "--",
-    ".",
-    ":(exclude)docs/sdd",
-    ":(exclude)docs/specs",
-  ])) ?? "";
+  const diff =
+    (await gitOut([
+      "diff",
+      "--unified=0",
+      "--no-color",
+      base,
+      "HEAD",
+      "--",
+      ".",
+      ":(exclude)docs/sdd",
+      ":(exclude)docs/specs",
+    ])) ?? "";
   let file = "";
   const removedLevels = new Map<string, string>();
   for (const line of diff.split("\n")) {

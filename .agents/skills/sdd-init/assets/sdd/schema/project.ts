@@ -78,11 +78,14 @@ export type Architecture = {
   stack: readonly { name: string; version?: string; purpose: string }[];
   /** モジュール（ディレクトリ単位の構成要素） */
   modules: Readonly<
-    Record<string, {
-      path: string;
-      responsibility: string;
-      dependsOn?: readonly string[];
-    }>
+    Record<
+      string,
+      {
+        path: string;
+        responsibility: string;
+        dependsOn?: readonly string[];
+      }
+    >
   >;
   /** 層の構成とルール（例: 「domain は infrastructure に依存しない」） */
   layers?: readonly { name: string; rule: string }[];
@@ -123,9 +126,7 @@ export function defineConventions<const T extends Conventions>(c: T): T {
 }
 
 /** プロジェクト全体の非機能要件（docs/sdd/nfr.ts） */
-export type BaselineNfrs = Readonly<
-  Record<BaseNfrId, Omit<NonFunctionalRequirement, "overrides">>
->;
+export type BaselineNfrs = Readonly<Record<BaseNfrId, Omit<NonFunctionalRequirement, "overrides">>>;
 
 export function defineBaselineNfrs<const T extends BaselineNfrs>(n: T): T {
   return n;

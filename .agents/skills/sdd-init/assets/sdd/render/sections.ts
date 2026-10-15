@@ -59,18 +59,21 @@ function taskStatus(t: AnyTask): string {
 export function diagnosticsSection(diags: Diagnostic[]): Section {
   const errors = diags.filter((d) => d.level === "error");
   const warnings = diags.filter((d) => d.level === "warning");
-  const body = diags.length === 0
-    ? `<div class="callout callout-ok">${statusLabel("ok", "問題なし")} 検証で問題は見つかりませんでした。</div>`
-    : `<p>${statusLabel("error", `エラー ${errors.length} 件`)} ${
-      statusLabel("warning", `警告 ${warnings.length} 件`)
-    }</p>
-<ul class="diag">${
-      [...errors, ...warnings].map((d) =>
-        `<li class="${d.level}">${statusLabel(d.level, d.level === "error" ? "エラー" : "警告")}<span><code>${
-          esc(d.file)
-        }</code> ${esc(d.message)}</span></li>`
-      ).join("")
-    }</ul>`;
+  const body =
+    diags.length === 0
+      ? `<div class="callout callout-ok">${statusLabel("ok", "問題なし")} 検証で問題は見つかりませんでした。</div>`
+      : `<p>${statusLabel("error", `エラー ${errors.length} 件`)} ${statusLabel(
+          "warning",
+          `警告 ${warnings.length} 件`,
+        )}</p>
+<ul class="diag">${[...errors, ...warnings]
+          .map(
+            (d) =>
+              `<li class="${d.level}">${statusLabel(d.level, d.level === "error" ? "エラー" : "警告")}<span><code>${esc(
+                d.file,
+              )}</code> ${esc(d.message)}</span></li>`,
+          )
+          .join("")}</ul>`;
   return { nav: { id: "verify", label: "検証結果" }, html: `<section id="verify"><h2>検証結果</h2>${body}</section>` };
 }
 
@@ -85,61 +88,66 @@ export function acceptanceSection(
   guide?: AcceptanceGuide,
 ): Section {
   const check = (id: string) =>
-    `<input type="checkbox" class="accept" data-accept-key="${esc(issueId)}:${esc(id)}" aria-label="${
-      esc(id)
-    } を確認した">`;
+    `<input type="checkbox" class="accept" data-accept-key="${esc(issueId)}:${esc(id)}" aria-label="${esc(
+      id,
+    )} を確認した">`;
   // 人が確かめるものだけを載せる（自動テストで確かめるものは、件数だけを示す）
   const acRows = Object.entries(functional).flatMap(([frId, fr]) =>
-    fr.acceptance.filter((s) => s.verifiedBy === "human").map((s) => [
-      check(s.id),
-      `${idBadge(s.id)}<br><span class="muted">${esc(frId)} ${esc(fr.title)}</span>`,
-      `<span class="tag">${AC_KIND_LABEL[s.kind] ?? esc(s.kind)}</span>`,
-      s.given.length ? list(s.given) : `<span class="muted">なし</span>`,
-      esc(s.when),
-      list(s.then),
-    ])
+    fr.acceptance
+      .filter((s) => s.verifiedBy === "human")
+      .map((s) => [
+        check(s.id),
+        `${idBadge(s.id)}<br><span class="muted">${esc(frId)} ${esc(fr.title)}</span>`,
+        `<span class="tag">${AC_KIND_LABEL[s.kind] ?? esc(s.kind)}</span>`,
+        s.given.length ? list(s.given) : `<span class="muted">なし</span>`,
+        esc(s.when),
+        list(s.then),
+      ]),
   );
   const automated = [
     ...Object.values(functional).flatMap((fr) =>
-      fr.acceptance.filter((s) => s.verifiedBy !== "human").map((s) => s.id)
+      fr.acceptance.filter((s) => s.verifiedBy !== "human").map((s) => s.id),
     ),
-    ...Object.entries(invariants).filter(([, v]) => v.verifiedBy !== "human").map(([id]) => id),
+    ...Object.entries(invariants)
+      .filter(([, v]) => v.verifiedBy !== "human")
+      .map(([id]) => id),
   ];
-  const invRows = Object.entries(invariants).filter(([, v]) => v.verifiedBy === "human").map(([id, v]) => [
-    check(id),
-    `${idBadge(id)}<br><span class="muted">${esc(v.title)}</span>`,
-    esc(v.behavior),
-    esc(v.verification),
-  ]);
+  const invRows = Object.entries(invariants)
+    .filter(([, v]) => v.verifiedBy === "human")
+    .map(([id, v]) => [
+      check(id),
+      `${idBadge(id)}<br><span class="muted">${esc(v.title)}</span>`,
+      esc(v.behavior),
+      esc(v.verification),
+    ]);
   const code = (v: string) => `<code>${esc(v)}</code>`;
   const guideHtml = guide
     ? `<h3>準備</h3>
 <h4>起動の手順（リポジトリのルートで、上から順に実行する）</h4>
-<ol>${
-      guide.setup.map((st) => `<li>${code(st.run)}${st.note ? ` <span class="muted">${esc(st.note)}</span>` : ""}</li>`)
-        .join("")
-    }${
-      guide.server
-        ? `<li>${code(guide.server.run)} <span class="muted">（サーバー。${
-          esc(guide.server.url)
-        } が開けるまで待つ）</span></li>`
-        : ""
-    }</ol>
-<h4>テスト用のアカウント</h4>${
-      table(["ID", "パスワード", "権限"], guide.accounts.map((a) => [code(a.id), code(a.password), esc(a.role)]))
-    }
-<h4>テスト用のデータ</h4>${
-      table(
+<ol>${guide.setup
+        .map((st) => `<li>${code(st.run)}${st.note ? ` <span class="muted">${esc(st.note)}</span>` : ""}</li>`)
+        .join("")}${
+        guide.server
+          ? `<li>${code(guide.server.run)} <span class="muted">（サーバー。${esc(
+              guide.server.url,
+            )} が開けるまで待つ）</span></li>`
+          : ""
+      }</ol>
+<h4>テスト用のアカウント</h4>${table(
+        ["ID", "パスワード", "権限"],
+        guide.accounts.map((a) => [code(a.id), code(a.password), esc(a.role)]),
+      )}
+<h4>テスト用のデータ</h4>${table(
         ["受け入れ条件", "コマンド", "実行後の状態"],
         guide.data.map((d) => [idBadges(d.acs), code(d.run), esc(d.expect)]),
-      )
-    }
+      )}
 <h4>確かめる画面</h4>${list(guide.check.map((c) => `${c.url}${c.note ? `（${c.note}）` : ""}`))}${
-      guide.notes?.length ? `<h4>補足</h4>${list(guide.notes)}` : ""
-    }`
-    : `<div class="callout callout-warning">${
-      statusLabel("warning", "準備なし")
-    } 受け入れテストの準備（起動の手順、アカウント、データ）はまだ書かれていません。実装の完了時に sdd-impl が書きます。</div>`;
+        guide.notes?.length ? `<h4>補足</h4>${list(guide.notes)}` : ""
+      }`
+    : `<div class="callout callout-warning">${statusLabel(
+        "warning",
+        "準備なし",
+      )} 受け入れテストの準備（起動の手順、アカウント、データ）はまだ書かれていません。実装の完了時に sdd-impl が書きます。</div>`;
   const html = `<section id="acceptance"><h2>受け入れテスト</h2>
 <p>次の受け入れ条件を満たすことを確かめてください。チェックの状態はこのブラウザに保存されます。
 <span class="accept-progress" data-accept-issue="${esc(issueId)}"></span></p>
@@ -161,29 +169,31 @@ export function issueSection(issue: LoadedIssue): Section {
 function functionalCards(functional: Readonly<Record<string, FunctionalRequirement>>): string {
   const entries = Object.entries(functional);
   if (entries.length === 0) return `<p class="muted">なし</p>`;
-  return entries.map(([id, fr]) => {
-    const priority = fr.priority ? `<span class="tag">${esc(fr.priority)}</span>` : "";
-    const acRows = fr.acceptance.map((s) => [
-      idBadge(s.id),
-      `<span class="tag">${AC_KIND_LABEL[s.kind] ?? esc(s.kind)}</span>`,
-      s.given.length ? list(s.given) : `<span class="muted">なし</span>`,
-      esc(s.when),
-      list(s.then),
-    ]);
-    const na = [
-      fr.notApplicable?.boundary ? `境界値なし: ${esc(fr.notApplicable.boundary)}` : "",
-      fr.notApplicable?.error ? `異常系なし: ${esc(fr.notApplicable.error)}` : "",
-    ].filter(Boolean);
-    return `<div class="card" id="${esc(id)}">
+  return entries
+    .map(([id, fr]) => {
+      const priority = fr.priority ? `<span class="tag">${esc(fr.priority)}</span>` : "";
+      const acRows = fr.acceptance.map((s) => [
+        idBadge(s.id),
+        `<span class="tag">${AC_KIND_LABEL[s.kind] ?? esc(s.kind)}</span>`,
+        s.given.length ? list(s.given) : `<span class="muted">なし</span>`,
+        esc(s.when),
+        list(s.then),
+      ]);
+      const na = [
+        fr.notApplicable?.boundary ? `境界値なし: ${esc(fr.notApplicable.boundary)}` : "",
+        fr.notApplicable?.error ? `異常系なし: ${esc(fr.notApplicable.error)}` : "",
+      ].filter(Boolean);
+      return `<div class="card" id="${esc(id)}">
 <div class="card-head">${idBadge(id)}<span class="card-title">${esc(fr.title)}</span><span class="tag">${
-      EARS_LABEL[fr.ears.pattern]
-    }</span>${priority}</div>
+        EARS_LABEL[fr.ears.pattern]
+      }</span>${priority}</div>
 <div class="ears">${esc(earsSentence(fr.ears))}</div>
 ${table(["ID", "種類", "前提（Given）", "操作（When）", "結果（Then）"], acRows)}
 ${na.length ? `<p class="muted">${na.join("<br>")}</p>` : ""}
 ${fr.notes ? `<p class="muted">${esc(fr.notes)}</p>` : ""}
 </div>`;
-  }).join("");
+    })
+    .join("");
 }
 
 function nfrTable(nfrs: Readonly<Record<string, NonFunctionalRequirement>>): string {
@@ -222,8 +232,7 @@ function sufficiencyHtml(opts: {
   ]);
   const decisionLabel = { baseline: "基準のまま", added: "追加・上書き", notApplicable: "該当しない" } as const;
   const nfr = opts.nfrReview
-    ? `<h4>非機能要件の検討（IPA 非機能要求グレードの大項目）</h4>${
-      table(
+    ? `<h4>非機能要件の検討（IPA 非機能要求グレードの大項目）</h4>${table(
         ["カテゴリ", "扱い", "内容"],
         Object.entries(opts.nfrReview).map(([category, e]) => [
           esc(category),
@@ -231,31 +240,29 @@ function sufficiencyHtml(opts: {
           e.decision === "added"
             ? idBadges(e.ids)
             : e.decision === "notApplicable"
-            ? esc(e.reason)
-            : e.note
-            ? esc(e.note)
-            : `<span class="muted">docs/sdd/nfr.ts の基準のまま</span>`,
+              ? esc(e.reason)
+              : e.note
+                ? esc(e.note)
+                : `<span class="muted">docs/sdd/nfr.ts の基準のまま</span>`,
         ]),
-      )
-    }`
+      )}`
     : "";
   const checklist = opts.checklist
     ? table(
-      ["観点", "結果", "内容"],
-      (Object.keys(CHECKLIST_LABELS) as ChecklistItem[]).map((k) => {
-        const v = opts.checklist![k];
-        return [
-          esc(CHECKLIST_LABELS[k]),
-          v
-            ? (v.result === "considered" ? statusLabel("ok", "検討した") : statusLabel("todo", "該当しない"))
-            : statusLabel(
-              "error",
-              "未記入",
-            ),
-          v ? esc(v.note) : "",
-        ];
-      }),
-    )
+        ["観点", "結果", "内容"],
+        (Object.keys(CHECKLIST_LABELS) as ChecklistItem[]).map((k) => {
+          const v = opts.checklist![k];
+          return [
+            esc(CHECKLIST_LABELS[k]),
+            v
+              ? v.result === "considered"
+                ? statusLabel("ok", "検討した")
+                : statusLabel("todo", "該当しない")
+              : statusLabel("error", "未記入"),
+            v ? esc(v.note) : "",
+          ];
+        }),
+      )
     : `<p class="muted">なし</p>`;
   return `<h4>issue の受け入れ条件との対応</h4>${
     coverage.length
@@ -277,7 +284,7 @@ function aspectRows(values: readonly ValueCheck[] | undefined): AspectRow[] {
       kind: kinds[v.kind]?.label ?? v.kind,
       aspect: kinds[v.kind]?.aspects[a] ?? a,
       decision,
-    }))
+    })),
   );
 }
 
@@ -332,26 +339,24 @@ export function requirementsSection(r: LooseRequirements): Section {
     ...rows.filter((row) => row.decision.open === true).map((row) => `${row.target}: ${row.aspect}`),
   ];
   const open = unresolved.length
-    ? `<div class="callout callout-warning">${statusLabel("warning", "未確定")} レビューまでに解消が必要です。${
-      list(unresolved)
-    }</div>`
+    ? `<div class="callout callout-warning">${statusLabel("warning", "未確定")} レビューまでに解消が必要です。${list(
+        unresolved,
+      )}</div>`
     : `<p class="muted">なし</p>`;
   const html = `<section id="requirements"><h2>要件</h2>
 <p>${esc(r.summary)}</p>
 <h3 id="req-fr">機能要件</h3>${functionalCards(r.functional)}
-<h3 id="req-nfr">非機能要件</h3><p class="muted">docs/sdd/nfr.ts（プロジェクト全体の基準）との差分だけを記載しています。</p>${
-    nfrTable(r.nonFunctional)
-  }
+<h3 id="req-nfr">非機能要件</h3><p class="muted">docs/sdd/nfr.ts（プロジェクト全体の基準）との差分だけを記載しています。</p>${nfrTable(
+    r.nonFunctional,
+  )}
 <h3 id="req-inv">変えてはいけない振る舞い</h3>${invariantTable(r.invariants)}
 <h3 id="req-sufficiency">十分性の確認</h3>
-${
-    sufficiencyHtml({
-      issueCoverage: r.issueCoverage,
-      nfrReview: r.nfrReview,
-      checklist: r.checklist,
-      noInvariantsReason: r.noInvariantsReason,
-    })
-  }
+${sufficiencyHtml({
+  issueCoverage: r.issueCoverage,
+  nfrReview: r.nfrReview,
+  checklist: r.checklist,
+  noInvariantsReason: r.noInvariantsReason,
+})}
 <h4>入力と表示の観点</h4>${valuesHtml(rows, r.noValuesReason, r.answers ?? {})}
 <h4>人の回答</h4>${answersHtml(r.answers ?? {})}
 <h3 id="req-other">前提・未確定の点・対象外</h3>
@@ -375,14 +380,16 @@ ${
   };
 }
 
-function impactHtml(
-  impact: { create: readonly string[]; modify: readonly string[]; delete?: readonly string[] },
-): string {
+function impactHtml(impact: {
+  create: readonly string[];
+  modify: readonly string[];
+  delete?: readonly string[];
+}): string {
   const files = (xs: readonly string[] | undefined) =>
     xs?.length ? `<ul>${xs.map((f) => `<li><code>${esc(f)}</code></li>`).join("")}</ul>` : `<p class="muted">なし</p>`;
-  return `<div class="two-col"><div><h4>新しく作るファイル</h4>${
-    files(impact.create)
-  }</div><div><h4>変更するファイル</h4>${files(impact.modify)}</div></div>${
+  return `<div class="two-col"><div><h4>新しく作るファイル</h4>${files(
+    impact.create,
+  )}</div><div><h4>変更するファイル</h4>${files(impact.modify)}</div></div>${
     impact.delete?.length ? `<h4>削除するファイル</h4>${files(impact.delete)}` : ""
   }`;
 }
@@ -405,123 +412,132 @@ export function designSection(d: LooseDesign): Section {
   const html = `<section id="design"><h2>設計</h2>
 <p>${esc(d.overview)}</p>
 <h3 id="design-asis">現状と変更後</h3>
-<div class="two-col"><div><h4>現状（As-Is）</h4><p>${esc(d.asIs)}</p></div><div><h4>変更後（To-Be）</h4><p>${
-    esc(d.toBe)
-  }</p></div></div>
+<div class="two-col"><div><h4>現状（As-Is）</h4><p>${esc(d.asIs)}</p></div><div><h4>変更後（To-Be）</h4><p>${esc(
+    d.toBe,
+  )}</p></div></div>
 <h3 id="design-components">コンポーネント</h3>
 ${
-    diagram
-      ? `<div class="diagram">${diagram}</div><div class="legend"><span><i style="background:var(--jagged-ice);border:1px solid var(--casal)"></i>新規</span><span><i style="background:var(--hawkes-blue);border:1px solid var(--azure)"></i>変更</span><span>矢印: 使う側 → 使われる側</span></div>`
-      : ""
-  }
-${
-    table(
-      ["名前", "種別", "責務", "ファイル", "置き場所の根拠", "現状"],
-      comps.map(([name, c]) => [
-        idBadge(name, "comp"),
-        c.kind === "new" ? "新規" : "変更",
-        esc(c.responsibility),
-        c.files.map((f) => `<code>${esc(f)}</code>`).join("<br>") || `<span class="muted">なし</span>`,
-        c.kind === "new" ? structureBasisHtml(c.placement) : `<span class="muted">—</span>`,
-        c.asIs ? esc(c.asIs) : `<span class="muted">—</span>`,
-      ]),
-    )
-  }${
-    linked.length
-      ? `<h4>モジュールの外とのつなぎ方</h4>${
-        table(
-          ["使う側", "使われる側", "根拠"],
-          linked.map((x) => [idBadge(x.from, "comp"), idBadge(x.to, "comp"), structureBasisHtml(x.basis)]),
-        )
-      }`
-      : ""
-  }${
-    structureAnswers.length
-      ? `<h4>構成の判断への人の回答</h4>${
-        table(
-          ["ID", "対象", "質問", "回答"],
-          structureAnswers.map(([id, a]) => [
-            idBadge(id),
-            "placement" in a.about
-              ? `置き場所 ${a.about.placement.map((p) => `<code>${esc(p)}</code>`).join("、")}`
-              : `つなぎ方 ${a.about.link.map((s) => s.map((p) => `<code>${esc(p)}</code>`).join("、")).join(" と ")}`,
-            esc(a.question),
-            "answer" in a ? esc(a.answer) : `${statusLabel("error", "未回答")} 書き手の案: ${esc(a.proposal)}`,
-          ]),
-        )
-      }`
-      : ""
-  }
+  diagram
+    ? `<div class="diagram">${diagram}</div><div class="legend"><span><i style="background:var(--jagged-ice);border:1px solid var(--casal)"></i>新規</span><span><i style="background:var(--hawkes-blue);border:1px solid var(--azure)"></i>変更</span><span>矢印: 使う側 → 使われる側</span></div>`
+    : ""
+}
+${table(
+  ["名前", "種別", "責務", "ファイル", "置き場所の根拠", "現状"],
+  comps.map(([name, c]) => [
+    idBadge(name, "comp"),
+    c.kind === "new" ? "新規" : "変更",
+    esc(c.responsibility),
+    c.files.map((f) => `<code>${esc(f)}</code>`).join("<br>") || `<span class="muted">なし</span>`,
+    c.kind === "new" ? structureBasisHtml(c.placement) : `<span class="muted">—</span>`,
+    c.asIs ? esc(c.asIs) : `<span class="muted">—</span>`,
+  ]),
+)}${
+  linked.length
+    ? `<h4>モジュールの外とのつなぎ方</h4>${table(
+        ["使う側", "使われる側", "根拠"],
+        linked.map((x) => [idBadge(x.from, "comp"), idBadge(x.to, "comp"), structureBasisHtml(x.basis)]),
+      )}`
+    : ""
+}${
+  structureAnswers.length
+    ? `<h4>構成の判断への人の回答</h4>${table(
+        ["ID", "対象", "質問", "回答"],
+        structureAnswers.map(([id, a]) => [
+          idBadge(id),
+          "placement" in a.about
+            ? `置き場所 ${a.about.placement.map((p) => `<code>${esc(p)}</code>`).join("、")}`
+            : `つなぎ方 ${a.about.link.map((s) => s.map((p) => `<code>${esc(p)}</code>`).join("、")).join(" と ")}`,
+          esc(a.question),
+          "answer" in a ? esc(a.answer) : `${statusLabel("error", "未回答")} 書き手の案: ${esc(a.proposal)}`,
+        ]),
+      )}`
+    : ""
+}
 <h3 id="design-interfaces">インターフェース</h3>
 ${
-    Object.entries(d.interfaces).map(([name, i]) =>
-      `<div class="card"><div class="card-head"><span class="card-title">${esc(name)}</span>${
-        idBadge(i.component, "comp")
-      }<span class="tag">${esc(i.kind)}</span><span class="tag">${
-        { new: "新規", modified: "変更", removed: "削除" }[i.change] ?? esc(i.change)
-      }</span></div><pre><code>${esc(i.signature)}</code></pre><p>${esc(i.description)}</p>${
-        "compatibility" in i && i.compatibility
-          ? `<div class="callout callout-warning">${statusLabel("warning", "互換")} ${esc(i.compatibility)}</div>`
-          : ""
-      }</div>`
-    ).join("") || `<p class="muted">なし</p>`
-  }
+  Object.entries(d.interfaces)
+    .map(
+      ([name, i]) =>
+        `<div class="card"><div class="card-head"><span class="card-title">${esc(name)}</span>${idBadge(
+          i.component,
+          "comp",
+        )}<span class="tag">${esc(i.kind)}</span><span class="tag">${
+          { new: "新規", modified: "変更", removed: "削除" }[i.change] ?? esc(i.change)
+        }</span></div><pre><code>${esc(i.signature)}</code></pre><p>${esc(i.description)}</p>${
+          "compatibility" in i && i.compatibility
+            ? `<div class="callout callout-warning">${statusLabel("warning", "互換")} ${esc(i.compatibility)}</div>`
+            : ""
+        }</div>`,
+    )
+    .join("") || `<p class="muted">なし</p>`
+}
 <h3 id="design-data">データモデル</h3>
 ${
-    Object.entries(d.dataModels).map(([name, m]) =>
-      `<div class="card"><div class="card-head"><span class="card-title">${esc(name)}</span><span class="tag">${
-        m.kind === "new" ? "新規" : "変更"
-      }</span></div><p>${esc(m.description)}</p><pre><code>${esc(m.definition)}</code></pre>${
-        "migration" in m && m.migration
-          ? `<div class="callout callout-warning">${statusLabel("warning", "移行")} ${esc(m.migration)}</div>`
-          : ""
-      }</div>`
-    ).join("") || `<p class="muted">なし</p>`
-  }
-<h3 id="design-errors">エラー処理</h3>
-${
-    table(
-      ["状況", "対処", "対応する要件"],
-      d.errorHandling.map((e) => [
-        esc(e.case),
-        esc(e.handling),
-        e.refs?.length ? idBadges(e.refs) : `<span class="muted">要件外の異常</span>`,
-      ]),
+  Object.entries(d.dataModels)
+    .map(
+      ([name, m]) =>
+        `<div class="card"><div class="card-head"><span class="card-title">${esc(name)}</span><span class="tag">${
+          m.kind === "new" ? "新規" : "変更"
+        }</span></div><p>${esc(m.description)}</p><pre><code>${esc(m.definition)}</code></pre>${
+          "migration" in m && m.migration
+            ? `<div class="callout callout-warning">${statusLabel("warning", "移行")} ${esc(m.migration)}</div>`
+            : ""
+        }</div>`,
     )
-  }
+    .join("") || `<p class="muted">なし</p>`
+}
+<h3 id="design-errors">エラー処理</h3>
+${table(
+  ["状況", "対処", "対応する要件"],
+  d.errorHandling.map((e) => [
+    esc(e.case),
+    esc(e.handling),
+    e.refs?.length ? idBadges(e.refs) : `<span class="muted">要件外の異常</span>`,
+  ]),
+)}
 <h3 id="design-impact">影響範囲</h3>
 ${impactHtml(d.impact)}
 <h3 id="design-decisions">設計判断</h3>
 ${
-    d.decisions.map((x) =>
-      `<div class="card"><div class="card-head"><span class="card-title">${esc(x.title)}</span>${
-        x.adr ? `<span class="tag">ADRに記録する</span>` : ""
-      }</div><h4>背景</h4><p>${esc(x.context)}</p><h4>決めたこと</h4><p>${esc(x.decision)}</p><h4>検討した代替案</h4>${
-        table(["案", "採用しなかった理由"], x.alternatives.map((a) => [esc(a.option), esc(a.reason)]))
-      }</div>`
-    ).join("") || `<p class="muted">なし</p>`
-  }
+  d.decisions
+    .map(
+      (x) =>
+        `<div class="card"><div class="card-head"><span class="card-title">${esc(x.title)}</span>${
+          x.adr ? `<span class="tag">ADRに記録する</span>` : ""
+        }</div><h4>背景</h4><p>${esc(x.context)}</p><h4>決めたこと</h4><p>${esc(x.decision)}</p><h4>検討した代替案</h4>${table(
+          ["案", "採用しなかった理由"],
+          x.alternatives.map((a) => [esc(a.option), esc(a.reason)]),
+        )}</div>`,
+    )
+    .join("") || `<p class="muted">なし</p>`
+}
 <h3 id="design-strategy">非機能要件と変えてはいけない振る舞い</h3>
 <h4>非機能要件の実現方法</h4>
-${table(["要件", "実現方法"], Object.entries(d.nfrStrategy ?? {}).map(([id, v]) => [idBadge(id), esc(v)]))}
+${table(
+  ["要件", "実現方法"],
+  Object.entries(d.nfrStrategy ?? {}).map(([id, v]) => [idBadge(id), esc(v)]),
+)}
 <h4>変えてはいけない振る舞いの守り方</h4>
-${table(["要件", "守り方"], Object.entries(d.invariantStrategy ?? {}).map(([id, v]) => [idBadge(id), esc(v)]))}
+${table(
+  ["要件", "守り方"],
+  Object.entries(d.invariantStrategy ?? {}).map(([id, v]) => [idBadge(id), esc(v)]),
+)}
 <h3 id="design-checklist">設計のチェックリスト</h3>
-${
-    table(
-      ["観点", "結果", "内容"],
-      (Object.keys(DESIGN_CHECKLIST_LABELS) as DesignChecklistItem[]).map((k) => {
-        const v = d.checklist?.[k];
-        return [
-          esc(DESIGN_CHECKLIST_LABELS[k]),
-          v
-            ? (v.result === "considered" ? statusLabel("ok", "検討した") : statusLabel("todo", "該当しない"))
-            : statusLabel("error", "未記入"),
-          v ? esc(v.note) : "",
-        ];
-      }),
-    )
-  }
+${table(
+  ["観点", "結果", "内容"],
+  (Object.keys(DESIGN_CHECKLIST_LABELS) as DesignChecklistItem[]).map((k) => {
+    const v = d.checklist?.[k];
+    return [
+      esc(DESIGN_CHECKLIST_LABELS[k]),
+      v
+        ? v.result === "considered"
+          ? statusLabel("ok", "検討した")
+          : statusLabel("todo", "該当しない")
+        : statusLabel("error", "未記入"),
+      v ? esc(v.note) : "",
+    ];
+  }),
+)}
 ${d.risks?.length ? `<h3 id="design-risks">リスク</h3>${list(d.risks)}` : ""}
 </section>`;
   const children: NavItem[] = [
@@ -540,7 +556,9 @@ ${d.risks?.length ? `<h3 id="design-risks">リスク</h3>${list(d.risks)}` : ""}
 }
 
 function tasksReferring(tasks: Readonly<Record<string, AnyTask>>, id: string, field: "refs" | "verifies"): string[] {
-  return Object.entries(tasks).filter(([, t]) => (t[field] ?? []).includes(id)).map(([tid]) => tid);
+  return Object.entries(tasks)
+    .filter(([, t]) => (t[field] ?? []).includes(id))
+    .map(([tid]) => tid);
 }
 
 function coverageCell(ok: boolean, missing: string): string {
@@ -579,17 +597,17 @@ export function traceabilitySection(opts: {
   ];
   const verRows = verifyTargets.map(([id, kind]) => {
     const vt = tasks
-      ? Object.entries(tasks).filter(([, t]) => t.kind === "test" && (t.verifies ?? []).includes(id)).map(([tid]) =>
-        tid
-      )
+      ? Object.entries(tasks)
+          .filter(([, t]) => t.kind === "test" && (t.verifies ?? []).includes(id))
+          .map(([tid]) => tid)
       : [];
     const cell = !tasks
       ? `<span class="muted">タスク未作成</span>`
       : vt.length
-      ? statusLabel("ok", "対応済み")
-      : id.startsWith("NFR-")
-      ? statusLabel("warning", "テストなし")
-      : statusLabel("error", "テストなし");
+        ? statusLabel("ok", "対応済み")
+        : id.startsWith("NFR-")
+          ? statusLabel("warning", "テストなし")
+          : statusLabel("error", "テストなし");
     return [idBadge(id), esc(kind), tasks ? idBadges(vt) : `<span class="muted">—</span>`, cell];
   });
 
@@ -615,7 +633,10 @@ export function tasksSection(
     idBadges(t.refs),
     t.verifies?.length ? idBadges(t.verifies) : `<span class="muted">—</span>`,
     commits.get(id)?.length
-      ? commits.get(id)!.map((c) => `<code>${esc(c.hash)}</code>`).join(" ")
+      ? commits
+          .get(id)!
+          .map((c) => `<code>${esc(c.hash)}</code>`)
+          .join(" ")
       : `<span class="muted">—</span>`,
   ]);
   const html = `<section id="tasks"><h2>タスク</h2>
@@ -627,9 +648,9 @@ ${table(["ID", "状態", "種類", "内容", "実現する要件・コンポー�
 }
 
 export function statsHtml(items: [string, string | number][]): string {
-  return `<div class="stats">${
-    items.map(([k, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`).join("")
-  }</div>`;
+  return `<div class="stats">${items
+    .map(([k, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(k)}</span></div>`)
+    .join("")}</div>`;
 }
 
 /** 完全モードのページ本体 */
@@ -647,13 +668,15 @@ export function fullSections(
   if (r) sections.push(requirementsSection(r));
   if (d) sections.push(designSection(d));
   if (r) {
-    sections.push(traceabilitySection({
-      functional: r.functional,
-      nonFunctional: r.nonFunctional,
-      invariants: r.invariants,
-      traceability: d?.traceability as Readonly<Record<string, readonly string[]>> | undefined,
-      tasks: t?.tasks,
-    }));
+    sections.push(
+      traceabilitySection({
+        functional: r.functional,
+        nonFunctional: r.nonFunctional,
+        invariants: r.invariants,
+        traceability: d?.traceability as Readonly<Record<string, readonly string[]>> | undefined,
+        tasks: t?.tasks,
+      }),
+    );
   }
   if (t) sections.push(tasksSection(t.tasks, commits));
   return sections;
@@ -666,11 +689,12 @@ export function quickSections(
   commits: ReadonlyMap<string, readonly { hash: string }[]> = new Map(),
 ): Section[] {
   const q = issue.quick as LooseQuickSpec;
-  const cause = q.kind === "bugfix" && q.cause
-    ? `<h3 id="quick-cause">原因</h3><h4>再現手順</h4>${list(q.cause.reproduction, true)}<h4>根本原因</h4><p>${
-      esc(q.cause.rootCause)
-    }</p>`
-    : "";
+  const cause =
+    q.kind === "bugfix" && q.cause
+      ? `<h3 id="quick-cause">原因</h3><h4>再現手順</h4>${list(q.cause.reproduction, true)}<h4>根本原因</h4><p>${esc(
+          q.cause.rootCause,
+        )}</p>`
+      : "";
   const html = `<section id="quick"><h2>spec（軽量モード）</h2>
 <p><span class="tag">${q.kind === "bugfix" ? "バグの修正" : "小さな変更"}</span> ${esc(q.summary)}</p>
 ${cause}

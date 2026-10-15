@@ -101,8 +101,7 @@ const askQuestionTool = {
     required: ["questions"],
   },
   async execute(args: Record<string, unknown>) {
-    const task =
-      `AI から次の質問が来ました。質問ごとに「質問の id: 選んだ選択肢の label（または自由に書いた答え）」の形で1行ずつ答えてください。
+    const task = `AI から次の質問が来ました。質問ごとに「質問の id: 選んだ選択肢の label（または自由に書いた答え）」の形で1行ずつ答えてください。
 ${JSON.stringify(args.questions, null, 2)}`;
     return await askPersona("AskQuestion", task);
   },
@@ -145,11 +144,12 @@ function recordTurns(turns: ConversationTurn[]) {
   for (const t of turns) {
     if (t.type !== "agentConversationTurn") continue;
     for (const step of t.turn.steps) {
-      const content = step.type === "assistantMessage"
-        ? [{ type: "text", text: step.message.text }]
-        : step.type === "toolCall"
-        ? [toolUse(step.message as { type?: string; args?: Record<string, unknown> })]
-        : null;
+      const content =
+        step.type === "assistantMessage"
+          ? [{ type: "text", text: step.message.text }]
+          : step.type === "toolCall"
+            ? [toolUse(step.message as { type?: string; args?: Record<string, unknown> })]
+            : null;
       if (content) transcript.push(JSON.stringify({ role: "assistant", message: { content } }));
     }
   }
@@ -182,7 +182,7 @@ try {
   for (const [i, step] of input.steps.entries()) {
     const acceptanceNext = /^OK\b/.test(input.steps[i + 1] ?? "");
     let message = stepMessage(step);
-    for (let turn = 0;; turn++) {
+    for (let turn = 0; ; turn++) {
       if (turn >= input.maxTurns) throw new Error(`「${step}」が ${input.maxTurns} 往復で終わりませんでした`);
       console.log(`\n> ${message.split("\n")[0]}`);
       recordUser(message);

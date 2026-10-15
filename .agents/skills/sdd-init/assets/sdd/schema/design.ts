@@ -8,18 +8,15 @@ import type { AcIdOf, DesignTargetIdOf, Requirements } from "./requirements.ts";
  * 回答は、この判断の根拠にだけなる（verify が、回答のパスと、指したコンポーネントや依存のファイルが合うかを確かめる）
  * まだ聞いていなければ answer を書かず、proposal に書き手の案を書く（verify は、設計の終わりの確認ポイントで聞く項目として出す）
  */
-export type StructureAnswer =
-  & {
-    about: { placement: NonEmpty<string> } | { link: readonly [NonEmpty<string>, NonEmpty<string>] };
-    /** 人に聞く（聞いた）質問 */
-    question: string;
-  }
-  & (
-    /** 人が答えた内容（要約してよいが、人が答えていないことは足さない） */
-    | { answer: string }
-    /** 未回答。書き手の案（人に聞くときに推奨として示す） */
-    | { proposal: string }
-  );
+export type StructureAnswer = {
+  about: { placement: NonEmpty<string> } | { link: readonly [NonEmpty<string>, NonEmpty<string>] };
+  /** 人に聞く（聞いた）質問 */
+  question: string;
+} /** 人が答えた内容（要約してよいが、人が答えていないことは足さない） */ & (
+  | { answer: string }
+  /** 未回答。書き手の案（人に聞くときに推奨として示す） */
+  | { proposal: string }
+);
 
 /**
  * 構成の判断（新しいコンポーネントの置き場所、モジュールの外とのつなぎ方）の根拠。
@@ -70,10 +67,10 @@ type InterfaceBase<C extends string> = {
 export type InterfaceDef<C extends string> =
   | (InterfaceBase<C> & { change: "new" })
   | (InterfaceBase<C> & {
-    change: "modified" | "removed";
-    /** 呼び出し元への影響と、互換の扱い（例: 「呼び出し元は2か所。旧シグネチャを残して非推奨にする」） */
-    compatibility: string;
-  });
+      change: "modified" | "removed";
+      /** 呼び出し元への影響と、互換の扱い（例: 「呼び出し元は2か所。旧シグネチャを残して非推奨にする」） */
+      compatibility: string;
+    });
 
 type DataModelBase = {
   description: string;
@@ -85,10 +82,10 @@ type DataModelBase = {
 export type DataModel =
   | (DataModelBase & { kind: "new" })
   | (DataModelBase & {
-    kind: "modified";
-    /** 既存データの移行方法（マイグレーション、既存の値の扱い、巻き戻し方） */
-    migration: string;
-  });
+      kind: "modified";
+      /** 既存データの移行方法（マイグレーション、既存の値の扱い、巻き戻し方） */
+      migration: string;
+    });
 
 /**
  * 設計判断。`adr: true` のものは sdd-finish で docs/sdd/adr/ に記録する。

@@ -34,9 +34,9 @@ const verifyContext = await loadVerifyContext();
 const branch = await git("branch", "--show-current");
 const commit = await git("rev-parse", "--short", "HEAD");
 const now = new Date();
-const generatedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${
-  String(now.getDate()).padStart(2, "0")
-} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+const generatedAt = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(
+  now.getDate(),
+).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
 
 for (const id of ids) {
   const issue = await loadIssue(id);

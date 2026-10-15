@@ -1,4 +1,6 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import * as io from "../harness/io.ts";
+import { test } from "bun:test";
+import { assertEquals, assertStringIncludes } from "./assert.ts";
 import { makeProject, patchFile, run, writeFile } from "./helpers.ts";
 
 async function gitProject(specs: string[]): Promise<string> {
@@ -6,12 +8,12 @@ async function gitProject(specs: string[]): Promise<string> {
   await run("git", ["init", "-q"], root);
   await run("git", ["config", "user.email", "test@example.com"], root);
   await run("git", ["config", "user.name", "test"], root);
-  await Deno.copyFile(`${root}/docs/sdd/scripts/pre-commit.sh`, `${root}/.git/hooks/pre-commit`);
-  await Deno.chmod(`${root}/.git/hooks/pre-commit`, 0o755);
+  await io.copyFile(`${root}/docs/sdd/scripts/pre-commit.sh`, `${root}/.git/hooks/pre-commit`);
+  await io.chmod(`${root}/.git/hooks/pre-commit`, 0o755);
   return root;
 }
 
-Deno.test("specのファイルがステージされていなければ何もしない", async () => {
+test("specのファイルがステージされていなければ何もしない", async () => {
   const root = await gitProject(["EX-001"]);
   // 壊れたspecがあっても、ステージされていなければコミットできる
   await patchFile(root, "docs/specs/EX-001/tasks.ts", `verifies: ["INV-001"],`, "");
@@ -21,14 +23,14 @@ Deno.test("specのファイルがステージされていなければ何もし�
   assertEquals(r.code, 0, r.out);
 });
 
-Deno.test("正しいspecはコミットできる", async () => {
+test("正しいspecはコミットできる", async () => {
   const root = await gitProject(["EX-001"]);
   await run("git", ["add", "docs"], root);
   const r = await run("git", ["commit", "-q", "-m", "spec"], root);
   assertEquals(r.code, 0, r.out);
 });
 
-Deno.test("検証に失敗するspecはコミットを中止する", async () => {
+test("検証に失敗するspecはコミットを中止する", async () => {
   const root = await gitProject(["EX-001"]);
   await patchFile(root, "docs/specs/EX-001/tasks.ts", `verifies: ["INV-001"],`, "");
   await run("git", ["add", "docs"], root);
@@ -41,7 +43,7 @@ async function withCommands(root: string, commands: string) {
   await patchFile(root, "docs/sdd/config.ts", "staleBranchDays: 30,", `staleBranchDays: 30,\n  commands: ${commands},`);
 }
 
-Deno.test("config.ts の品質ゲートが通らなければコミットを中止する", async () => {
+test("config.ts の品質ゲートが通らなければコミットを中止する", async () => {
   const root = await gitProject([]);
   await withCommands(root, `{ check: "true", test: "exit 7" }`);
   await run("git", ["add", "docs"], root);
@@ -50,7 +52,7 @@ Deno.test("config.ts の品質ゲートが通らなければコミットを中�
   assertStringIncludes(r.out, "品質ゲート（docs/sdd/config.ts の commands）が通らないため、コミットを中止しました");
 });
 
-Deno.test("config.ts の品質ゲートが通ればコミットでき、commands を変えなければ次は実行しない", async () => {
+test("config.ts の品質ゲートが通ればコミットでき、commands を変えなければ次は実行しない", async () => {
   const root = await gitProject([]);
   await withCommands(root, `{ check: "echo c >> check.log", test: "true" }`);
   await run("git", ["add", "docs"], root);
@@ -61,7 +63,7 @@ Deno.test("config.ts の品質ゲートが通ればコミットでき、commands
   await run("git", ["add", "docs"], root);
   const again = await run("git", ["commit", "-q", "-m", "stale days"], root);
   assertEquals(again.code, 0, again.out);
-  assertEquals((await Deno.readTextFile(`${root}/check.log`)).trim(), "c");
+  assertEquals((await io.readTextFile(`${root}/check.log`)).trim(), "c");
 });
 
 /** アプリのコードだけがコミットされた、導入前のリポジトリ（docs/sdd は作業ツリーにだけある） */
@@ -73,7 +75,7 @@ async function beforeIntroduction(): Promise<string> {
   return root;
 }
 
-Deno.test("導入のコミットに SDD 以外のファイルが含まれていれば中止する", async () => {
+test("導入のコミットに SDD 以外のファイルが含まれていれば中止する", async () => {
   const root = await beforeIntroduction();
   await writeFile(root, "src/main.py", "print('formatted')\n");
   await run("git", ["add", "docs", "src"], root);
@@ -83,7 +85,7 @@ Deno.test("導入のコミットに SDD 以外のファイルが含まれてい�
   assertStringIncludes(r.out, "  src/main.py");
 });
 
-Deno.test("導入のコミットは docs/sdd、.agents、.gitignore だけなら通り、導入の後は他のファイルと一緒でもよい", async () => {
+test("導入のコミットは docs/sdd、.agents、.gitignore だけなら通り、導入の後は他のファイルと一緒でもよい", async () => {
   const root = await beforeIntroduction();
   await writeFile(root, ".gitignore", ".sdd/\n");
   await writeFile(root, ".agents/skills/sdd-init/SKILL.md", "skill\n");
@@ -98,7 +100,7 @@ Deno.test("導入のコミットは docs/sdd、.agents、.gitignore だけなら
   assertEquals(later.code, 0, later.out);
 });
 
-Deno.test("型チェックに失敗するspecはコミットを中止する", async () => {
+test("型チェックに失敗するspecはコミットを中止する", async () => {
   const root = await gitProject(["EX-001"]);
   await patchFile(root, "docs/specs/EX-001/design.ts", `"FR-002": ["AuthService"],`, "");
   await run("git", ["add", "docs"], root);

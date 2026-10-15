@@ -68,17 +68,15 @@ export default defineRequirements({
   // noInvariantsReason: "<理由（例: 新規作成で、既存の振る舞いに触れないため）>",
   // 非機能要件の検討結果。6つのカテゴリすべてを書く
   nfrReview: {
-    "可用性": { decision: "baseline" },
+    可用性: { decision: "baseline" },
     "性能・拡張性": { decision: "added", ids: ["NFR-001"] },
     "運用・保守性": { decision: "baseline" },
-    "移行性": { decision: "notApplicable", reason: "<理由>" },
-    "セキュリティ": { decision: "baseline" },
+    移行性: { decision: "notApplicable", reason: "<理由>" },
+    セキュリティ: { decision: "baseline" },
     "システム環境・エコロジー": { decision: "notApplicable", reason: "<理由>" },
   },
   // issue.md の「受け入れ条件」の箇条書きを1項目ずつ、そのまま source に写し、対応する要件を書く
-  issueCoverage: [
-    { source: "<issue.md の受け入れ条件の1項目>", coveredBy: ["FR-001", "AC-001"] },
-  ],
+  issueCoverage: [{ source: "<issue.md の受け入れ条件の1項目>", coveredBy: ["FR-001", "AC-001"] }],
   // 十分性のチェックリスト。全項目を点検して書く
   checklist: {
     actors: { result: "considered", note: "<利用者の種類と権限をどう扱ったか>" },

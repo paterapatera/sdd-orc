@@ -36,9 +36,7 @@ export default defineDesign<typeof requirements>()({
   },
   // 片方が architecture.ts のどのモジュールにも入らない新しいコンポーネントなら、basis を書く。
   // { adr } か、置き場所とは別に質問して answers に about: { link: [[…], […]] } で書いた回答の { answer }
-  dependencies: [
-    { from: "ComponentB", to: "ComponentA", label: "<何のために使うか>" },
-  ],
+  dependencies: [{ from: "ComponentB", to: "ComponentA", label: "<何のために使うか>" }],
   interfaces: {
     "<インターフェース名>": {
       component: "ComponentA",
@@ -52,9 +50,7 @@ export default defineDesign<typeof requirements>()({
   // 既存のデータモデルを変更する場合は kind: "modified" と migration（既存データの移行方法）を書く
   dataModels: {},
   // 異常系の受け入れ条件（kind: "error"）と EARS の unwanted の要件は、refs でどれかのエラー処理に対応させる
-  errorHandling: [
-    { case: "<異常な状況>", handling: "<どう対処するか>", refs: ["AC-003"] },
-  ],
+  errorHandling: [{ case: "<異常な状況>", handling: "<どう対処するか>", refs: ["AC-003"] }],
   impact: {
     create: ["<作成するファイル>"],
     modify: ["<変更するファイル>"],

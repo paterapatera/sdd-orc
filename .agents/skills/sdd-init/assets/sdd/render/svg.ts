@@ -60,52 +60,56 @@ export function dependencyDiagram(components: Readonly<Record<string, Component>
     }
   });
 
-  const edgeSvg = valid.map((e) => {
-    const a = pos.get(e.from)!;
-    const b = pos.get(e.to)!;
-    const x1 = a.x + a.w / 2;
-    const x2 = b.x + b.w / 2;
-    let d: string;
-    let lx: number;
-    let ly: number;
-    if (b.y > a.y) {
-      const y1 = a.y + BOX_H;
-      const y2 = b.y - 2;
-      d = `M${x1},${y1} C${x1},${(y1 + y2) / 2} ${x2},${(y1 + y2) / 2} ${x2},${y2}`;
-      lx = (x1 + x2) / 2;
-      ly = (y1 + y2) / 2;
-    } else {
-      // 同じ段か上向き（循環）の場合は、上側を回り込む曲線にする
-      const y1 = a.y;
-      const y2 = b.y - 2;
-      const top = Math.min(a.y, b.y) - GAP_Y / 2;
-      d = `M${x1},${y1} C${x1},${top} ${x2},${top} ${x2},${y2}`;
-      lx = (x1 + x2) / 2;
-      ly = top + 6;
-    }
-    const label = e.label
-      ? `<text x="${lx}" y="${
-        ly - 4
-      }" text-anchor="middle" font-size="12" fill="var(--chicago)" paint-order="stroke" stroke="#fff" stroke-width="4">${
-        esc(e.label)
-      }</text>`
-      : "";
-    return `<path d="${d}" fill="none" stroke="var(--chicago)" stroke-width="1.5" marker-end="url(#arrow)"/>${label}`;
-  }).join("");
+  const edgeSvg = valid
+    .map((e) => {
+      const a = pos.get(e.from)!;
+      const b = pos.get(e.to)!;
+      const x1 = a.x + a.w / 2;
+      const x2 = b.x + b.w / 2;
+      let d: string;
+      let lx: number;
+      let ly: number;
+      if (b.y > a.y) {
+        const y1 = a.y + BOX_H;
+        const y2 = b.y - 2;
+        d = `M${x1},${y1} C${x1},${(y1 + y2) / 2} ${x2},${(y1 + y2) / 2} ${x2},${y2}`;
+        lx = (x1 + x2) / 2;
+        ly = (y1 + y2) / 2;
+      } else {
+        // 同じ段か上向き（循環）の場合は、上側を回り込む曲線にする
+        const y1 = a.y;
+        const y2 = b.y - 2;
+        const top = Math.min(a.y, b.y) - GAP_Y / 2;
+        d = `M${x1},${y1} C${x1},${top} ${x2},${top} ${x2},${y2}`;
+        lx = (x1 + x2) / 2;
+        ly = top + 6;
+      }
+      const label = e.label
+        ? `<text x="${lx}" y="${
+            ly - 4
+          }" text-anchor="middle" font-size="12" fill="var(--chicago)" paint-order="stroke" stroke="#fff" stroke-width="4">${esc(
+            e.label,
+          )}</text>`
+        : "";
+      return `<path d="${d}" fill="none" stroke="var(--chicago)" stroke-width="1.5" marker-end="url(#arrow)"/>${label}`;
+    })
+    .join("");
 
-  const nodeSvg = names.map((n) => {
-    const p = pos.get(n)!;
-    const isNew = components[n].kind === "new";
-    const fill = isNew ? "var(--jagged-ice)" : "var(--hawkes-blue)";
-    const stroke = isNew ? "var(--casal)" : "var(--azure)";
-    return `<g><title>${
-      esc(components[n].responsibility)
-    }</title><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${BOX_H}" rx="6" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/><text x="${
-      p.x + p.w / 2
-    }" y="${
-      p.y + BOX_H / 2 + FONT / 2 - 2
-    }" text-anchor="middle" font-size="${FONT}" font-weight="700" fill="${stroke}">${esc(n)}</text></g>`;
-  }).join("");
+  const nodeSvg = names
+    .map((n) => {
+      const p = pos.get(n)!;
+      const isNew = components[n].kind === "new";
+      const fill = isNew ? "var(--jagged-ice)" : "var(--hawkes-blue)";
+      const stroke = isNew ? "var(--casal)" : "var(--azure)";
+      return `<g><title>${esc(
+        components[n].responsibility,
+      )}</title><rect x="${p.x}" y="${p.y}" width="${p.w}" height="${BOX_H}" rx="6" fill="${fill}" stroke="${stroke}" stroke-width="1.5"/><text x="${
+        p.x + p.w / 2
+      }" y="${
+        p.y + BOX_H / 2 + FONT / 2 - 2
+      }" text-anchor="middle" font-size="${FONT}" font-weight="700" fill="${stroke}">${esc(n)}</text></g>`;
+    })
+    .join("");
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}" role="img" aria-label="コンポーネントの依存関係">
 <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" fill="var(--chicago)"/></marker></defs>

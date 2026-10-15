@@ -74,7 +74,7 @@ async function listFiles(dir: string, base = dir): Promise<string[]> {
   const out: string[] = [];
   for (const e of await readDir(dir)) {
     const p = join(dir, e.name);
-    if (e.isDirectory) out.push(...await listFiles(p, base));
+    if (e.isDirectory) out.push(...(await listFiles(p, base)));
     else out.push(relative(base, p));
   }
   return out.sort();

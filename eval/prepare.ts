@@ -1,7 +1,8 @@
+import * as io from "../harness/io.ts";
 /**
  * 試験場を問題の出発点に戻し、このリポジトリの今のスキル（未コミットの変更を含む）に差し替える。
  *
- * 使い方: deno task eval:prepare <問題のID> [--model <モデル名>] [--skills <コミット>] [--force]
+ * 使い方: bun eval/prepare.ts <問題のID> [--model <モデル名>] [--skills <コミット>] [--force]
  *   --model   実行に使うモデルを記録する（比べるときに揃えるため）
  *   --skills  今のスキルではなく、sdd-orc のそのコミットのスキルを使う（変更の前の版で基準を取るため）
  *   --force   試験場に未コミットの変更があっても消して進める
@@ -14,14 +15,14 @@ import { parseArgs } from "node:util";
 import { defaultPaths, prepareRun } from "./lib.ts";
 
 const { values, positionals } = parseArgs({
-  args: Deno.args,
+  args: io.args,
   allowPositionals: true,
   options: { model: { type: "string" }, skills: { type: "string" }, force: { type: "boolean" } },
 });
 const id = positionals[0];
 if (!id) {
-  console.error("使い方: deno task eval:prepare <問題のID> [--model <モデル名>] [--skills <コミット>] [--force]");
-  Deno.exit(2);
+  console.error("使い方: bun eval/prepare.ts <問題のID> [--model <モデル名>] [--skills <コミット>] [--force]");
+  io.exit(2);
 }
 
 const paths = defaultPaths();
@@ -38,12 +39,12 @@ try {
   console.log("\n次の手順:");
   console.log("  1. 試験場を Cursor で開き、新しいチャットで次のスキルを順に呼び出す");
   console.log(`     ${scenario.steps.join(" → ")}`);
-  console.log(`  2. 質問には人役の回答表だけを根拠に答える: ${relative(Deno.cwd(), join(dir, scenario.persona))}`);
+  console.log(`  2. 質問には人役の回答表だけを根拠に答える: ${relative(io.cwd(), join(dir, scenario.persona))}`);
   if (issue) {
-    console.log(`  3. issue を求められたら、次の本文を渡す: ${relative(Deno.cwd(), join(dir, scenario.issue!))}`);
+    console.log(`  3. issue を求められたら、次の本文を渡す: ${relative(io.cwd(), join(dir, scenario.issue!))}`);
   }
-  console.log("\n終わったら: deno task eval:grade");
+  console.log("\n終わったら: bun eval/grade.ts");
 } catch (e) {
   console.error(e instanceof Error ? e.message : e);
-  Deno.exit(1);
+  io.exit(1);
 }

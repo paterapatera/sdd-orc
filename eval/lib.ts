@@ -1,3 +1,4 @@
+import * as io from "../harness/io.ts";
 /**
  * 訓練（試験場での実行と採点）の処理。CLI は prepare.ts、grade.ts、summary.ts。
  *
@@ -29,7 +30,7 @@ export type Paths = {
 };
 
 export function defaultPaths(): Paths {
-  const target = resolve(REPO, Deno.env.get("SDD_EVAL_TARGET") ?? "../eval-sdd");
+  const target = resolve(REPO, io.env("SDD_EVAL_TARGET") ?? "../eval-sdd");
   return {
     repo: REPO,
     target,
@@ -43,7 +44,7 @@ export function defaultPaths(): Paths {
 /** Cursor がワークスペースのチャットを保存する場所（~/.cursor/projects/<パスの / を - にした名前>/agent-transcripts） */
 export function cursorTranscriptDir(target: string): string {
   return join(
-    Deno.env.get("HOME") ?? "",
+    io.env("HOME") ?? "",
     ".cursor/projects",
     target.replace(/^\/+/, "").replaceAll("/", "-"),
     "agent-transcripts",
@@ -56,8 +57,7 @@ export function cursorTranscriptDir(target: string): string {
 type ExecResult = { code: number; out: string };
 
 async function exec(cmd: string, args: string[], cwd: string): Promise<ExecResult> {
-  const { code, stdout, stderr } = await new Deno.Command(cmd, { args, cwd, stdout: "piped", stderr: "piped" })
-    .output();
+  const { code, stdout, stderr } = await new io.Command(cmd, { args, cwd, stdout: "piped", stderr: "piped" }).output();
   const dec = new TextDecoder();
   return { code, out: dec.decode(stdout) + dec.decode(stderr) };
 }
@@ -70,30 +70,30 @@ async function git(cwd: string, ...args: string[]): Promise<string> {
 
 async function exists(path: string): Promise<boolean> {
   try {
-    await Deno.stat(path);
+    await io.stat(path);
     return true;
   } catch (e) {
-    if (e instanceof Deno.errors.NotFound) return false;
+    if (e instanceof io.NotFound) return false;
     throw e;
   }
 }
 
 async function removeIfExists(path: string) {
-  if (await exists(path)) await Deno.remove(path, { recursive: true });
+  if (await exists(path)) await io.remove(path, { recursive: true });
 }
 
 async function copyDir(src: string, dst: string) {
-  await Deno.mkdir(dst, { recursive: true });
-  for await (const e of Deno.readDir(src)) {
+  await io.mkdir(dst, { recursive: true });
+  for await (const e of io.readDir(src)) {
     const s = join(src, e.name);
     const d = join(dst, e.name);
     if (e.isDirectory) await copyDir(s, d);
-    else await Deno.copyFile(s, d);
+    else await io.copyFile(s, d);
   }
 }
 
 async function* walkFiles(dir: string): AsyncGenerator<string> {
-  for await (const e of Deno.readDir(dir)) {
+  for await (const e of io.readDir(dir)) {
     const p = join(dir, e.name);
     if (e.isDirectory) yield* walkFiles(p);
     else if (e.isFile) yield p;
@@ -101,7 +101,10 @@ async function* walkFiles(dir: string): AsyncGenerator<string> {
 }
 
 function lines(text: string): string[] {
-  return text.split("\n").map((l) => l.trim()).filter(Boolean);
+  return text
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
 }
 
 /** `**`、`*`、`?` だけを扱う glob を、パス全体に当てはめる正規表現にする */
@@ -170,9 +173,9 @@ const DRIVER_LABEL: Record<Driver, string> = { manual: "手", auto: "自動" };
 
 function stamp(d: Date): string {
   const p = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${
-    p(d.getSeconds())
-  }`;
+  return `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(
+    d.getSeconds(),
+  )}`;
 }
 
 /**
@@ -224,22 +227,19 @@ export async function prepareRun(
   let src = join(paths.repo, ".agents/skills");
   let archived: string | undefined;
   if (opts.skillsCommit) {
-    archived = await Deno.makeTempDir();
-    const r = await exec("sh", [
-      "-c",
-      `git -C "$1" archive "$2" .agents/skills | tar -x -C "$3"`,
+    archived = await io.makeTempDir();
+    const r = await exec(
       "sh",
+      ["-c", `git -C "$1" archive "$2" .agents/skills | tar -x -C "$3"`, "sh", paths.repo, opts.skillsCommit, archived],
       paths.repo,
-      opts.skillsCommit,
-      archived,
-    ], paths.repo);
+    );
     if (r.code !== 0) throw new Error(`スキルを ${opts.skillsCommit} から取り出せませんでした: ${r.out.trim()}`);
     src = join(archived, ".agents/skills");
   }
   const dst = join(t, ".agents/skills");
   await removeIfExists(dst);
   await copyDir(src, dst);
-  if (archived) await Deno.remove(archived, { recursive: true });
+  if (archived) await io.remove(archived, { recursive: true });
   await git(t, "add", "-A", ".agents/skills");
   const skillsTree = await git(t, "rev-parse", `${await git(t, "write-tree")}:.agents/skills`);
 
@@ -276,17 +276,15 @@ export async function prepareRun(
     ...(opts.model ? { model: opts.model } : {}),
   };
   const dir = join(paths.runs, run.runId);
-  await Deno.mkdir(dir, { recursive: true });
-  await Deno.writeTextFile(join(dir, "run.json"), JSON.stringify(run, null, 2) + "\n");
+  await io.mkdir(dir, { recursive: true });
+  await io.writeTextFile(join(dir, "run.json"), JSON.stringify(run, null, 2) + "\n");
   if (dirty) {
     const note = untracked ? `\n# 未追跡のファイル\n${untracked}\n` : "";
-    await Deno.writeTextFile(join(dir, "skills.diff"), skillsDiff + "\n" + note);
+    await io.writeTextFile(join(dir, "skills.diff"), skillsDiff + "\n" + note);
   }
-  await Deno.writeTextFile(join(paths.runs, "latest"), run.runId + "\n");
+  await io.writeTextFile(join(paths.runs, "latest"), run.runId + "\n");
 
-  const issue = scenario.issue
-    ? await Deno.readTextFile(join(paths.scenarios, scenario.id, scenario.issue))
-    : undefined;
+  const issue = scenario.issue ? await io.readTextFile(join(paths.scenarios, scenario.id, scenario.issue)) : undefined;
   return { run, scenario, issue };
 }
 
@@ -331,8 +329,8 @@ export function analyzeTranscripts(texts: readonly string[]): TranscriptStats {
         if (part?.type !== "tool_use") continue;
         s.toolCalls++;
         const input = part.input ?? {};
-        const isAsk = part.name === "AskQuestion" ||
-          (part.name === "CallDynamicTool" && input.toolName === "AskQuestion");
+        const isAsk =
+          part.name === "AskQuestion" || (part.name === "CallDynamicTool" && input.toolName === "AskQuestion");
         if (!isAsk) continue;
         const qs = (part.name === "AskQuestion" ? input.questions : input.arguments?.questions) ?? [];
         const n = Array.isArray(qs) ? qs.length : 0;
@@ -371,7 +369,7 @@ async function findTranscripts(dir: string, since: Date): Promise<string[]> {
   const found: string[] = [];
   for await (const f of walkFiles(dir)) {
     if (!f.endsWith(".jsonl")) continue;
-    const { mtime } = await Deno.stat(f);
+    const { mtime } = await io.stat(f);
     if (mtime && mtime >= since) found.push(f);
   }
   return found.sort();
@@ -417,8 +415,8 @@ async function evaluate(c: Check, ctx: Ctx): Promise<Omit<CheckResult, "id" | "l
   const t = ctx.paths.target;
   const runCommand = async (cmd: string) => {
     const r = await exec("sh", ["-c", cmd], t);
-    await Deno.mkdir(join(ctx.dir, "logs"), { recursive: true });
-    await Deno.writeTextFile(join(ctx.dir, "logs", `${c.id}.log`), `$ ${cmd}\n${r.out}`);
+    await io.mkdir(join(ctx.dir, "logs"), { recursive: true });
+    await io.writeTextFile(join(ctx.dir, "logs", `${c.id}.log`), `$ ${cmd}\n${r.out}`);
     return r.code === 0 ? { ok: true } : { ok: false, detail: `終了コード ${r.code}（logs/${c.id}.log）` };
   };
 
@@ -433,7 +431,7 @@ async function evaluate(c: Check, ctx: Ctx): Promise<Omit<CheckResult, "id" | "l
     case "contains": {
       const file = join(t, c.path);
       if (!(await exists(file))) return { ok: false, detail: `${c.path} が無い` };
-      const text = await Deno.readTextFile(file);
+      const text = await io.readTextFile(file);
       const missing = c.patterns.filter((p) => !new RegExp(p, "i").test(text));
       return missing.length ? { ok: false, detail: `当てはまらない: ${shortList(missing)}` } : { ok: true };
     }
@@ -465,7 +463,13 @@ async function evaluate(c: Check, ctx: Ctx): Promise<Omit<CheckResult, "id" | "l
       const res = c.patterns.map((p) => new RegExp(p, "i"));
       const found = shellCommands(ctx.transcripts).filter((cmd) => res.some((re) => re.test(cmd)));
       return found.length
-        ? { ok: false, detail: `実行した: ${shortList(found.map((f) => f.replace(/\s+/g, " ").slice(0, 120)), 3)}` }
+        ? {
+            ok: false,
+            detail: `実行した: ${shortList(
+              found.map((f) => f.replace(/\s+/g, " ").slice(0, 120)),
+              3,
+            )}`,
+          }
         : { ok: true };
     }
     case "hiddenTests": {
@@ -490,16 +494,16 @@ async function restoreWorktree(target: string, worktree: string, untrackedBefore
   await git(target, "reset", "-q", "--hard", "HEAD");
   if (worktree) await git(target, "stash", "apply", "-q", worktree);
   for (const f of lines(await git(target, "ls-files", "--others", "--exclude-standard"))) {
-    if (!untrackedBefore.has(f)) await Deno.remove(join(target, f));
+    if (!untrackedBefore.has(f)) await io.remove(join(target, f));
   }
 }
 
 export async function readRun(paths: Paths, runId?: string): Promise<RunInfo> {
-  const id = runId ?? (await Deno.readTextFile(join(paths.runs, "latest")).catch(() => "")).trim();
+  const id = runId ?? (await io.readTextFile(join(paths.runs, "latest")).catch(() => "")).trim();
   if (!id) throw new Error("実行がありません。先に eval:prepare を実行してください");
   const file = join(paths.runs, id, "run.json");
   if (!(await exists(file))) throw new Error(`実行がありません: ${id}`);
-  return JSON.parse(await Deno.readTextFile(file));
+  return JSON.parse(await io.readTextFile(file));
 }
 
 export async function gradeRun(
@@ -511,10 +515,10 @@ export async function gradeRun(
   const scenario = await loadScenario(paths, run.scenario);
   const dir = join(paths.runs, run.runId);
 
-  const files = opts.transcripts ??
-    (paths.transcripts ? await findTranscripts(paths.transcripts, new Date(run.startedAt)) : []);
+  const files =
+    opts.transcripts ?? (paths.transcripts ? await findTranscripts(paths.transcripts, new Date(run.startedAt)) : []);
   const texts: string[] = [];
-  for (const f of files) texts.push(await Deno.readTextFile(f));
+  for (const f of files) texts.push(await io.readTextFile(f));
   const ctx: Ctx = { paths, run, scenario, dir, transcripts: texts };
 
   const t = paths.target;
@@ -546,9 +550,9 @@ export async function gradeRun(
 
   let transcript: TranscriptStats | undefined;
   if (files.length) {
-    await Deno.mkdir(join(dir, "transcripts"), { recursive: true });
+    await io.mkdir(join(dir, "transcripts"), { recursive: true });
     for (const [i, f] of files.entries()) {
-      await Deno.writeTextFile(join(dir, "transcripts", basename(f)), texts[i]);
+      await io.writeTextFile(join(dir, "transcripts", basename(f)), texts[i]);
     }
     transcript = analyzeTranscripts(texts);
   }
@@ -567,7 +571,7 @@ export async function gradeRun(
     ...(transcript ? { transcript } : {}),
     gradedAt: (opts.now ?? new Date()).toISOString(),
   };
-  await Deno.writeTextFile(join(dir, "score.json"), JSON.stringify(score, null, 2) + "\n");
+  await io.writeTextFile(join(dir, "score.json"), JSON.stringify(score, null, 2) + "\n");
   return score;
 }
 
@@ -610,12 +614,12 @@ export function formatScore(s: Score): string {
 export async function readScores(paths: Paths): Promise<(Score & { excluded?: string })[]> {
   const scores: (Score & { excluded?: string })[] = [];
   if (!(await exists(paths.runs))) return scores;
-  for await (const e of Deno.readDir(paths.runs)) {
+  for await (const e of io.readDir(paths.runs)) {
     const file = join(paths.runs, e.name, "score.json");
     if (!e.isDirectory || !(await exists(file))) continue;
-    const score: Score & { excluded?: string } = JSON.parse(await Deno.readTextFile(file));
+    const score: Score & { excluded?: string } = JSON.parse(await io.readTextFile(file));
     const excluded = join(paths.runs, e.name, "excluded.md");
-    if (await exists(excluded)) score.excluded = (await Deno.readTextFile(excluded)).trim();
+    if (await exists(excluded)) score.excluded = (await io.readTextFile(excluded)).trim();
     scores.push(score);
   }
   return scores.sort((a, b) => a.runId.localeCompare(b.runId));
@@ -630,9 +634,9 @@ export function summarize(scores: readonly (Score & { excluded?: string })[]): s
   const excluded = scores.filter((s) => s.excluded !== undefined);
   for (const s of scores) {
     if (s.excluded !== undefined) continue;
-    const key = `${s.scenario}\t${s.split}\t${s.skills.tree ?? skillsLabel(s.skills)}\t${s.model ?? "-"}\t${
-      driverOf(s)
-    }`;
+    const key = `${s.scenario}\t${s.split}\t${s.skills.tree ?? skillsLabel(s.skills)}\t${s.model ?? "-"}\t${driverOf(
+      s,
+    )}`;
     groups.set(key, [...(groups.get(key) ?? []), s]);
   }
   if (!groups.size && !excluded.length) return "採点済みの実行がありません";
@@ -690,8 +694,8 @@ function tally(
   tree: string,
   driver: Driver,
 ): Tally {
-  const ss = scores.filter((s) =>
-    s.excluded === undefined && s.scenario === scenario && s.skills.tree === tree && driverOf(s) === driver
+  const ss = scores.filter(
+    (s) => s.excluded === undefined && s.scenario === scenario && s.skills.tree === tree && driverOf(s) === driver,
   );
   return { passed: ss.filter((s) => s.passed).length, runs: ss.length };
 }
@@ -714,9 +718,13 @@ export function judgeImpact(scores: readonly (Score & { excluded?: string })[], 
   };
   const enough = (t: Tally) => t.runs >= IMPACT_MIN_RUNS;
 
-  const scenarios = [...new Set(scores.map((s) => s.scenario))].filter((id) =>
-    tally(scores, id, input.before.tree, input.driver).runs || tally(scores, id, input.after.tree, input.driver).runs
-  ).sort();
+  const scenarios = [...new Set(scores.map((s) => s.scenario))]
+    .filter(
+      (id) =>
+        tally(scores, id, input.before.tree, input.driver).runs ||
+        tally(scores, id, input.after.tree, input.driver).runs,
+    )
+    .sort();
   const cells: Record<"train" | "val", string[]> = { train: [], val: [] };
   for (const id of scenarios) {
     const b = tally(scores, id, input.before.tree, input.driver);
@@ -725,7 +733,10 @@ export function judgeImpact(scores: readonly (Score & { excluded?: string })[], 
     if (split !== "holdout") cells[split].push(`${id}: ${fmtTally(b)} → ${fmtTally(a)}`);
   }
 
-  const vals = Object.entries(input.splitOf).filter(([, s]) => s === "val").map(([id]) => id).sort();
+  const vals = Object.entries(input.splitOf)
+    .filter(([, s]) => s === "val")
+    .map(([id]) => id)
+    .sort();
   if (!vals.length) {
     lower("保留");
     reasons.push("val の問題が無い");
@@ -754,8 +765,8 @@ export function judgeImpact(scores: readonly (Score & { excluded?: string })[], 
   const cell = (xs: string[]) => (xs.length ? xs.join("。") : "（未計測）");
   const row = `| ${input.date} | ${input.pattern} | ${input.change}（${input.before.label} → ${input.after.label}、${
     DRIVER_LABEL[input.driver]
-  }） | ${input.files.map((f) => `\`${f}\``).join("、") || "（スキルの変更なし）"} | ${cell(cells.train)} | ${
-    cell(cells.val)
-  } | ${decision}${reasons.length ? `（${reasons.join("。")}）` : ""} |`;
+  }） | ${input.files.map((f) => `\`${f}\``).join("、") || "（スキルの変更なし）"} | ${cell(cells.train)} | ${cell(
+    cells.val,
+  )} | ${decision}${reasons.length ? `（${reasons.join("。")}）` : ""} |`;
   return { decision, reasons, row };
 }

@@ -101,8 +101,8 @@ for (const c of guide.check) {
       detail: !okStatus
         ? `状態コード ${res.status}（期待は ${expected}）`
         : !okBody
-        ? `本文に「${c.contains}」がありません`
-        : undefined,
+          ? `本文に「${c.contains}」がありません`
+          : undefined,
     });
   } catch (e) {
     results.push({ step: `check: GET ${c.url}`, ok: false, detail: e instanceof Error ? e.message : String(e) });

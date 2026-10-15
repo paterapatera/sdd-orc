@@ -1,10 +1,11 @@
+import * as io from "../harness/io.ts";
 /**
  * スキルを変える前の改善案を確かめる。依頼の経路では、流し直した結果から採否も判定する。
  *
  * 使い方:
- *   deno task eval:propose --pattern P-001
+ *   bun eval/propose.ts --pattern P-001
  *     訓練の経路。eval/wiki/patterns/P-001.md を読み、事例の ID は eval/runs の実行 ID にする
- *   deno task eval:propose --file eval/wiki/requests/R-001.md
+ *   bun eval/propose.ts --file eval/wiki/requests/R-001.md
  *     依頼の経路。「## 事例」の ID で候補を当てる
  *
  * 改善案が、失敗を一段上の原則にし、今の文の勾配と候補の比較になっているかを見る。
@@ -24,28 +25,32 @@ export type ProposalKind = (typeof KINDS)[number];
 export type CaseResult = (typeof CASE_RESULTS)[number];
 type ReplayResult = (typeof REPLAY_RESULTS)[number];
 
-export type ProposalResult = {
-  ok: true;
-  selected: number | "出さない";
-  kind: ProposalKind | null;
-  summary: string | null;
-  /** 選んだ候補が拾う落ちた事例 */
-  targets: string[];
-  /** 「## 事例」の結果。無ければ null */
-  cases: ReadonlyMap<string, CaseResult> | null;
-} | {
-  ok: false;
-  errors: string[];
-};
+export type ProposalResult =
+  | {
+      ok: true;
+      selected: number | "出さない";
+      kind: ProposalKind | null;
+      summary: string | null;
+      /** 選んだ候補が拾う落ちた事例 */
+      targets: string[];
+      /** 「## 事例」の結果。無ければ null */
+      cases: ReadonlyMap<string, CaseResult> | null;
+    }
+  | {
+      ok: false;
+      errors: string[];
+    };
 
-export type ReplayJudgement = {
-  ok: true;
-  decision: "採用" | "却下" | "保留";
-  reasons: string[];
-} | {
-  ok: false;
-  errors: string[];
-};
+export type ReplayJudgement =
+  | {
+      ok: true;
+      decision: "採用" | "却下" | "保留";
+      reasons: string[];
+    }
+  | {
+      ok: false;
+      errors: string[];
+    };
 
 type Row = {
   n: number;
@@ -59,7 +64,10 @@ type Row = {
 
 /** `git diff` の追加行だけを取り出す */
 export function addedLines(diff: string): string {
-  return diff.split("\n").filter((line) => line.startsWith("+") && !line.startsWith("+++")).map((line) => line.slice(1))
+  return diff
+    .split("\n")
+    .filter((line) => line.startsWith("+") && !line.startsWith("+++"))
+    .map((line) => line.slice(1))
     .join("\n");
 }
 
@@ -72,7 +80,10 @@ function sectionOf(markdown: string, title: string): string | null {
 }
 
 function tableLinesOf(section: string): string[] {
-  return section.split("\n").map((line) => line.trim()).filter((line) => line.startsWith("|"));
+  return section
+    .split("\n")
+    .map((line) => line.trim())
+    .filter((line) => line.startsWith("|"));
 }
 
 /** 「## 事例」の表を読む。節が無ければ null */
@@ -117,7 +128,10 @@ function field(section: string, name: string): string | null {
 }
 
 function tokensOf(value: string): string[] {
-  return value.split(/[、,，]/).map((s) => s.trim()).filter(Boolean);
+  return value
+    .split(/[、,，]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
 function hasToken(text: string, token: string): boolean {
@@ -131,7 +145,12 @@ function forbid(text: string, tokens: readonly string[], where: string, errors: 
 }
 
 function cellsOf(line: string): string[] {
-  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((s) => s.trim());
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((s) => s.trim());
 }
 
 function isSeparator(cells: readonly string[]): boolean {
@@ -200,7 +219,11 @@ export function checkProposal(
   const tokens = proper ? tokensOf(proper) : [];
   const usable = tokens.filter((token) => token !== "なし" && token.length >= 2);
   if (
-    !proper || proper === "なし" || tokens.length === 0 || tokens.includes("なし") || tokens.some((t) => t.length < 2)
+    !proper ||
+    proper === "なし" ||
+    tokens.length === 0 ||
+    tokens.includes("なし") ||
+    tokens.some((t) => t.length < 2)
   ) {
     errors.push("固有には、この失敗の回にだけ出る語を、2文字以上で書いてください");
   }
@@ -339,10 +362,7 @@ export function checkProposal(
  * 却下: 選んだ候補の落ちた事例が残ったか、通っていた事例が落ちた。
  * 保留: 結果に無い事例か、再現できない事例がある。
  */
-export function judgeReplay(
-  markdown: string,
-  proposal: Extract<ProposalResult, { ok: true }>,
-): ReplayJudgement | null {
+export function judgeReplay(markdown: string, proposal: Extract<ProposalResult, { ok: true }>): ReplayJudgement | null {
   const section = sectionOf(markdown, "結果");
   if (section === null) return null;
   const errors: string[] = [];
@@ -384,27 +404,29 @@ export function judgeReplay(
 }
 
 async function git(repo: string, ...args: string[]): Promise<string> {
-  const out = await new Deno.Command("git", { args, cwd: repo, stdout: "piped", stderr: "piped" }).output();
+  const out = await new io.Command("git", { args, cwd: repo, stdout: "piped", stderr: "piped" }).output();
   if (!out.success) throw new Error(`git ${args.join(" ")}: ${new TextDecoder().decode(out.stderr).trim()}`);
   return new TextDecoder().decode(out.stdout);
 }
 
 async function uncommittedAgentsText(repo: string): Promise<string> {
   const diff = addedLines(await git(repo, "diff", "-U0", "HEAD", "--", ".agents"));
-  const untracked = (await git(repo, "ls-files", "--others", "--exclude-standard", "--", ".agents")).split("\n")
-    .map((line) => line.trim()).filter(Boolean);
-  const files = await Promise.all(untracked.map((rel) => Deno.readTextFile(join(repo, rel))));
+  const untracked = (await git(repo, "ls-files", "--others", "--exclude-standard", "--", ".agents"))
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const files = await Promise.all(untracked.map((rel) => io.readTextFile(join(repo, rel))));
   return [diff, ...files].join("\n");
 }
 
 async function knownRunIds(repo: string): Promise<Set<string>> {
   const ids = new Set<string>();
   try {
-    for await (const entry of Deno.readDir(join(repo, "eval/runs"))) {
+    for await (const entry of io.readDir(join(repo, "eval/runs"))) {
       if (entry.isDirectory) ids.add(entry.name);
     }
   } catch (e) {
-    if (e instanceof Deno.errors.NotFound) throw new Error("eval/runs が無いので、実行 ID を確かめられません");
+    if (e instanceof io.NotFound) throw new Error("eval/runs が無いので、実行 ID を確かめられません");
     throw e;
   }
   return ids;
@@ -412,32 +434,32 @@ async function knownRunIds(repo: string): Promise<Set<string>> {
 
 function fail(errors: readonly string[]): never {
   for (const error of errors) console.error(`- ${error}`);
-  Deno.exit(1);
+  io.exit(1);
 }
 
 async function main() {
   const { values } = parseArgs({
-    args: Deno.args,
+    args: io.args,
     options: {
       pattern: { type: "string" },
       file: { type: "string" },
     },
   });
   const repo = join(import.meta.dirname!, "..");
-  // deno task はリポジトリの根で動くので、相対パスは呼び出した場所から解決する
-  const base = Deno.env.get("INIT_CWD") ?? Deno.cwd();
+  // 相対パスは、コマンドを呼び出した場所から解決する
+  const base = io.env("INIT_CWD") ?? io.cwd();
   let markdown: string;
   let result: ProposalResult;
   if (values.pattern) {
     if (values.file) throw new Error("--pattern と --file は一緒に指定できません");
     if (!/^P-\d+$/.test(values.pattern)) throw new Error("--pattern に P-001 の形で指定してください");
-    markdown = await Deno.readTextFile(join(repo, "eval/wiki/patterns", `${values.pattern}.md`));
+    markdown = await io.readTextFile(join(repo, "eval/wiki/patterns", `${values.pattern}.md`));
     result = checkProposal(markdown, {
       knownRuns: await knownRunIds(repo),
       addedText: await uncommittedAgentsText(repo),
     });
   } else if (values.file) {
-    markdown = await Deno.readTextFile(resolve(base, values.file));
+    markdown = await io.readTextFile(resolve(base, values.file));
     result = checkProposal(markdown, { requireCases: true, addedText: await uncommittedAgentsText(repo) });
   } else {
     throw new Error("--pattern P-001 か、--file eval/wiki/requests/R-001.md を指定してください");
@@ -455,7 +477,7 @@ async function main() {
   if (!replay.ok) fail(replay.errors);
   console.log(`判定: ${replay.decision}`);
   for (const reason of replay.reasons) console.log(`  - ${reason}`);
-  if (replay.decision !== "採用") Deno.exit(1);
+  if (replay.decision !== "採用") io.exit(1);
 }
 
 if (import.meta.main) {
@@ -463,6 +485,6 @@ if (import.meta.main) {
     await main();
   } catch (e) {
     console.error(e instanceof Error ? e.message : e);
-    Deno.exit(1);
+    io.exit(1);
   }
 }

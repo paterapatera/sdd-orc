@@ -6,9 +6,7 @@ export default defineArchitecture({
   basedOn: "<git rev-parse HEAD の結果>",
   updatedAt: "<YYYY-MM-DD>",
   summary: "<システムの全体像を2〜3文で>",
-  stack: [
-    { name: "<言語やフレームワーク>", version: "<版>", purpose: "<用途>" },
-  ],
+  stack: [{ name: "<言語やフレームワーク>", version: "<版>", purpose: "<用途>" }],
   modules: {
     "<モジュール名>": {
       path: "<ディレクトリのパス>",
@@ -16,8 +14,6 @@ export default defineArchitecture({
       dependsOn: [],
     },
   },
-  layers: [
-    { name: "<層の名前>", rule: "<依存のルール（例: domain は infrastructure に依存しない）>" },
-  ],
+  layers: [{ name: "<層の名前>", rule: "<依存のルール（例: domain は infrastructure に依存しない）>" }],
   notes: [],
 });

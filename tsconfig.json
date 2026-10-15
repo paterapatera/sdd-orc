@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "types": ["bun", "node"],
+    "strict": true,
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true
+  },
+  "include": ["tests/**/*.ts", "eval/**/*.ts", "harness/**/*.ts"],
+  "exclude": ["eval/sdk", "eval/runs", "tests/fixtures"]
+}

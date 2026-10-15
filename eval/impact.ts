@@ -1,7 +1,8 @@
+import * as io from "../harness/io.ts";
 /**
  * スキルの変更の前と後で、問題ごとの合格の回数を比べて採否を判定し、eval/wiki/skill-impact.md に1行を書き足す。
  *
- * 使い方: deno task eval:impact --pattern <パターン> --target <狙った問題> --before <コミット> --after <コミット>
+ * 使い方: bun eval/impact.ts --pattern <パターン> --target <狙った問題> --before <コミット> --after <コミット>
  *           --change "<変更の要約>" [--write]
  *   --before、--after  sdd-orc のコミット。その時点の .agents/skills と中身が同じスキルで回した実行を数える
  *   --write            判定を skill-impact.md に書き足す（省くと表示だけ）
@@ -14,7 +15,7 @@ import { defaultPaths, judgeImpact, loadScenario, readScores } from "./lib.ts";
 import type { Split } from "./schema.ts";
 
 const { values } = parseArgs({
-  args: Deno.args,
+  args: io.args,
   options: {
     pattern: { type: "string" },
     target: { type: "string" },
@@ -27,7 +28,7 @@ const { values } = parseArgs({
 });
 
 async function git(...args: string[]): Promise<string> {
-  const out = await new Deno.Command("git", { args, cwd: paths.repo, stdout: "piped", stderr: "piped" }).output();
+  const out = await new io.Command("git", { args, cwd: paths.repo, stdout: "piped", stderr: "piped" }).output();
   if (!out.success) throw new Error(`git ${args.join(" ")}: ${new TextDecoder().decode(out.stderr).trim()}`);
   return new TextDecoder().decode(out.stdout).trim();
 }
@@ -45,7 +46,7 @@ try {
     tree: await git("rev-parse", `${commit}:.agents/skills`),
   });
   const splitOf: Record<string, Split> = {};
-  for await (const e of Deno.readDir(paths.scenarios)) {
+  for await (const e of io.readDir(paths.scenarios)) {
     if (e.isDirectory) splitOf[e.name] = (await loadScenario(paths, e.name)).split;
   }
   // 試験場の .gitattributes が改行を揃えるので、試験場で取った tree は sdd-orc の tree と一致しない。
@@ -75,8 +76,8 @@ try {
   console.log(result.row);
   if (values.write) {
     const file = join(paths.repo, "eval/wiki/skill-impact.md");
-    const text = await Deno.readTextFile(file);
-    await Deno.writeTextFile(file, text.replace(/\n*$/, "\n") + result.row + "\n");
+    const text = await io.readTextFile(file);
+    await io.writeTextFile(file, text.replace(/\n*$/, "\n") + result.row + "\n");
     console.log(
       `skill-impact.md に書き足しました${
         result.decision === "却下" ? "。スキルの変更を git revert で戻してください" : ""
@@ -85,5 +86,5 @@ try {
   }
 } catch (e) {
   console.error(e instanceof Error ? e.message : e);
-  Deno.exit(1);
+  io.exit(1);
 }

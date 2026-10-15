@@ -143,13 +143,16 @@ if (issueCli === "manual") {
 } else {
   const found = await cliRuns(issueCli);
   items.push(
-    found === true ? { level: "ok", label: `issue のCLI（${issueCli}）` } : {
-      level: "warn",
-      label: "issue のCLI",
-      detail: found === "missing"
-        ? `${issueCli} が見つかりません（docs/sdd/guides/issues.md）`
-        : `${issueCli} --version が失敗しました`,
-    },
+    found === true
+      ? { level: "ok", label: `issue のCLI（${issueCli}）` }
+      : {
+          level: "warn",
+          label: "issue のCLI",
+          detail:
+            found === "missing"
+              ? `${issueCli} が見つかりません（docs/sdd/guides/issues.md）`
+              : `${issueCli} --version が失敗しました`,
+        },
   );
 }
 
@@ -163,13 +166,16 @@ if (!config.forge) {
 } else {
   const found = await cliRuns(config.forge.cli);
   items.push(
-    found === true ? { level: "ok", label: `ホスティングのCLI（${config.forge.cli}）` } : {
-      level: "warn",
-      label: "ホスティングのCLI",
-      detail: found === "missing"
-        ? `${config.forge.cli} が見つかりません`
-        : `${config.forge.cli} --version が失敗しました`,
-    },
+    found === true
+      ? { level: "ok", label: `ホスティングのCLI（${config.forge.cli}）` }
+      : {
+          level: "warn",
+          label: "ホスティングのCLI",
+          detail:
+            found === "missing"
+              ? `${config.forge.cli} が見つかりません`
+              : `${config.forge.cli} --version が失敗しました`,
+        },
   );
 }
 
@@ -177,8 +183,14 @@ if (!config.forge) {
 const hooksDir = await gitOut(["rev-parse", "--git-path", "hooks"]);
 const hookFiles = [
   ...(hooksDir ? [resolve(ROOT, hooksDir, "pre-commit")] : []),
-  ...[".husky/pre-commit", ".pre-commit-config.yaml", "lefthook.yml", "lefthook.yaml", ".lefthook.yml", "package.json"]
-    .map((f) => join(ROOT, f)),
+  ...[
+    ".husky/pre-commit",
+    ".pre-commit-config.yaml",
+    "lefthook.yml",
+    "lefthook.yaml",
+    ".lefthook.yml",
+    "package.json",
+  ].map((f) => join(ROOT, f)),
   join(ROOT, ".simple-git-hooks.json"),
 ];
 let hookFound: string | undefined;
@@ -189,11 +201,13 @@ for (const f of hookFiles) {
   }
 }
 items.push(
-  hookFound ? { level: "ok", label: "pre-commit hook", detail: hookFound.slice(ROOT.length + 1) } : {
-    level: "ng",
-    label: "pre-commit hook",
-    detail: "設置されていません。sdd-init の install.ts を --hook-only 付きで実行してください",
-  },
+  hookFound
+    ? { level: "ok", label: "pre-commit hook", detail: hookFound.slice(ROOT.length + 1) }
+    : {
+        level: "ng",
+        label: "pre-commit hook",
+        detail: "設置されていません。sdd-init の install.ts を --hook-only 付きで実行してください",
+      },
 );
 
 // .gitignore

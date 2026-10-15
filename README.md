@@ -143,9 +143,9 @@ tests/                       # 道具のテスト（fixtures/ にサンプルの
 ## 開発
 
 ```sh
-deno task test    # すべてのテスト
-deno fmt --check
-deno lint
+bun run test    # すべてのテスト
+bun run fmt:check
+bun run lint
 ```
 
 変更のしかたは [AGENTS.md](AGENTS.md) を参照。

@@ -1,5 +1,7 @@
+import * as io from "../harness/io.ts";
+import { test } from "bun:test";
 // doctor、drift、conflicts のテスト
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import { assertEquals, assertStringIncludes } from "./assert.ts";
 import { join } from "node:path";
 import {
   emptyRepo,
@@ -36,29 +38,30 @@ async function installedRepo(): Promise<string> {
 
 /** tasks.ts のタスクをすべて完了にし、受け入れテストの準備を書く */
 async function completeTasks(tasksPath: string) {
-  const src = (await Deno.readTextFile(tasksPath)).replaceAll(`status: "todo"`, `status: "done"`)
+  const src = (await io.readTextFile(tasksPath))
+    .replaceAll(`status: "todo"`, `status: "done"`)
     .replaceAll(`status: "doing"`, `status: "done"`)
     .replace(
       "  tasks: {",
       `  acceptanceGuide: { setup: [{ run: "true" }], accounts: [{ id: "a@example.com", password: "pass", role: "一般" }], data: [], check: [{ url: "http://127.0.0.1:1/" }] },\n  tasks: {`,
     );
-  await Deno.writeTextFile(tasksPath, src);
+  await io.writeTextFile(tasksPath, src);
 }
 
 // --- doctor ---
 
-Deno.test("doctor: issue の CLI が無ければ警告し、manual ならその CLI を見ない", async () => {
+test("doctor: issue の CLI が無ければ警告し、manual ならその CLI を見ない", async () => {
   const root = await installedRepo();
   const path = join(root, "docs/sdd/config.ts");
-  const original = await Deno.readTextFile(path);
-  await Deno.writeTextFile(
+  const original = await io.readTextFile(path);
+  await io.writeTextFile(
     path,
     original.replace('tracker: "manual",', 'tracker: "manual",\n  issues: { cli: "sdd-missing-issue-cli" },'),
   );
   const missing = await task(root, "doctor");
   assertEquals(missing.code, 0, missing.out);
   assertStringIncludes(missing.out, "sdd-missing-issue-cli が見つかりません");
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     path,
     original.replace('tracker: "manual",', 'tracker: "manual",\n  issues: { cli: "manual" },'),
   );
@@ -67,7 +70,7 @@ Deno.test("doctor: issue の CLI が無ければ警告し、manual ならその 
   assertStringIncludes(manual.out, "issue は手動で取り込む");
 });
 
-Deno.test("doctor: 導入直後は必須の項目に問題が無い", async () => {
+test("doctor: 導入直後は必須の項目に問題が無い", async () => {
   const root = await installedRepo();
   const r = await task(root, "doctor");
   assertEquals(r.code, 0, r.out);
@@ -77,41 +80,38 @@ Deno.test("doctor: 導入直後は必須の項目に問題が無い", async () =
   assertStringIncludes(r.out, "propose-quality-tools");
 });
 
-Deno.test("doctor: ブランチの接頭辞に大文字があれば警告する", async () => {
+test("doctor: ブランチの接頭辞に大文字があれば警告する", async () => {
   const root = await installedRepo();
   const path = join(root, "docs/sdd/config.ts");
-  await Deno.writeTextFile(
-    path,
-    (await Deno.readTextFile(path)).replace(`branchPrefix: ""`, `branchPrefix: "Feature/"`),
-  );
+  await io.writeTextFile(path, (await io.readTextFile(path)).replace(`branchPrefix: ""`, `branchPrefix: "Feature/"`));
   const r = await task(root, "doctor");
   assertStringIncludes(r.out, "! branchPrefix");
 });
 
-Deno.test("doctor: hook が無ければ問題として報告する", async () => {
+test("doctor: hook が無ければ問題として報告する", async () => {
   const root = await installedRepo();
-  await Deno.remove(join(root, ".git/hooks/pre-commit"));
+  await io.remove(join(root, ".git/hooks/pre-commit"));
   const r = await task(root, "doctor");
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "✕ pre-commit hook");
   assertStringIncludes(r.out, "--hook-only");
 });
 
-Deno.test("doctor: husky に組み込まれていれば hook ありとみなす", async () => {
+test("doctor: husky に組み込まれていれば hook ありとみなす", async () => {
   const root = await installedRepo();
-  await Deno.remove(join(root, ".git/hooks/pre-commit"));
+  await io.remove(join(root, ".git/hooks/pre-commit"));
   await writeFile(root, ".husky/pre-commit", "npm test\nsh docs/sdd/scripts/pre-commit.sh\n");
   const r = await task(root, "doctor");
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, ".husky/pre-commit");
 });
 
-Deno.test("doctor: 型定義の版が違えば問題として報告する", async () => {
+test("doctor: 型定義の版が違えば問題として報告する", async () => {
   const root = await installedRepo();
   const path = join(root, "docs/sdd/config.ts");
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     path,
-    (await Deno.readTextFile(path)).replace(/schemaVersion: "[^"]+"/, `schemaVersion: "0.0.1"`),
+    (await io.readTextFile(path)).replace(/schemaVersion: "[^"]+"/, `schemaVersion: "0.0.1"`),
   );
   const r = await task(root, "doctor");
   assertEquals(r.code, 1, r.out);
@@ -120,7 +120,7 @@ Deno.test("doctor: 型定義の版が違えば問題として報告する", asyn
 
 // --- drift ---
 
-Deno.test("drift: 基準から構成に関わる変更が無ければそう伝える", async () => {
+test("drift: 基準から構成に関わる変更が無ければそう伝える", async () => {
   const root = await installedRepo();
   const head = await sh(root, "rev-parse", "HEAD");
   await writeFile(root, "docs/sdd/architecture.ts", ARCH(head));
@@ -132,7 +132,7 @@ Deno.test("drift: 基準から構成に関わる変更が無ければそう伝�
   assertStringIncludes(r.out, "構成に関わる変更は見つかりませんでした");
 });
 
-Deno.test("drift: 依存関係・最上位のディレクトリ・モジュールのパスの変化を検出する", async () => {
+test("drift: 依存関係・最上位のディレクトリ・モジュールのパスの変化を検出する", async () => {
   const root = await installedRepo();
   const head = await sh(root, "rev-parse", "HEAD");
   await writeFile(root, "docs/sdd/architecture.ts", ARCH(head));
@@ -148,7 +148,7 @@ Deno.test("drift: 依存関係・最上位のディレクトリ・モジュー�
   assertStringIncludes(r.out, "モジュール auth のパス src/auth が見つからない");
 });
 
-Deno.test("drift: SDD の導入で増えた docs/ は最上位のディレクトリの増加として数えない", async () => {
+test("drift: SDD の導入で増えた docs/ は最上位のディレクトリの増加として数えない", async () => {
   const root = await emptyRepo();
   await writeFile(root, "src/auth/auth_service.py", "def login(): pass\n");
   await sh(root, "add", ".");
@@ -172,7 +172,7 @@ Deno.test("drift: SDD の導入で増えた docs/ は最上位のディレクト
   assertStringIncludes(r.out, "最上位のディレクトリが増えた: docs/");
 });
 
-Deno.test("drift: basedOn が未設定なら案内だけする", async () => {
+test("drift: basedOn が未設定なら案内だけする", async () => {
   const root = await installedRepo();
   await writeFile(root, "docs/sdd/architecture.ts", ARCH("none"));
   const r = await task(root, "drift");
@@ -184,14 +184,14 @@ Deno.test("drift: basedOn が未設定なら案内だけする", async () => {
 
 /** 共有リポジトリ（bare）と、自分・他の人の clone を作る */
 async function team() {
-  const origin = await Deno.makeTempDir({ prefix: "sdd-origin-" });
+  const origin = await io.makeTempDir({ prefix: "sdd-origin-" });
   await sh(origin, "init", "-q", "--bare", "-b", "main");
   const seed = await installedRepo();
   await sh(seed, "remote", "add", "origin", origin);
   await sh(seed, "push", "-q", "origin", "main");
 
   const clone = async () => {
-    const dir = await Deno.makeTempDir({ prefix: "sdd-clone-" });
+    const dir = await io.makeTempDir({ prefix: "sdd-clone-" });
     await sh(dir, "clone", "-q", origin, ".");
     await gitIdentity(dir);
     return dir;
@@ -203,18 +203,21 @@ async function team() {
 async function pushSddBranch(other: string, opts: { date?: string } = {}) {
   await sh(other, "switch", "-q", "-c", "EX-001-lockout");
   for (const f of ["issue.md", "requirements.ts", "design.ts"]) {
-    await writeFile(other, `docs/specs/EX-001/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
+    await writeFile(other, `docs/specs/EX-001/${f}`, await io.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
   }
   await writeFile(other, "src/auth/lockout_policy.py", "def evaluate(): pass\n");
   await sh(other, "add", ".");
   const env = opts.date ? { GIT_COMMITTER_DATE: opts.date, GIT_AUTHOR_DATE: opts.date } : undefined;
-  const r = await new Deno.Command("git", { args: ["commit", "-q", "--no-verify", "-m", "EX-001"], cwd: other, env })
-    .output();
+  const r = await new io.Command("git", {
+    args: ["commit", "-q", "--no-verify", "-m", "EX-001"],
+    cwd: other,
+    env,
+  }).output();
   if (r.code !== 0) throw new Error("commit に失敗しました");
   await sh(other, "push", "-q", "origin", "EX-001-lockout");
 }
 
-Deno.test("conflicts: 他のSDDブランチの予定の影響範囲との重なりを検出する", async () => {
+test("conflicts: 他のSDDブランチの予定の影響範囲との重なりを検出する", async () => {
   const { me, other } = await team();
   await pushSddBranch(other);
   await sh(me, "switch", "-q", "-c", "EX-009-profile");
@@ -225,7 +228,7 @@ Deno.test("conflicts: 他のSDDブランチの予定の影響範囲との重な�
   assertStringIncludes(r.out, "[重なり] src/auth/auth_service.py（予定）");
 });
 
-Deno.test("conflicts: 自分の spec の影響範囲と、SDD以外のブランチの実際の差分を比べる", async () => {
+test("conflicts: 自分の spec の影響範囲と、SDD以外のブランチの実際の差分を比べる", async () => {
   const { me, other } = await team();
   // 他の人は SDD を使わずに auth_service.py を変更している
   await sh(other, "switch", "-q", "-c", "hotfix/login");
@@ -235,7 +238,7 @@ Deno.test("conflicts: 自分の spec の影響範囲と、SDD以外のブラン�
 
   await sh(me, "switch", "-q", "-c", "EX-001-lockout");
   for (const f of ["issue.md", "requirements.ts", "design.ts"]) {
-    await writeFile(me, `docs/specs/EX-001/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
+    await writeFile(me, `docs/specs/EX-001/${f}`, await io.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
   }
   const r = await task(me, "conflicts", "--issue", "EX-001");
   assertEquals(r.code, 0, r.out);
@@ -243,7 +246,7 @@ Deno.test("conflicts: 自分の spec の影響範囲と、SDD以外のブラン�
   assertStringIncludes(r.out, "[重なり] src/auth/auth_service.py（変更済み）");
 });
 
-Deno.test("conflicts: 古いブランチと自分のブランチは対象外", async () => {
+test("conflicts: 古いブランチと自分のブランチは対象外", async () => {
   const { me, other } = await team();
   await pushSddBranch(other, { date: "2020-01-01T00:00:00" });
   await sh(me, "switch", "-q", "-c", "EX-009-profile");
@@ -256,7 +259,7 @@ Deno.test("conflicts: 古いブランチと自分のブランチは対象外", a
   assertStringIncludes(r.out, "作業中のブランチ: 0 件");
 });
 
-Deno.test("conflicts: リモートが無ければ確認できない旨を伝える", async () => {
+test("conflicts: リモートが無ければ確認できない旨を伝える", async () => {
   const root = await installedRepo();
   const r = await task(root, "conflicts");
   assertEquals(r.code, 0, r.out);
@@ -265,7 +268,7 @@ Deno.test("conflicts: リモートが無ければ確認できない旨を伝え�
 
 // --- next ---
 
-Deno.test("next: 作業中のタスクと、関係するコンポーネント・要件を表示する", async () => {
+test("next: 作業中のタスクと、関係するコンポーネント・要件を表示する", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const r = await task(root, "next", "EX-001");
   assertEquals(r.code, 0, r.out);
@@ -279,7 +282,7 @@ Deno.test("next: 作業中のタスクと、関係するコンポーネント・
   assertStringIncludes(r.out, "変更: src/auth/auth_service.py");
 });
 
-Deno.test("next: 指定したテストタスクの受け入れ条件とインターフェースを表示する", async () => {
+test("next: 指定したテストタスクの受け入れ条件とインターフェースを表示する", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const r = await task(root, "next", "EX-001", "--task", "T-005");
   assertEquals(r.code, 0, r.out);
@@ -287,7 +290,7 @@ Deno.test("next: 指定したテストタスクの受け入れ条件とインタ
   assertStringIncludes(r.out, "操作: アカウントAで正しいパスワードでログインする");
 });
 
-Deno.test("next: 軽量モードでは根本原因も表示する", async () => {
+test("next: 軽量モードでは根本原因も表示する", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   const r = await task(root, "next", "EX-002");
   assertEquals(r.code, 0, r.out);
@@ -296,18 +299,18 @@ Deno.test("next: 軽量モードでは根本原因も表示する", async () => 
   assertStringIncludes(r.out, "根本原因:");
 });
 
-Deno.test("next: すべて完了していればそう伝える", async () => {
+test("next: すべて完了していればそう伝える", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   const path = join(root, "docs/specs/EX-002/spec.ts");
-  await Deno.writeTextFile(path, (await Deno.readTextFile(path)).replaceAll(`status: "todo"`, `status: "done"`));
+  await io.writeTextFile(path, (await io.readTextFile(path)).replaceAll(`status: "todo"`, `status: "done"`));
   const r = await task(root, "next", "EX-002");
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, "すべてのタスクが完了しています");
 });
 
-Deno.test("next: 設計までしか無ければ実装できない旨を伝える", async () => {
+test("next: 設計までしか無ければ実装できない旨を伝える", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
-  await Deno.remove(join(root, "docs/specs/EX-001/tasks.ts"));
+  await io.remove(join(root, "docs/specs/EX-001/tasks.ts"));
   const r = await task(root, "next", "EX-001");
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "実装できるspecがありません");
@@ -315,7 +318,7 @@ Deno.test("next: 設計までしか無ければ実装できない旨を伝える
 
 // --- finish-report ---
 
-Deno.test("finish-report: 未完了のタスクがあれば完了の条件を満たさない", async () => {
+test("finish-report: 未完了のタスクがあれば完了の条件を満たさない", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const r = await task(root, "finish-report", "EX-001");
   assertEquals(r.code, 1, r.out);
@@ -323,17 +326,16 @@ Deno.test("finish-report: 未完了のタスクがあれば完了の条件を満
   assertStringIncludes(r.out, "BNFR-001 を上書き");
 });
 
-Deno.test("finish-report: ADRの候補と次の番号、モジュール外に作ったファイルを示す", async () => {
+test("finish-report: ADRの候補と次の番号、モジュール外に作ったファイルを示す", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const tasksPath = join(root, "docs/specs/EX-001/tasks.ts");
   await completeTasks(tasksPath);
   const designPath = join(root, "docs/specs/EX-001/design.ts");
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     designPath,
-    (await Deno.readTextFile(designPath)).replace("adr: false", "adr: true").replace(
-      `decidedBy: "ai"`,
-      `decidedBy: "user"`,
-    ),
+    (await io.readTextFile(designPath))
+      .replace("adr: false", "adr: true")
+      .replace(`decidedBy: "ai"`, `decidedBy: "user"`),
   );
   await writeFile(root, "docs/sdd/adr/ADR-0003.ts", "// 既存のADR\n");
   await writeFile(root, "docs/sdd/architecture.ts", ARCH("none"));
@@ -350,13 +352,13 @@ Deno.test("finish-report: ADRの候補と次の番号、モジュール外に作
 
 async function withCommands(root: string, commands: string) {
   const path = join(root, "docs/sdd/config.ts");
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     path,
-    (await Deno.readTextFile(path)).replace("staleBranchDays: 30,", `staleBranchDays: 30,\n  commands: ${commands},`),
+    (await io.readTextFile(path)).replace("staleBranchDays: 30,", `staleBranchDays: 30,\n  commands: ${commands},`),
   );
 }
 
-Deno.test("gate: format → check → test の順に実行し、失敗をまとめて報告する", async () => {
+test("gate: format → check → test の順に実行し、失敗をまとめて報告する", async () => {
   const root = await makeProject({ specs: [] });
   await withCommands(
     root,
@@ -372,7 +374,7 @@ Deno.test("gate: format → check → test の順に実行し、失敗をまと�
   assertStringIncludes(r.out, "失敗が 1 件あります");
 });
 
-Deno.test("gate: check が無ければ lint と typecheck を実行する", async () => {
+test("gate: check が無ければ lint と typecheck を実行する", async () => {
   const root = await makeProject({ specs: [] });
   await withCommands(root, `{ lint: "echo lint-ok", typecheck: "echo type-ok", test: "true" }`);
   const r = await task(root, "gate");
@@ -382,7 +384,7 @@ Deno.test("gate: check が無ければ lint と typecheck を実行する", asyn
   assertStringIncludes(r.out, "未設定: format");
 });
 
-Deno.test("gate: 実行で docs/sdd か .agents が変わったら失敗する", async () => {
+test("gate: 実行で docs/sdd か .agents が変わったら失敗する", async () => {
   const root = await installedRepo();
   await withCommands(root, `{ format: "printf '\\n' >> docs/sdd/config.ts", test: "true" }`);
   await sh(root, "add", "docs/sdd/config.ts");
@@ -394,18 +396,18 @@ Deno.test("gate: 実行で docs/sdd か .agents が変わったら失敗する",
   assertStringIncludes(r.out, "失敗が 1 件あります");
 });
 
-Deno.test("gate: アプリのファイルだけが変わったときと、実行前から docs/sdd が汚れているときは警告しない", async () => {
+test("gate: アプリのファイルだけが変わったときと、実行前から docs/sdd が汚れているときは警告しない", async () => {
   const root = await installedRepo();
   await withCommands(root, `{ format: "echo app > app.txt", test: "true" }`);
   await sh(root, "add", "docs/sdd/config.ts");
   await sh(root, "commit", "-q", "-m", "config");
-  await Deno.writeTextFile(join(root, "docs/sdd/config.ts"), "\n", { append: true });
+  await io.writeTextFile(join(root, "docs/sdd/config.ts"), "\n", { append: true });
   const r = await task(root, "gate");
   assertEquals(r.code, 0, r.out);
   assertEquals(r.out.includes("スキルか道具を書き換えました"), false, r.out);
 });
 
-Deno.test("gate: commands が無ければ警告して終わる", async () => {
+test("gate: commands が無ければ警告して終わる", async () => {
   const root = await makeProject({ specs: [] });
   const r = await task(root, "gate");
   assertEquals(r.code, 0, r.out);
@@ -414,7 +416,7 @@ Deno.test("gate: commands が無ければ警告して終わる", async () => {
 
 // --- current ---
 
-Deno.test("current: 小文字のブランチ名から、大文字のIDのディレクトリを特定する", async () => {
+test("current: 小文字のブランチ名から、大文字のIDのディレクトリを特定する", async () => {
   const root = await makeProject({ specs: ["EX-001", "EX-002"] });
   await sh(root, "init", "-q", "-b", "main");
   await gitIdentity(root);
@@ -428,7 +430,7 @@ Deno.test("current: 小文字のブランチ名から、大文字のIDのディ�
   assertEquals(idOnly.out.trim(), "EX-002");
 });
 
-Deno.test("current: 対応するspecが無ければ失敗する", async () => {
+test("current: 対応するspecが無ければ失敗する", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await sh(root, "init", "-q", "-b", "main");
   await gitIdentity(root);
@@ -439,11 +441,11 @@ Deno.test("current: 対応するspecが無ければ失敗する", async () => {
   assertStringIncludes(r.out, "対応する docs/specs/<ID> がありません");
 });
 
-Deno.test("finish-report: 依存関係の定義が変わったのにADRにする設計判断が無ければエラー", async () => {
+test("finish-report: 依存関係の定義が変わったのにADRにする設計判断が無ければエラー", async () => {
   const root = await installedRepo();
   await sh(root, "switch", "-q", "-c", "ex-001-lockout");
   for (const f of ["issue.md", "requirements.ts", "design.ts", "tasks.ts"]) {
-    await writeFile(root, `docs/specs/EX-001/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
+    await writeFile(root, `docs/specs/EX-001/${f}`, await io.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
   }
   const tasksPath = join(root, "docs/specs/EX-001/tasks.ts");
   await completeTasks(tasksPath);
@@ -457,12 +459,11 @@ Deno.test("finish-report: 依存関係の定義が変わったのにADRにする
 
   // adr: true の設計判断があればエラーにならない
   const designPath = join(root, "docs/specs/EX-001/design.ts");
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     designPath,
-    (await Deno.readTextFile(designPath)).replace("adr: false", "adr: true").replace(
-      `decidedBy: "ai"`,
-      `decidedBy: "user"`,
-    ),
+    (await io.readTextFile(designPath))
+      .replace("adr: false", "adr: true")
+      .replace(`decidedBy: "ai"`, `decidedBy: "user"`),
   );
   const ok = await task(root, "finish-report", "EX-001");
   assertEquals(ok.out.includes("依存関係の定義が変わっています"), false, ok.out);
@@ -474,14 +475,14 @@ async function quickBranch(): Promise<string> {
   const root = await installedRepo();
   await sh(root, "switch", "-q", "-c", "ex-002-search-count");
   for (const f of ["issue.md", "spec.ts"]) {
-    await writeFile(root, `docs/specs/EX-002/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-002", f)));
+    await writeFile(root, `docs/specs/EX-002/${f}`, await io.readTextFile(join(FIXTURE_SPECS, "EX-002", f)));
   }
   await sh(root, "add", ".");
   await sh(root, "commit", "-q", "-m", "EX-002: specを作成（軽量モード）");
   return root;
 }
 
-Deno.test("scope: 影響範囲に無いファイルの変更をエラーにする", async () => {
+test("scope: 影響範囲に無いファイルの変更をエラーにする", async () => {
   const root = await quickBranch();
   await writeFile(root, "src/search/pagination.py", "def start(page, size): return (page - 1) * size\n");
   await writeFile(root, "src/other/util.py", "pass\n");
@@ -491,14 +492,14 @@ Deno.test("scope: 影響範囲に無いファイルの変更をエラーにす�
   assertStringIncludes(r.out, "影響範囲にあるが変更していない: tests/test_pagination.py");
 });
 
-Deno.test("finish-report: 完了したタスクにコミットが無い、空のコミットがある場合はエラー", async () => {
+test("finish-report: 完了したタスクにコミットが無い、空のコミットがある場合はエラー", async () => {
   const root = await quickBranch();
   await writeFile(root, "tests/test_pagination.py", "def test_page2(): assert False\n");
   await sh(root, "add", ".");
   await sh(root, "commit", "-q", "--no-verify", "-m", "EX-002 T-001: 再現テストを書く");
   await sh(root, "commit", "-q", "--no-verify", "--allow-empty", "-m", "EX-002 T-002: 開始位置の計算を直す");
   const path = join(root, "docs/specs/EX-002/spec.ts");
-  await Deno.writeTextFile(path, (await Deno.readTextFile(path)).replaceAll(`status: "todo"`, `status: "done"`));
+  await io.writeTextFile(path, (await io.readTextFile(path)).replaceAll(`status: "todo"`, `status: "done"`));
   const r = await task(root, "finish-report", "EX-002");
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "T-002 のコミット");
@@ -507,7 +508,7 @@ Deno.test("finish-report: 完了したタスクにコミットが無い、空の
   assertStringIncludes(r.out, "受け入れテストの準備（acceptanceGuide）がありません");
 });
 
-Deno.test("doctor: 品質ゲートでテストを除外している設定を警告する", async () => {
+test("doctor: 品質ゲートでテストを除外している設定を警告する", async () => {
   const root = await installedRepo();
   await writeFile(
     root,
@@ -515,9 +516,9 @@ Deno.test("doctor: 品質ゲートでテストを除外している設定を警�
     "#!/usr/bin/env bash\nexport SKIP_BUILD_TEST=1\nphp artisan test --exclude-group slow\n",
   );
   const path = join(root, "docs/sdd/config.ts");
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     path,
-    (await Deno.readTextFile(path)).replace(
+    (await io.readTextFile(path)).replace(
       "staleBranchDays: 30,",
       `staleBranchDays: 30,\n  commands: { check: "true", test: "bash scripts/gate-test.sh" },`,
     ),
@@ -527,7 +528,7 @@ Deno.test("doctor: 品質ゲートでテストを除外している設定を警�
   assertStringIncludes(r.out, "scripts/gate-test.sh: --exclude-group");
 });
 
-Deno.test("gate: E2E テストは --full のときだけ実行する", async () => {
+test("gate: E2E テストは --full のときだけ実行する", async () => {
   const root = await makeProject({ specs: [] });
   await withCommands(root, `{ check: "true", test: "echo unit-ok", e2e: "echo e2e-ran" }`);
   const quick = await task(root, "gate");
@@ -540,14 +541,14 @@ Deno.test("gate: E2E テストは --full のときだけ実行する", async () 
   assertStringIncludes(full.out, "✓ e2e");
 });
 
-Deno.test("gate: --full で通ったら記録し、--if-changed は commands が同じなら実行しない", async () => {
+test("gate: --full で通ったら記録し、--if-changed は commands が同じなら実行しない", async () => {
   const root = await makeProject({ specs: [] });
   await withCommands(
     root,
     `{ format: "echo f >> format.log", check: "echo c >> check.log", test: "true", e2e: "echo e >> e2e.log" }`,
   );
   const lineCount = async (f: string) =>
-    (await Deno.readTextFile(join(root, f)).catch(() => "")).split("\n").filter(Boolean).length;
+    (await io.readTextFile(join(root, f)).catch(() => "")).split("\n").filter(Boolean).length;
 
   // 記録が無い → 実行する（format は書き換えるので実行せず、E2E は含める）
   const first = await task(root, "gate", "--if-changed");
@@ -567,25 +568,25 @@ Deno.test("gate: --full で通ったら記録し、--if-changed は commands が
   assertEquals(await lineCount("check.log"), 2);
 });
 
-Deno.test("gate: --if-changed は、失敗したら記録せず、次も実行する", async () => {
+test("gate: --if-changed は、失敗したら記録せず、次も実行する", async () => {
   const root = await makeProject({ specs: [] });
   await withCommands(root, `{ check: "echo c >> check.log && false", test: "true" }`);
   assertEquals((await task(root, "gate", "--if-changed")).code, 1);
   assertEquals((await task(root, "gate", "--if-changed")).code, 1);
-  assertEquals((await Deno.readTextFile(join(root, "check.log"))).split("\n").filter(Boolean).length, 2);
+  assertEquals((await io.readTextFile(join(root, "check.log"))).split("\n").filter(Boolean).length, 2);
   // --full でない gate は通っても記録しない
   await patchFile(root, "docs/sdd/config.ts", `&& false`, ``);
   assertEquals((await task(root, "gate")).code, 0);
   assertEquals((await task(root, "gate", "--if-changed")).out.includes("変わっていません"), false);
 });
 
-Deno.test("doctor: E2E テストが未設定なら警告する", async () => {
+test("doctor: E2E テストが未設定なら警告する", async () => {
   const root = await installedRepo();
   const r = await task(root, "doctor");
   assertStringIncludes(r.out, "! E2E テスト");
 });
 
-Deno.test("next: Conventional Commits 形式のコミットからタスクとの対応を求める", async () => {
+test("next: Conventional Commits 形式のコミットからタスクとの対応を求める", async () => {
   const root = await quickBranch();
   await writeFile(root, "tests/test_pagination.py", "def test_page2(): assert False\n");
   await sh(root, "add", ".");
@@ -604,28 +605,38 @@ Deno.test("next: Conventional Commits 形式のコミットからタスクとの
 
 /** 空いているポートで、指定した本文を返すサーバーを起動するコマンド */
 async function serverCommand(root: string, body: string): Promise<{ run: string; url: string }> {
-  const l = Deno.listen({ port: 0 });
-  const port = (l.addr as Deno.NetAddr).port;
-  l.close();
+  const { createServer } = await import("node:net");
+  const port = await new Promise<number>((resolve) => {
+    const probe = createServer();
+    probe.listen(0, "127.0.0.1", () => {
+      const addr = probe.address();
+      const found = typeof addr === "object" && addr ? addr.port : 0;
+      probe.close(() => resolve(found));
+    });
+  });
   await writeFile(
     root,
     "server.ts",
-    `Deno.serve({ port: ${port}, onListen() {} }, (req) => new URL(req.url).pathname === "/missing" ? new Response("no", { status: 404 }) : new Response(${
-      JSON.stringify(body)
-    }));\n`,
+    `import { createServer } from "node:http";
+createServer((req, res) => {
+  const path = new URL(req.url ?? "/", "http://127.0.0.1").pathname;
+  if (path === "/missing") { res.writeHead(404); res.end("no"); return; }
+  res.writeHead(200); res.end(${JSON.stringify(body)});
+}).listen(${port}, "127.0.0.1");
+`,
   );
-  return { run: `${Deno.execPath()} run --allow-net server.ts`, url: `http://127.0.0.1:${port}` };
+  return { run: `${process.execPath} server.ts`, url: `http://127.0.0.1:${port}` };
 }
 
 async function writeGuide(root: string, guide: string) {
   const path = join(root, "docs/specs/EX-002/spec.ts");
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     path,
-    (await Deno.readTextFile(path)).replace("  tasks: {", `  acceptanceGuide: ${guide},\n  tasks: {`),
+    (await io.readTextFile(path)).replace("  tasks: {", `  acceptanceGuide: ${guide},\n  tasks: {`),
   );
 }
 
-Deno.test("acceptance: 準備を実行し、サーバーを起動して画面を確かめる", async () => {
+test("acceptance: 準備を実行し、サーバーを起動して画面を確かめる", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   const srv = await serverCommand(root, "21〜40件目");
   await writeGuide(
@@ -641,10 +652,10 @@ Deno.test("acceptance: 準備を実行し、サーバーを起動して画面を
   const r = await task(root, "acceptance", "EX-002");
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, "すべて確かめました");
-  assertEquals((await Deno.readTextFile(join(root, "data.log"))).trim(), "45");
+  assertEquals((await io.readTextFile(join(root, "data.log"))).trim(), "45");
 });
 
-Deno.test("acceptance: 準備のコマンドや画面の確認が失敗したら、受け入れテストを頼めない", async () => {
+test("acceptance: 準備のコマンドや画面の確認が失敗したら、受け入れテストを頼めない", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   const srv = await serverCommand(root, "1〜20件目");
   await writeGuide(
@@ -662,7 +673,7 @@ Deno.test("acceptance: 準備のコマンドや画面の確認が失敗したら
   assertStringIncludes(r.out, "本文に「21〜40件目」がありません");
 
   // spec を元に戻してから、準備のコマンドが失敗する形で書き直す
-  await writeFile(root, "docs/specs/EX-002/spec.ts", await Deno.readTextFile(join(FIXTURE_SPECS, "EX-002/spec.ts")));
+  await writeFile(root, "docs/specs/EX-002/spec.ts", await io.readTextFile(join(FIXTURE_SPECS, "EX-002/spec.ts")));
   await writeGuide(root, `{ setup: [{ run: "exit 3" }], accounts: [], data: [], check: [{ url: "${srv.url}/" }] }`);
   const failed = await task(root, "acceptance", "EX-002");
   assertEquals(failed.code, 1, failed.out);
@@ -676,7 +687,7 @@ export default defineConventions({
 });
 `;
 
-Deno.test("finish-report: 不変条件を規約に写すとエラーにし、写していない規約はエラーにしない", async () => {
+test("finish-report: 不変条件を規約に写すとエラーにし、写していない規約はエラーにしない", async () => {
   const behavior = "1ページ目の件数表示は「1〜20件目」のまま変わらない";
   const root = await quickBranch();
   await writeFile(root, "docs/sdd/conventions.ts", conventions("ログにはリクエストIDを含める"));
@@ -689,18 +700,14 @@ Deno.test("finish-report: 不変条件を規約に写すとエラーにし、写
   assertStringIncludes(copied.out, "INV-001 の振る舞いを規約 CONV-001 の rule に写しています");
 });
 
-Deno.test("finish-report: 分岐点から変えていない規約は、振る舞いと同じ文面でもエラーにしない", async () => {
+test("finish-report: 分岐点から変えていない規約は、振る舞いと同じ文面でもエラーにしない", async () => {
   const root = await installedRepo();
-  await writeFile(
-    root,
-    "docs/sdd/conventions.ts",
-    conventions("1ページ目の件数表示は「1〜20件目」のまま変わらない"),
-  );
+  await writeFile(root, "docs/sdd/conventions.ts", conventions("1ページ目の件数表示は「1〜20件目」のまま変わらない"));
   await sh(root, "add", ".");
   await sh(root, "commit", "-q", "--no-verify", "-m", "docs: 規約");
   await sh(root, "switch", "-q", "-c", "ex-002-search-count");
   for (const f of ["issue.md", "spec.ts"]) {
-    await writeFile(root, `docs/specs/EX-002/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-002", f)));
+    await writeFile(root, `docs/specs/EX-002/${f}`, await io.readTextFile(join(FIXTURE_SPECS, "EX-002", f)));
   }
   await sh(root, "add", ".");
   await sh(root, "commit", "-q", "--no-verify", "-m", "docs(EX-002): specを作成（軽量モード）");
@@ -708,11 +715,11 @@ Deno.test("finish-report: 分岐点から変えていない規約は、振る舞
   assertEquals(r.out.includes("rule に写しています"), false, r.out);
 });
 
-Deno.test("finish-report: テストの除外が残っていればエラーにし、relaxesQualityGate にそのファイルがあればエラーにしない", async () => {
+test("finish-report: テストの除外が残っていればエラーにし、relaxesQualityGate にそのファイルがあればエラーにしない", async () => {
   const root = await installedRepo();
   await sh(root, "switch", "-q", "-c", "ex-001-lockout");
   for (const f of ["issue.md", "requirements.ts", "design.ts", "tasks.ts"]) {
-    await writeFile(root, `docs/specs/EX-001/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
+    await writeFile(root, `docs/specs/EX-001/${f}`, await io.readTextFile(join(FIXTURE_SPECS, "EX-001", f)));
   }
   await writeFile(root, "scripts/gate-test.sh", "#!/bin/sh\nphpunit --exclude-group slow\n");
   await patchFile(
@@ -746,7 +753,7 @@ Deno.test("finish-report: テストの除外が残っていればエラーにし
 
 // --- finish-report: 品質ゲートを緩めた変更と ADR の書き換え ---
 
-Deno.test("finish-report: 品質ゲートを緩めた変更と、採用済みの ADR の書き換えをエラーにする", async () => {
+test("finish-report: 品質ゲートを緩めた変更と、採用済みの ADR の書き換えをエラーにする", async () => {
   const root = await installedRepo();
   await writeFile(root, "phpstan.neon", "parameters:\n  level: max\n  paths:\n    - src\n");
   await writeFile(
@@ -758,7 +765,7 @@ Deno.test("finish-report: 品質ゲートを緩めた変更と、採用済みの
   await sh(root, "commit", "-q", "--no-verify", "-m", "chore: 準備");
   await sh(root, "switch", "-q", "-c", "ex-002-search-count");
   for (const f of ["issue.md", "spec.ts"]) {
-    await writeFile(root, `docs/specs/EX-002/${f}`, await Deno.readTextFile(join(FIXTURE_SPECS, "EX-002", f)));
+    await writeFile(root, `docs/specs/EX-002/${f}`, await io.readTextFile(join(FIXTURE_SPECS, "EX-002", f)));
   }
   await writeFile(
     root,
@@ -783,7 +790,7 @@ Deno.test("finish-report: 品質ゲートを緩めた変更と、採用済みの
 
 // --- doctor: gate の根拠と、画面のある案件の E2E ---
 
-Deno.test("doctor: gate と書いた規約の設定ファイルが無ければ問題にする", async () => {
+test("doctor: gate と書いた規約の設定ファイルが無ければ問題にする", async () => {
   const root = await installedRepo();
   await writeFile(
     root,
@@ -802,12 +809,12 @@ export default defineConventions({
   assertEquals(ok.out.includes("gate の根拠"), false, ok.out);
 });
 
-Deno.test("doctor: 画面がある案件で E2E が無ければ問題にする", async () => {
+test("doctor: 画面がある案件で E2E が無ければ問題にする", async () => {
   const root = await installedRepo();
   const path = join(root, "docs/sdd/config.ts");
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     path,
-    (await Deno.readTextFile(path)).replace("staleBranchDays: 30,", "staleBranchDays: 30,\n  ui: true,"),
+    (await io.readTextFile(path)).replace("staleBranchDays: 30,", "staleBranchDays: 30,\n  ui: true,"),
   );
   const r = await task(root, "doctor");
   assertEquals(r.code, 1, r.out);

@@ -56,7 +56,7 @@ const commits = await taskCommits(id);
 const done = entries.filter(([, t]) => t.status === "done").length;
 const picked = taskOpt
   ? entries.find(([tid]) => tid === taskOpt)
-  : entries.find(([, t]) => t.status === "doing") ?? entries.find(([, t]) => t.status === "todo");
+  : (entries.find(([, t]) => t.status === "doing") ?? entries.find(([, t]) => t.status === "todo"));
 
 console.log(`進捗: ${done} / ${entries.length} 件完了`);
 for (const [tid, t] of entries) {
@@ -116,7 +116,7 @@ for (const ref of t.refs) {
 }
 
 const relatedErrors = (issue.design?.errorHandling ?? []).filter((e) =>
-  (e.refs ?? []).some((r) => t.refs.includes(r) || (t.verifies ?? []).includes(r))
+  (e.refs ?? []).some((r) => t.refs.includes(r) || (t.verifies ?? []).includes(r)),
 );
 if (relatedErrors.length) {
   console.log("\n関係するエラー処理:");

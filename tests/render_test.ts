@@ -1,11 +1,13 @@
-import { assertEquals, assertStringIncludes } from "@std/assert";
+import * as io from "../harness/io.ts";
+import { test } from "bun:test";
+import { assertEquals, assertStringIncludes } from "./assert.ts";
 import { makeProject, patchFile, task } from "./helpers.ts";
 
-Deno.test("完全モードのHTMLを生成できる", async () => {
+test("完全モードのHTMLを生成できる", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const r = await task(root, "render", "EX-001");
   assertEquals(r.code, 0, r.out);
-  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
+  const html = await io.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
   // EARSを日本語の文章に組み立てている
   assertStringIncludes(
     html,
@@ -25,17 +27,17 @@ Deno.test("完全モードのHTMLを生成できる", async () => {
   assertEquals(/<(script|link)[^>]+(src|href)=/.test(html), false);
 });
 
-Deno.test("軽量モードのHTMLを生成できる", async () => {
+test("軽量モードのHTMLを生成できる", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   const r = await task(root, "render", "EX-002");
   assertEquals(r.code, 0, r.out);
-  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-002/index.html`);
+  const html = await io.readTextFile(`${root}/.sdd/out/EX-002/index.html`);
   assertStringIncludes(html, "根本原因");
   assertStringIncludes(html, "件数表示の開始位置を、ページ番号ではなく常に0から計算している。");
   assertStringIncludes(html, "バグの修正");
 });
 
-Deno.test("対応漏れはエラー色で表示される", async () => {
+test("対応漏れはエラー色で表示される", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -45,34 +47,34 @@ Deno.test("対応漏れはエラー色で表示される", async () => {
   );
   const r = await task(root, "render", "EX-001");
   assertEquals(r.code, 0, r.out);
-  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
+  const html = await io.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
   assertStringIncludes(html, "受け入れ条件 AC-003 を検証するテストタスクがありません");
   assertStringIncludes(html, `status-error`);
 });
 
-Deno.test("specの文字列はエスケープされる", async () => {
+test("specの文字列はエスケープされる", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   await patchFile(root, "docs/specs/EX-002/spec.ts", `approach: "`, `approach: "<script>alert(1)</script>`);
   const r = await task(root, "render", "EX-002");
   assertEquals(r.code, 0, r.out);
-  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-002/index.html`);
+  const html = await io.readTextFile(`${root}/.sdd/out/EX-002/index.html`);
   assertStringIncludes(html, "&lt;script&gt;alert(1)&lt;/script&gt;");
 });
 
-Deno.test("原文にコードブロックが含まれていても崩れない", async () => {
+test("原文にコードブロックが含まれていても崩れない", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   const r = await task(root, "render", "EX-002");
   assertEquals(r.code, 0, r.out);
-  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-002/index.html`);
+  const html = await io.readTextFile(`${root}/.sdd/out/EX-002/index.html`);
   // 4つのバッククォートの囲みの中にある ``` は、そのまま原文の一部として表示される
   assertStringIncludes(html, "ログ:\n```\nGET /search?q=abc&amp;page=2 -&gt; offset=0\n```</code></pre>");
 });
 
-Deno.test("受け入れテストのチェックリストを表示する", async () => {
+test("受け入れテストのチェックリストを表示する", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const r = await task(root, "render", "EX-001");
   assertEquals(r.code, 0, r.out);
-  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
+  const html = await io.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
   assertStringIncludes(html, `<section id="acceptance"><h2>受け入れテスト</h2>`);
   assertStringIncludes(html, `data-accept-key="EX-001:AC-003"`);
   // 自動テストで確かめるもの（AC-004、INV-001）はチェックリストに載せず、件数だけを示す
@@ -84,11 +86,11 @@ Deno.test("受け入れテストのチェックリストを表示する", async 
   assertEquals(html.indexOf(`id="acceptance"`) < html.indexOf(`id="issue"`), true);
 });
 
-Deno.test("十分性の確認（issue との対応、非機能要件の検討、チェックリスト）を表示する", async () => {
+test("十分性の確認（issue との対応、非機能要件の検討、チェックリスト）を表示する", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const r = await task(root, "render", "EX-001");
   assertEquals(r.code, 0, r.out);
-  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
+  const html = await io.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
   assertStringIncludes(html, `<h3 id="req-sufficiency">十分性の確認</h3>`);
   assertStringIncludes(html, "5回続けて失敗したら15分間ロックする");
   assertStringIncludes(html, "システム環境・エコロジー");
@@ -96,11 +98,11 @@ Deno.test("十分性の確認（issue との対応、非機能要件の検討、
   assertStringIncludes(html, `<span class="tag">境界値</span>`);
 });
 
-Deno.test("設計の十分性（実現方法、守り方、チェックリスト、エラー処理の対応）を表示する", async () => {
+test("設計の十分性（実現方法、守り方、チェックリスト、エラー処理の対応）を表示する", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const r = await task(root, "render", "EX-001");
   assertEquals(r.code, 0, r.out);
-  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
+  const html = await io.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
   assertStringIncludes(html, `<h3 id="design-strategy">`);
   assertStringIncludes(html, "login_attempts は account_id を主キーにし");
   assertStringIncludes(html, `<h3 id="design-checklist">設計のチェックリスト</h3>`);
@@ -108,7 +110,7 @@ Deno.test("設計の十分性（実現方法、守り方、チェックリスト
   assertStringIncludes(html, "要件外の異常");
 });
 
-Deno.test("入力と表示の観点、出どころ、人の回答、未確定の観点を表示する", async () => {
+test("入力と表示の観点、出どころ、人の回答、未確定の観点を表示する", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -127,7 +129,7 @@ Deno.test("入力と表示の観点、出どころ、人の回答、未確定の
   );
   const r = await task(root, "render", "EX-001");
   assertEquals(r.code, 0, r.out);
-  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
+  const html = await io.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
   assertStringIncludes(html, "入力と表示の観点");
   assertStringIncludes(html, "長い値の見せ方");
   assertStringIncludes(html, `<span class="tag">issue</span> ロック中はログインできないことが画面で分かる`);
@@ -138,7 +140,7 @@ Deno.test("入力と表示の観点、出どころ、人の回答、未確定の
   assertStringIncludes(html, "<li>ロック中の画面: 解除の案内</li>");
 });
 
-Deno.test("構成の回答を表示し、未回答には書き手の案とラベルを添える", async () => {
+test("構成の回答を表示し、未回答には書き手の案とラベルを添える", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -149,7 +151,7 @@ Deno.test("構成の回答を表示し、未回答には書き手の案とラベ
   );
   const r = await task(root, "render", "EX-001");
   assertEquals(r.code, 0, r.out);
-  const html = await Deno.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
+  const html = await io.readTextFile(`${root}/.sdd/out/EX-001/index.html`);
   assertStringIncludes(html, "<h4>構成の判断への人の回答</h4>");
   assertStringIncludes(html, "src/auth/ に置く");
   assertStringIncludes(html, "未回答");

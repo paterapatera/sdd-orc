@@ -74,7 +74,8 @@ export async function taskCommits(issueId: string): Promise<Map<string, TaskComm
     const [hash, subject] = line.split("\t");
     const m = subject?.match(conventional) ?? subject?.match(legacy);
     if (!m) continue;
-    const files = ((await gitOut(["diff-tree", "--no-commit-id", "--name-only", "-r", hash])) ?? "").split("\n")
+    const files = ((await gitOut(["diff-tree", "--no-commit-id", "--name-only", "-r", hash])) ?? "")
+      .split("\n")
       .filter(Boolean);
     const list = result.get(m[1]) ?? [];
     list.push({ hash, subject, files });
@@ -90,9 +91,11 @@ export async function nonConventionalCommits(issueId: string): Promise<string[]>
   const log = await gitOut(["log", "--reverse", "--format=%h%x09%s", `${base}..HEAD`]);
   const id = issueId.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const ok = new RegExp(`^[a-z]+\\(${id}\\)!?: `, "i");
-  return (log ?? "").split("\n").filter(Boolean).filter((l) => !ok.test(l.split("\t")[1] ?? "")).map((l) =>
-    l.replace("\t", " ")
-  );
+  return (log ?? "")
+    .split("\n")
+    .filter(Boolean)
+    .filter((l) => !ok.test(l.split("\t")[1] ?? ""))
+    .map((l) => l.replace("\t", " "));
 }
 
 /** このブランチで変更したファイル（既定ブランチとの分岐点から、作業ツリーの変更も含む） */

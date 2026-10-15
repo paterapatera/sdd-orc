@@ -26,7 +26,7 @@ disable-model-invocation: true
 
 ## 守ること（試行で崩れた点）
 
-失敗の回にだけ出る語を手順へ足すと、その回には効いても別の問題では合格が減る。直し方は `.cursor/skills/optimize-fix/SKILL.md` に従う。`deno task eval:propose` が、その条件を落とす。
+失敗の回にだけ出る語を手順へ足すと、その回には効いても別の問題では合格が減る。直し方は `.cursor/skills/optimize-fix/SKILL.md` に従う。`bun eval/propose.ts` が、その条件を落とす。
 
 ## 手順
 
@@ -45,7 +45,7 @@ disable-model-invocation: true
 - 検証: その問題の採点（`eval/scenarios/<ID>/scenario.ts`、`eval/grade.ts`）と隠したテストを読んで直す。隠したテストは、issue と人役の回答表に書いた約束だけを確かめる。検証を直すときだけ、隠したテストを読んでよい。val の transcripts は読まない。読んだ内容は、スキルの変更の根拠にしない。
 - 試験場: `eval/` の準備・採点・集計と、試験場リポジトリの環境を直す。
 
-すでに直してあり、そのあとの train の記録に同じ失敗が残っていなければ、直さずに状態だけを「解決」にする。直したあとは、採点のやり直しまたは `deno task test` で同じ失敗が残っていないことを確かめ、パターンと `eval/wiki/index.md` の状態を「解決」にして `logs.md` に残して終わる。
+すでに直してあり、そのあとの train の記録に同じ失敗が残っていなければ、直さずに状態だけを「解決」にする。直したあとは、採点のやり直しまたは `bun run test` で同じ失敗が残っていないことを確かめ、パターンと `eval/wiki/index.md` の状態を「解決」にして `logs.md` に残して終わる。
 
 原因がスキルのときだけ、次へ進む。これは訓練の完了ではない。val の合格が 0 のあいだは、未知の問題で通ったことにはしない。
 
@@ -53,11 +53,11 @@ disable-model-invocation: true
 
 1回の変更で直すパターンは1つ。`.cursor/skills/optimize-fix/SKILL.md` を読んで、その手順で改善案を書く。対象のパターンは決まっているので、optimize-fix の確認ポイント1と2は飛ばし、訓練の経路で進める。
 
-`deno task eval:propose --pattern <P-00>` が成功し、`選ぶ` が `出さない` でないときだけ、手順4へ進む。`出さない` ならスキルは変えず、調べた結果を `logs.md` に残して終わる。実装は手順5までしない。
+`bun eval/propose.ts --pattern <P-00>` が成功し、`選ぶ` が `出さない` でないときだけ、手順4へ進む。`出さない` ならスキルは変えず、調べた結果を `logs.md` に残して終わる。実装は手順5までしない。
 
 ### 4. 着手してよいか
 
-`deno task eval:summary` で、今の val の合格回数を見る。採否は `eval/wiki/skill-impact.md` の条件で、`deno task eval:impact` が判定する。
+`bun eval/summary.ts` で、今の val の合格回数を見る。採否は `eval/wiki/skill-impact.md` の条件で、`bun eval/impact.ts` が判定する。
 
 val が1問で変更前の合格が 0 のとき、変更後に1回以上合格しなければ却下され、スキルは戻すことになる。その失敗が、いま直す train の問題と同じ種類だと記録から言えないなら、確認ポイント3で止まる。
 
@@ -68,10 +68,10 @@ val が1問で変更前の合格が 0 のとき、変更後に1回以上合格�
 原因がスキルのときだけ、選ばれた1件の範囲で、`.agents/skills/` と、対象リポジトリへコピーされる道具を変える。実装で増やす行に、固有の語は書かない。変えたあと、コミットの前に次がすべて通ることを確かめる。
 
 ```sh
-deno task eval:propose --pattern <P-00>
-deno task test
-deno fmt
-deno lint
+bun eval/propose.ts --pattern <P-00>
+bun run test
+bun run fmt
+bun run lint
 ```
 
 `eval:propose` は、改善案に加えて、未コミットの `.agents` の追加行に固有の語が無いかを見る。ここで失敗したら、その未コミットの差分を戻し、測るには進まない。
@@ -83,8 +83,8 @@ deno lint
 変更の前と後で、すべての val を同じ実行のしかたで3回以上回す。モデルは `composer-2.5` のままにする。`eval/sdk/driver.ts` が Fast を切る。`--model` で Fast や別のモデルに変えない。
 
 ```sh
-deno task eval:prepare <問題のID> --force
-deno task eval:auto
+bun eval/prepare.ts <問題のID> --force
+bun eval/auto.ts
 ```
 
 `eval:prepare` は試験場を tag に戻し、ほかのブランチと未追跡のファイルを消す。origin があれば、リモートの既定ブランチへ強制 push する。`eval:auto` が失敗しても採点は残る。`eval/runs/` は追記だけで、書き換えない。
@@ -96,7 +96,7 @@ deno task eval:auto
 `--change` の値が `-` で始まるときは `--change=...` と書く。
 
 ```sh
-deno task eval:impact --pattern <P-00> --target <狙った問題> --before <変更前のコミット> --after <変更後のコミット> --change "<要約>" --driver auto --write
+bun eval/impact.ts --pattern <P-00> --target <狙った問題> --before <変更前のコミット> --after <変更後のコミット> --change "<要約>" --driver auto --write
 ```
 
 採用なら、パターンと `eval/wiki/index.md` の状態を「道具で検出」か「手順で対策」にし、`eval/wiki/logs.md` に何が分かったかを追記する。

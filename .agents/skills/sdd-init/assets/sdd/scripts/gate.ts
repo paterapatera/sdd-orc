@@ -28,7 +28,12 @@ async function sddWorktree(): Promise<{ names: Set<string>; body: string } | und
   if (status.code !== 0) return undefined;
   const diff = await git(["diff", "HEAD", "--", ".agents", "docs/sdd"]);
   if (diff.code !== 0) return undefined;
-  const names = new Set(status.out.split("\n").map((l) => l.slice(3).trim()).filter(Boolean));
+  const names = new Set(
+    status.out
+      .split("\n")
+      .map((l) => l.slice(3).trim())
+      .filter(Boolean),
+  );
   return { names, body: status.out + "\n" + diff.out };
 }
 
@@ -40,13 +45,15 @@ const fingerprint = JSON.stringify(commands);
 
 const steps: [string, string | undefined][] = [
   ...(ifChanged ? [] : [["format", commands.format] as [string, string | undefined]]),
-  ...(commands.check ? [["check", commands.check]] as [string, string][] : [
-    ["lint", commands.lint] as [string, string | undefined],
-    ["typecheck", commands.typecheck] as [string, string | undefined],
-  ]),
+  ...(commands.check
+    ? ([["check", commands.check]] as [string, string][])
+    : [
+        ["lint", commands.lint] as [string, string | undefined],
+        ["typecheck", commands.typecheck] as [string, string | undefined],
+      ]),
   ["build", commands.build],
   ["test", commands.test],
-  ...(full ? [["e2e", commands.e2e]] as [string, string | undefined][] : []),
+  ...(full ? ([["e2e", commands.e2e]] as [string, string | undefined][]) : []),
 ];
 const configured = steps.filter((s): s is [string, string] => !!s[1]);
 
@@ -58,7 +65,9 @@ if (configured.length === 0) {
 }
 
 if (ifChanged) {
-  const passed = await readTextFile(PASSED).then((t) => JSON.parse(t).commands).catch(() => undefined);
+  const passed = await readTextFile(PASSED)
+    .then((t) => JSON.parse(t).commands)
+    .catch(() => undefined);
   if (passed === fingerprint) {
     console.log("[SDD] 品質ゲートのコマンドは、前回すべて通ったときから変わっていません");
     exit(0);
@@ -82,7 +91,10 @@ for (const [name, cmd] of configured) {
   results.push({ name, cmd, ok: code === 0 });
 }
 
-const missing = steps.filter(([, cmd]) => !cmd).map(([name]) => name).filter((n) => n !== "build");
+const missing = steps
+  .filter(([, cmd]) => !cmd)
+  .map(([name]) => name)
+  .filter((n) => n !== "build");
 if (!full && commands.e2e) console.log("\n（E2E テストは含めていません。完了時は --full で実行する）");
 console.log("\n■ 品質ゲートの結果");
 for (const r of results) console.log(`  ${r.ok ? "✓" : "✕"} ${r.name}: ${r.cmd}`);
@@ -103,9 +115,6 @@ const failureCount = failed.length + (sddRewritten ? 1 : 0);
 console.log(failureCount ? `\n失敗が ${failureCount} 件あります` : "\nすべて成功しました");
 if (!failureCount && full) {
   await mkdir(join(ROOT, ".sdd"), { recursive: true });
-  await writeTextFile(
-    PASSED,
-    JSON.stringify({ commands: fingerprint, passedAt: new Date().toISOString() }) + "\n",
-  );
+  await writeTextFile(PASSED, JSON.stringify({ commands: fingerprint, passedAt: new Date().toISOString() }) + "\n");
 }
 exit(failureCount ? 1 : 0);

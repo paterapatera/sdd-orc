@@ -29,9 +29,9 @@ SDD のスキル（`.agents/skills/`）と、対象リポジトリにコピー�
 ## コマンド
 
 ```sh
-deno task test    # すべてのテスト（1分ほどかかる）
-deno fmt          # Markdown は対象外
-deno lint
+bun run test    # すべてのテスト（1分ほどかかる）
+bun run fmt          # Markdown は対象外
+bun run lint
 ```
 
 コミットの前に、この3つがすべて通ることを確かめる。
@@ -91,17 +91,17 @@ deno lint
 `eval/` は対象リポジトリにコピーしない。
 
 ```sh
-deno task eval:prepare <問題のID> [--model <モデル名>]   # 試験場を tag の位置に戻し、今のスキルに差し替える
-deno task eval:prepare <問題のID> --skills <コミット>    # 変更の前の版のスキルで回す（新しい val の問題の基準を取るとき）
+bun eval/prepare.ts <問題のID> [--model <モデル名>]   # 試験場を tag の位置に戻し、今のスキルに差し替える
+bun eval/prepare.ts <問題のID> --skills <コミット>    # 変更の前の版のスキルで回す（新しい val の問題の基準を取るとき）
 # 試験場を Cursor で開き、表示された手順でスキルを呼び出す。質問には人役の回答表だけを根拠に答える
-deno task eval:grade                                      # 採点し、eval/runs/<実行ID>/ に記録する
-deno task eval:login                                      # eval:auto の前に1回だけ。Cursor にログインし、SDK の鍵を保存する
-deno task eval:auto                                       # （試作）準備した実行を Cursor SDK で進めて採点する。人役も AI が回答表だけを根拠に務める
-deno task eval:summary                                    # 問題とスキルの版ごとの合格の回数
-deno task eval:propose --pattern <パターン>               # 改善案が原則・勾配・候補の条件を満たすか、実装の差分に失敗の回の語が無いかを確かめる
-deno task eval:propose --file eval/wiki/requests/<依頼>.md
+bun eval/grade.ts                                      # 採点し、eval/runs/<実行ID>/ に記録する
+bun eval/login.ts                                      # eval:auto の前に1回だけ。Cursor にログインし、SDK の鍵を保存する
+bun eval/auto.ts                                       # （試作）準備した実行を Cursor SDK で進めて採点する。人役も AI が回答表だけを根拠に務める
+bun eval/summary.ts                                    # 問題とスキルの版ごとの合格の回数
+bun eval/propose.ts --pattern <パターン>               # 改善案が原則・勾配・候補の条件を満たすか、実装の差分に失敗の回の語が無いかを確かめる
+bun eval/propose.ts --file eval/wiki/requests/<依頼>.md
                                                           # 依頼の改善案を確かめ、「## 結果」があれば採否を判定する
-deno task eval:impact --pattern <パターン> --target <問題> --before <コミット> --after <コミット> --change "<要約>" [--driver auto] --write
+bun eval/impact.ts --pattern <パターン> --target <問題> --before <コミット> --after <コミット> --change "<要約>" [--driver auto] --write
                                                           # 変更の前と後を比べて採否を判定し、skill-impact.md に書き足す
 ```
 
@@ -118,12 +118,12 @@ deno task eval:impact --pattern <パターン> --target <問題> --before <コ�
   - スキル: 正しい試験場と正しい検証で、スキルか、対象リポジトリへコピーされる道具が落ちた。閉じた状態は「道具で検出」か「手順で対策」。
   - 検証: 採点の項目や隠したテストが、issue と人役の回答表に書いた約束と違った。`eval/scenarios/<ID>/scenario.ts`、`eval/grade.ts`、隠したテストを、その約束だけを確かめるように直す。状態は「解決」。
   - 試験場: 環境、準備、人役が回答表の外で口を挟んだことで実行が壊れた。`eval/` の準備・採点・集計と、試験場リポジトリの環境を直す。状態は「解決」。
-  すでに直してあり、そのあとの train の記録に同じ失敗が残っていなければ、スキルは変えない。直したあとは、採点のやり直しまたは `deno task test` で同じ失敗が残っていないことを確かめる。
-- **1回の変更で直すパターンは1つにする。** 案は、原因がスキルの train の失敗を一段抽象化した原則から出す。失敗の回にしか無い語を、原則や手順へ足す案は出さない。同じ原則の候補を2件か3件書き、落ちた回と通った回に当ててから1件に絞る。`deno task eval:propose` が通るまで、スキルも対象リポジトリへコピーされる道具も変えない。直し方は、道具で検出する（テストも足す）→ ひな形・型で防ぐ → 手順の文章を直す、の順に考える。
+  すでに直してあり、そのあとの train の記録に同じ失敗が残っていなければ、スキルは変えない。直したあとは、採点のやり直しまたは `bun run test` で同じ失敗が残っていないことを確かめる。
+- **1回の変更で直すパターンは1つにする。** 案は、原因がスキルの train の失敗を一段抽象化した原則から出す。失敗の回にしか無い語を、原則や手順へ足す案は出さない。同じ原則の候補を2件か3件書き、落ちた回と通った回に当ててから1件に絞る。`bun eval/propose.ts` が通るまで、スキルも対象リポジトリへコピーされる道具も変えない。直し方は、道具で検出する（テストも足す）→ ひな形・型で防ぐ → 手順の文章を直す、の順に考える。
   通る候補が無ければ、その回は変更を出さない。これは訓練の完了ではない。val の合格が 0 のあいだは、未知の問題で通ったことにはしない。
-- **採否は `deno task eval:impact` で判定し、却下した変更も記録する。** 条件は `eval/wiki/skill-impact.md` にある。使うのは val の合格した回数で、train の増減だけでは採用しない。
+- **採否は `bun eval/impact.ts` で判定し、却下した変更も記録する。** 条件は `eval/wiki/skill-impact.md` にある。使うのは val の合格した回数で、train の増減だけでは採用しない。
   出力はぶれるので、同じ問を同じモデルで3回ずつ回す。この3回は、その問が運で合格したかを見るためのもので、別の未知の問への汎化にはしない。val が2問以上になってから、各問で割合が上回ったときだけ採用する。却下なら、スキルの変更を `git revert` で戻す（wiki は戻さない）。
-- **ユーザーの依頼（機能の追加、出ない振る舞いを出す）は、optimize-fix の依頼の経路で直す。** 依頼は要件なので、出したい場面と出してはいけない場面の事例を人に確かめてから直す。採否は、変えたスキルで事例を流し直して決める（`deno task eval:propose --file`）。val の点数は使わず、合格が減っていないかは次の訓練で見る。
+- **ユーザーの依頼（機能の追加、出ない振る舞いを出す）は、optimize-fix の依頼の経路で直す。** 依頼は要件なので、出したい場面と出してはいけない場面の事例を人に確かめてから直す。採否は、変えたスキルで事例を流し直して決める（`bun eval/propose.ts --file`）。val の点数は使わず、合格が減っていないかは次の訓練で見る。
 - **val の問題は、採否の点数だけに使う。** val の実行の記録（transcripts、repo.bundle、ログ）を読んで直す根拠にしない。
   読んでしまった val の問題は train に移し、その点数は汎化の証拠にしない。代わりの val は、既存の val の記録を読まずに作る。
 - **wiki には、失敗のパターンだけでなく、合格した実行でうまくいったやり方も残す**（`eval/wiki/strategies/`）。

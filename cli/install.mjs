@@ -141,13 +141,13 @@ export async function installSkills(options = {}) {
     const previous = await readManifest(skillsDir);
     const label = relative(base, skillsDir).split(sep).join("/");
     for (const name of previous) {
-      if (!skills.includes(name) && await exists(join(skillsDir, name))) {
+      if (!skills.includes(name) && (await exists(join(skillsDir, name)))) {
         changes.push({ action: "削除", target: `${label}/${name}` });
       }
     }
     for (const name of skills) {
       changes.push({
-        action: await exists(join(skillsDir, name)) ? "更新" : "追加",
+        action: (await exists(join(skillsDir, name))) ? "更新" : "追加",
         target: `${label}/${name}`,
       });
     }

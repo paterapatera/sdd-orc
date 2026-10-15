@@ -1,3 +1,4 @@
+import { test } from "bun:test";
 // 型定義が誤りを型エラーとして検出できることを確かめる。
 // `@ts-expect-error` の直後の行で型エラーが起きなければ、型チェックが失敗する。
 import {
@@ -23,11 +24,11 @@ const checklist = {
 } as const;
 const nfrNa = { decision: "notApplicable", reason: "r" } as const;
 const nfrReview = {
-  "可用性": nfrNa,
+  可用性: nfrNa,
   "性能・拡張性": nfrNa,
   "運用・保守性": nfrNa,
-  "移行性": nfrNa,
-  "セキュリティ": nfrNa,
+  移行性: nfrNa,
+  セキュリティ: nfrNa,
   "システム環境・エコロジー": nfrNa,
 } as const;
 const reqExtra = { nfrReview, issueCoverage: [], checklist, values: [], answers: {} } as const;
@@ -193,11 +194,14 @@ defineDesign<typeof reqs>()({
     C: { kind: "new", responsibility: "r", files: [], placement: { architecture: "引用" } },
     D: { kind: "new", responsibility: "r", files: [], placement: { answer: "ANS-001" } },
   },
-  dependencies: [{ from: "A", to: "D", basis: { answer: "ANS-002" } }, {
-    from: "A",
-    to: "B",
-    basis: { adr: "ADR-0001" },
-  }],
+  dependencies: [
+    { from: "A", to: "D", basis: { answer: "ANS-002" } },
+    {
+      from: "A",
+      to: "B",
+      basis: { adr: "ADR-0001" },
+    },
+  ],
   decisions: [
     {
       title: "t",
@@ -390,7 +394,7 @@ defineRequirements({
   nonFunctional: {},
   invariants: {},
   // @ts-expect-error 非機能要件の検討でカテゴリが欠けている
-  nfrReview: { "可用性": nfrNa },
+  nfrReview: { 可用性: nfrNa },
   assumptions: [],
   openQuestions: [],
   outOfScope: [],
@@ -404,7 +408,7 @@ defineRequirements({
   nonFunctional: {},
   invariants: {},
   // @ts-expect-error 存在しない非機能要件を追加したことにしている
-  nfrReview: { ...nfrReview, "可用性": { decision: "added", ids: ["NFR-009"] } },
+  nfrReview: { ...nfrReview, 可用性: { decision: "added", ids: ["NFR-009"] } },
   assumptions: [],
   openQuestions: [],
   outOfScope: [],
@@ -607,11 +611,13 @@ defineRequirements({
 defineRequirements({
   ...valueReq,
   // @ts-expect-error 存在しない受け入れ条件で決めたことにしている
-  values: [{
-    target: "t",
-    kind: "textDisplay",
-    aspects: { ...display, long: { decidedBy: ["AC-009"], basis: { issue: "q" } } },
-  }],
+  values: [
+    {
+      target: "t",
+      kind: "textDisplay",
+      aspects: { ...display, long: { decidedBy: ["AC-009"], basis: { issue: "q" } } },
+    },
+  ],
 });
 
 defineRequirements({
@@ -634,22 +640,26 @@ defineRequirements({
 
 defineRequirements({
   ...valueReq,
-  values: [{
-    target: "t",
-    kind: "textDisplay",
-    // @ts-expect-error 関係しない扱いの出どころは人の回答だけ
-    aspects: { ...display, long: { notApplicable: "n", basis: { issue: "q" } } },
-  }],
+  values: [
+    {
+      target: "t",
+      kind: "textDisplay",
+      // @ts-expect-error 関係しない扱いの出どころは人の回答だけ
+      aspects: { ...display, long: { notApplicable: "n", basis: { issue: "q" } } },
+    },
+  ],
 });
 
 defineRequirements({
   ...valueReq,
   // @ts-expect-error answers に無い回答を出どころにしている
-  values: [{
-    target: "t",
-    kind: "textDisplay",
-    aspects: { ...display, long: { decidedBy: ["AC-001"], basis: { answer: "ANS-009" } } },
-  }],
+  values: [
+    {
+      target: "t",
+      kind: "textDisplay",
+      aspects: { ...display, long: { decidedBy: ["AC-001"], basis: { answer: "ANS-009" } } },
+    },
+  ],
 });
 
 defineRequirements({
@@ -666,4 +676,4 @@ defineRequirements({
   openQuestions: ["表示の件数"],
 });
 
-Deno.test("型定義のテストは型チェックで行う", () => {});
+test("型定義のテストは型チェックで行う", () => {});

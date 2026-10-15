@@ -35,11 +35,11 @@ disable-model-invocation: true
 - 依頼の言葉や、失敗した場面にだけ出る語を、そのまま手順へ足さない。その場面には効いても、別の場面では悪くなる。P-007 で日時のタイムゾーンを別の1問として足した変更は、VAL-001 の合格が 3/3 から 1/3 に減り、却下された。依頼は、同じ原則が当てはまる場面の1つとして扱う。
 - 出してはいけない場面も事例にする。出したい場面だけで確かめると、ほかの場面でも出るようになったことに気づかない。
 - `固有` に書くのは、事例の場面にだけ出る語（その案件の名前、ファイル名、値、例の文面）である。依頼された機能の名前は、実装に要るので `固有` にしない。
-- 依頼の経路の採否は、事例を流し直して決める。val の点数は使わず、val の記録も読まない。val の合格が減っていないかは、次の訓練の `deno task eval:summary` で見る。
+- 依頼の経路の採否は、事例を流し直して決める。val の点数は使わず、val の記録も読まない。val の合格が減っていないかは、次の訓練の `bun eval/summary.ts` で見る。
 
 直す前に、`固有` の語を消しても残る原則にする。今の文が許した振る舞いと、文を動かす方向を勾配として書く。同じ原則の候補を2件か3件比べ、事例に当ててから1件に絞る。ファイルを変えるのは、その観測のあとである。却下されたら、語を足して出し直さず、原則か勾配からやり直す。
 
-この順は、次に合わせてある。具体へ戻る前の抽象化（Zheng et al., 2023, “Take a Step Back: Evoking Reasoning via Abstraction in Large Language Models”）。候補を作って点で選ぶこと（Zhou et al., 2022, “Large Language Models Are Human-Level Prompt Engineers”）。文への勾配と候補の比較（Prasad et al., 2023, “Automatic Prompt Optimization with Gradient Descent and Beam Search”）。思考と行動の交互（Yao et al., 2022, “ReAct: Synergizing Reasoning and Acting in Language Models”）。文章だけの決まりは守られないので、`deno task eval:propose` が同じ条件を落とし、採否も判定する。
+この順は、次に合わせてある。具体へ戻る前の抽象化（Zheng et al., 2023, “Take a Step Back: Evoking Reasoning via Abstraction in Large Language Models”）。候補を作って点で選ぶこと（Zhou et al., 2022, “Large Language Models Are Human-Level Prompt Engineers”）。文への勾配と候補の比較（Prasad et al., 2023, “Automatic Prompt Optimization with Gradient Descent and Beam Search”）。思考と行動の交互（Yao et al., 2022, “ReAct: Synergizing Reasoning and Acting in Language Models”）。文章だけの決まりは守られないので、`bun eval/propose.ts` が同じ条件を落とし、採否も判定する。
 
 ## 手順
 
@@ -75,20 +75,20 @@ disable-model-invocation: true
 6. 観測。改善案を確かめる。失敗したら改善案を直し、成功するまでスキルは変えない。成功しても `選ぶ` が `出さない` なら、スキルは変えず、調べた結果を `## 試した対策`（訓練の経路では `logs.md`）に残して終わる。
 
 ```sh
-deno task eval:propose --file eval/wiki/requests/<R-ID>.md   # 依頼の経路
-deno task eval:propose --pattern <P-00>                       # 訓練の経路
+bun eval/propose.ts --file eval/wiki/requests/<R-ID>.md   # 依頼の経路
+bun eval/propose.ts --pattern <P-00>                       # 訓練の経路
 ```
 
 ### 4. 1件だけ実装する
 
 訓練の経路では、ここで実装しない。`.cursor/skills/close-pattern/SKILL.md` の手順4（着手してよいか）から続け、手順5で `選ぶ` の1件だけを実装する。
 
-依頼の経路では、`選ぶ` の1件だけを実装する。AGENTS.md の決まり（道具のコード、型定義の版、SKILL.md の書き方）に従う。実装で増やす行に、固有の語は書かない。道具の候補には、落ちた事例の場面で出ることと、通った事例の場面で変わらないことの両方をテストする。実装のあと、手順3の6と同じコマンドを実行する。未コミットの `.agents` の追加行に固有の語があれば失敗するので、その差分を直してからやり直す。`deno task test`、`deno fmt`、`deno lint` も通す。
+依頼の経路では、`選ぶ` の1件だけを実装する。AGENTS.md の決まり（道具のコード、型定義の版、SKILL.md の書き方）に従う。実装で増やす行に、固有の語は書かない。道具の候補には、落ちた事例の場面で出ることと、通った事例の場面で変わらないことの両方をテストする。実装のあと、手順3の6と同じコマンドを実行する。未コミットの `.agents` の追加行に固有の語があれば失敗するので、その差分を直してからやり直す。`bun run test`、`bun run fmt`、`bun run lint` も通す。
 
 ### 5. 変えたスキルで、事例を流し直す（依頼の経路）
 
 - 道具とひな形で決まる事例: `tests/` のテストで、その場面を作って確かめる。決まった結果になるので、1回でよい。
-- 手順の文章で決まる事例: 試験場を、場面に近い train の問題で準備する（`deno task eval:prepare <問題のID> --force`）。Task のサブエージェントで、モデルは `composer-2.5` にし、試験場でその場面をやり直させる。渡すのは、試験場のパス、呼び出すスキル、場面の依頼の文面、その場面で人が答える内容だけである。原則、勾配、候補、期待、依頼の記録は渡さない。答えを知っていると、スキルの効き目ではなく答えに合わせて動くからである。出力はぶれるので、同じ事例を3回流し、3回とも期待どおりのときだけ `通った` にする。
+- 手順の文章で決まる事例: 試験場を、場面に近い train の問題で準備する（`bun eval/prepare.ts <問題のID> --force`）。Task のサブエージェントで、モデルは `composer-2.5` にし、試験場でその場面をやり直させる。渡すのは、試験場のパス、呼び出すスキル、場面の依頼の文面、その場面で人が答える内容だけである。原則、勾配、候補、期待、依頼の記録は渡さない。答えを知っていると、スキルの効き目ではなく答えに合わせて動くからである。出力はぶれるので、同じ事例を3回流し、3回とも期待どおりのときだけ `通った` にする。
 - 流せない事例は `再現できない` にする。
 
 流し終わってから、`## 結果` の表（ID、後）にすべての事例を書く。
@@ -101,4 +101,4 @@ deno task eval:propose --pattern <P-00>                       # 訓練の経路
 - 却下: 選んだ候補の落ちた事例が残ったか、通っていた事例が崩れた。戻すと伝えて指示を待つ。`## 試した対策` に却下した候補を書き、状態を「未対応」に戻す。次の案は、原則か勾配を変えて手順3からやり直す。
 - 保留: 流していない事例か、再現できない事例がある。どの事例かを伝える。採用とは書かない。
 
-訓練の経路の採否は、`close-pattern` の手順7（`deno task eval:impact`）で決める。
+訓練の経路の採否は、`close-pattern` の手順7（`bun eval/impact.ts`）で決める。

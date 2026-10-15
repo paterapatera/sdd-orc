@@ -26,7 +26,10 @@ function option(name: string): string | undefined {
 }
 
 const issueId = option("--issue");
-const extraPaths = (option("--paths") ?? "").split(",").map((p) => p.trim()).filter(Boolean);
+const extraPaths = (option("--paths") ?? "")
+  .split(",")
+  .map((p) => p.trim())
+  .filter(Boolean);
 const noFetch = args.includes("--no-fetch");
 
 if (!(await hasRemote())) {
@@ -70,7 +73,8 @@ async function plannedImpact(ref: string, id: string): Promise<string[]> {
   const tmp = await makeTempDir("sdd-conflicts-");
   try {
     const files = ((await gitOut(["ls-tree", "-r", "--name-only", ref, "--", "docs/sdd", `docs/specs/${id}`])) ?? "")
-      .split("\n").filter((f) => f.endsWith(".ts"));
+      .split("\n")
+      .filter((f) => f.endsWith(".ts"));
     for (const f of files) {
       const r = await git(["show", `${ref}:${f}`]);
       if (r.code !== 0) continue;
@@ -84,14 +88,16 @@ async function plannedImpact(ref: string, id: string): Promise<string[]> {
 }
 
 const now = Date.now() / 1000;
-const refs =
-  ((await gitOut(["for-each-ref", "--format=%(refname:short)\t%(committerdate:unix)", "refs/remotes/origin"])) ??
-    "")
-    .split("\n").filter(Boolean).map((l) => {
-      const [ref, ts] = l.split("\t");
-      return { ref, daysAgo: Math.floor((now - Number(ts)) / 86400) };
-    })
-    .filter((r) => !excluded.has(r.ref) && r.daysAgo <= config.staleBranchDays);
+const refs = (
+  (await gitOut(["for-each-ref", "--format=%(refname:short)\t%(committerdate:unix)", "refs/remotes/origin"])) ?? ""
+)
+  .split("\n")
+  .filter(Boolean)
+  .map((l) => {
+    const [ref, ts] = l.split("\t");
+    return { ref, daysAgo: Math.floor((now - Number(ts)) / 86400) };
+  })
+  .filter((r) => !excluded.has(r.ref) && r.daysAgo <= config.staleBranchDays);
 
 const branches: BranchInfo[] = [];
 for (const { ref, daysAgo } of refs) {
@@ -112,7 +118,7 @@ for (const { ref, daysAgo } of refs) {
   };
   for (const id of sddIssues) {
     try {
-      info.planned.push(...await plannedImpact(ref, id));
+      info.planned.push(...(await plannedImpact(ref, id)));
     } catch {
       info.notes.push(`${id} の予定の影響範囲を読み込めませんでした`);
     }

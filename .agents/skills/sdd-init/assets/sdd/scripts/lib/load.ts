@@ -49,7 +49,9 @@ async function readIdRecord(dir: string, id: string): Promise<Set<string>> {
   const ids = new Set<string>();
   try {
     const xs = JSON.parse(await readTextFile(join(dir, `${id}.json`)));
-    if (Array.isArray(xs)) { for (const x of xs) if (typeof x === "string") ids.add(x); }
+    if (Array.isArray(xs)) {
+      for (const x of xs) if (typeof x === "string") ids.add(x);
+    }
   } catch {
     // 記録が無ければ空
   }
@@ -136,7 +138,8 @@ export async function loadIssue(id: string): Promise<LoadedIssue> {
   issue.quick = await load<LooseQuickSpec>("spec.ts");
   if (issue.requirements) issue.missingBasisFiles = await missingBasisFiles(issue.requirements);
 
-  const full = [issue.requirements, issue.design, issue.tasks].some((x) => x !== undefined) ||
+  const full =
+    [issue.requirements, issue.design, issue.tasks].some((x) => x !== undefined) ||
     issue.loadErrors.some((e) => e.file !== "spec.ts");
   const quick = issue.quick !== undefined || issue.loadErrors.some((e) => e.file === "spec.ts");
   issue.mode = full && quick ? "mixed" : full ? "full" : quick ? "quick" : "none";

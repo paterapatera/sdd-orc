@@ -26,12 +26,12 @@ export type Ears =
   | { pattern: "optional"; subject?: string; feature: string; response: string }
   | { pattern: "unwanted"; subject?: string; condition: string; response: string }
   | {
-    pattern: "complex";
-    subject?: string;
-    state: string;
-    trigger: string;
-    response: string;
-  };
+      pattern: "complex";
+      subject?: string;
+      state: string;
+      trigger: string;
+      response: string;
+    };
 
 /** 受け入れ条件（Given/When/Then）。1つの具体例を書く。 */
 export type Scenario = {
@@ -107,15 +107,15 @@ export type NonFunctionalRequirement = {
  */
 export type NfrReviewEntry<N extends string = string> =
   | {
-    decision: "baseline";
-    note?: string;
-    /**
-     * このカテゴリの docs/sdd/nfr.ts の基準（BNFR-xxx）のうち、このissueでは確かめないものと、その理由。
-     * baseline のカテゴリに基準があれば、各基準はテストタスクで確かめるか（tasks の verifies に BNFR-xxx）、
-     * ここに理由を書く（verify が確かめる）。
-     */
-    waived?: Readonly<Record<BaseNfrId, string>>;
-  }
+      decision: "baseline";
+      note?: string;
+      /**
+       * このカテゴリの docs/sdd/nfr.ts の基準（BNFR-xxx）のうち、このissueでは確かめないものと、その理由。
+       * baseline のカテゴリに基準があれば、各基準はテストタスクで確かめるか（tasks の verifies に BNFR-xxx）、
+       * ここに理由を書く（verify が確かめる）。
+       */
+      waived?: Readonly<Record<BaseNfrId, string>>;
+    }
   | { decision: "added"; ids: NonEmpty<N> }
   | { decision: "notApplicable"; reason: string };
 
@@ -239,14 +239,13 @@ export type DesignTargetIdOf<R extends Requirements> =
   | (keyof R["nonFunctional"] & string);
 
 /** 要件のすべてのID */
-export type ReqIdOf<R extends Requirements> =
-  | DesignTargetIdOf<R>
-  | (keyof R["invariants"] & string);
+export type ReqIdOf<R extends Requirements> = DesignTargetIdOf<R> | (keyof R["invariants"] & string);
 
 /** 受け入れ条件のID */
-export type AcIdOf<
-  F extends Readonly<Record<string, { acceptance: readonly Scenario[] }>>,
-> = F[keyof F] extends infer E ? E extends { acceptance: readonly (infer S)[] } ? S extends { id: infer I } ? I & AcId
+export type AcIdOf<F extends Readonly<Record<string, { acceptance: readonly Scenario[] }>>> = F[keyof F] extends infer E
+  ? E extends { acceptance: readonly (infer S)[] }
+    ? S extends { id: infer I }
+      ? I & AcId
+      : never
     : never
-  : never
   : never;

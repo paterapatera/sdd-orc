@@ -10,7 +10,5 @@ export default defineAdr({
   context: "<背景と課題>",
   decision: "<決めたこと>",
   consequences: "<この決定による影響（良い面と悪い面）>",
-  alternatives: [
-    { option: "<検討した案>", reason: "<採用しなかった理由>" },
-  ],
+  alternatives: [{ option: "<検討した案>", reason: "<採用しなかった理由>" }],
 });

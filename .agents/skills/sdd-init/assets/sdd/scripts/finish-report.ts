@@ -94,8 +94,8 @@ if (!skipGate) {
 // 品質ゲートを緩めた変更（理由が design.ts の decisions の relaxesQualityGate に無ければエラー）
 const weakening = await findWeakening();
 const justified = new Set(
-  (issue.design?.decisions ?? []).flatMap((d) =>
-    (d as { relaxesQualityGate?: readonly string[] }).relaxesQualityGate ?? []
+  (issue.design?.decisions ?? []).flatMap(
+    (d) => (d as { relaxesQualityGate?: readonly string[] }).relaxesQualityGate ?? [],
   ),
 );
 for (const w of weakening?.config ?? []) {
@@ -115,7 +115,8 @@ for (const l of weakening?.levels ?? []) {
 
 // 採用済み（accepted）の ADR の書き換え（覆すなら新しい ADR を作り、古いほうは status と supersededBy だけを変える）
 if (base) {
-  const changed = ((await gitOut(["diff", "--name-status", base, "HEAD", "--", "docs/sdd/adr"])) ?? "").split("\n")
+  const changed = ((await gitOut(["diff", "--name-status", base, "HEAD", "--", "docs/sdd/adr"])) ?? "")
+    .split("\n")
     .filter(Boolean);
   for (const row of changed) {
     const [status, path] = row.split("\t");
@@ -125,7 +126,9 @@ if (base) {
       continue;
     }
     const diff = (await gitOut(["diff", "--unified=0", base, "HEAD", "--", path])) ?? "";
-    const edited = diff.split("\n").filter((l) => /^[+-](?![+-])/.test(l))
+    const edited = diff
+      .split("\n")
+      .filter((l) => /^[+-](?![+-])/.test(l))
       .filter((l) => !/^\s*[+-]\s*(status|supersededBy)\s*:/.test(l));
     if (edited.length) {
       errors.push(
@@ -263,7 +266,12 @@ for (const s of weakening?.suppressions ?? []) {
 console.log("\n■ このブランチのコミット");
 const log = base ? await gitOut(["log", "--reverse", "--format=%h %s", `${base}..HEAD`]) : undefined;
 console.log(
-  log ? log.split("\n").map((l) => `  ${l}`).join("\n") : "  （既定ブランチとの分岐点が分からないため表示できません）",
+  log
+    ? log
+        .split("\n")
+        .map((l) => `  ${l}`)
+        .join("\n")
+    : "  （既定ブランチとの分岐点が分からないため表示できません）",
 );
 
 exit(errors.length ? 1 : 0);

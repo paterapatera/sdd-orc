@@ -27,8 +27,8 @@ if (!(await commitExists(arch.basedOn))) {
   exit(0);
 }
 
-const target = (await hasRemote()) ? (await defaultRemoteBranch()) ?? "HEAD" : "HEAD";
-const count = Number(await gitOut(["rev-list", "--count", `${arch.basedOn}..${target}`]) ?? "0");
+const target = (await hasRemote()) ? ((await defaultRemoteBranch()) ?? "HEAD") : "HEAD";
+const count = Number((await gitOut(["rev-list", "--count", `${arch.basedOn}..${target}`])) ?? "0");
 console.log(`architecture.ts の基準: ${arch.basedOn.slice(0, 10)}（${arch.updatedAt}）`);
 console.log(`比較先: ${target}（基準から ${count} コミット）`);
 if (count === 0) {
@@ -39,10 +39,13 @@ if (count === 0) {
 const excludedDirs = ["docs/specs/", "docs/sdd/"];
 const exclude = excludedDirs.map((d) => `:(exclude)${d.slice(0, -1)}`);
 const nameStatus = (await gitOut(["diff", "--name-status", arch.basedOn, target, "--", ".", ...exclude])) ?? "";
-const changes = nameStatus.split("\n").filter(Boolean).map((l) => {
-  const [status, ...paths] = l.split("\t");
-  return { status: status[0], path: paths[paths.length - 1] };
-});
+const changes = nameStatus
+  .split("\n")
+  .filter(Boolean)
+  .map((l) => {
+    const [status, ...paths] = l.split("\t");
+    return { status: status[0], path: paths[paths.length - 1] };
+  });
 
 const findings: string[] = [];
 for (const c of changes) {
@@ -52,7 +55,8 @@ for (const c of changes) {
 // SDD の導入で docs/ ができただけの場合を、最上位のディレクトリの増加として数えない
 const topDirs = async (rev: string) =>
   new Set(
-    ((await gitOut(["ls-tree", "-r", "--name-only", rev])) ?? "").split("\n")
+    ((await gitOut(["ls-tree", "-r", "--name-only", rev])) ?? "")
+      .split("\n")
       .filter((f) => f.includes("/") && !excludedDirs.some((d) => f.startsWith(d)))
       .map((f) => f.slice(0, f.indexOf("/"))),
   );

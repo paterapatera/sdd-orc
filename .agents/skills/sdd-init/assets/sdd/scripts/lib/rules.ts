@@ -87,14 +87,14 @@ function checkDecisions(c: Collector, decisions: readonly AnyDecision[], opts: V
       }
     }
     const text = [d.context, d.decision, ...d.alternatives.flatMap((a) => [a.option, a.reason])].join(" ");
-    const mentioned = [...new Set(text.match(/\b(?:CONV-\d{3}|ADR-\d{4})\b/g) ?? [])].filter((id) =>
-      !devs.includes(id)
+    const mentioned = [...new Set(text.match(/\b(?:CONV-\d{3}|ADR-\d{4})\b/g) ?? [])].filter(
+      (id) => !devs.includes(id),
     );
     if (mentioned.length && !d.adr) {
       c.warn(
-        `設計判断「${d.title}」が ${
-          mentioned.join("、")
-        } に触れています。逸脱するなら deviates に書き、ユーザーに質問して決める`,
+        `設計判断「${d.title}」が ${mentioned.join(
+          "、",
+        )} に触れています。逸脱するなら deviates に書き、ユーザーに質問して決める`,
       );
     }
   }
@@ -121,7 +121,10 @@ function mentionsUnder(text: string, path: string): boolean {
 
 /** ファイルが入る architecture.ts のモジュールのパス（最も深いもの）。どれにも入らなければ undefined */
 function moduleOf(file: string, modulePaths: readonly string[]): string | undefined {
-  return modulePaths.map(asDir).filter((p) => file.startsWith(p)).sort((a, b) => b.length - a.length)[0];
+  return modulePaths
+    .map(asDir)
+    .filter((p) => file.startsWith(p))
+    .sort((a, b) => b.length - a.length)[0];
 }
 
 /** ファイルがすべて入るディレクトリのパス（浅い順） */
@@ -165,7 +168,9 @@ export function structureAnswerList(issue: LoadedIssue): string[] {
   const dependencies = (d?.dependencies ?? []) as readonly AnyDependency[];
   return Object.entries(answers).flatMap(([id, a]) => {
     const cited = [
-      ...Object.entries(components).filter(([, x]) => x.placement?.answer === id).map(([n]) => `部品 ${n}`),
+      ...Object.entries(components)
+        .filter(([, x]) => x.placement?.answer === id)
+        .map(([n]) => `部品 ${n}`),
       ...dependencies.filter((x) => x.basis?.answer === id).map((x) => `依存 ${x.from} → ${x.to}`),
     ];
     return [
@@ -180,7 +185,9 @@ export function structureAnswerList(issue: LoadedIssue): string[] {
 /** 未回答の構成の回答の ID（verify が一覧に出したら記録し、記録のある ID にだけ answer を書ける） */
 export function unansweredStructureIds(issue: LoadedIssue): string[] {
   const answers = (issue.design?.answers ?? {}) as Readonly<Record<string, AnyStructureAnswer>>;
-  return Object.entries(answers).filter(([, a]) => a.answer === undefined).map(([id]) => id);
+  return Object.entries(answers)
+    .filter(([, a]) => a.answer === undefined)
+    .map(([id]) => id);
 }
 
 /** architecture.ts の引用が、記述の全体か、記述を「。」で区切った1文の全体か */
@@ -204,9 +211,9 @@ function checkAdrBasis(
     const missing = sides.filter((files) => !commonDirs(files).some((d) => mentionsPath(adr.text, d)));
     if (missing.length) {
       c.error(
-        `${where}の根拠 ${id} は、title と decision にファイル ${
-          missing.flat().join("、")
-        } のある場所のパスを書いていません。` +
+        `${where}の根拠 ${id} は、title と decision にファイル ${missing
+          .flat()
+          .join("、")} のある場所のパスを書いていません。` +
           `置き場所を決めていない ADR は根拠になりません。ほかに根拠が無ければ、${ASK_STRUCTURE}`,
       );
     }
@@ -220,9 +227,10 @@ function checkAdrBasis(
 export function placementSources(opts: VerifyOptions): string[] {
   const arch = opts.architecture;
   const adrs = [...(opts.adrs ?? [])]
-    .filter(([, a]) =>
-      a.status === "accepted" &&
-      (arch ? arch.modulePaths.some((m) => mentionsUnder(a.text, m)) : /(?<![\w./-])[\w.-]+\/[\w./-]*/.test(a.text))
+    .filter(
+      ([, a]) =>
+        a.status === "accepted" &&
+        (arch ? arch.modulePaths.some((m) => mentionsUnder(a.text, m)) : /(?<![\w./-])[\w.-]+\/[\w./-]*/.test(a.text)),
     )
     .map(([id, a]) => `${id}: ${a.text.replace(/\s+/g, " ")}`);
   const quotes = (arch?.texts ?? [])
@@ -278,14 +286,19 @@ function placementCandidates(
     .filter(([, a]) => a.status === "accepted" && dirs.some((d) => mentionsPath(a.text, d)))
     .map(([id]) => `{ adr: "${id}" }`);
   const arch = opts.architecture;
-  const quotes = (arch?.texts ?? []).filter((t) => {
-    const paths = arch!.modulePaths.filter((m) => mentionsPath(t, m));
-    return paths.length === 1 && under(comp.files, paths[0]);
-  }).map((t) => `{ architecture: "${t}" }`);
+  const quotes = (arch?.texts ?? [])
+    .filter((t) => {
+      const paths = arch!.modulePaths.filter((m) => mentionsPath(t, m));
+      return paths.length === 1 && under(comp.files, paths[0]);
+    })
+    .map((t) => `{ architecture: "${t}" }`);
   const refs = Object.entries(components)
-    .filter(([n, x]) =>
-      n !== name && hasBasis(x) && linked(dependencies, name, n) &&
-      filesOutside(comp.files, x, homeOf, opts).length === 0
+    .filter(
+      ([n, x]) =>
+        n !== name &&
+        hasBasis(x) &&
+        linked(dependencies, name, n) &&
+        filesOutside(comp.files, x, homeOf, opts).length === 0,
     )
     .map(([n]) => `{ component: "${n}" }`);
   return [...adrs, ...quotes, ...refs];
@@ -338,9 +351,9 @@ function checkStructure(
   const openPlacements = Object.entries(answers).filter(([, a]) => a.answer === undefined && a.about.placement);
   if (openPlacements.length > 1) {
     c.error(
-      `未回答の置き場所の項目が ${openPlacements.length} 件あります（${
-        openPlacements.map(([id]) => id).join("、")
-      }）。` +
+      `未回答の置き場所の項目が ${openPlacements.length} 件あります（${openPlacements
+        .map(([id]) => id)
+        .join("、")}）。` +
         `置き場所は機能ごとに1件で聞き、それに伴う前例どおりの場所も同じ項目の placement に書いて、1件にまとめてください`,
     );
   }
@@ -390,7 +403,7 @@ function checkStructure(
   };
 
   const arch = opts.architecture;
-  const homeOf = (f: string) => arch ? moduleOf(f, arch.modulePaths) : dirOf(f);
+  const homeOf = (f: string) => (arch ? moduleOf(f, arch.modulePaths) : dirOf(f));
   for (const [name, comp] of Object.entries(components)) {
     if (comp.kind !== "new") continue;
     const where = `新しいコンポーネント ${name} の置き場所`;
@@ -473,9 +486,11 @@ function checkStructure(
   if (!arch) return;
   const outsideModules = new Set(
     Object.entries(components)
-      .filter(([, comp]) =>
-        comp.kind === "new" && comp.files.length > 0 &&
-        comp.files.every((f) => moduleOf(f, arch.modulePaths) === undefined)
+      .filter(
+        ([, comp]) =>
+          comp.kind === "new" &&
+          comp.files.length > 0 &&
+          comp.files.every((f) => moduleOf(f, arch.modulePaths) === undefined),
       )
       .map(([name]) => name),
   );
@@ -499,13 +514,14 @@ function checkStructure(
             `置き場所の回答はつなぎ方の根拠になりません。置き場所とは別に${ASK_STRUCTURE}`,
         );
       } else if (
-        link && !(under(sides[0], link[0]) && under(sides[1], link[1])) &&
+        link &&
+        !(under(sides[0], link[0]) && under(sides[1], link[1])) &&
         !(under(sides[0], link[1]) && under(sides[1], link[0]))
       ) {
         c.error(
-          `${where}の根拠の回答 ${b.answer} は ${
-            link.map((s) => s.map(asDir).join("、")).join(" と ")
-          } のつなぎ方への回答ですが、` +
+          `${where}の根拠の回答 ${b.answer} は ${link
+            .map((s) => s.map(asDir).join("、"))
+            .join(" と ")} のつなぎ方への回答ですが、` +
             `${dep.from} と ${dep.to} のファイルがそれぞれの側の下にありません`,
         );
       }
@@ -515,8 +531,9 @@ function checkStructure(
 
   // つなぎ方を求めるかは、書き手が省ける dependencies ではなく、作る・変えるファイルから決める
   const outsideFiles = [...outsideModules].flatMap((n) => components[n].files);
-  const touched = [...d.impact.create, ...d.impact.modify, ...(d.impact.delete ?? [])]
-    .filter((f) => moduleOf(f, arch.modulePaths) !== undefined);
+  const touched = [...d.impact.create, ...d.impact.modify, ...(d.impact.delete ?? [])].filter(
+    (f) => moduleOf(f, arch.modulePaths) !== undefined,
+  );
   const based = dependencies.some((dep) => outsideModules.has(dep.from) !== outsideModules.has(dep.to) && dep.basis);
   if (outsideFiles.length && touched.length && !based) {
     c.error(
@@ -589,7 +606,10 @@ type IdFormat = (typeof ID_FORMATS)[keyof typeof ID_FORMATS];
 const ISSUE_ID_FORMAT = /^[A-Za-z0-9-]+$/;
 
 class Collector {
-  constructor(private file: Diagnostic["file"], readonly items: Diagnostic[] = []) {}
+  constructor(
+    private file: Diagnostic["file"],
+    readonly items: Diagnostic[] = [],
+  ) {}
   /** 同じ結果の一覧に、別のファイルとして記録する */
   at(file: Diagnostic["file"]): Collector {
     return new Collector(file, this.items);
@@ -661,7 +681,10 @@ function checkFunctional(
     }
     const kinds = new Set((fr.acceptance ?? []).map((a) => a.kind));
     if (!kinds.has("normal")) c.error(`${frId} に正常系（kind: "normal"）の受け入れ条件がありません`);
-    for (const [kind, label] of [["boundary", "境界値"], ["error", "異常系"]] as const) {
+    for (const [kind, label] of [
+      ["boundary", "境界値"],
+      ["error", "異常系"],
+    ] as const) {
       const reason = fr.notApplicable?.[kind];
       if (!kinds.has(kind) && !reason) {
         c.error(
@@ -765,7 +788,7 @@ function checkValues(
         open.push(`${v.target}の${label}`);
         continue;
       }
-      for (const ref of Array.isArray(d.decidedBy) ? d.decidedBy as string[] : []) {
+      for (const ref of Array.isArray(d.decidedBy) ? (d.decidedBy as string[]) : []) {
         if (!refs.has(ref)) c.error(`${where}の観点 ${a} が参照している ${ref} がありません`);
       }
       const basis = d.basis ?? {};
@@ -831,7 +854,8 @@ export function issueCriteria(issueMd: string | undefined): string[] {
   if (!issueMd) return [];
   const m = issueMd.replaceAll("\r\n", "\n").match(/^##\s*受け入れ条件\s*\n([\s\S]*?)(?=^##\s|(?![\s\S]))/m);
   if (!m) return [];
-  return m[1].split("\n")
+  return m[1]
+    .split("\n")
     .map((l) => l.match(/^\s*(?:[-*]|\d+\.)\s+(.*)$/)?.[1]?.trim())
     .filter((x): x is string => !!x && !/^(未記載|なし)$/.test(x));
 }
@@ -916,7 +940,11 @@ function checkTasks(
   opts: VerifyOptions,
 ): Set<string> {
   const entries = Object.entries(tasks);
-  checkIdFormat(c, entries.map(([id]) => id), ID_FORMATS.T);
+  checkIdFormat(
+    c,
+    entries.map(([id]) => id),
+    ID_FORMATS.T,
+  );
   if (entries.length === 0) c.error("タスクが1件もありません");
 
   const referenced = new Set<string>();
@@ -979,16 +1007,18 @@ function checkAcceptanceGuide(
 ) {
   const human = [
     ...Object.values(functional).flatMap((fr) =>
-      fr.acceptance.filter((a) => a.verifiedBy === "human").map((a) => a.id)
+      fr.acceptance.filter((a) => a.verifiedBy === "human").map((a) => a.id),
     ),
-    ...Object.entries(invariants).filter(([, v]) => v.verifiedBy === "human").map(([id]) => id),
+    ...Object.entries(invariants)
+      .filter(([, v]) => v.verifiedBy === "human")
+      .map(([id]) => id),
   ];
   const allDone = Object.values(tasks).length > 0 && Object.values(tasks).every((t) => t.status === "done");
   if (allDone && human.length > 0 && !guide) {
     c.error(
-      `人が確かめる受け入れ条件（${
-        human.join("、")
-      }）があるのに、受け入れテストの準備（acceptanceGuide）がありません。` +
+      `人が確かめる受け入れ条件（${human.join(
+        "、",
+      )}）があるのに、受け入れテストの準備（acceptanceGuide）がありません。` +
         "起動の手順、テスト用のアカウント、データの用意のしかたを書いてください",
     );
   }
@@ -1212,15 +1242,20 @@ function verifyFullTasks(
   const nfrIds = new Set(Object.keys(r.nonFunctional));
   const invIds = new Set(Object.keys(r.invariants));
   const componentIds = new Set(Object.keys(d.components));
-  const verified = checkTasks(c, t.tasks, {
-    refs: new Set([...frIds, ...nfrIds, ...invIds, ...componentIds]),
-    acIds,
-    invIds,
-    nfrIds,
-    frIds,
-    componentIds,
-    humanAcIds: humanAcIdsOf(r.functional),
-  }, opts);
+  const verified = checkTasks(
+    c,
+    t.tasks,
+    {
+      refs: new Set([...frIds, ...nfrIds, ...invIds, ...componentIds]),
+      acIds,
+      invIds,
+      nfrIds,
+      frIds,
+      componentIds,
+      humanAcIds: humanAcIdsOf(r.functional),
+    },
+    opts,
+  );
   checkBaselineNfrVerification(c, r, verified, opts);
 }
 
@@ -1284,15 +1319,20 @@ function verifyQuick(c: Collector, issue: LoadedIssue, opts: VerifyOptions) {
   if (taskCount > 3) c.warn(`タスクが ${taskCount} 件あります。完全モードへの格上げを検討してください`);
   const frIds = new Set(Object.keys(q.expected));
   const invIds = new Set(Object.keys(q.invariants));
-  checkTasks(c, q.tasks, {
-    refs: new Set([...frIds, ...invIds]),
-    acIds,
-    invIds,
-    nfrIds: new Set(),
-    frIds,
-    componentIds: new Set(),
-    humanAcIds: humanAcIdsOf(q.expected),
-  }, opts);
+  checkTasks(
+    c,
+    q.tasks,
+    {
+      refs: new Set([...frIds, ...invIds]),
+      acIds,
+      invIds,
+      nfrIds: new Set(),
+      frIds,
+      componentIds: new Set(),
+      humanAcIds: humanAcIdsOf(q.expected),
+    },
+    opts,
+  );
 }
 
 /** 1件のissueを検証する */

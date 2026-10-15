@@ -1,5 +1,7 @@
+import * as io from "../harness/io.ts";
+import { test } from "bun:test";
 // 訓練の道具（eval/）: 試験場の準備、採点、チャットの記録の集計
-import { assert, assertEquals, assertFalse, assertRejects } from "@std/assert";
+import { assert, assertEquals, assertFalse, assertRejects } from "./assert.ts";
 import { join } from "node:path";
 import {
   analyzeTranscripts,
@@ -18,14 +20,14 @@ import { emptyRepo, install, REPO, sh, writeFile } from "./helpers.ts";
 
 async function exists(path: string) {
   try {
-    await Deno.stat(path);
+    await io.stat(path);
     return true;
   } catch {
     return false;
   }
 }
 
-Deno.test("glob: ** は階層をまたぎ、* は1階層だけに当てはまる", () => {
+test("glob: ** は階層をまたぎ、* は1階層だけに当てはまる", () => {
   assert(matchesAny("app/Models/User.php", ["app/**"]));
   assert(matchesAny("composer.json", ["composer.json"]));
   assert(matchesAny("Modules/Demo/routes/web.php", ["Modules/*/routes/*.php"]));
@@ -34,24 +36,29 @@ Deno.test("glob: ** は階層をまたぎ、* は1階層だけに当てはまる
   assertFalse(matchesAny("docs/sdd/app/x.ts", ["app/**"]));
 });
 
-Deno.test("チャットの記録: 質問ツールの回数と、2問以上をまとめた回数を数える", () => {
+test("チャットの記録: 質問ツールの回数と、2問以上をまとめた回数を数える", () => {
   const ask = (n: number) => ({ type: "tool_use", name: "AskQuestion", input: { questions: Array(n).fill({}) } });
-  const text = [
-    { role: "user", message: { content: [{ type: "text", text: "/sdd-init" }] } },
-    { role: "assistant", message: { content: [{ type: "tool_use", name: "Shell", input: {} }, ask(1)] } },
-    { role: "user", message: { content: [{ type: "text", text: "既存案件" }] } },
-    { role: "assistant", message: { content: [ask(3)] } },
-    {
-      role: "assistant",
-      message: {
-        content: [{
-          type: "tool_use",
-          name: "CallDynamicTool",
-          input: { toolName: "AskQuestion", arguments: { questions: [{}, {}] } },
-        }],
+  const text =
+    [
+      { role: "user", message: { content: [{ type: "text", text: "/sdd-init" }] } },
+      { role: "assistant", message: { content: [{ type: "tool_use", name: "Shell", input: {} }, ask(1)] } },
+      { role: "user", message: { content: [{ type: "text", text: "既存案件" }] } },
+      { role: "assistant", message: { content: [ask(3)] } },
+      {
+        role: "assistant",
+        message: {
+          content: [
+            {
+              type: "tool_use",
+              name: "CallDynamicTool",
+              input: { toolName: "AskQuestion", arguments: { questions: [{}, {}] } },
+            },
+          ],
+        },
       },
-    },
-  ].map((l) => JSON.stringify(l)).join("\n") + "\n{壊れた行";
+    ]
+      .map((l) => JSON.stringify(l))
+      .join("\n") + "\n{壊れた行";
   assertEquals(analyzeTranscripts([text]), {
     files: 1,
     userTurns: 2,
@@ -62,9 +69,9 @@ Deno.test("チャットの記録: 質問ツールの回数と、2問以上をま
   });
 });
 
-Deno.test("問題: eval/scenarios の問題はすべて読み込める", async () => {
+test("問題: eval/scenarios の問題はすべて読み込める", async () => {
   const paths = defaultPaths();
-  for await (const e of Deno.readDir(paths.scenarios)) {
+  for await (const e of io.readDir(paths.scenarios)) {
     if (!e.isDirectory) continue;
     const s = await loadScenario(paths, e.name);
     assert(s.checks.length > 0, `${e.name} に確かめる項目がありません`);
@@ -81,7 +88,7 @@ async function setup(): Promise<Paths> {
   await sh(target, "config", "tag.gpgSign", "false");
   await sh(target, "tag", "v0.0.0");
 
-  const work = await Deno.makeTempDir({ prefix: "sdd-eval-" });
+  const work = await io.makeTempDir({ prefix: "sdd-eval-" });
   const scenarios = join(work, "scenarios");
   await writeFile(scenarios, "T-001/persona.md", "回答表\n");
   await writeFile(scenarios, "T-001/issue.md", "issue の本文\n");
@@ -89,44 +96,42 @@ async function setup(): Promise<Paths> {
   await writeFile(
     scenarios,
     "T-001/scenario.ts",
-    `export default ${
-      JSON.stringify({
-        id: "T-001",
-        title: "テスト",
-        split: "train",
-        startTag: "v0.0.0",
-        steps: ["/sdd-start"],
-        issue: "issue.md",
-        persona: "persona.md",
-        checks: [
-          // 整形のように、ファイルを書き換えるコマンド
-          {
-            id: "fmt",
-            kind: "command",
-            must: false,
-            label: "整形",
-            run: "echo '// 整形' >> app/x.php && echo 生成 > fmt-output.txt",
-          },
-          { id: "done", kind: "exists", must: true, label: "done.txt がある", paths: ["done.txt"] },
-          { id: "app", kind: "unchanged", must: true, label: "app を変えない", paths: ["app/**"] },
-          { id: "word", kind: "contains", must: false, label: "OK と書く", path: "done.txt", patterns: ["^ok$"] },
-          {
-            id: "hidden",
-            kind: "hiddenTests",
-            must: true,
-            label: "隠したテスト",
-            from: "hidden",
-            to: "hidden_tests",
-            run: "sh hidden_tests/check.sh",
-          },
-        ],
-      })
-    };\n`,
+    `export default ${JSON.stringify({
+      id: "T-001",
+      title: "テスト",
+      split: "train",
+      startTag: "v0.0.0",
+      steps: ["/sdd-start"],
+      issue: "issue.md",
+      persona: "persona.md",
+      checks: [
+        // 整形のように、ファイルを書き換えるコマンド
+        {
+          id: "fmt",
+          kind: "command",
+          must: false,
+          label: "整形",
+          run: "echo '// 整形' >> app/x.php && echo 生成 > fmt-output.txt",
+        },
+        { id: "done", kind: "exists", must: true, label: "done.txt がある", paths: ["done.txt"] },
+        { id: "app", kind: "unchanged", must: true, label: "app を変えない", paths: ["app/**"] },
+        { id: "word", kind: "contains", must: false, label: "OK と書く", path: "done.txt", patterns: ["^ok$"] },
+        {
+          id: "hidden",
+          kind: "hiddenTests",
+          must: true,
+          label: "隠したテスト",
+          from: "hidden",
+          to: "hidden_tests",
+          run: "sh hidden_tests/check.sh",
+        },
+      ],
+    })};\n`,
   );
   return { repo: REPO, target, scenarios, runs: join(work, "runs"), branch: "main" };
 }
 
-Deno.test("準備: 出発点に戻し、前の実行のブランチと未追跡のファイルと hook を消し、スキルを差し替える", async () => {
+test("準備: 出発点に戻し、前の実行のブランチと未追跡のファイルと hook を消し、スキルを差し替える", async () => {
   const paths = await setup();
   const t = paths.target;
   await sh(t, "switch", "-q", "-c", "sdd-init");
@@ -140,7 +145,7 @@ Deno.test("準備: 出発点に戻し、前の実行のブランチと未追跡�
 
   assertEquals(await sh(t, "branch", "--show-current"), "main");
   assertEquals(await sh(t, "for-each-ref", "--format=%(refname:short)", "refs/heads"), "main");
-  assertEquals(await Deno.readTextFile(join(t, "app/x.php")), "<?php\n");
+  assertEquals(await io.readTextFile(join(t, "app/x.php")), "<?php\n");
   assertFalse(await exists(join(t, "leftover.txt")));
   assertFalse(await exists(join(t, ".git/hooks/pre-commit")));
   assertFalse(await exists(join(t, ".agents/skills/old-skill")));
@@ -151,25 +156,25 @@ Deno.test("準備: 出発点に戻し、前の実行のブランチと未追跡�
   assertEquals(run.model, "m1");
   assertEquals(run.skills.tree, await sh(t, "rev-parse", "HEAD:.agents/skills"));
   assertEquals(issue, "issue の本文\n");
-  assertEquals((await Deno.readTextFile(join(paths.runs, "latest"))).trim(), run.runId);
+  assertEquals((await io.readTextFile(join(paths.runs, "latest"))).trim(), run.runId);
 });
 
-Deno.test("準備: --skills を指定したら、そのコミットのスキルを使い、未コミットの変更なしとして記録する", async () => {
+test("準備: --skills を指定したら、そのコミットのスキルを使い、未コミットの変更なしとして記録する", async () => {
   const paths = await setup();
   // 6a55822 は、sdd-req に日時のタイムゾーンを足す（32073e6）前のコミット
   const before = "6a558225542c3c87a6da16f3e6dd5c05135b1691";
   const { run } = await prepareRun(paths, "T-001", { skillsCommit: before });
-  const req = await Deno.readTextFile(join(paths.target, ".agents/skills/sdd-req/SKILL.md"));
+  const req = await io.readTextFile(join(paths.target, ".agents/skills/sdd-req/SKILL.md"));
   assertFalse(req.includes("日時のタイムゾーン"));
   assertEquals(run.skills.commit, before);
   assertFalse(run.skills.dirty);
   assertEquals(await sh(paths.target, "status", "--porcelain"), "");
 });
 
-Deno.test("準備: origin があれば、既定のブランチを出発点に強制 push し、ほかのリモートのブランチを消す", async () => {
+test("準備: origin があれば、既定のブランチを出発点に強制 push し、ほかのリモートのブランチを消す", async () => {
   const paths = await setup();
   const t = paths.target;
-  const remote = await Deno.makeTempDir({ prefix: "sdd-eval-remote-" });
+  const remote = await io.makeTempDir({ prefix: "sdd-eval-remote-" });
   await sh(remote, "init", "-q", "--bare");
   await sh(t, "remote", "add", "origin", remote);
   await writeFile(t, "app/x.php", "<?php // 前の実行\n");
@@ -184,12 +189,12 @@ Deno.test("準備: origin があれば、既定のブランチを出発点に強
   assertEquals(await sh(t, "for-each-ref", "--format=%(refname:short)", "refs/remotes"), "origin/main");
 });
 
-Deno.test("採点: 修正より前にテストだけのコミットがあるかを確かめる", async () => {
+test("採点: 修正より前にテストだけのコミットがあるかを確かめる", async () => {
   const paths = await setup();
   const t = paths.target;
   const file = join(paths.scenarios, "T-001/scenario.ts");
-  const src = await Deno.readTextFile(file);
-  await Deno.writeTextFile(
+  const src = await io.readTextFile(file);
+  await io.writeTextFile(
     file,
     src.replace(
       `"checks":[`,
@@ -216,11 +221,11 @@ Deno.test("採点: 修正より前にテストだけのコミットがあるか�
   assert((await tf()).ok);
 });
 
-Deno.test("採点: noCommand は、チャットの記録で禁止したコマンドを実行していれば不合格にする", async () => {
+test("採点: noCommand は、チャットの記録で禁止したコマンドを実行していれば不合格にする", async () => {
   const paths = await setup();
   const file = join(paths.scenarios, "T-001/scenario.ts");
-  const src = await Deno.readTextFile(file);
-  await Deno.writeTextFile(
+  const src = await io.readTextFile(file);
+  await io.writeTextFile(
     file,
     src.replace(
       `"checks":[`,
@@ -228,13 +233,13 @@ Deno.test("採点: noCommand は、チャットの記録で禁止したコマン
     ),
   );
   const chat = async (...commands: string[]) => {
-    const path = join(await Deno.makeTempDir(), "chat.jsonl");
+    const path = join(await io.makeTempDir(), "chat.jsonl");
     const entry = (command: string) =>
       JSON.stringify({
         role: "assistant",
         message: { content: [{ type: "tool_use", name: "Shell", input: { command } }] },
       });
-    await Deno.writeTextFile(path, commands.map(entry).join("\n") + "\n");
+    await io.writeTextFile(path, commands.map(entry).join("\n") + "\n");
     return path;
   };
   const np = async (transcripts: string[]) =>
@@ -248,12 +253,12 @@ Deno.test("採点: noCommand は、チャットの記録で禁止したコマン
   assertEquals(ng.detail, "実行した: git push && gh pr create --title x");
 });
 
-Deno.test("採点: unchanged の allowNew は、新しいファイルの追加を数えず、既存のファイルの変更は数える", async () => {
+test("採点: unchanged の allowNew は、新しいファイルの追加を数えず、既存のファイルの変更は数える", async () => {
   const paths = await setup();
   const t = paths.target;
   const file = join(paths.scenarios, "T-001/scenario.ts");
-  const src = await Deno.readTextFile(file);
-  await Deno.writeTextFile(
+  const src = await io.readTextFile(file);
+  await io.writeTextFile(
     file,
     src.replace(
       `"checks":[`,
@@ -273,7 +278,7 @@ Deno.test("採点: unchanged の allowNew は、新しいファイルの追加�
   assertEquals((await keep()).detail, "変わった: app/x.php");
 });
 
-Deno.test("準備: 導入済みの出発点なら道具を今のスキルの版に更新して hook を設置し、導入前なら何もしない", async () => {
+test("準備: 導入済みの出発点なら道具を今のスキルの版に更新して hook を設置し、導入前なら何もしない", async () => {
   const before = await setup();
   await prepareRun(before, "T-001");
   assertFalse(await exists(join(before.target, ".git/hooks/pre-commit")));
@@ -285,27 +290,27 @@ Deno.test("準備: 導入済みの出発点なら道具を今のスキルの版�
   await writeFile(t, "docs/sdd/scripts/drift.ts", "// 古い道具\n");
   await sh(t, "add", ".");
   await sh(t, "commit", "-q", "--no-verify", "-m", "SDDを導入");
-  await Deno.remove(join(t, ".git/hooks/pre-commit"));
+  await io.remove(join(t, ".git/hooks/pre-commit"));
   await sh(t, "tag", "-f", "v0.0.0");
 
   await prepareRun(after, "T-001");
-  assert((await Deno.readTextFile(join(t, ".git/hooks/pre-commit"))).includes("managed by sdd-init"));
+  assert((await io.readTextFile(join(t, ".git/hooks/pre-commit"))).includes("managed by sdd-init"));
   assertEquals(
-    await Deno.readTextFile(join(t, "docs/sdd/scripts/drift.ts")),
-    await Deno.readTextFile(join(REPO, ".agents/skills/sdd-init/assets/sdd/scripts/drift.ts")),
+    await io.readTextFile(join(t, "docs/sdd/scripts/drift.ts")),
+    await io.readTextFile(join(REPO, ".agents/skills/sdd-init/assets/sdd/scripts/drift.ts")),
   );
   assertEquals(await sh(t, "status", "--porcelain"), "");
 });
 
-Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテストは終わったら消す", async () => {
+test("採点: 落ちた項目を理由付きで記録し、隠したテストは終わったら消す", async () => {
   const paths = await setup();
   const t = paths.target;
   const { run } = await prepareRun(paths, "T-001");
 
   // 1回目: done.txt が無く、app を変えた → 不合格
   await writeFile(t, "app/x.php", "<?php // 変えた\n");
-  const transcript = join(await Deno.makeTempDir(), "chat.jsonl");
-  await Deno.writeTextFile(transcript, JSON.stringify({ role: "user", message: { content: [] } }) + "\n");
+  const transcript = join(await io.makeTempDir(), "chat.jsonl");
+  await io.writeTextFile(transcript, JSON.stringify({ role: "user", message: { content: [] } }) + "\n");
   const ng = await gradeRun(paths, undefined, { transcripts: [transcript] });
   assertFalse(ng.passed);
   const byId = Object.fromEntries(ng.checks.map((c) => [c.id, c]));
@@ -313,9 +318,12 @@ Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテス�
   assertFalse(byId.app.ok);
   assertEquals(byId.app.detail, "変わった: app/x.php");
   assertFalse(byId.hidden.ok);
-  assertEquals(ng.checks.map((c) => c.id), ["fmt", "done", "app", "word", "hidden"]);
+  assertEquals(
+    ng.checks.map((c) => c.id),
+    ["fmt", "done", "app", "word", "hidden"],
+  );
   // コマンドが書き換えたものは戻し、AI が残した変更は残す
-  assertEquals(await Deno.readTextFile(join(t, "app/x.php")), "<?php // 変えた\n");
+  assertEquals(await io.readTextFile(join(t, "app/x.php")), "<?php // 変えた\n");
   assertFalse(await exists(join(t, "fmt-output.txt")));
   assert(await exists(join(paths.runs, run.runId, "logs/hidden.log")));
   assertFalse(await exists(join(t, "hidden_tests")));
@@ -331,7 +339,10 @@ Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテス�
   assert(ok.passed);
   assertEquals(ok.score, 4 / 5);
   assertEquals(await sh(t, "status", "--porcelain"), "");
-  assertEquals(ok.commits.map((c) => c.split(" ").slice(1).join(" ")), ["feat: done"]);
+  assertEquals(
+    ok.commits.map((c) => c.split(" ").slice(1).join(" ")),
+    ["feat: done"],
+  );
   assert(await exists(join(paths.runs, run.runId, "repo.bundle")));
 
   const summary = summarize(await readScores(paths));
@@ -351,7 +362,7 @@ Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテス�
   assert(summarize([base, auto]).includes("ddddddd\t-\t自動\t1/1\t"));
 
   // excluded.md を置いた実行は集計から外し、外したことを表示する
-  await Deno.writeTextFile(join(paths.runs, run.runId, "excluded.md"), "試験場の環境の問題\n");
+  await io.writeTextFile(join(paths.runs, run.runId, "excluded.md"), "試験場の環境の問題\n");
   const scores = await readScores(paths);
   assertEquals(scores[0].excluded, "試験場の環境の問題");
   const without = summarize(scores);
@@ -359,7 +370,7 @@ Deno.test("採点: 落ちた項目を理由付きで記録し、隠したテス�
   assert(without.includes(`集計から外した実行（excluded.md）: ${run.runId}`));
 });
 
-Deno.test("採否: val の合格割合だけで決める。train の増減では却下しない", () => {
+test("採否: val の合格割合だけで決める。train の増減では却下しない", () => {
   const OLD = "a".repeat(40);
   const NEW = "b".repeat(40);
   let n = 0;
@@ -404,11 +415,10 @@ Deno.test("採否: val の合格割合だけで決める。train の増減では
   assert(valDown.reasons.some((r) => r.includes("V-1 の合格が減った")));
 
   // train が増えていなくても、val が減っていなければ採用する
-  const trainFlat = judgeImpact([
-    ...runs("T-1", OLD, [true, true, false]),
-    ...runs("T-1", NEW, [true, false, true]),
-    ...val([true, false, true]),
-  ], input);
+  const trainFlat = judgeImpact(
+    [...runs("T-1", OLD, [true, true, false]), ...runs("T-1", NEW, [true, false, true]), ...val([true, false, true])],
+    input,
+  );
   assertEquals(trainFlat.decision, "採用");
 
   const few = judgeImpact([...target, ...runs("V-1", OLD, [true, true, false]), ...runs("V-1", NEW, [true])], input);
@@ -420,38 +430,42 @@ Deno.test("採否: val の合格割合だけで決める。train の増減では
   assert(noVal.reasons.includes("val の問題が無い"));
 
   // 変更前が 0 のままでは、減っていないことにはならない
-  const valZero = judgeImpact([
-    ...target,
-    ...runs("V-1", OLD, [false, false, false]),
-    ...runs("V-1", NEW, [false, false, false]),
-  ], input);
+  const valZero = judgeImpact(
+    [...target, ...runs("V-1", OLD, [false, false, false]), ...runs("V-1", NEW, [false, false, false])],
+    input,
+  );
   assertEquals(valZero.decision, "却下");
   assert(valZero.reasons.some((r) => r.includes("V-1 の合格が 0 のまま（0/3 → 0/3）")));
 
-  const valRaised = judgeImpact([
-    ...target,
-    ...runs("V-1", OLD, [false, false, false]),
-    ...runs("V-1", NEW, [false, true, false]),
-  ], input);
+  const valRaised = judgeImpact(
+    [...target, ...runs("V-1", OLD, [false, false, false]), ...runs("V-1", NEW, [false, true, false])],
+    input,
+  );
   assertEquals(valRaised.decision, "採用");
 
   const two = { ...input, splitOf: { "T-1": "train", "V-1": "val", "V-2": "val" } as const };
-  const tie = judgeImpact([
-    ...target,
-    ...runs("V-1", OLD, [true, true, false]),
-    ...runs("V-1", NEW, [true, false, true]),
-    ...runs("V-2", OLD, [true, false, false]),
-    ...runs("V-2", NEW, [false, true, false]),
-  ], two);
+  const tie = judgeImpact(
+    [
+      ...target,
+      ...runs("V-1", OLD, [true, true, false]),
+      ...runs("V-1", NEW, [true, false, true]),
+      ...runs("V-2", OLD, [true, false, false]),
+      ...runs("V-2", NEW, [false, true, false]),
+    ],
+    two,
+  );
   assertEquals(tie.decision, "却下");
   assert(tie.reasons.some((r) => r.includes("上回っていない")));
 
-  const bothUp = judgeImpact([
-    ...target,
-    ...runs("V-1", OLD, [true, false, false]),
-    ...runs("V-1", NEW, [true, true, false]),
-    ...runs("V-2", OLD, [false, false, false]),
-    ...runs("V-2", NEW, [true, false, false]),
-  ], two);
+  const bothUp = judgeImpact(
+    [
+      ...target,
+      ...runs("V-1", OLD, [true, false, false]),
+      ...runs("V-1", NEW, [true, true, false]),
+      ...runs("V-2", OLD, [false, false, false]),
+      ...runs("V-2", NEW, [true, false, false]),
+    ],
+    two,
+  );
   assertEquals(bothUp.decision, "採用");
 });

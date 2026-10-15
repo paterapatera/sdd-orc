@@ -52,10 +52,7 @@ type QuickSpecBase<
   tasks: Readonly<
     Record<
       TaskId,
-      Task<
-        NoInfer<keyof E & string> | NoInfer<keyof I & string>,
-        NoInfer<AcIdOf<E>> | NoInfer<keyof I & string>
-      >
+      Task<NoInfer<keyof E & string> | NoInfer<keyof I & string>, NoInfer<AcIdOf<E>> | NoInfer<keyof I & string>>
     >
   >;
 };
@@ -84,8 +81,6 @@ export type QuickSpec<
 export function defineQuickSpec<
   const E extends Readonly<Record<FrId, FunctionalRequirement>>,
   const I extends Readonly<Record<InvId, Invariant>>,
->(
-  s: QuickSpec<E, I> & { expected: KeysMatch<E, FrId>; invariants: KeysMatch<I, InvId> },
-): QuickSpec<E, I> {
+>(s: QuickSpec<E, I> & { expected: KeysMatch<E, FrId>; invariants: KeysMatch<I, InvId> }): QuickSpec<E, I> {
   return s;
 }

@@ -1,19 +1,21 @@
+import * as io from "../harness/io.ts";
+import { test } from "bun:test";
 // 軽量モードの一連の流れを、実際のGitリポジトリで通す
 // （AIが判断する部分は、サンプルのspecで置き換える）
-import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import { assert, assertEquals, assertStringIncludes } from "./assert.ts";
 import { join } from "node:path";
 import { emptyRepo, FIXTURE_SPECS, install, sh, task, writeFile } from "./helpers.ts";
 
 async function exists(path: string) {
   try {
-    await Deno.stat(path);
+    await io.stat(path);
     return true;
   } catch {
     return false;
   }
 }
 
-Deno.test("軽量モード: 導入から完了処理（specの削除）まで", async () => {
+test("軽量モード: 導入から完了処理（specの削除）まで", async () => {
   // sdd-init
   const root = await emptyRepo();
   assertEquals((await install(root)).code, 0);
@@ -24,12 +26,12 @@ Deno.test("軽量モード: 導入から完了処理（specの削除）まで", 
 
   // sdd-start: ブランチを作り、issue.md を取り込む
   await sh(root, "switch", "-q", "-c", "ex-002-search-count");
-  await writeFile(root, "docs/specs/EX-002/issue.md", await Deno.readTextFile(join(FIXTURE_SPECS, "EX-002/issue.md")));
+  await writeFile(root, "docs/specs/EX-002/issue.md", await io.readTextFile(join(FIXTURE_SPECS, "EX-002/issue.md")));
   await sh(root, "add", ".");
   await sh(root, "commit", "-q", "-m", "EX-002: issueを取り込み");
 
   // sdd-quick: spec.ts を作ってコミット（pre-commit hook が検査する）
-  const spec = await Deno.readTextFile(join(FIXTURE_SPECS, "EX-002/spec.ts"));
+  const spec = await io.readTextFile(join(FIXTURE_SPECS, "EX-002/spec.ts"));
   await writeFile(root, "docs/specs/EX-002/spec.ts", spec);
   await sh(root, "add", ".");
   await sh(root, "commit", "-q", "-m", "EX-002: specを作成（軽量モード）");
@@ -68,7 +70,7 @@ Deno.test("軽量モード: 導入から完了処理（specの削除）まで", 
   const render = await task(root, "render", "EX-002");
   assertEquals(render.code, 0, render.out);
   const html = join(root, ".sdd/out/EX-002/index.html");
-  const htmlText = await Deno.readTextFile(html);
+  const htmlText = await io.readTextFile(html);
   assertStringIncludes(htmlText, "進捗: 2 / 2 件完了");
   assertStringIncludes(htmlText, "45件のデータがある");
 

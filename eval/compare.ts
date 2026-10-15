@@ -1,8 +1,9 @@
+import * as io from "../harness/io.ts";
 /**
  * 同じ問題の工程（sdd-req、sdd-design、sdd-tasks）を、複数のモデルで同じ入力から回し、成果物を集める（モデルどうしの比較用）。
  * 採点はしない（成果物を人が比べるため）。eval/runs/ の集計（summary）には入らない。
  *
- * 使い方: deno run --allow-all eval/compare.ts [--out <ディレクトリ>] [--workers <並列の数>] [--models <名前,...>] [--stages start,req,design,tasks]
+ * 使い方: bun eval/compare.ts [--out <ディレクトリ>] [--workers <並列の数>] [--models <名前,...>] [--stages start,req,design,tasks]
  *          [--worker-from <写しの番号>] [--timeout <分>] [--summary-only] [--refresh-skills]
  *   --out を既存のディレクトリにすると、終わった実行（成果物をコミットした result.json がある）を飛ばして続きから回す。
  *   --worker-from を変えると、別の写し（w<番号>から）を使う。動いている比較と並べて、やり直しを回すため。
@@ -64,7 +65,7 @@ const STAGES: Stage[] = [
 ];
 
 const { values } = parseArgs({
-  args: Deno.args,
+  args: io.args,
   options: {
     out: { type: "string" },
     workers: { type: "string", default: "5" },
@@ -91,14 +92,14 @@ const sdkDir = join(dirname(fileURLToPath(import.meta.url)), "sdk");
 
 const scenario = await loadScenario(paths, SCENARIO);
 const scenarioDir = join(paths.scenarios, scenario.id);
-const personaText = await Deno.readTextFile(join(scenarioDir, scenario.persona));
-const issueText = scenario.issue ? await Deno.readTextFile(join(scenarioDir, scenario.issue)) : "";
+const personaText = await io.readTextFile(join(scenarioDir, scenario.persona));
+const issueText = scenario.issue ? await io.readTextFile(join(scenarioDir, scenario.issue)) : "";
 
 // ---------------------------------------------------------------------------
 // 小さな道具
 
 async function run(cmd: string, args: string[], cwd: string): Promise<{ code: number; out: string }> {
-  const r = await new Deno.Command(cmd, { args, cwd, stdout: "piped", stderr: "piped" }).output();
+  const r = await new io.Command(cmd, { args, cwd, stdout: "piped", stderr: "piped" }).output();
   const dec = new TextDecoder();
   return { code: r.code, out: (dec.decode(r.stdout) + dec.decode(r.stderr)).trim() };
 }
@@ -109,9 +110,17 @@ async function git(cwd: string, ...args: string[]): Promise<string> {
   return r.out;
 }
 
-const lines = (s: string) => s.split("\n").map((l) => l.trim()).filter(Boolean);
-const exists = (path: string) => Deno.stat(path).then(() => true, () => false);
-const remove = (path: string) => Deno.remove(path, { recursive: true }).catch(() => {});
+const lines = (s: string) =>
+  s
+    .split("\n")
+    .map((l) => l.trim())
+    .filter(Boolean);
+const exists = (path: string) =>
+  io.stat(path).then(
+    () => true,
+    () => false,
+  );
+const remove = (path: string) => io.remove(path, { recursive: true }).catch(() => {});
 const log = (msg: string) => console.log(`[${new Date().toLocaleTimeString("ja-JP")}] ${msg}`);
 
 // ---------------------------------------------------------------------------
@@ -125,17 +134,17 @@ async function hookPath(wt: string) {
 
 /** 今のブランチ、すべての ref（origin の分も）、pre-commit hook を保存する */
 async function snapshot(wt: string, dir: string) {
-  await Deno.mkdir(dir, { recursive: true });
+  await io.mkdir(dir, { recursive: true });
   await git(wt, "fetch", "-q", "--prune", "origin");
   await git(wt, "bundle", "create", "-q", join(dir, "repo.bundle"), "--all");
-  const hook = await Deno.readTextFile(await hookPath(wt)).catch(() => null);
+  const hook = await io.readTextFile(await hookPath(wt)).catch(() => null);
   const meta: SnapMeta = { head: await git(wt, "branch", "--show-current"), hook };
-  await Deno.writeTextFile(join(dir, "snapshot.json"), JSON.stringify(meta, null, 2) + "\n");
+  await io.writeTextFile(join(dir, "snapshot.json"), JSON.stringify(meta, null, 2) + "\n");
 }
 
 /** 保存した状態に戻す（ローカルのブランチ、origin のブランチ、hook、未追跡のファイル） */
 async function restore(wt: string, dir: string) {
-  const meta: SnapMeta = JSON.parse(await Deno.readTextFile(join(dir, "snapshot.json")));
+  const meta: SnapMeta = JSON.parse(await io.readTextFile(join(dir, "snapshot.json")));
   const bundle = join(dir, "repo.bundle");
   await git(wt, "switch", "-q", "-f", "--detach", "HEAD");
   for (const b of lines(await git(wt, "for-each-ref", "--format=%(refname:short)", "refs/heads"))) {
@@ -164,8 +173,8 @@ async function restore(wt: string, dir: string) {
   const hook = await hookPath(wt);
   if (meta.hook === null) await remove(hook);
   else {
-    await Deno.writeTextFile(hook, meta.hook);
-    await Deno.chmod(hook, 0o755);
+    await io.writeTextFile(hook, meta.hook);
+    await io.chmod(hook, 0o755);
   }
 }
 
@@ -196,7 +205,7 @@ async function makeWorker(wt: string) {
   log(`写しを作ります: ${wt}`);
   await remove(wt);
   await remove(`${wt}.git`);
-  await Deno.mkdir(cmpRoot, { recursive: true });
+  await io.mkdir(cmpRoot, { recursive: true });
   const cp = await run("cp", ["-a", paths.target, wt], cmpRoot);
   if (cp.code !== 0) throw new Error(`写しを作れませんでした: ${cp.out}`);
   await git(cmpRoot, "init", "-q", "--bare", "-b", paths.branch, `${wt}.git`);
@@ -213,7 +222,7 @@ async function setup() {
   }
   log(`試験場を出発点に戻します（${paths.target}）`);
   const { run: info } = await prepareRun(paths, SCENARIO, { model: "compare" });
-  await Deno.writeTextFile(join(out, "prepare.json"), JSON.stringify(info, null, 2) + "\n");
+  await io.writeTextFile(join(out, "prepare.json"), JSON.stringify(info, null, 2) + "\n");
   for (const wt of workers) await makeWorker(wt);
   await snapshot(workers[0], base);
 }
@@ -242,12 +251,12 @@ const stageDir = (stage: string, label: string) => join(out, stage, label);
 async function runOne(stage: Stage, model: Model, input: string, wt: string): Promise<Result> {
   const dir = stageDir(stage.name, model.label);
   await remove(dir);
-  await Deno.mkdir(dir, { recursive: true });
+  await io.mkdir(dir, { recursive: true });
   await restore(wt, input);
   if (values["refresh-skills"]) await refreshSkills(wt);
   const startCommit = await git(wt, "rev-parse", "HEAD");
   const inputFile = join(dir, "driver-input.json");
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     inputFile,
     JSON.stringify({
       target: wt,
@@ -266,7 +275,7 @@ async function runOne(stage: Stage, model: Model, input: string, wt: string): Pr
   const started = Date.now();
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort(), timeoutMin * 60_000);
-  const { code } = await new Deno.Command("sh", {
+  const { code } = await new io.Command("sh", {
     args: ["-c", 'exec node --no-warnings driver.ts "$1" > "$2" 2>&1', "sh", inputFile, join(dir, "driver.log")],
     cwd: sdkDir,
     signal: ac.signal,
@@ -302,14 +311,14 @@ async function runOne(stage: Stage, model: Model, input: string, wt: string): Pr
     commits,
     uncommitted,
   };
-  await Deno.writeTextFile(join(dir, "result.json"), JSON.stringify(result, null, 2) + "\n");
+  await io.writeTextFile(join(dir, "result.json"), JSON.stringify(result, null, 2) + "\n");
   return result;
 }
 
 const ok = (r: Result | null) => !!r && r.exitCode === 0 && !r.timedOut && !!r.artifact?.committed;
 
 async function readResult(stage: string, label: string): Promise<Result | null> {
-  return JSON.parse(await Deno.readTextFile(join(stageDir(stage, label), "result.json")).catch(() => "null"));
+  return JSON.parse(await io.readTextFile(join(stageDir(stage, label), "result.json")).catch(() => "null"));
 }
 
 /** 工程の入力（前の工程の基準のモデルの終わりの状態） */
@@ -329,28 +338,31 @@ async function runStage(stage: Stage) {
     if (ok(await readResult(stage.name, m.label))) log(`${stage.name} / ${m.label}: 済み`);
     else queue.push(m);
   }
-  await Promise.all(workers.map(async (wt) => {
-    for (let m = queue.shift(); m; m = queue.shift()) {
-      log(`${stage.name} / ${m.label}: 開始（${basename(wt)}）`);
-      try {
-        const r = await runOne(stage, m, input, wt);
-        const art = r.artifact ? `${r.artifact.path}${r.artifact.committed ? "" : "（未コミット）"}` : "成果物なし";
-        log(
-          `${stage.name} / ${m.label}: 終了 ${r.durationSec}秒、終了コード ${r.exitCode}${
-            r.timedOut ? "（時間切れ）" : ""
-          }、${art}`,
-        );
-      } catch (e) {
-        log(`${stage.name} / ${m.label}: 失敗 ${e instanceof Error ? e.message : e}`);
+  await Promise.all(
+    workers.map(async (wt) => {
+      for (let m = queue.shift(); m; m = queue.shift()) {
+        log(`${stage.name} / ${m.label}: 開始（${basename(wt)}）`);
+        try {
+          const r = await runOne(stage, m, input, wt);
+          const art = r.artifact ? `${r.artifact.path}${r.artifact.committed ? "" : "（未コミット）"}` : "成果物なし";
+          log(
+            `${stage.name} / ${m.label}: 終了 ${r.durationSec}秒、終了コード ${r.exitCode}${
+              r.timedOut ? "（時間切れ）" : ""
+            }、${art}`,
+          );
+        } catch (e) {
+          log(`${stage.name} / ${m.label}: 失敗 ${e instanceof Error ? e.message : e}`);
+        }
       }
-    }
-  }));
+    }),
+  );
 }
 
 /** 人役への質問ツールの呼び出しの数と、聞いた質問の数 */
 async function countQuestions(dir: string): Promise<{ calls: number; questions: number }> {
-  const text = await Deno.readTextFile(join(dir, "persona.jsonl")).catch(() => "");
-  let calls = 0, questions = 0;
+  const text = await io.readTextFile(join(dir, "persona.jsonl")).catch(() => "");
+  let calls = 0,
+    questions = 0;
   for (const l of lines(text)) {
     const e = JSON.parse(l) as { kind: string; task: string };
     if (e.kind !== "AskQuestion") continue;
@@ -367,10 +379,11 @@ async function countQuestions(dir: string): Promise<{ calls: number; questions: 
 async function readTree(dir: string, prefix = ""): Promise<Map<string, string>> {
   const files = new Map<string, string>();
   if (!(await exists(dir))) return files;
-  for await (const e of Deno.readDir(dir)) {
+  for await (const e of io.readDir(dir)) {
     const rel = prefix ? `${prefix}/${e.name}` : e.name;
-    if (e.isDirectory) { for (const [k, v] of await readTree(join(dir, e.name), rel)) files.set(k, v); }
-    else if (e.isFile) files.set(rel, await Deno.readTextFile(join(dir, e.name)));
+    if (e.isDirectory) {
+      for (const [k, v] of await readTree(join(dir, e.name), rel)) files.set(k, v);
+    } else if (e.isFile) files.set(rel, await io.readTextFile(join(dir, e.name)));
   }
   return files;
 }
@@ -388,12 +401,12 @@ async function otherSpecChanges(stage: Stage, label: string): Promise<string[]> 
 async function collectArtifacts(stage: Stage, label: string, r: Result) {
   if (!r.artifact || !stage.artifact) return;
   const dst = join(out, "artifacts", stage.name);
-  await Deno.mkdir(dst, { recursive: true });
+  await io.mkdir(dst, { recursive: true });
   const dir = stageDir(stage.name, label);
   const rel = r.artifact.path.replace(/^docs\/specs\//, "");
-  await Deno.copyFile(join(dir, "specs", rel), join(dst, `${label}.${stage.artifact.split(".").pop()}`));
+  await io.copyFile(join(dir, "specs", rel), join(dst, `${label}.${stage.artifact.split(".").pop()}`));
   const html = join(dir, "sdd/out", dirname(rel), "index.html");
-  if (await exists(html)) await Deno.copyFile(html, join(dst, `${label}.html`));
+  if (await exists(html)) await io.copyFile(html, join(dst, `${label}.html`));
 }
 
 async function writeSummary() {
@@ -416,22 +429,23 @@ async function writeSummary() {
       );
     }
   }
-  const refresh = await Deno.readTextFile(join(out, "refresh.json")).catch(() => "");
-  const head = `# ${SCENARIO} のモデル比較\n\n` +
-    `- 基準（次の工程の入力）: ${BASELINE}\n- 人役: ${PERSONA.id}（${
-      PERSONA.params.map((x) => `${x.id}=${x.value}`).join(", ")
-    }）\n` +
+  const refresh = await io.readTextFile(join(out, "refresh.json")).catch(() => "");
+  const head =
+    `# ${SCENARIO} のモデル比較\n\n` +
+    `- 基準（次の工程の入力）: ${BASELINE}\n- 人役: ${PERSONA.id}（${PERSONA.params
+      .map((x) => `${x.id}=${x.value}`)
+      .join(", ")}）\n` +
     `- 各工程は新しいチャットで、スキルを1つだけ呼んだ\n` +
     `- 成果物は artifacts/<工程>/<モデル>.ts と .html に並べた\n` +
     (refresh ? `- ${refresh.trim()}\n` : "") +
     `\n`;
-  await Deno.writeTextFile(join(out, "summary.md"), head + rows.join("\n") + "\n");
+  await io.writeTextFile(join(out, "summary.md"), head + rows.join("\n") + "\n");
 }
 
-await Deno.mkdir(out, { recursive: true });
+await io.mkdir(out, { recursive: true });
 if (values["refresh-skills"]) {
   const skillsCommit = (await git(paths.repo, "rev-parse", "HEAD")).slice(0, 7);
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     join(out, "refresh.json"),
     `各実行の前に、このリポジトリのスキル ${skillsCommit} と道具を入れ直した。\n`,
   );
@@ -439,7 +453,7 @@ if (values["refresh-skills"]) {
 log(`出力: ${out}`);
 if (values["summary-only"]) {
   await writeSummary();
-  Deno.exit(0);
+  io.exit(0);
 }
 await setup();
 for (const stage of stages) {

@@ -1,8 +1,10 @@
-import { assert, assertEquals, assertStringIncludes } from "@std/assert";
+import * as io from "../harness/io.ts";
+import { test } from "bun:test";
+import { assert, assertEquals, assertStringIncludes } from "./assert.ts";
 import { join } from "node:path";
 import { gitIdentity, makeProject, patchFile, sh, task, writeFile } from "./helpers.ts";
 
-Deno.test("サンプルのspecは型チェックと検証を通る", async () => {
+test("サンプルのspecは型チェックと検証を通る", async () => {
   const root = await makeProject();
   const check = await task(root, "check");
   assertEquals(check.code, 0, check.out);
@@ -11,7 +13,7 @@ Deno.test("サンプルのspecは型チェックと検証を通る", async () =>
   assertStringIncludes(verify.out, "エラー 0 件");
 });
 
-Deno.test("型の誤りは check で検出される", async () => {
+test("型の誤りは check で検出される", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, "docs/specs/EX-001/design.ts", `"FR-002": ["AuthService"],`, "");
   const r = await task(root, "check", "EX-001");
@@ -19,7 +21,7 @@ Deno.test("型の誤りは check で検出される", async () => {
   assertStringIncludes(r.out, "FR-002");
 });
 
-Deno.test("受け入れ条件を検証するテストタスクが無ければエラー", async () => {
+test("受け入れ条件を検証するテストタスクが無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -32,7 +34,7 @@ Deno.test("受け入れ条件を検証するテストタスクが無ければエ
   assertStringIncludes(r.out, "受け入れ条件 AC-003 を検証するテストタスクがありません");
 });
 
-Deno.test("変えてはいけない振る舞いを検証するテストタスクが無ければエラー", async () => {
+test("変えてはいけない振る舞いを検証するテストタスクが無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, "docs/specs/EX-001/tasks.ts", `verifies: ["INV-001"],`, "");
   const r = await task(root, "verify", "EX-001");
@@ -40,7 +42,7 @@ Deno.test("変えてはいけない振る舞いを検証するテストタスク
   assertStringIncludes(r.out, "INV-001 を検証するテストタスクがありません");
 });
 
-Deno.test("issue がディレクトリ名と一致しなければエラー", async () => {
+test("issue がディレクトリ名と一致しなければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, "docs/specs/EX-001/requirements.ts", `issue: "EX-001"`, `issue: "EX-999"`);
   const r = await task(root, "verify", "EX-001");
@@ -48,7 +50,7 @@ Deno.test("issue がディレクトリ名と一致しなければエラー", asy
   assertStringIncludes(r.out, "ディレクトリ名「EX-001」と一致しません");
 });
 
-Deno.test("空の文字列はエラー", async () => {
+test("空の文字列はエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -61,7 +63,7 @@ Deno.test("空の文字列はエラー", async () => {
   assertStringIncludes(r.out, "design.components.LoginAttemptRepository.responsibility が空です");
 });
 
-Deno.test("IDの桁数が違えばエラー", async () => {
+test("IDの桁数が違えばエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, "docs/specs/EX-001/tasks.ts", `"T-006"`, `"T-6"`);
   const r = await task(root, "verify", "EX-001");
@@ -69,7 +71,7 @@ Deno.test("IDの桁数が違えばエラー", async () => {
   assertStringIncludes(r.out, "タスクのID「T-6」の形式が違います");
 });
 
-Deno.test("EARSの response が「ならない」で終わらなければ警告", async () => {
+test("EARSの response が「ならない」で終わらなければ警告", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, "docs/specs/EX-001/requirements.ts", "15分間ロックしなければならない", "15分間ロックする");
   const r = await task(root, "verify", "EX-001");
@@ -78,14 +80,14 @@ Deno.test("EARSの response が「ならない」で終わらなければ警告"
   assertStringIncludes(r.out, "「〜しなければならない」で終えてください");
 });
 
-Deno.test("--finish では未完了のタスクがエラーになる", async () => {
+test("--finish では未完了のタスクがエラーになる", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const r = await task(root, "verify", "--finish", "EX-001");
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "T-003「login_attempts テーブルと LoginAttemptRepository を追加する」が完了していません");
 });
 
-Deno.test("nfr.ts に無い基準を上書きしようとするとエラー", async () => {
+test("nfr.ts に無い基準を上書きしようとするとエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(
     root,
@@ -108,7 +110,7 @@ export default defineBaselineNfrs({
   assertStringIncludes(r.out, "BNFR-001 が docs/sdd/nfr.ts にありません");
 });
 
-Deno.test("バグの修正で最初のタスクがテストでなければエラー", async () => {
+test("バグの修正で最初のタスクがテストでなければエラー", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   await patchFile(
     root,
@@ -123,31 +125,31 @@ Deno.test("バグの修正で最初のタスクがテストでなければエラ
   assertStringIncludes(r.out, "最初のタスクを再現テスト");
 });
 
-Deno.test("軽量モードと完全モードのファイルが混在するとエラー", async () => {
+test("軽量モードと完全モードのファイルが混在するとエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
-  await Deno.copyFile(`${root}/docs/specs/EX-001/requirements.ts`, `${root}/docs/specs/EX-001/spec.ts`);
+  await io.copyFile(`${root}/docs/specs/EX-001/requirements.ts`, `${root}/docs/specs/EX-001/spec.ts`);
   const r = await task(root, "verify", "EX-001");
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "混在しています");
 });
 
-Deno.test("issue.md が無ければエラー", async () => {
+test("issue.md が無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
-  await Deno.remove(`${root}/docs/specs/EX-002/issue.md`);
+  await io.remove(`${root}/docs/specs/EX-002/issue.md`);
   const r = await task(root, "verify", "EX-002");
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "issue.md がありません");
 });
 
-Deno.test("設計が無いままタスクがあるとエラー", async () => {
+test("設計が無いままタスクがあるとエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
-  await Deno.remove(`${root}/docs/specs/EX-001/design.ts`);
+  await io.remove(`${root}/docs/specs/EX-001/design.ts`);
   const r = await task(root, "verify", "EX-001");
   assert(r.code !== 0, r.out);
   assertStringIncludes(r.out, "design.ts が無いままタスクが作られています");
 });
 
-Deno.test("specが無ければ何もせずに終わる", async () => {
+test("specが無ければ何もせずに終わる", async () => {
   const root = await makeProject({ specs: [] });
   const r = await task(root, "verify");
   assertEquals(r.code, 0, r.out);
@@ -156,7 +158,7 @@ Deno.test("specが無ければ何もせずに終わる", async () => {
 
 // --- 要件の十分性 ---
 
-Deno.test("境界値の受け入れ条件も理由も無ければエラー", async () => {
+test("境界値の受け入れ条件も理由も無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -169,7 +171,7 @@ Deno.test("境界値の受け入れ条件も理由も無ければエラー", asy
   assertStringIncludes(r.out, 'FR-002 に境界値（kind: "boundary"）の受け入れ条件がありません');
 });
 
-Deno.test("正常系の受け入れ条件が無ければエラー", async () => {
+test("正常系の受け入れ条件が無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   await patchFile(root, "docs/specs/EX-002/spec.ts", `kind: "normal",`, `kind: "boundary",`);
   const r = await task(root, "verify", "EX-002");
@@ -177,7 +179,7 @@ Deno.test("正常系の受け入れ条件が無ければエラー", async () => 
   assertStringIncludes(r.out, 'FR-001 に正常系（kind: "normal"）の受け入れ条件がありません');
 });
 
-Deno.test("issue.md の受け入れ条件が要件に対応付けられていなければエラー", async () => {
+test("issue.md の受け入れ条件が要件に対応付けられていなければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -190,7 +192,7 @@ Deno.test("issue.md の受け入れ条件が要件に対応付けられていな
   assertStringIncludes(r.out, "issue.md の受け入れ条件「ロックされたらメールで知らせる」が issueCoverage にありません");
 });
 
-Deno.test("issue.md の受け入れ条件を除外する場合は理由があればよい", async () => {
+test("issue.md の受け入れ条件を除外する場合は理由があればよい", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -208,7 +210,7 @@ Deno.test("issue.md の受け入れ条件を除外する場合は理由があれ
   assertEquals(r.code, 0, r.out);
 });
 
-Deno.test("非機能要件が nfrReview に挙げられていなければエラー", async () => {
+test("非機能要件が nfrReview に挙げられていなければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -221,13 +223,14 @@ Deno.test("非機能要件が nfrReview に挙げられていなければエラ�
   assertStringIncludes(r.out, "NFR-001 が nfrReview の「性能・拡張性」に挙げられていません");
 });
 
-Deno.test("変えてはいけない振る舞いが空なら理由が必要", async () => {
+test("変えてはいけない振る舞いが空なら理由が必要", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   const path = `${root}/docs/specs/EX-002/spec.ts`;
-  const src = await Deno.readTextFile(path);
-  await Deno.writeTextFile(
+  const src = await io.readTextFile(path);
+  await io.writeTextFile(
     path,
-    src.replace(/invariants: \{[\s\S]*?\n {2}\},\n/, "invariants: {},\n")
+    src
+      .replace(/invariants: \{[\s\S]*?\n {2}\},\n/, "invariants: {},\n")
       .replace(`verifies: ["AC-001", "AC-002", "INV-001"]`, `verifies: ["AC-001", "AC-002"]`),
   );
   const r = await task(root, "verify", "EX-002");
@@ -237,7 +240,7 @@ Deno.test("変えてはいけない振る舞いが空なら理由が必要", asy
 
 // --- 設計の十分性 ---
 
-Deno.test("コンポーネントのファイルが impact に無ければエラー", async () => {
+test("コンポーネントのファイルが impact に無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, "docs/specs/EX-001/design.ts", `modify: ["src/auth/auth_service.py"],`, `modify: [],`);
   const r = await task(root, "verify", "EX-001");
@@ -245,7 +248,7 @@ Deno.test("コンポーネントのファイルが impact に無ければエラ�
   assertStringIncludes(r.out, "コンポーネント AuthService のファイル src/auth/auth_service.py が impact にありません");
 });
 
-Deno.test("異常系の受け入れ条件に対応するエラー処理が無ければエラー", async () => {
+test("異常系の受け入れ条件に対応するエラー処理が無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, "docs/specs/EX-001/design.ts", `refs: ["AC-003"],`, "");
   const r = await task(root, "verify", "EX-001");
@@ -253,7 +256,7 @@ Deno.test("異常系の受け入れ条件に対応するエラー処理が無け
   assertStringIncludes(r.out, "異常系の受け入れ条件 AC-003 に対応するエラー処理");
 });
 
-Deno.test("既存のインターフェースを変更するなら compatibility が必要", async () => {
+test("既存のインターフェースを変更するなら compatibility が必要", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   // 型チェックを通らない形なので、verify が実行時にも検出することを確かめる
   await patchFile(root, "docs/specs/EX-001/design.ts", `change: "new",`, `change: "modified" as "new",`);
@@ -262,7 +265,7 @@ Deno.test("既存のインターフェースを変更するなら compatibility 
   assertStringIncludes(r.out, "interfaces.evaluate は既存のものの変更なので、compatibility");
 });
 
-Deno.test("変えてはいけない振る舞いの守り方が無ければエラー", async () => {
+test("変えてはいけない振る舞いの守り方が無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -277,7 +280,7 @@ Deno.test("変えてはいけない振る舞いの守り方が無ければエラ
 
 // --- 試行を受けた検査 ---
 
-Deno.test("要件に曖昧な言葉があれば警告する", async () => {
+test("要件に曖昧な言葉があれば警告する", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -297,7 +300,7 @@ Deno.test("要件に曖昧な言葉があれば警告する", async () => {
   assertStringIncludes(r.out, "AC-002 の then に「または」があります");
 });
 
-Deno.test("「同等」「等しい」は曖昧な言葉として扱わない", async () => {
+test("「同等」「等しい」は曖昧な言葉として扱わない", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -309,10 +312,10 @@ Deno.test("「同等」「等しい」は曖昧な言葉として扱わない", 
   assertEquals(r.out.includes("曖昧な言葉"), false, r.out);
 });
 
-Deno.test("すべて完了していて人が確かめる受け入れ条件があるなら、受け入れテストの準備が必要", async () => {
+test("すべて完了していて人が確かめる受け入れ条件があるなら、受け入れテストの準備が必要", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   const path = `${root}/docs/specs/EX-002/spec.ts`;
-  await Deno.writeTextFile(path, (await Deno.readTextFile(path)).replaceAll(`status: "todo"`, `status: "done"`));
+  await io.writeTextFile(path, (await io.readTextFile(path)).replaceAll(`status: "todo"`, `status: "done"`));
   const r = await task(root, "verify", "EX-002");
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "受け入れテストの準備（acceptanceGuide）がありません");
@@ -327,7 +330,7 @@ export default defineConventions({
 });
 `;
 
-Deno.test("手で守る規約の守り方が設計に無ければエラー", async () => {
+test("手で守る規約の守り方が設計に無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/conventions.ts", CONVENTIONS);
   const r = await task(root, "verify", "EX-001");
@@ -352,7 +355,7 @@ export default defineBaselineNfrs({
 });
 `;
 
-Deno.test("baseline にしたカテゴリのプロジェクト全体の非機能要件は、確かめるか理由を書く", async () => {
+test("baseline にしたカテゴリのプロジェクト全体の非機能要件は、確かめるか理由を書く", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/nfr.ts", NFR);
   // EX-001 は「可用性」を baseline にしている（性能・拡張性は added）
@@ -371,7 +374,7 @@ Deno.test("baseline にしたカテゴリのプロジェクト全体の非機能
   assertEquals(ok.code, 0, ok.out);
 });
 
-Deno.test("プロジェクト全体の非機能要件をテストタスクで確かめてもよい", async () => {
+test("プロジェクト全体の非機能要件をテストタスクで確かめてもよい", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/nfr.ts", NFR);
   await patchFile(root, "docs/specs/EX-001/tasks.ts", `verifies: ["NFR-001"],`, `verifies: ["NFR-001", "BNFR-002"],`);
@@ -383,13 +386,13 @@ Deno.test("プロジェクト全体の非機能要件をテストタスクで確
 
 async function setUi(root: string) {
   const path = `${root}/docs/sdd/config.ts`;
-  await Deno.writeTextFile(
+  await io.writeTextFile(
     path,
-    (await Deno.readTextFile(path)).replace("staleBranchDays: 30,", "staleBranchDays: 30,\n  ui: true,"),
+    (await io.readTextFile(path)).replace("staleBranchDays: 30,", "staleBranchDays: 30,\n  ui: true,"),
   );
 }
 
-Deno.test("画面がある案件では、人が確かめる受け入れ条件に E2E のタスクが必要", async () => {
+test("画面がある案件では、人が確かめる受け入れ条件に E2E のタスクが必要", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await setUi(root);
   const r = await task(root, "verify", "EX-001");
@@ -415,7 +418,7 @@ Deno.test("画面がある案件では、人が確かめる受け入れ条件に
   assertEquals(ok.code, 0, ok.out);
 });
 
-Deno.test("ADR になる判断を AI が決めていたらエラー", async () => {
+test("ADR になる判断を AI が決めていたらエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, "docs/specs/EX-001/design.ts", "adr: false", "adr: true");
   const r = await task(root, "verify", "EX-001");
@@ -423,7 +426,7 @@ Deno.test("ADR になる判断を AI が決めていたらエラー", async () =
   assertStringIncludes(r.out, `ADR になる判断（adr: true）なので、ユーザーに質問して決める`);
 });
 
-Deno.test("守り方の欄に規約を守らないことが書かれていたら、ユーザーが決めた逸脱の判断が必要", async () => {
+test("守り方の欄に規約を守らないことが書かれていたら、ユーザーが決めた逸脱の判断が必要", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/conventions.ts", CONVENTIONS);
   await patchFile(
@@ -446,7 +449,7 @@ Deno.test("守り方の欄に規約を守らないことが書かれていたら
   assertEquals(ok.code, 0, ok.out);
 });
 
-Deno.test("軽量モードでは規約から逸脱できない", async () => {
+test("軽量モードでは規約から逸脱できない", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
   await writeFile(root, "docs/sdd/conventions.ts", CONVENTIONS);
   await patchFile(
@@ -460,7 +463,7 @@ Deno.test("軽量モードでは規約から逸脱できない", async () => {
   assertStringIncludes(r.out, "軽量モードでは規約から逸脱できない");
 });
 
-Deno.test("チェックリストに未確定と書いたまま未確定の点が空ならエラー", async () => {
+test("チェックリストに未確定と書いたまま未確定の点が空ならエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -473,7 +476,7 @@ Deno.test("チェックリストに未確定と書いたまま未確定の点が
   assertStringIncludes(r.out, "checklist.dataStates に「未確定」とありますが、未確定の点（openQuestions）がありません");
 });
 
-Deno.test("チェックリストで設計に先送りした値があればエラー", async () => {
+test("チェックリストで設計に先送りした値があればエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -486,7 +489,7 @@ Deno.test("チェックリストで設計に先送りした値があればエラ
   assertStringIncludes(r.out, "checklist.inputValidation に「設計で上限を定義」とあります");
 });
 
-Deno.test("未確定の点が残っている間は、チェックリストの未確定はエラーにしない", async () => {
+test("未確定の点が残っている間は、チェックリストの未確定はエラーにしない", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -505,14 +508,9 @@ Deno.test("未確定の点が残っている間は、チェックリストの未
   assertStringIncludes(r.out, "未確定の点が 1 件残っています");
 });
 
-Deno.test("軽量モードでチェックリストに未確定と書いていればエラー", async () => {
+test("軽量モードでチェックリストに未確定と書いていればエラー", async () => {
   const root = await makeProject({ specs: ["EX-002"] });
-  await patchFile(
-    root,
-    "docs/specs/EX-002/spec.ts",
-    `note: "入力は変わらない"`,
-    `note: "ページの大きさは未定"`,
-  );
+  await patchFile(root, "docs/specs/EX-002/spec.ts", `note: "入力は変わらない"`, `note: "ページの大きさは未定"`);
   const r = await task(root, "verify", "EX-002");
   assertEquals(r.code, 1, r.out);
   assertStringIncludes(r.out, "checklist.inputValidation に「未定」とあります");
@@ -523,18 +521,18 @@ const REQ = "docs/specs/EX-001/requirements.ts";
 /** サンプルの values と answers を置き換える */
 async function setValues(root: string, values: string, answers = "{}") {
   const path = `${root}/${REQ}`;
-  const text = await Deno.readTextFile(path);
+  const text = await io.readTextFile(path);
   const next = text.replace(
     /values: \[\],\n\s*noValuesReason: "[^"]*",\n\s*answers: \{\},/,
     `values: ${values},\n  answers: ${answers},`,
   );
   if (next === text) throw new Error("values が見つかりません");
-  await Deno.writeTextFile(path, next);
+  await io.writeTextFile(path, next);
 }
 
 const display = (aspects: string) => `[{ target: "ロック中の案内", kind: "textDisplay", aspects: { ${aspects} } }]`;
 
-Deno.test("values が空で理由も無ければエラー", async () => {
+test("values が空で理由も無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, REQ, "noValuesReason:", "// noValuesReason:");
   const r = await task(root, "verify", "EX-001");
@@ -542,7 +540,7 @@ Deno.test("values が空で理由も無ければエラー", async () => {
   assertStringIncludes(r.out, "入力と表示の一覧（values）が空です");
 });
 
-Deno.test("values の観点がすべて確かめられる出どころで決まっていれば通る", async () => {
+test("values の観点がすべて確かめられる出どころで決まっていれば通る", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await setValues(
     root,
@@ -558,7 +556,7 @@ Deno.test("values の観点がすべて確かめられる出どころで決ま�
   assertStringIncludes(r.out, "エラー 0 件");
 });
 
-Deno.test("values の観点が欠けていればエラー", async () => {
+test("values の観点が欠けていればエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await setValues(root, display(`long: { open: true }`));
   const r = await task(root, "verify", "EX-001");
@@ -569,7 +567,7 @@ Deno.test("values の観点が欠けていればエラー", async () => {
   );
 });
 
-Deno.test("values の種類、観点、参照する ID が無ければエラー", async () => {
+test("values の種類、観点、参照する ID が無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await setValues(
     root,
@@ -583,7 +581,7 @@ Deno.test("values の種類、観点、参照する ID が無ければエラー"
   assertStringIncludes(r.out, "values[2]（c）の観点 long が参照している AC-009 がありません");
 });
 
-Deno.test("values の出どころが確かめられなければエラー", async () => {
+test("values の出どころが確かめられなければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await setValues(
     root,
@@ -600,7 +598,7 @@ Deno.test("values の出どころが確かめられなければエラー", async
   assertStringIncludes(r.out, "観点 empty（値が空のときの表示）に出どころ（issue、code、answer のどれか）がありません");
 });
 
-Deno.test("values の issue からの引用は、空白と記号の違いを見ない", async () => {
+test("values の issue からの引用は、空白と記号の違いを見ない", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await setValues(
     root,
@@ -612,7 +610,7 @@ Deno.test("values の issue からの引用は、空白と記号の違いを見�
   assertEquals(r.code, 0, r.out);
 });
 
-Deno.test("関係しない扱いの出どころが人の回答でなければエラー", async () => {
+test("関係しない扱いの出どころが人の回答でなければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await setValues(
     root,
@@ -630,7 +628,7 @@ Deno.test("関係しない扱いの出どころが人の回答でなければエ
   );
 });
 
-Deno.test("出どころの回答が answers に無ければエラー", async () => {
+test("出どころの回答が answers に無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await setValues(
     root,
@@ -646,7 +644,7 @@ Deno.test("出どころの回答が answers に無ければエラー", async () 
   assert(!r.out.includes("ANS-001 が answers にありません"), r.out);
 });
 
-Deno.test("answers が無ければエラー", async () => {
+test("answers が無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, REQ, "answers: {},\n", "");
   const r = await task(root, "verify", "EX-001");
@@ -654,7 +652,7 @@ Deno.test("answers が無ければエラー", async () => {
   assertStringIncludes(r.out, "人の回答（answers）がありません");
 });
 
-Deno.test("values の未確定の観点は未確定の点に数え、--finish ではエラー", async () => {
+test("values の未確定の観点は未確定の点に数え、--finish ではエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await setValues(
     root,
@@ -670,7 +668,7 @@ Deno.test("values の未確定の観点は未確定の点に数え、--finish �
   assertStringIncludes(f.out, "[エラー] requirements.ts: 未確定の点が 1 件残っています");
 });
 
-Deno.test("openQuestions の観点に複数の点を並べるとエラー", async () => {
+test("openQuestions の観点に複数の点を並べるとエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -690,7 +688,7 @@ Deno.test("openQuestions の観点に複数の点を並べるとエラー", asyn
   );
 });
 
-Deno.test("openQuestions の観点で、ひらがなの「と」「や」は並びとみなさない", async () => {
+test("openQuestions の観点で、ひらがなの「と」「や」は並びとみなさない", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(
     root,
@@ -732,7 +730,11 @@ async function markAsked(root: string, ids: string[]) {
 }
 /** design.ts の answers を差し替え、回答の ID を書いた ADR になる判断を足す */
 async function addStructureAnswers(root: string, answers: string, cited: string, asked = true) {
-  if (asked) await markAsked(root, [...answers.matchAll(/"(ANS-\d+)"/g)].map((m) => m[1]));
+  if (asked)
+    await markAsked(
+      root,
+      [...answers.matchAll(/"(ANS-\d+)"/g)].map((m) => m[1]),
+    );
   await patchFile(root, DESIGN, "answers: {},", `answers: { ${answers} },`);
   await patchFile(
     root,
@@ -751,11 +753,10 @@ async function addStructureAnswers(root: string, answers: string, cited: string,
       title: "失敗回数の保存先",`,
   );
 }
-const PLACEMENT_ANSWER =
-  `"ANS-001": { about: { placement: ["src/storage/", "migrations/"] }, question: "q", answer: "a" }`;
+const PLACEMENT_ANSWER = `"ANS-001": { about: { placement: ["src/storage/", "migrations/"] }, question: "q", answer: "a" }`;
 const LINK_ANSWER = `"ANS-002": { about: { link: [["src/auth/"], ["src/storage/"]] }, question: "q", answer: "a" }`;
 
-Deno.test("新しいコンポーネントに置き場所の根拠が無ければエラー", async () => {
+test("新しいコンポーネントに置き場所の根拠が無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, DESIGN, `placement: { component: "AuthService" },`, "");
   const r = await task(root, "verify", "EX-001");
@@ -763,7 +764,7 @@ Deno.test("新しいコンポーネントに置き場所の根拠が無ければ
   assertStringIncludes(r.out, "新しいコンポーネント LockoutPolicy に placement（置き場所の根拠）がありません");
 });
 
-Deno.test("置き場所の引用は、architecture.ts にあり、モジュールのパスを1つだけ含む文でなければエラー", async () => {
+test("置き場所の引用は、architecture.ts にあり、モジュールのパスを1つだけ含む文でなければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
   const quote = (text: string) =>
@@ -809,7 +810,7 @@ Deno.test("置き場所の引用は、architecture.ts にあり、モジュー�
   assertEquals(r.code, 0, r.out);
 });
 
-Deno.test("既存のコンポーネントを置き場所の根拠にするなら、同じモジュールになければエラー", async () => {
+test("既存のコンポーネントを置き場所の根拠にするなら、同じモジュールになければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
   for (let i = 0; i < 2; i++) {
@@ -824,7 +825,7 @@ Deno.test("既存のコンポーネントを置き場所の根拠にするなら
   assertEquals(r.out.includes("LoginAttemptRepository の置き場所"), false, r.out);
 });
 
-Deno.test("根拠の部品のモジュールに依存するモジュールの、同じ拡張子の既存のファイルがある場所なら、根拠にできる", async () => {
+test("根拠の部品のモジュールに依存するモジュールの、同じ拡張子の既存のファイルがある場所なら、根拠にできる", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
   for (let i = 0; i < 2; i++) {
@@ -840,9 +841,10 @@ Deno.test("根拠の部品のモジュールに依存するモジュールの、
   assertStringIncludes(r.out, "依存する（dependsOn）モジュールの前例のある場所");
 
   const arch = (auth: string, billing: string) =>
-    ARCHITECTURE
-      .replace(`responsibility: "認証" }`, `responsibility: "認証", dependsOn: [${auth}] }`)
-      .replace(`responsibility: "請求" }`, `responsibility: "請求", dependsOn: [${billing}] }`);
+    ARCHITECTURE.replace(`responsibility: "認証" }`, `responsibility: "認証", dependsOn: [${auth}] }`).replace(
+      `responsibility: "請求" }`,
+      `responsibility: "請求", dependsOn: [${billing}] }`,
+    );
   await writeFile(root, "docs/sdd/architecture.ts", arch(`"billing"`, ""));
   r = await task(root, "verify", "EX-001");
   assertEquals(r.code, 1, r.out);
@@ -862,7 +864,7 @@ Deno.test("根拠の部品のモジュールに依存するモジュールの、
     `files: ["src/billing/lockout_policy.py"],\n      placement: { component: "AuthService" },`,
   );
 
-  await Deno.remove(join(root, "src/billing/invoice.py"));
+  await io.remove(join(root, "src/billing/invoice.py"));
   await writeFile(root, "src/billing/invoice.ts", "");
   await sh(root, "add", "-A");
   await sh(root, "commit", "-q", "-m", "no precedent");
@@ -871,7 +873,7 @@ Deno.test("根拠の部品のモジュールに依存するモジュールの、
   assertStringIncludes(r.out, "依存する（dependsOn）モジュールの前例のある場所");
 });
 
-Deno.test("恒久ドキュメントか回答を根拠にした新しいコンポーネントは根拠にでき、部品を根拠にした新しいコンポーネントは根拠にできない", async () => {
+test("恒久ドキュメントか回答を根拠にした新しいコンポーネントは根拠にでき、部品を根拠にした新しいコンポーネントは根拠にできない", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
   await patchFile(
@@ -903,7 +905,7 @@ Deno.test("恒久ドキュメントか回答を根拠にした新しいコンポ
   assertEquals(r.code, 0, r.out);
 });
 
-Deno.test("既存のコンポーネントを置き場所の根拠にするなら、新しいコンポーネントと依存でつながっていなければエラー", async () => {
+test("既存のコンポーネントを置き場所の根拠にするなら、新しいコンポーネントと依存でつながっていなければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
   await patchFile(root, DESIGN, `    { from: "AuthService", to: "LockoutPolicy", label: "判定" },\n`, "");
@@ -918,7 +920,7 @@ Deno.test("既存のコンポーネントを置き場所の根拠にするなら
   assertEquals(r.out.includes(`{ component: "AuthService" }`), false, r.out);
 });
 
-Deno.test("置き場所を決めている恒久ドキュメントを、設計の有無にかかわらず表示する", async () => {
+test("置き場所を決めている恒久ドキュメントを、設計の有無にかかわらず表示する", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
   await writeFile(root, "docs/sdd/adr/ADR-0001.ts", adr("accepted"));
@@ -941,13 +943,13 @@ Deno.test("置き場所を決めている恒久ドキュメントを、設計の
     assertEquals(r.out.includes(absent), false, `${absent}\n${r.out}`);
   }
 
-  await Deno.remove(join(root, "docs/specs/EX-001/tasks.ts"));
-  await Deno.remove(join(root, DESIGN));
+  await io.remove(join(root, "docs/specs/EX-001/tasks.ts"));
+  await io.remove(join(root, DESIGN));
   r = await task(root, "verify", "EX-001");
   assertStringIncludes(r.out, "ADR-0001: t 認証の部品は src/auth/ に置く");
 });
 
-Deno.test("置き場所の根拠が無ければ、根拠にできる ADR と architecture.ts の記述を挙げる", async () => {
+test("置き場所の根拠が無ければ、根拠にできる ADR と architecture.ts の記述を挙げる", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
   await writeFile(root, "docs/sdd/adr/ADR-0001.ts", adr("accepted"));
@@ -967,7 +969,7 @@ Deno.test("置き場所の根拠が無ければ、根拠にできる ADR と arc
   assertStringIncludes(r.out, "どれからも決まりません。ユーザーに1件ずつ質問し、回答を answers に書いてその ID を指す");
 });
 
-Deno.test("人の回答を置き場所の根拠にするなら、answers にあり、そのパスへの回答でなければエラー", async () => {
+test("人の回答を置き場所の根拠にするなら、answers にあり、そのパスへの回答でなければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const placement = (basis: string) =>
     patchFile(root, DESIGN, `placement: { component: "AuthService" },`, `placement: ${basis},`);
@@ -996,7 +998,7 @@ Deno.test("人の回答を置き場所の根拠にするなら、answers にあ�
   assertStringIncludes(r.out, "構成の回答 ANS-001 の場所 src/storage/ は、accepted の ADR-0001 が書いています");
 });
 
-Deno.test("未回答の構成の回答はエラーにし、回答があれば人に確かめる一覧に出す", async () => {
+test("未回答の構成の回答はエラーにし、回答があれば人に確かめる一覧に出す", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   let r = await task(root, "verify", "EX-001");
   assertEquals(r.out.includes("人に確かめる構成の回答"), false, r.out);
@@ -1023,7 +1025,7 @@ Deno.test("未回答の構成の回答はエラーにし、回答があれば人
   assertStringIncludes(r.out, "質問: 判定の部品をどこに置くか");
   assertStringIncludes(r.out, "回答: 未回答（書き手の案: src/storage/ に置く）");
   assertStringIncludes(r.out, "根拠にしているもの: 部品 LockoutPolicy");
-  assertEquals(JSON.parse(await Deno.readTextFile(join(root, ".sdd/asked/EX-001.json"))), ["ANS-001"]);
+  assertEquals(JSON.parse(await io.readTextFile(join(root, ".sdd/asked/EX-001.json"))), ["ANS-001"]);
 
   await patchFile(root, DESIGN, `proposal: "src/storage/ に置く"`, `answer: "src/storage/ に置く"`);
   r = await task(root, "verify", "EX-001");
@@ -1040,7 +1042,7 @@ Deno.test("未回答の構成の回答はエラーにし、回答があれば人
   r = await task(root, "verify", "--answered", "ANS-001", "EX-001");
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, "ユーザーの回答として記録しました: ANS-001");
-  assertEquals(JSON.parse(await Deno.readTextFile(join(root, ".sdd/answered/EX-001.json"))), ["ANS-001"]);
+  assertEquals(JSON.parse(await io.readTextFile(join(root, ".sdd/answered/EX-001.json"))), ["ANS-001"]);
   r = await task(root, "verify", "EX-001");
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, "■ EX-001 の人に確かめる構成の回答");
@@ -1050,12 +1052,12 @@ Deno.test("未回答の構成の回答はエラーにし、回答があれば人
   await gitIdentity(root);
   await sh(root, "add", "-A");
   await sh(root, "commit", "-q", "-m", "design");
-  await Deno.remove(join(root, ".sdd"), { recursive: true });
+  await io.remove(join(root, ".sdd"), { recursive: true });
   r = await task(root, "verify", "EX-001");
   assertEquals(r.code, 0, r.out);
 });
 
-Deno.test("未回答の置き場所の項目が2件以上あればエラーにし、1件ならそのエラーは出さない", async () => {
+test("未回答の置き場所の項目が2件以上あればエラーにし、1件ならそのエラーは出さない", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   const open = (id: string, path: string) =>
     `"${id}": { about: { placement: ["${path}"] }, question: "q", proposal: "p" }`;
@@ -1076,7 +1078,7 @@ Deno.test("未回答の置き場所の項目が2件以上あればエラーに�
   assertEquals(r.out.includes("未回答の置き場所の項目が"), false, r.out);
 });
 
-Deno.test("構成の回答は、ADR になるユーザーの判断が ID を書き、requirements.ts の回答と ID が重ならなければエラーにならない", async () => {
+test("構成の回答は、ADR になるユーザーの判断が ID を書き、requirements.ts の回答と ID が重ならなければエラーにならない", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await markAsked(root, ["ANS-001"]);
   await patchFile(root, DESIGN, "answers: {},", `answers: { ${PLACEMENT_ANSWER} },`);
@@ -1118,7 +1120,7 @@ Deno.test("構成の回答は、ADR になるユーザーの判断が ID を書�
   assertEquals(r.code, 0, r.out);
 });
 
-Deno.test("ADR を置き場所の根拠にするなら、accepted で、ファイルのある場所のパスを書いていなければエラー", async () => {
+test("ADR を置き場所の根拠にするなら、accepted で、ファイルのある場所のパスを書いていなければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await patchFile(root, DESIGN, `placement: { component: "AuthService" },`, `placement: { adr: "ADR-0001" },`);
   let r = await task(root, "verify", "EX-001");
@@ -1143,7 +1145,7 @@ Deno.test("ADR を置き場所の根拠にするなら、accepted で、ファ�
   assertEquals(r.code, 0, r.out);
 });
 
-Deno.test("どのモジュールにも入らない新しいコンポーネントとのつなぎ方は、根拠が無ければエラー", async () => {
+test("どのモジュールにも入らない新しいコンポーネントとのつなぎ方は、根拠が無ければエラー", async () => {
   const root = await makeProject({ specs: ["EX-001"] });
   await writeFile(root, "docs/sdd/architecture.ts", ARCHITECTURE);
   for (let i = 0; i < 2; i++) {
