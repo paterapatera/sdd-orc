@@ -16,8 +16,7 @@ disable-model-invocation: true
 
 - `docs/sdd/guides/writing-tasks.md`: タスクの書き方
 
-`docs/sdd/deno.json` のタスクは、リポジトリのルートで `deno task --config docs/sdd/deno.json <タスク名>` として実行する。
-以下では `deno task <タスク名>` と略す。
+道具は、リポジトリのルートで `bun docs/sdd/scripts/<タスク名>.ts` として実行する。render は `bun docs/sdd/render/main.ts` である。
 
 ## 止まる条件
 
@@ -30,8 +29,8 @@ disable-model-invocation: true
 
 ## 1. 前提を確認する
 
-1. `deno task current` で issue の ID とモードを特定する。完全モードでなければ止まる。
-2. `requirements.ts` と `design.ts` があり、`deno task verify <ID>` のエラーが無いことを確かめる。
+1. `bun docs/sdd/scripts/current.ts` で issue の ID とモードを特定する。完全モードでなければ止まる。
+2. `requirements.ts` と `design.ts` があり、`bun docs/sdd/scripts/verify.ts <ID>` のエラーが無いことを確かめる。
    満たさなければ、足りない工程（sdd-req、sdd-design）を案内して止まる。
 3. `tasks.ts` がすでにあれば、手直しとして扱う。完了した（`status: "done"`）タスクは消さず、IDも振り直さない。
 
@@ -67,20 +66,20 @@ disable-model-invocation: true
 - 人が確かめる受け入れ条件（`verifiedBy: "human"`）がデータやアカウントを前提にしているなら、開発用のシーダー（またはコマンド）を作るタスクを作る
   （開発用のシーダーやコマンド。本番用の初期データには混ぜない）。
 
-- 1タスク＝1コミットの粒度にする。各タスクの完了時に品質ゲート（`deno task gate`）が通る状態を保てる順序にする。
+- 1タスク＝1コミットの粒度にする。各タスクの完了時に品質ゲート（`bun docs/sdd/scripts/gate.ts`）が通る状態を保てる順序にする。
 - すべての受け入れ条件と変えてはいけない振る舞いを、どれかのテストタスクの `verifies` に含める（漏れると verify のエラーになる）。
 - `description` には、作る・変えるファイル、関数名、テストの観点を具体的に書く。sdd-impl はこれを読んで止まらずに実装する。
 
 書いたら、次を実行し、エラーが無くなるまで直す。警告は内容を確かめ、直さない場合は理由を報告に含める。
 
 ```sh
-deno task check <ID>
-deno task verify <ID>
+bun docs/sdd/scripts/check.ts <ID>
+bun docs/sdd/scripts/verify.ts <ID>
 ```
 
 ## 4. HTMLを生成して、コミットして push する
 
-1. `deno task render <ID>` でHTMLを生成する。
+1. `bun docs/sdd/render/main.ts <ID>` でHTMLを生成する。
 2. `docs/specs/<ID>/tasks.ts` をコミットする（design.ts を直した場合は、それも含める）。コミットメッセージは `docs(<ID>): タスクを作成`。
 3. push する（リモートが無ければ省く）。
 

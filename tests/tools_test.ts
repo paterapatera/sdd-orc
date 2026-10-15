@@ -8,7 +8,6 @@ import {
   install,
   makeProject,
   patchFile,
-  run,
   sh,
   task,
   writeFile,
@@ -259,7 +258,7 @@ Deno.test("conflicts: 古いブランチと自分のブランチは対象外", a
 
 Deno.test("conflicts: リモートが無ければ確認できない旨を伝える", async () => {
   const root = await installedRepo();
-  const r = await run(Deno.execPath(), ["task", "--quiet", "--config", "docs/sdd/deno.json", "conflicts"], root);
+  const r = await task(root, "conflicts");
   assertEquals(r.code, 0, r.out);
   assertStringIncludes(r.out, "リモート（origin）が無いため");
 });

@@ -1,7 +1,5 @@
 import { defineScenario } from "../../schema.ts";
 
-const SDD = "deno task --config docs/sdd/deno.json";
-
 export default defineScenario({
   id: "QUICK-001",
   title: "軽量モード: メールアドレスを変更しても確認済みのままになるバグの修正",
@@ -70,7 +68,7 @@ export default defineScenario({
       kind: "command",
       must: true,
       label: "品質ゲートが E2E まで通る",
-      run: `rm -f .sdd/gate-passed.json public/hot && ${SDD} gate --if-changed`,
+      run: `rm -f .sdd/gate-passed.json public/hot && bun docs/sdd/scripts/gate.ts --if-changed`,
     },
   ],
 });

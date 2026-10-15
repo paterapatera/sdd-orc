@@ -47,9 +47,10 @@ export async function run(cmd: string, args: string[], cwd: string): Promise<Run
   return { code, out: dec.decode(stdout) + dec.decode(stderr) };
 }
 
-/** docs/sdd/deno.json のタスクを実行する */
+/** docs/sdd の道具を Bun で実行する */
 export function task(root: string, name: string, ...args: string[]): Promise<RunResult> {
-  return run(Deno.execPath(), ["task", "--quiet", "--config", "docs/sdd/deno.json", name, ...args], root);
+  const file = name === "render" ? "docs/sdd/render/main.ts" : `docs/sdd/scripts/${name}.ts`;
+  return run("bun", [file, ...args], root);
 }
 
 export const INSTALL = join(REPO, ".agents/skills/sdd-init/scripts/install.ts");
@@ -69,7 +70,7 @@ export async function gitIdentity(root: string) {
 
 /** sdd-init の install.ts を実行する */
 export function install(root: string, ...args: string[]): Promise<RunResult> {
-  return run(Deno.execPath(), ["run", "--allow-read", "--allow-write", "--allow-run=git", INSTALL, ...args], root);
+  return run("bun", [INSTALL, ...args], root);
 }
 
 /** git を実行し、失敗したら例外にする */

@@ -1,3 +1,4 @@
+import { runCommand } from "./io.ts";
 import { ROOT } from "./paths.ts";
 
 export type GitResult = { code: number; out: string; bytes: Uint8Array };
@@ -6,13 +7,13 @@ export async function git(
   args: string[],
   opts: { cwd?: string; env?: Record<string, string> } = {},
 ): Promise<GitResult> {
-  const { code, stdout } = await new Deno.Command("git", {
+  const { code, stdout } = await runCommand("git", {
     args,
     cwd: opts.cwd ?? ROOT,
     env: opts.env,
     stdout: "piped",
     stderr: "null",
-  }).output();
+  });
   return { code, out: new TextDecoder().decode(stdout).trim(), bytes: stdout };
 }
 

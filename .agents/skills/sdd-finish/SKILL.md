@@ -26,8 +26,7 @@ HTML や zip を issue や PR/MR に添付することは**しない**。
 - `docs/sdd/guides/issues.md`: issue の取得、コメント、クローズ（省略時は `gh`。`forge` とは別でよい）
 - `docs/sdd/guides/review-feedback.md`: PR/MR を作った後に変更が入った場合
 
-`docs/sdd/deno.json` のタスクは、リポジトリのルートで `deno task --config docs/sdd/deno.json <タスク名>` として実行する。
-以下では `deno task <タスク名>` と略す。
+道具は、リポジトリのルートで `bun docs/sdd/scripts/<タスク名>.ts` として実行する。render は `bun docs/sdd/render/main.ts` である。
 
 ## 確認ポイント
 
@@ -55,13 +54,13 @@ PR/MR は他の人に通知が飛び、取り消せない操作なので、言�
 
 ## 1. 前提を確かめる
 
-1. `deno task current` で issue の ID を特定する。
+1. `bun docs/sdd/scripts/current.ts` で issue の ID を特定する。
 2. 確認ポイントの質問をして、回答を受け取る。
-3. 未コミットの変更を含めてよいと回答された場合は、`deno task gate` を通してから、内容に合ったメッセージでコミットする
+3. 未コミットの変更を含めてよいと回答された場合は、`bun docs/sdd/scripts/gate.ts` を通してから、内容に合ったメッセージでコミットする
    （受け入れテストでの指摘の反映なら `fix(<ID>): 指摘を反映`。恒久ドキュメントの変更と混ぜない）。
 4. 材料を洗い出す（finish-report は品質ゲート `gate --full` も実行する）:
    ```sh
-   deno task finish-report <ID>
+   bun docs/sdd/scripts/finish-report.ts <ID>
    ```
    「完了の条件」にエラーがあれば直す。よくあるもの:
    - 完了したタスクにコミットが無い、空のコミットがある → 1タスク＝1コミットになっていない。タスクを統合するなど、spec を実態に合わせる
@@ -92,9 +91,9 @@ PR/MR は他の人に通知が飛び、取り消せない操作なので、言�
 - 軽量モードでは、反映するものが無いことが多い。無ければ無いと報告する。
 - 既存の内容を消さない。ADR は一度 accepted にしたら書き換えず、覆す場合は新しい ADR を作り、古いほうの `supersededBy` でつなぐ。
 
-書いたら `deno task check` を通し、`docs(<ID>): 恒久ドキュメントへ反映` としてコミットする（他の変更と混ぜない）。反映するものが無ければ、このコミットは作らない。
+書いたら `bun docs/sdd/scripts/check.ts` を通し、`docs(<ID>): 恒久ドキュメントへ反映` としてコミットする（他の変更と混ぜない）。反映するものが無ければ、このコミットは作らない。
 
-反映のあと（反映が無ければそのままで）、もう一度 `deno task finish-report <ID>` を実行する。完了の条件にエラーがあれば直してから先に進む。ここを通過するまで、PR/MR の作成と spec の削除には進まない。
+反映のあと（反映が無ければそのままで）、もう一度 `bun docs/sdd/scripts/finish-report.ts <ID>` を実行する。完了の条件にエラーがあれば直してから先に進む。ここを通過するまで、PR/MR の作成と spec の削除には進まない。
 
 ## 3. PR/MR の本文を作る
 

@@ -12,13 +12,13 @@ Cursor などで使える `.agents/skills/` の形式で書いている（Claude
 - **spec は TypeScript で書き、AI だけが読む。** 人は spec から生成した HTML を読む。
 - **spec は作業ブランチの中にだけ置く。** マージする前に削除し、main には一度も入れない。長く残す知識は、完了時に恒久ドキュメント（`docs/sdd/`）へ移す。
 - **AI が飛ばせない部分を道具で確かめる。** 型チェックと検証スクリプトで、ID の参照、要件と設計・タスクの対応漏れ、受け入れ条件のテスト漏れ、品質ゲートを緩めた変更などを機械的に検出する。
-- **案件を選ばない。** 言語（TypeScript、Python、Rust、PHP など）、issue トラッカー（Redmine、JIRA、GitLab、GitHub など）、CI の有無を問わない。道具は Deno で動くので、対象リポジトリに `package.json` や `node_modules` は増えない。
+- **案件を選ばない。** 言語（TypeScript、Python、Rust、PHP など）、issue トラッカー（Redmine、JIRA、GitLab、GitHub など）、CI の有無を問わない。道具は Bun で動くので、対象リポジトリに `package.json` や `node_modules` は増えない。
 
 ## 前提
 
 | 項目 | 内容 |
 |---|---|
-| 実行環境 | Deno 2 以上（https://docs.deno.com/runtime/getting_started/installation/） |
+| 実行環境 | Bun 1.4.3 以上（https://bun.sh） |
 | AI のツール | `.agents/skills/` を読めるもの（Cursor で動作を確認済み） |
 | Git | squash マージで取り込む運用 |
 | issue の CLI | 省略時は `gh`。`fj` / `jira` / `backlog` も指定できる。`manual` は貼られた本文だけを使う。PR/MR の CLI とは別でよい |
@@ -57,7 +57,7 @@ Cursor などで使える `.agents/skills/` の形式で書いている（Claude
 3. 2人目以降のメンバーは、pre-commit hook だけ各自設置する必要がある。
 
    ```sh
-   deno run --allow-read --allow-write --allow-run=git .agents/skills/sdd-init/scripts/install.ts --hook-only
+   bun .agents/skills/sdd-init/scripts/install.ts --hook-only
    ```
 
 新規案件では、機能の開発の前に **基盤issue**（雛形、共通の部品、品質ツールとテスト、画面の土台を作る issue）を1人で進め、マージしてから並行開発を始める。
@@ -114,7 +114,7 @@ Cursor などで使える `.agents/skills/` の形式で書いている（Claude
 │   │   ├── conventions.ts       # 規約
 │   │   ├── nfr.ts               # プロジェクト全体の非機能要件
 │   │   ├── adr/                 # 設計判断の記録
-│   │   ├── schema/ scripts/ render/ guides/ deno.json   # SDD の道具（sdd-init が上書きで管理する）
+│   │   ├── schema/ scripts/ render/ guides/ tsconfig.json   # SDD の道具（sdd-init が上書きで管理する）
 │   └── specs/<issue>/           # 作業中だけ置く（ブランチの中だけ。マージ前に削除）
 │       ├── issue.md
 │       ├── requirements.ts、design.ts、tasks.ts   # 完全モード
@@ -122,7 +122,7 @@ Cursor などで使える `.agents/skills/` の形式で書いている（Claude
 └── .sdd/out/<issue>/index.html  # 人向けの HTML（.gitignore の対象）
 ```
 
-道具は `deno task --config docs/sdd/deno.json <タスク名>` で実行する（`check`、`verify`、`render`、`doctor`、`gate` など）。
+道具は `bun docs/sdd/scripts/<タスク名>.ts` で実行する（`check`、`verify`、`doctor`、`gate` など）。render は `bun docs/sdd/render/main.ts` である。
 pre-commit hook は spec のファイルがステージされたときだけ動くので、SDD を使わないメンバーには影響しない。
 
 ## このリポジトリの構成

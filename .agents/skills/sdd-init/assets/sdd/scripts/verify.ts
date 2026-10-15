@@ -1,7 +1,7 @@
 /**
  * specの内容を検証する（型チェックだけでは確かめられない内容）。
  *
- * 使い方: deno task --config docs/sdd/deno.json verify [--finish] [--answered ANS-001,ANS-002] [ISSUE...]
+ * 使い方: bun docs/sdd/scripts/verify.ts [--finish] [--answered ANS-001,ANS-002] [ISSUE...]
  *   ISSUE を省略すると docs/specs にあるすべてのissueを検証する。
  *   --finish を付けると、すべてのタスクの完了と、未確定の点が無いことも求める。
  *   --answered を付けると、確認ポイントでユーザーが答えた構成の回答の ID を記録する（ISSUE を1つだけ指定する）。
@@ -9,6 +9,7 @@
  *
  * エラーが1件でもあれば終了コード1で終わる。警告だけなら0で終わる。
  */
+import { args as cliArgs, exit } from "./lib/io.ts";
 import {
   listIssueIds,
   loadAnswerRecords,
@@ -22,24 +23,24 @@ import { placementSources, structureAnswerList, unansweredStructureIds, verifyIs
 
 let finish = false;
 const answeredArgs: string[] = [];
-const args: string[] = [];
-for (let i = 0; i < Deno.args.length; i++) {
-  const a = Deno.args[i];
+const issueArgs: string[] = [];
+for (let i = 0; i < cliArgs.length; i++) {
+  const a = cliArgs[i];
   if (a === "--finish") finish = true;
-  else if (a === "--answered") answeredArgs.push(...(Deno.args[++i] ?? "").split(","));
+  else if (a === "--answered") answeredArgs.push(...(cliArgs[++i] ?? "").split(","));
   else if (a.startsWith("--answered=")) answeredArgs.push(...a.slice("--answered=".length).split(","));
-  else args.push(a);
+  else issueArgs.push(a);
 }
 const answeredIds = answeredArgs.map((s) => s.trim()).filter(Boolean);
-const ids = args.length > 0 ? args : await listIssueIds();
+const ids = issueArgs.length > 0 ? issueArgs : await listIssueIds();
 
 if (ids.length === 0) {
   console.log("検証するspecがありません（docs/specs が空です）");
-  Deno.exit(0);
+  exit(0);
 }
 if (answeredArgs.length && (ids.length !== 1 || answeredIds.length === 0)) {
   console.log("--answered には、回答の ID と、ISSUE を1つだけ指定してください");
-  Deno.exit(1);
+  exit(1);
 }
 
 const verifyContext = await loadVerifyContext();
@@ -91,4 +92,4 @@ if (full) {
 }
 
 console.log(`\nエラー ${errors} 件、警告 ${warnings} 件`);
-Deno.exit(errors > 0 ? 1 : 0);
+exit(errors > 0 ? 1 : 0);

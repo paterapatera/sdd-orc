@@ -1,4 +1,5 @@
 import { join, resolve } from "node:path";
+import { isNotFound, stat } from "./io.ts";
 
 /** docs/sdd */
 export const SDD_DIR = resolve(import.meta.dirname!, "../..");
@@ -20,10 +21,10 @@ export function rel(path: string): string {
 
 export async function exists(path: string): Promise<boolean> {
   try {
-    await Deno.stat(path);
+    await stat(path);
     return true;
   } catch (e) {
-    if (e instanceof Deno.errors.NotFound) return false;
+    if (isNotFound(e)) return false;
     throw e;
   }
 }

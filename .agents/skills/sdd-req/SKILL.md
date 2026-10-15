@@ -22,8 +22,7 @@ disable-model-invocation: true
 - `docs/sdd/guides/asking-questions.md`: 質問のしかた（1件ずつ聞く）
 - `docs/sdd/guides/review-feedback.md`: 指摘を受けたときの手順
 
-`docs/sdd/deno.json` のタスクは、リポジトリのルートで `deno task --config docs/sdd/deno.json <タスク名>` として実行する。
-以下では `deno task <タスク名>` と略す。
+道具は、リポジトリのルートで `bun docs/sdd/scripts/<タスク名>.ts` として実行する。render は `bun docs/sdd/render/main.ts` である。
 
 ## 確認ポイント
 
@@ -41,7 +40,7 @@ disable-model-invocation: true
 
 ## 1. 前提を確認する
 
-1. `deno task current` で issue の ID とモードを特定する。
+1. `bun docs/sdd/scripts/current.ts` で issue の ID とモードを特定する。
 2. `docs/specs/<ID>/issue.md` の「モード」が完全モードであることを確かめる。
    - issue.md が無い → sdd-start を案内して止まる。
    - 軽量モードになっている → sdd-quick を案内して止まる。
@@ -87,14 +86,14 @@ disable-model-invocation: true
 書いたら、次を実行し、エラーが無くなるまで直す。
 
 ```sh
-deno task check <ID>
-deno task verify <ID>
+bun docs/sdd/scripts/check.ts <ID>
+bun docs/sdd/scripts/verify.ts <ID>
 ```
 
 ## 4. HTMLを生成する
 
 ```sh
-deno task render <ID>
+bun docs/sdd/render/main.ts <ID>
 ```
 
 ## 5. 確認ポイント1: 未確定の点を1件ずつ質問する
@@ -127,13 +126,13 @@ deno task render <ID>
 2. 回答を `answers` に ID を振って書き、requirements.ts に反映して `openQuestions` から消す（`values` の観点なら、受け入れ条件に書いて
    `decidedBy` と `basis: { answer: "ANS-xxx" }` に変える。関係しないと答えたら `notApplicable` と、その回答の ID にする）。残りの未確定の点を見直す
    （回答で決まったものは消し、前提が変わったものは聞き方を変え、新しく必要になったものは加える）。
-3. `deno task check <ID>` と `deno task verify <ID>` を通す。
+3. `bun docs/sdd/scripts/check.ts <ID>` と `bun docs/sdd/scripts/verify.ts <ID>` を通す。
 4. `openQuestions` も `values` の `open` も無くなるまで1〜3を繰り返す。
 
 ## 6. 確認ポイント2: 要件全体を確認してもらう
 
-確認を頼む前に、`deno task verify <ID>` の**警告をすべて直す**（直さない警告は、理由を確認の中で示す）。
-`deno task render <ID>` でHTMLを生成し直し、次を**1つの返答にまとめて**示して回答を待つ（HTMLのパスだけを示さない）。
+確認を頼む前に、`bun docs/sdd/scripts/verify.ts <ID>` の**警告をすべて直す**（直さない警告は、理由を確認の中で示す）。
+`bun docs/sdd/render/main.ts <ID>` でHTMLを生成し直し、次を**1つの返答にまとめて**示して回答を待つ（HTMLのパスだけを示さない）。
 
 - 生成したHTMLのパス（`.sdd/out/<ID>/index.html`）。「受け入れテスト」の章が、受け入れテストで確かめる項目になることを伝える
 - 要件の要約: 機能要件ごとのEARSの文章、受け入れ条件の件数（正常系・境界値・異常系の内訳と、人が確かめるものの件数）、非機能要件、変えてはいけない振る舞い、前提、対象外
@@ -144,7 +143,7 @@ deno task render <ID>
 
 ## 7. コミットして push する
 
-1. `deno task check <ID>`、`deno task verify <ID>`、`deno task render <ID>` を実行する（`openQuestions` も `values` の `open` も残っていないこと）。
+1. `bun docs/sdd/scripts/check.ts <ID>`、`bun docs/sdd/scripts/verify.ts <ID>`、`bun docs/sdd/render/main.ts <ID>` を実行する（`openQuestions` も `values` の `open` も残っていないこと）。
 2. `docs/specs/<ID>/` をコミットする（`spec.ts` から切り替えた場合は、その削除も含める）。コミットメッセージは `docs(<ID>): 要件を作成`。
 3. `git push -u origin <ブランチ名>` で push する（他の人の衝突チェックに見えるようにするため）。リモートが無ければ省く。
 

@@ -30,4 +30,4 @@ Issue: <issue の URL。無ければ ID だけ>
 
 ## 品質ゲート
 
-<deno task gate の結果（format、check、test）>
+<bun docs/sdd/scripts/gate.ts の結果（format、check、test）>

@@ -11,14 +11,13 @@
 files=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^docs/(specs|sdd)/.*\.ts$')
 [ -z "$files" ] && exit 0
 
-if ! command -v deno >/dev/null 2>&1; then
-  echo "[SDD] Deno が見つかりません。specを検査できないため、コミットを中止しました。" >&2
-  echo "[SDD] インストール方法: https://docs.deno.com/runtime/getting_started/installation/" >&2
+if ! command -v bun >/dev/null 2>&1; then
+  echo "[SDD] Bun が見つかりません。specを検査できないため、コミットを中止しました。" >&2
+  echo "[SDD] インストール方法: https://bun.sh" >&2
   exit 1
 fi
 
 root=$(git rev-parse --show-toplevel)
-config="$root/docs/sdd/deno.json"
 
 # 導入のコミット（HEAD に config.ts がまだ無い）には、SDD のファイルだけを含める
 if git rev-parse -q --verify HEAD >/dev/null && ! git cat-file -e HEAD:docs/sdd/config.ts 2>/dev/null; then
@@ -39,12 +38,12 @@ else
 fi
 
 # shellcheck disable=SC2086
-deno task --quiet --config "$config" check $issues || {
+bun "$root/docs/sdd/scripts/check.ts" $issues || {
   echo "[SDD] 型チェックに失敗したため、コミットを中止しました。" >&2
   exit 1
 }
 # shellcheck disable=SC2086
-deno task --quiet --config "$config" verify $issues || {
+bun "$root/docs/sdd/scripts/verify.ts" $issues || {
   echo "[SDD] specの検証に失敗したため、コミットを中止しました。" >&2
   exit 1
 }
@@ -52,7 +51,7 @@ deno task --quiet --config "$config" verify $issues || {
 # config.ts をコミットするときは、品質ゲートのコマンドが今のコードで通ることを確かめる
 # （登録しただけで動かないコマンドを防ぐ。最後に通ったときから commands が変わっていなければ何もしない）
 if printf '%s\n' "$files" | grep -qx 'docs/sdd/config.ts'; then
-  deno task --quiet --config "$config" gate --if-changed || {
+  bun "$root/docs/sdd/scripts/gate.ts" --if-changed || {
     echo "[SDD] 品質ゲート（docs/sdd/config.ts の commands）が通らないため、コミットを中止しました。" >&2
     echo "[SDD] コマンドが実行できる形か（実行環境、コンテナなど）を確かめて直してから、コミットし直してください。" >&2
     exit 1

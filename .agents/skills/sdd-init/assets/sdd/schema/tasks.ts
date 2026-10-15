@@ -26,7 +26,7 @@ export type Task<Ref extends string, Ver extends string> = {
 
 /**
  * 受け入れテストの準備。sdd-impl が、人に受け入れテストを頼む前に書く（人が確かめる受け入れ条件があるときは必須）。
- * **実行できる形で書く。** `deno task acceptance <ID>` が setup と data のコマンドを実際に実行し、server を起動して check の URL を確かめる。
+ * **実行できる形で書く。** `bun docs/sdd/scripts/acceptance.ts <ID>` が setup と data のコマンドを実際に実行し、server を起動して check の URL を確かめる。
  * これが通らなければ受け入れテストを頼まない。HTMLの「受け入れテスト」の章に表示する。
  */
 export type AcceptanceGuide = {

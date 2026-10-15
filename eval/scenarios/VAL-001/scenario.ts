@@ -1,6 +1,5 @@
 import { defineScenario } from "../../schema.ts";
 
-const SDD = "deno task --config docs/sdd/deno.json";
 const SAIL = "./vendor/bin/sail";
 
 export default defineScenario({
@@ -92,7 +91,7 @@ export default defineScenario({
       kind: "command",
       must: true,
       label: "品質ゲートが E2E まで通る",
-      run: `rm -f .sdd/gate-passed.json public/hot && ${SDD} gate --if-changed`,
+      run: `rm -f .sdd/gate-passed.json public/hot && bun docs/sdd/scripts/gate.ts --if-changed`,
     },
   ],
 });

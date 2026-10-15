@@ -87,12 +87,12 @@ DBの列の制約（NOT NULL）、マイグレーションの方法、クラス�
 | 確かめること | 確かめ方 |
 |---|---|
 | アプリが起動し、最初の画面が表示される | human（acceptanceGuide の手順で起動して画面を見る）と E2E のスモークテスト1件 |
-| 品質ゲートが通る | 受け入れ条件にしない。sdd-impl と finish-report が `deno task gate --full` を実行して確かめる |
+| 品質ゲートが通る | 受け入れ条件にしない。sdd-impl と finish-report が `bun docs/sdd/scripts/gate.ts --full` を実行して確かめる |
 | 層やモジュールの規則が守られている | 受け入れ条件にしない。規約を gate で強制する（アーキテクチャテストや Deptrac など） |
 | 画面の土台（UIの部品、デザイントークン、レイアウト）が使える | human（最初の画面で見た目を確かめる）と E2E のスクリーンショット |
 
 - ポートの競合、マイグレーションの失敗のような、環境の異常系は `notApplicable` にしてよい（理由を書く）。
-- 「README の手順どおりに動く」は、acceptanceGuide を `deno task acceptance` で実行して確かめるので、受け入れ条件にしない。
+- 「README の手順どおりに動く」は、acceptanceGuide を `bun docs/sdd/scripts/acceptance.ts` で実行して確かめるので、受け入れ条件にしない。
 
 ## 非機能要件
 

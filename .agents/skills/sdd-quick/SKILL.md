@@ -20,8 +20,7 @@ disable-model-invocation: true
 - `docs/sdd/guides/asking-questions.md`: 質問のしかた（1件ずつ聞く）
 - `docs/sdd/guides/review-feedback.md`: 指摘を受けたときの手順
 
-`docs/sdd/deno.json` のタスクは、リポジトリのルートで `deno task --config docs/sdd/deno.json <タスク名>` として実行する。
-以下では `deno task <タスク名>` と略す。
+道具は、リポジトリのルートで `bun docs/sdd/scripts/<タスク名>.ts` として実行する。render は `bun docs/sdd/render/main.ts` である。
 
 ## 確認ポイント
 
@@ -41,7 +40,7 @@ disable-model-invocation: true
 
 ## 1. 前提を確認する
 
-1. `deno task current` で issue の ID とモードを特定する。
+1. `bun docs/sdd/scripts/current.ts` で issue の ID とモードを特定する。
 2. `docs/specs/<ID>/issue.md` の「モード」が軽量モードであることを確かめる。
    - issue.md が無い → sdd-start を案内して止まる。
    - 完全モードになっている → sdd-req を案内して止まる。
@@ -101,21 +100,21 @@ disable-model-invocation: true
 書いたら、次を実行し、エラーが無くなるまで直す。警告は内容を確かめ、直さない場合は理由を報告に含める。
 
 ```sh
-deno task check <ID>
-deno task verify <ID>
+bun docs/sdd/scripts/check.ts <ID>
+bun docs/sdd/scripts/verify.ts <ID>
 ```
 
 ## 5. 衝突を確かめる
 
 ```sh
-deno task conflicts --issue <ID>
+bun docs/sdd/scripts/conflicts.ts --issue <ID>
 ```
 
 `[重なり]` があれば、どのブランチの作業と重なるかを報告に含め、担当者との調整を勧める。作業は止めない。
 
 ## 6. HTMLを生成して、コミットして push する
 
-1. `deno task render <ID>` でHTMLを生成する。
+1. `bun docs/sdd/render/main.ts <ID>` でHTMLを生成する。
 2. `docs/specs/<ID>/` をコミットする。コミットメッセージは `docs(<ID>): specを作成（軽量モード）`。
 3. `git push -u origin <ブランチ名>` で push する（他の人の衝突チェックに見えるようにするため）。リモートが無ければ省く。
 

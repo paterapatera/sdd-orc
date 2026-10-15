@@ -2,7 +2,7 @@
  * 品質ゲート（config.ts の commands）を決まった順に実行する。
  * コードの品質は人のコードレビューではなく、このゲートで担保する。
  *
- * 使い方: deno task --config docs/sdd/deno.json gate [--full] [--if-changed]
+ * 使い方: bun docs/sdd/scripts/gate.ts [--full] [--if-changed]
  *   --full        E2E テスト（commands.e2e）も実行する。sdd-impl の完了時と sdd-finish の開始時に使う
  *   --if-changed  commands が、最後に --full ですべて通ったときと同じなら何もしない。違えば --full で実行する。
  *                 format（ファイルを書き換える）は実行しない。pre-commit hook が config.ts のコミット時に使う
@@ -16,6 +16,7 @@
  * 終了コード: すべて成功なら0、失敗があれば1。commands が1つも無ければ0（警告を表示する）。
  * 実行で .agents/ か docs/sdd/ が変わったときも1（スキルと道具を整形の対象にしない）。
  */
+import { args, exit, mkdir, readTextFile, runCommand, writeTextFile } from "./lib/io.ts";
 import { join } from "node:path";
 import { loadConfig } from "./lib/config.ts";
 import { git } from "./lib/git.ts";
@@ -32,8 +33,8 @@ async function sddWorktree(): Promise<{ names: Set<string>; body: string } | und
 }
 
 const { commands = {} } = await loadConfig();
-const ifChanged = Deno.args.includes("--if-changed");
-const full = ifChanged || Deno.args.includes("--full");
+const ifChanged = args.includes("--if-changed");
+const full = ifChanged || args.includes("--full");
 const PASSED = join(ROOT, ".sdd", "gate-passed.json");
 const fingerprint = JSON.stringify(commands);
 
@@ -50,17 +51,17 @@ const steps: [string, string | undefined][] = [
 const configured = steps.filter((s): s is [string, string] => !!s[1]);
 
 if (configured.length === 0) {
-  if (ifChanged) Deno.exit(0);
+  if (ifChanged) exit(0);
   console.log("[警告] 品質ゲートが設定されていません（docs/sdd/config.ts の commands が空です）");
   console.log("       propose-quality-tools でツールを選び、commands に format、check、test などを登録してください");
-  Deno.exit(0);
+  exit(0);
 }
 
 if (ifChanged) {
-  const passed = await Deno.readTextFile(PASSED).then((t) => JSON.parse(t).commands).catch(() => undefined);
+  const passed = await readTextFile(PASSED).then((t) => JSON.parse(t).commands).catch(() => undefined);
   if (passed === fingerprint) {
     console.log("[SDD] 品質ゲートのコマンドは、前回すべて通ったときから変わっていません");
-    Deno.exit(0);
+    exit(0);
   }
   console.log(
     "[SDD] 品質ゲートのコマンドが、今の内容ではまだ通っていないため、実行します（format を除き、E2E を含む）",
@@ -68,16 +69,16 @@ if (ifChanged) {
 }
 
 const before = await sddWorktree();
-const shell = Deno.build.os === "windows" ? ["cmd", "/c"] : ["sh", "-c"];
+const shell = process.platform === "win32" ? ["cmd", "/c"] : ["sh", "-c"];
 const results: { name: string; cmd: string; ok: boolean }[] = [];
 for (const [name, cmd] of configured) {
   console.log(`\n▶ ${name}: ${cmd}`);
-  const { code } = await new Deno.Command(shell[0], {
+  const { code } = await runCommand(shell[0], {
     args: [shell[1], cmd],
     cwd: ROOT,
     stdout: "inherit",
     stderr: "inherit",
-  }).output();
+  });
   results.push({ name, cmd, ok: code === 0 });
 }
 
@@ -101,10 +102,10 @@ if (sddRewritten && before && after) {
 const failureCount = failed.length + (sddRewritten ? 1 : 0);
 console.log(failureCount ? `\n失敗が ${failureCount} 件あります` : "\nすべて成功しました");
 if (!failureCount && full) {
-  await Deno.mkdir(join(ROOT, ".sdd"), { recursive: true });
-  await Deno.writeTextFile(
+  await mkdir(join(ROOT, ".sdd"), { recursive: true });
+  await writeTextFile(
     PASSED,
     JSON.stringify({ commands: fingerprint, passedAt: new Date().toISOString() }) + "\n",
   );
 }
-Deno.exit(failureCount ? 1 : 0);
+exit(failureCount ? 1 : 0);

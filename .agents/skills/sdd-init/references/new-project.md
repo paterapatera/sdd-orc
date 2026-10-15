@@ -60,7 +60,7 @@
 - 規約の強制: `references/tooling.md` の提案で gate にすると決めた規約について、そのツールと設定を導入し、`conventions.ts` を gate に変える
 - DB接続とマイグレーションの仕組み
 - 品質ゲート: propose-quality-tools の提案どおりにツールを導入し、`docs/sdd/config.ts` の `commands` に
-  `format`、`check`、`test` を登録する（`deno task --config docs/sdd/deno.json gate` が通る状態）
+  `format`、`check`、`test` を登録する（`bun docs/sdd/scripts/gate.ts` が通る状態）
 - テストの土台（単体・結合テストが1件動き、画面があるなら E2E テストが1件動く状態。`commands` に `e2e` も登録する）
 - CI（使う場合）
 

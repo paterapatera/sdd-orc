@@ -178,13 +178,7 @@ async function refreshSkills(wt: string) {
   if (cp.code !== 0) throw new Error(`スキルをコピーできませんでした: ${cp.out}`);
   await git(wt, "add", "-A", ".agents/skills");
   if (await exists(join(wt, "docs/sdd/config.ts"))) {
-    const r = await run(Deno.execPath(), [
-      "run",
-      "--allow-read",
-      "--allow-write",
-      "--allow-run=git",
-      join(dst, "sdd-init/scripts/install.ts"),
-    ], wt);
+    const r = await run("bun", [join(dst, "sdd-init/scripts/install.ts")], wt);
     if (r.code !== 0) throw new Error(`SDD の道具を更新できませんでした: ${r.out}`);
     await git(wt, "add", "-A", "docs/sdd", ".gitignore");
   }

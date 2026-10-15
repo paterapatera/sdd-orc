@@ -1,11 +1,12 @@
 /**
  * SDDの導入状態を確認する。
  *
- * 使い方: deno task --config docs/sdd/deno.json doctor
+ * 使い方: bun docs/sdd/scripts/doctor.ts
  *
- * 確認する項目: Deno の版、型定義の版、pre-commit hook、.gitignore、恒久ドキュメント。
+ * 確認する項目: Bun の版、型定義の版、pre-commit hook、.gitignore、恒久ドキュメント。
  * 必須の項目に問題があれば終了コード1で終わる。
  */
+import { bunVersion, exit, readTextFile, runCommand } from "./lib/io.ts";
 import { join, resolve } from "node:path";
 import { SCHEMA_VERSION } from "../schema/mod.ts";
 import { loadConfig } from "./lib/config.ts";
@@ -18,15 +19,14 @@ const items: Item[] = [];
 const HOOK_COMMAND = "docs/sdd/scripts/pre-commit.sh";
 
 async function readIfExists(path: string): Promise<string | undefined> {
-  return (await exists(path)) ? await Deno.readTextFile(path) : undefined;
+  return (await exists(path)) ? await readTextFile(path) : undefined;
 }
 
-// Deno
-const [major] = Deno.version.deno.split(".").map(Number);
+const version = bunVersion();
 items.push(
-  major >= 2
-    ? { level: "ok", label: `Deno ${Deno.version.deno}` }
-    : { level: "ng", label: `Deno ${Deno.version.deno}`, detail: "Deno 2 以上が必要です" },
+  version
+    ? { level: "ok", label: `Bun ${version}` }
+    : { level: "ng", label: "Bun", detail: "Bun 1.4.3 以上が必要です" },
 );
 
 // 型定義の版
@@ -129,7 +129,7 @@ if (config.ui === undefined) {
 
 async function cliRuns(cli: string): Promise<boolean | "missing"> {
   try {
-    const { code } = await new Deno.Command(cli, { args: ["--version"], stdout: "null", stderr: "null" }).output();
+    const { code } = await runCommand(cli, { args: ["--version"], stdout: "null", stderr: "null" });
     return code === 0;
   } catch {
     return "missing";
@@ -217,4 +217,4 @@ const icon = { ok: "✓", ng: "✕", warn: "!" };
 for (const i of items) console.log(`  ${icon[i.level]} ${i.label}${i.detail ? ` — ${i.detail}` : ""}`);
 const ng = items.filter((i) => i.level === "ng").length;
 console.log(ng ? `\n問題が ${ng} 件あります` : "\n問題ありません");
-Deno.exit(ng ? 1 : 0);
+exit(ng ? 1 : 0);

@@ -1,12 +1,13 @@
 /**
  * 次に実施するタスクと、その実装に必要な情報をまとめて表示する。
  *
- * 使い方: deno task --config docs/sdd/deno.json next <ISSUE> [--task T-xxx]
+ * 使い方: bun docs/sdd/scripts/next.ts <ISSUE> [--task T-xxx]
  *   --task を省略すると、作業中（doing）のタスク、無ければ最初の未着手（todo）のタスクを表示する。
  *
  * 表示する内容: タスクの説明、実現する要件（EARSの文章）、関係するコンポーネント（ファイル、インターフェース）、
  * 検証する対象（受け入れ条件の Given/When/Then、変えてはいけない振る舞い、非機能要件）、影響範囲、進捗。
  */
+import { args, exit } from "./lib/io.ts";
 import type { FunctionalRequirement, Invariant, NonFunctionalRequirement, Task } from "../schema/mod.ts";
 import { earsSentence } from "./lib/ears.ts";
 import { taskCommits } from "./lib/git.ts";
@@ -14,17 +15,17 @@ import { loadIssue } from "./lib/load.ts";
 
 type AnyTask = Task<string, string>;
 
-const id = Deno.args.find((a) => !a.startsWith("--") && Deno.args[Deno.args.indexOf(a) - 1] !== "--task");
-const taskOpt = Deno.args.includes("--task") ? Deno.args[Deno.args.indexOf("--task") + 1] : undefined;
+const id = args.find((a) => !a.startsWith("--") && args[args.indexOf(a) - 1] !== "--task");
+const taskOpt = args.includes("--task") ? args[args.indexOf("--task") + 1] : undefined;
 if (!id) {
-  console.error("使い方: deno task next <ISSUE> [--task T-xxx]");
-  Deno.exit(1);
+  console.error("使い方: bun docs/sdd/scripts/next.ts <ISSUE> [--task T-xxx]");
+  exit(1);
 }
 
 const issue = await loadIssue(id);
 if (issue.loadErrors.length) {
   for (const e of issue.loadErrors) console.error(`${e.file} の読み込みに失敗しました: ${e.message}`);
-  Deno.exit(1);
+  exit(1);
 }
 
 let tasks: Readonly<Record<string, AnyTask>>;
@@ -47,7 +48,7 @@ if (issue.mode === "quick" && issue.quick) {
   console.error(
     `docs/specs/${id} に実装できるspecがありません（完全モードは tasks.ts まで、軽量モードは spec.ts が必要）`,
   );
-  Deno.exit(1);
+  exit(1);
 }
 
 const entries = Object.entries(tasks);
@@ -66,7 +67,7 @@ for (const [tid, t] of entries) {
 
 if (!picked) {
   console.log(taskOpt ? `\n${taskOpt} はありません` : "\nすべてのタスクが完了しています");
-  Deno.exit(taskOpt ? 1 : 0);
+  exit(taskOpt ? 1 : 0);
 }
 
 const [tid, t] = picked;

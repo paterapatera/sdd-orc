@@ -24,7 +24,7 @@ Deno.test("初回の導入で道具・設定・.gitignore・hook が揃う", asy
       "scripts/pre-commit.sh",
       "guides/writing-requirements.md",
       "render/main.ts",
-      "deno.json",
+      "tsconfig.json",
       "config.ts",
     ]
   ) {
@@ -130,14 +130,21 @@ Deno.test("恒久ドキュメントのひな形は型チェックを通る", asy
   assertEquals(r.code, 0, r.out);
 });
 
-Deno.test("ルートに package.json があっても docs/sdd の型チェックが通る", async () => {
+Deno.test("ルートに package.json の check と tsconfig.json があっても docs/sdd の型チェックが通る", async () => {
   const root = await emptyRepo();
   await install(root);
   await writeFile(
     root,
     "package.json",
-    `{ "private": true, "type": "module", "devDependencies": { "vite": "^5.0.0" } }\n`,
+    `{ "private": true, "scripts": { "check": "echo HIJACKED && exit 9" } }\n`,
+  );
+  await writeFile(
+    root,
+    "tsconfig.json",
+    `{ "compilerOptions": { "strict": true, "types": ["node"] }, "include": ["src/**/*.ts"] }\n`,
   );
   const r = await task(root, "check");
   assertEquals(r.code, 0, r.out);
+  assertEquals(r.out.includes("HIJACKED"), false, r.out);
+  assertEquals(await exists(join(root, "node_modules")), false);
 });

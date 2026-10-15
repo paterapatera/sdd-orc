@@ -1,7 +1,7 @@
 /**
  * 作業中の他のブランチと、影響範囲が重なっていないかを調べる。
  *
- * 使い方: deno task --config docs/sdd/deno.json conflicts [--issue ID] [--paths a,b,...] [--no-fetch]
+ * 使い方: bun docs/sdd/scripts/conflicts.ts [--issue ID] [--paths a,b,...] [--no-fetch]
  *   --issue ID   docs/specs/ID の design.ts（または spec.ts）の影響範囲を、自分の影響範囲として使う
  *   --paths      自分が触る予定のファイルやディレクトリ（カンマ区切り）。--issue と併用できる
  *   --no-fetch   git fetch を行わない
@@ -14,23 +14,24 @@
  * 重なりは警告として表示するだけで、止めはしない（終了コードは0）。
  * push されていない作業は検出できない。
  */
+import { args, exit, makeTempDir, mkdir, remove, writeFileBytes } from "./lib/io.ts";
 import { dirname, join } from "node:path";
 import { impactPaths, loadConfig, loadImpact } from "./lib/config.ts";
 import { defaultRemoteBranch, git, gitOut, hasRemote } from "./lib/git.ts";
 import { SPECS_DIR } from "./lib/paths.ts";
 
 function option(name: string): string | undefined {
-  const i = Deno.args.indexOf(name);
-  return i >= 0 ? Deno.args[i + 1] : undefined;
+  const i = args.indexOf(name);
+  return i >= 0 ? args[i + 1] : undefined;
 }
 
 const issueId = option("--issue");
 const extraPaths = (option("--paths") ?? "").split(",").map((p) => p.trim()).filter(Boolean);
-const noFetch = Deno.args.includes("--no-fetch");
+const noFetch = args.includes("--no-fetch");
 
 if (!(await hasRemote())) {
   console.log("リモート（origin）が無いため、他のブランチとの重なりは確認できません");
-  Deno.exit(0);
+  exit(0);
 }
 if (!noFetch && (await git(["fetch", "--prune", "--quiet", "origin"])).code !== 0) {
   console.log("[警告] git fetch に失敗しました（ネットワークに出られない、認証が要る、など）。");
@@ -42,7 +43,7 @@ const config = await loadConfig();
 const base = await defaultRemoteBranch();
 if (!base) {
   console.log("リモートの既定ブランチが分かりません（origin/HEAD、origin/main、origin/master が無い）");
-  Deno.exit(0);
+  exit(0);
 }
 const current = await gitOut(["branch", "--show-current"]);
 const excluded = new Set([base, "origin/HEAD", "origin", ...(current ? [`origin/${current}`] : [])]);
@@ -66,19 +67,19 @@ type BranchInfo = {
 
 /** 他のブランチの docs を一時ディレクトリに取り出し、予定している影響範囲を読む */
 async function plannedImpact(ref: string, id: string): Promise<string[]> {
-  const tmp = await Deno.makeTempDir({ prefix: "sdd-conflicts-" });
+  const tmp = await makeTempDir("sdd-conflicts-");
   try {
     const files = ((await gitOut(["ls-tree", "-r", "--name-only", ref, "--", "docs/sdd", `docs/specs/${id}`])) ?? "")
       .split("\n").filter((f) => f.endsWith(".ts"));
     for (const f of files) {
       const r = await git(["show", `${ref}:${f}`]);
       if (r.code !== 0) continue;
-      await Deno.mkdir(join(tmp, dirname(f)), { recursive: true });
-      await Deno.writeFile(join(tmp, f), r.bytes);
+      await mkdir(join(tmp, dirname(f)), { recursive: true });
+      await writeFileBytes(join(tmp, f), r.bytes);
     }
     return impactPaths(await loadImpact(join(tmp, "docs/specs", id)));
   } finally {
-    await Deno.remove(tmp, { recursive: true });
+    await remove(tmp, { recursive: true });
   }
 }
 

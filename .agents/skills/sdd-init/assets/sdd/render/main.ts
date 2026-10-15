@@ -1,10 +1,11 @@
 /**
  * 人向けのHTMLを生成する。specの正本はTypeScriptで、HTMLはそこから生成する派生物。
  *
- * 使い方: deno task --config docs/sdd/deno.json render [ISSUE...]
+ * 使い方: bun docs/sdd/render/main.ts [ISSUE...]
  *   ISSUE を省略すると docs/specs にあるすべてのissueを対象にする。
  *   出力先: .sdd/out/<ISSUE>/index.html（.gitignore の対象）
  */
+import { args as cliArgs, exit, mkdir, runCommand, writeTextFile } from "../scripts/lib/io.ts";
 import { join } from "node:path";
 import { listIssueIds, loadIssue, loadVerifyContext } from "../scripts/lib/load.ts";
 import { OUT_DIR, rel, ROOT } from "../scripts/lib/paths.ts";
@@ -16,18 +17,17 @@ import { fullSections, quickSections, type Section, statsHtml, taskStats } from 
 
 async function git(...args: string[]): Promise<string | undefined> {
   try {
-    const { code, stdout } = await new Deno.Command("git", { args, cwd: ROOT, stdout: "piped", stderr: "null" })
-      .output();
+    const { code, stdout } = await runCommand("git", { args, cwd: ROOT, stdout: "piped", stderr: "null" });
     return code === 0 ? new TextDecoder().decode(stdout).trim() : undefined;
   } catch {
     return undefined;
   }
 }
 
-const ids = Deno.args.length > 0 ? Deno.args : await listIssueIds();
+const ids = cliArgs.length > 0 ? cliArgs : await listIssueIds();
 if (ids.length === 0) {
   console.log("生成するspecがありません（docs/specs が空です）");
-  Deno.exit(0);
+  exit(0);
 }
 
 const verifyContext = await loadVerifyContext();
@@ -87,8 +87,8 @@ for (const id of ids) {
   });
 
   const outDir = join(OUT_DIR, id);
-  await Deno.mkdir(outDir, { recursive: true });
+  await mkdir(outDir, { recursive: true });
   const outPath = join(outDir, "index.html");
-  await Deno.writeTextFile(outPath, html);
+  await writeTextFile(outPath, html);
   console.log(`${id}: ${rel(outPath)}`);
 }

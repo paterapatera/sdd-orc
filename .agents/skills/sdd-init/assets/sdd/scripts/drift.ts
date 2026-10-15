@@ -2,10 +2,11 @@
  * architecture.ts が作られた時点（basedOn）から、構成に関わる変更があったかを調べる。
  * SDDを通らないコミットで architecture.ts が古くなっていないかを確かめるために使う。
  *
- * 使い方: deno task --config docs/sdd/deno.json drift
+ * 使い方: bun docs/sdd/scripts/drift.ts
  *
  * 比較先はリモートの既定ブランチ（無ければ HEAD）。構成に関わる変更があっても終了コードは0。
  */
+import { exit } from "./lib/io.ts";
 import { loadArchitecture } from "./lib/config.ts";
 import { commitExists, defaultRemoteBranch, gitOut, hasRemote } from "./lib/git.ts";
 import { isManifest } from "./lib/manifests.ts";
@@ -13,17 +14,17 @@ import { isManifest } from "./lib/manifests.ts";
 const arch = await loadArchitecture();
 if (!arch) {
   console.log("docs/sdd/architecture.ts がありません。sdd-init で作成してください");
-  Deno.exit(0);
+  exit(0);
 }
 if (!arch.basedOn || arch.basedOn === "none" || arch.basedOn.startsWith("<")) {
   console.log("architecture.ts の basedOn が未設定です（新規案件で、基盤issueの完了前なら問題ありません）");
-  Deno.exit(0);
+  exit(0);
 }
 if (!(await commitExists(arch.basedOn))) {
   console.log(
     `basedOn のコミット ${arch.basedOn} が見つかりません。git fetch を実行するか、architecture.ts を見直してください`,
   );
-  Deno.exit(0);
+  exit(0);
 }
 
 const target = (await hasRemote()) ? (await defaultRemoteBranch()) ?? "HEAD" : "HEAD";
@@ -32,7 +33,7 @@ console.log(`architecture.ts の基準: ${arch.basedOn.slice(0, 10)}（${arch.up
 console.log(`比較先: ${target}（基準から ${count} コミット）`);
 if (count === 0) {
   console.log("\n構成に関わる変更はありません");
-  Deno.exit(0);
+  exit(0);
 }
 
 const excludedDirs = ["docs/specs/", "docs/sdd/"];

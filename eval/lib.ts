@@ -247,13 +247,7 @@ export async function prepareRun(
   // 道具（drift、verify など）は docs/sdd の写しで動くので、スキルだけを差し替えても道具の修正は実行に届かない
   if (await exists(join(t, "docs/sdd/config.ts"))) {
     const install = join(dst, "sdd-init/scripts/install.ts");
-    const r = await exec(Deno.execPath(), [
-      "run",
-      "--allow-read",
-      "--allow-write",
-      "--allow-run=git",
-      install,
-    ], t);
+    const r = await exec("bun", [install], t);
     if (r.code !== 0) throw new Error(`SDD の道具を更新できませんでした: ${r.out.trim()}`);
     await git(t, "add", "-A", "docs/sdd", ".gitignore");
   }

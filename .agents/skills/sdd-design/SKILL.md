@@ -20,8 +20,7 @@ disable-model-invocation: true
 - `docs/sdd/guides/asking-questions.md`: 質問のしかた（1件ずつ聞く）
 - `docs/sdd/guides/review-feedback.md`: 要件を変える必要が出たときの手順
 
-`docs/sdd/deno.json` のタスクは、リポジトリのルートで `deno task --config docs/sdd/deno.json <タスク名>` として実行する。
-以下では `deno task <タスク名>` と略す。
+道具は、リポジトリのルートで `bun docs/sdd/scripts/<タスク名>.ts` として実行する。render は `bun docs/sdd/render/main.ts` である。
 
 ## 確認ポイントと止まる条件
 
@@ -38,7 +37,7 @@ disable-model-invocation: true
 4. **design.ts に構成の回答（`answers`）がある**（手順4の最後）: verify が出す「人に確かめる構成の回答」の一覧を、
    まとめ直さずにそのまま見せる。未回答の項目は1件ずつ聞き、回答済みの項目は人が答えたとおりかを確かめる。
    答えていないと言われた項目は、`answer` を消して `proposal` に戻し、1件ずつ聞く。`answers` が `{}` なら止まらない。
-   ユーザーが答えた項目だけ、`answer` に書いて `deno task verify <ID> --answered <回答の ID>` で記録する。
+   ユーザーが答えた項目だけ、`answer` に書いて `bun docs/sdd/scripts/verify.ts <ID> --answered <回答の ID>` で記録する。
 
 スキルを呼び出したこと（`/sdd-design`）は、確認ポイントへの回答ではない。
 
@@ -64,8 +63,8 @@ disable-model-invocation: true
 **要件の確認に「OK」と答えずに sdd-design が呼ばれた場合**は、要件の了承とみなす。requirements.ts が未コミットなら、
 `docs(<ID>): 要件を作成` としてコミットし、push してから進める。
 
-1. `deno task current` で issue の ID とモードを特定する。完全モードでなければ止まる。
-2. `docs/specs/<ID>/requirements.ts` があり、`deno task verify <ID>` のエラーが無く、未確定の点（`openQuestions` と `values` の `open`）が残っていないことを確かめる。
+1. `bun docs/sdd/scripts/current.ts` で issue の ID とモードを特定する。完全モードでなければ止まる。
+2. `docs/specs/<ID>/requirements.ts` があり、`bun docs/sdd/scripts/verify.ts <ID>` のエラーが無く、未確定の点（`openQuestions` と `values` の `open`）が残っていないことを確かめる。
    満たさなければ sdd-req を案内して止まる。
 3. `design.ts` がすでにあれば、作り直すのではなく、手直しとして扱う。
 
@@ -81,7 +80,7 @@ disable-model-invocation: true
    - architecture.ts とコードの食い違い（あればコードを正とし、`risks` に書く）
 4. 他のブランチの作業を確かめる。
    ```sh
-   deno task conflicts
+   bun docs/sdd/scripts/conflicts.ts
    ```
    他の人のissueのインターフェースを使う場合（新規案件でよくある）は、そのブランチの design.ts を読む。
    ```sh
@@ -135,8 +134,8 @@ disable-model-invocation: true
 書いたら、次を実行し、エラーが無くなるまで直す。警告は内容を確かめ、直さない場合は理由を報告に含める。
 
 ```sh
-deno task check <ID>
-deno task verify <ID>
+bun docs/sdd/scripts/check.ts <ID>
+bun docs/sdd/scripts/verify.ts <ID>
 ```
 
 未回答の項目のエラーのほかにエラーが無くなったら、`answers` があれば確認ポイント4で止まる。回答を `answer` に書いたら、
@@ -147,7 +146,7 @@ deno task verify <ID>
 ## 5. 衝突を確かめる
 
 ```sh
-deno task conflicts --issue <ID>
+bun docs/sdd/scripts/conflicts.ts --issue <ID>
 ```
 
 `[重なり]` があれば、重ならない設計にできないかを検討する（共有ファイルの変更を最小にする、別のファイルに分けるなど）。
@@ -155,7 +154,7 @@ deno task conflicts --issue <ID>
 
 ## 6. HTMLを生成して、コミットして push する
 
-1. `deno task render <ID>` でHTMLを生成する。
+1. `bun docs/sdd/render/main.ts <ID>` でHTMLを生成する。
 2. `docs/specs/<ID>/design.ts` をコミットする。コミットメッセージは `docs(<ID>): 設計を作成`。
 3. push する（リモートが無ければ省く）。
 

@@ -15,6 +15,7 @@ import type {
   Tasks,
 } from "../../schema/mod.ts";
 import { importDefault, loadConfig } from "./config.ts";
+import { mkdir, readDir, readTextFile, runCommand, writeTextFile } from "./io.ts";
 import { ANSWERED_DIR, ASKED_DIR, exists, ROOT, SDD_DIR, SPECS_DIR } from "./paths.ts";
 
 // 実行時に読み込むspecの型。IDはすべて string として扱う。
@@ -47,7 +48,7 @@ export type LoadedIssue = {
 async function readIdRecord(dir: string, id: string): Promise<Set<string>> {
   const ids = new Set<string>();
   try {
-    const xs = JSON.parse(await Deno.readTextFile(join(dir, `${id}.json`)));
+    const xs = JSON.parse(await readTextFile(join(dir, `${id}.json`)));
     if (Array.isArray(xs)) { for (const x of xs) if (typeof x === "string") ids.add(x); }
   } catch {
     // 記録が無ければ空
@@ -58,8 +59,8 @@ async function readIdRecord(dir: string, id: string): Promise<Set<string>> {
 async function addIdRecord(dir: string, id: string, ids: readonly string[]): Promise<void> {
   if (ids.length === 0) return;
   const merged = [...new Set([...(await readIdRecord(dir, id)), ...ids])].sort();
-  await Deno.mkdir(dir, { recursive: true });
-  await Deno.writeTextFile(join(dir, `${id}.json`), JSON.stringify(merged) + "\n");
+  await mkdir(dir, { recursive: true });
+  await writeTextFile(join(dir, `${id}.json`), JSON.stringify(merged) + "\n");
 }
 
 /**
@@ -74,13 +75,13 @@ export async function loadAnswerRecords(
   const answered = await readIdRecord(ANSWERED_DIR, id);
   const committed = new Set<string>();
   try {
-    const out = await new Deno.Command("git", {
+    const out = await runCommand("git", {
       args: ["show", `HEAD:docs/specs/${id}/design.ts`],
       cwd: ROOT,
       stdout: "piped",
       stderr: "null",
-    }).output();
-    if (out.success) {
+    });
+    if (out.code === 0) {
       for (const m of new TextDecoder().decode(out.stdout).matchAll(/"(ANS-\d+)"\s*:\s*\{\s*about\b/g)) {
         committed.add(m[1]);
       }
@@ -105,7 +106,7 @@ export async function recordAnswered(id: string, ids: readonly string[]): Promis
 export async function listIssueIds(): Promise<string[]> {
   if (!(await exists(SPECS_DIR))) return [];
   const ids: string[] = [];
-  for await (const e of Deno.readDir(SPECS_DIR)) {
+  for (const e of await readDir(SPECS_DIR)) {
     if (e.isDirectory && !e.name.startsWith(".") && !e.name.startsWith("_")) ids.push(e.name);
   }
   return ids.sort();
@@ -116,7 +117,7 @@ export async function loadIssue(id: string): Promise<LoadedIssue> {
   const issue: LoadedIssue = { id, dir, mode: "none", loadErrors: [] };
 
   const issuePath = join(dir, "issue.md");
-  if (await exists(issuePath)) issue.issueMd = await Deno.readTextFile(issuePath);
+  if (await exists(issuePath)) issue.issueMd = await readTextFile(issuePath);
 
   const load = async <T>(file: SpecFile): Promise<T | undefined> => {
     const path = join(dir, file);
@@ -227,19 +228,19 @@ export async function loadVerifyContext(): Promise<VerifyContext> {
     };
   }
   try {
-    const out = await new Deno.Command("git", {
+    const out = await runCommand("git", {
       args: ["ls-files", "-z"],
       cwd: ROOT,
       stdout: "piped",
       stderr: "null",
-    }).output();
-    if (out.success) ctx.trackedFiles = new TextDecoder().decode(out.stdout).split("\0").filter(Boolean);
+    });
+    if (out.code === 0) ctx.trackedFiles = new TextDecoder().decode(out.stdout).split("\0").filter(Boolean);
   } catch {
     // Git が無ければ、前例のある場所を根拠にしない
   }
   if (await exists(adrDir)) {
     ctx.adrs = new Map();
-    for await (const e of Deno.readDir(adrDir)) {
+    for (const e of await readDir(adrDir)) {
       if (!e.isFile || !e.name.endsWith(".ts")) continue;
       try {
         const adr = await importDefault<Adr>(join(adrDir, e.name));

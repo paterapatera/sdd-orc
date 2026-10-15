@@ -1,5 +1,6 @@
 import { join } from "node:path";
 import type { Config } from "../../schema/mod.ts";
+import { readTextFile } from "./io.ts";
 import { exists, ROOT } from "./paths.ts";
 
 /**
@@ -23,7 +24,7 @@ export async function findGateSkips(commands: Config["commands"]): Promise<strin
     const sources: [string, string][] = [[`commands.${name}`, cmd]];
     for (const m of cmd.matchAll(/(?:^|\s)(?:bash\s+|sh\s+|\.\/)?([\w./-]+\.sh)\b/g)) {
       const path = join(ROOT, m[1]);
-      if (await exists(path)) sources.push([m[1], await Deno.readTextFile(path)]);
+      if (await exists(path)) sources.push([m[1], await readTextFile(path)]);
     }
     for (const [where, text] of sources) {
       for (const [re, label] of PATTERNS) {

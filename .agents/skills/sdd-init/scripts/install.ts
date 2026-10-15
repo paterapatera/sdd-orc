@@ -2,14 +2,14 @@
  * SDDの土台を対象リポジトリに組み込む（再実行すると更新になる）。
  *
  * 使い方（対象リポジトリのルートで実行）:
- *   deno run --allow-read --allow-write --allow-run=git <このスキルのディレクトリ>/scripts/install.ts [オプション]
+ *   bun <このスキルのディレクトリ>/scripts/install.ts [オプション]
  *
  * オプション:
  *   --dry-run    何を変更するかだけを表示し、ファイルは変更しない
  *   --hook-only  pre-commit hook の設置だけを行う（2人目以降のメンバー向け）
  *
  * 処理内容:
- *   1. docs/sdd の道具（schema/、scripts/、render/、guides/、deno.json）をコピーする。これらはSDDが管理するので上書きする
+ *   1. docs/sdd の道具（schema/、scripts/、render/、guides/、tsconfig.json）をコピーする。これらはSDDが管理するので上書きする
  *   2. docs/sdd/config.ts が無ければ作る。あれば schemaVersion だけを更新する
  *   3. .gitignore に .sdd/ を追加する
  *   4. pre-commit hook を設置する。既存のhook管理がある場合は触らず、組み込み方を表示する
@@ -17,48 +17,62 @@
  * architecture.ts、conventions.ts、nfr.ts、adr/ はプロジェクトごとの内容なので、このスクリプトは触らない。
  */
 import { dirname, join, relative, resolve } from "node:path";
+import {
+  args,
+  bunVersion,
+  chmod,
+  exit,
+  isNotFound,
+  mkdir,
+  readDir,
+  readTextFile,
+  remove,
+  runCommand,
+  stat,
+  writeTextFile,
+} from "../assets/sdd/scripts/lib/io.ts";
 
 const ASSETS = resolve(import.meta.dirname!, "../assets/sdd");
 /** SDDが管理する道具。対象リポジトリ側の変更は上書きされる */
-const TOOL_ENTRIES = ["schema", "scripts", "render", "guides", "deno.json"];
+const TOOL_ENTRIES = ["schema", "scripts", "render", "guides", "tsconfig.json"];
 const HOOK_MARKER = "# SDD pre-commit hook (managed by sdd-init)";
 
-const dryRun = Deno.args.includes("--dry-run");
-const hookOnly = Deno.args.includes("--hook-only");
+const dryRun = args.includes("--dry-run");
+const hookOnly = args.includes("--hook-only");
 
 type Change = { action: "追加" | "更新" | "削除" | "変更なし" | "スキップ" | "要対応"; target: string; note?: string };
 const changes: Change[] = [];
 
 async function git(args: string[], cwd: string): Promise<string | undefined> {
-  const { code, stdout } = await new Deno.Command("git", { args, cwd, stdout: "piped", stderr: "null" }).output();
+  const { code, stdout } = await runCommand("git", { args, cwd, stdout: "piped", stderr: "null" });
   return code === 0 ? new TextDecoder().decode(stdout).trim() : undefined;
 }
 
 async function exists(path: string): Promise<boolean> {
   try {
-    await Deno.stat(path);
+    await stat(path);
     return true;
   } catch (e) {
-    if (e instanceof Deno.errors.NotFound) return false;
+    if (isNotFound(e)) return false;
     throw e;
   }
 }
 
 async function readOrUndefined(path: string): Promise<string | undefined> {
-  return (await exists(path)) ? await Deno.readTextFile(path) : undefined;
+  return (await exists(path)) ? await readTextFile(path) : undefined;
 }
 
 async function write(path: string, content: string, mode?: number) {
   if (dryRun) return;
-  await Deno.mkdir(dirname(path), { recursive: true });
-  await Deno.writeTextFile(path, content);
-  if (mode !== undefined) await Deno.chmod(path, mode);
+  await mkdir(dirname(path), { recursive: true });
+  await writeTextFile(path, content);
+  if (mode !== undefined) await chmod(path, mode);
 }
 
 async function listFiles(dir: string, base = dir): Promise<string[]> {
   if (!(await exists(dir))) return [];
   const out: string[] = [];
-  for await (const e of Deno.readDir(dir)) {
+  for (const e of await readDir(dir)) {
     const p = join(dir, e.name);
     if (e.isDirectory) out.push(...await listFiles(p, base));
     else out.push(relative(base, p));
@@ -67,7 +81,7 @@ async function listFiles(dir: string, base = dir): Promise<string[]> {
 }
 
 async function schemaVersion(): Promise<string> {
-  const src = await Deno.readTextFile(join(ASSETS, "schema/version.ts"));
+  const src = await readTextFile(join(ASSETS, "schema/version.ts"));
   const m = src.match(/SCHEMA_VERSION = "([^"]+)"/);
   if (!m) throw new Error("schema/version.ts から版を読み取れません");
   return m[1];
@@ -78,13 +92,13 @@ async function installTools(sddDir: string, root: string) {
   for (const entry of TOOL_ENTRIES) {
     const src = join(ASSETS, entry);
     const dst = join(sddDir, entry);
-    const isDir = (await Deno.stat(src)).isDirectory;
+    const isDir = (await stat(src)).isDirectory;
     const srcFiles = isDir ? await listFiles(src) : [""];
     const dstFiles = isDir ? await listFiles(dst) : [];
     for (const f of srcFiles) {
       const s = isDir ? join(src, f) : src;
       const d = isDir ? join(dst, f) : dst;
-      const next = await Deno.readTextFile(s);
+      const next = await readTextFile(s);
       const prev = await readOrUndefined(d);
       const target = relative(root, d);
       if (prev === next) {
@@ -97,7 +111,7 @@ async function installTools(sddDir: string, root: string) {
     // 道具のディレクトリにある、配布元に無いファイルは古いものなので削除する
     for (const f of dstFiles) {
       if (srcFiles.includes(f)) continue;
-      if (!dryRun) await Deno.remove(join(dst, f));
+      if (!dryRun) await remove(join(dst, f));
       changes.push({ action: "削除", target: relative(root, join(dst, f)), note: "配布元に無い古いファイル" });
     }
   }
@@ -109,7 +123,7 @@ async function installConfig(sddDir: string, root: string, version: string) {
   const target = relative(root, path);
   const prev = await readOrUndefined(path);
   if (prev === undefined) {
-    await write(path, await Deno.readTextFile(join(ASSETS, "config.ts")));
+    await write(path, await readTextFile(join(ASSETS, "config.ts")));
     changes.push({ action: "追加", target });
     return;
   }
@@ -193,15 +207,15 @@ exec sh "$root/docs/sdd/scripts/pre-commit.sh"
 }
 
 // --- main ---
-const root = await git(["rev-parse", "--show-toplevel"], Deno.cwd());
+const root = await git(["rev-parse", "--show-toplevel"], process.cwd());
 if (!root) {
   console.error("Gitリポジトリの中で実行してください");
-  Deno.exit(1);
+  exit(1);
 }
-const [major] = Deno.version.deno.split(".").map(Number);
-if (major < 2) {
-  console.error(`Deno 2 以上が必要です（現在: ${Deno.version.deno}）`);
-  Deno.exit(1);
+const versionBun = bunVersion();
+if (!versionBun) {
+  console.error("Bun 1.4.3 以上が必要です");
+  exit(1);
 }
 
 const version = await schemaVersion();
@@ -226,5 +240,5 @@ if (unchanged) console.log(`  （変更なし ${unchanged} 件）`);
 const todo = changes.filter((c) => c.action === "要対応");
 if (todo.length) {
   console.log(`\n要対応が ${todo.length} 件あります。上の内容を確認してください。`);
-  Deno.exit(2);
+  exit(2);
 }

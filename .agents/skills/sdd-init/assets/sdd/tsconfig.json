@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "types": [],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "strict": true,
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "target": "ESNext",
+    "lib": ["ESNext"],
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true
+  },
+  "include": ["schema/**/*.ts", "*.ts", "adr/**/*.ts", "../specs/**/*.ts"],
+  "exclude": ["scripts", "render"]
+}

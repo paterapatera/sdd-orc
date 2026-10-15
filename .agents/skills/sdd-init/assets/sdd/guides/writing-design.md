@@ -70,7 +70,7 @@
   - `{ adr: "ADR-0001" }`: 置き場所を決めた accepted の ADR。title か decision が、ファイルのある場所のパスを書いていること
   - `{ answer: "ANS-003" }`: 上のどれからも決まらないときに質問して得た、置き場所への人の回答（`answers` の ID）。ファイルがすべて回答のパスの下にあること
 - 置き場所の候補が2つ以上ある（例: 既存のモジュールに足すか、新しいモジュールを作るか）のに、どちらにするかを恒久ドキュメントが書いていなければ、
-  引用できる文が無いので質問になる。`placement` を書かずに `deno task verify` を実行すると、根拠にできる候補（ADR、architecture.ts の記述、既存のコンポーネント）を挙げる。
+  引用できる文が無いので質問になる。`placement` を書かずに `bun docs/sdd/scripts/verify.ts` を実行すると、根拠にできる候補（ADR、architecture.ts の記述、既存のコンポーネント）を挙げる。
 
 ### answers
 
@@ -81,7 +81,7 @@
 - 構成の判断は、まず `answer` を書かずに `question` と `proposal`（書き手の案）で書き、その ID を根拠に指す。verify は未回答をエラーにし、
   「人に確かめる構成の回答」の一覧に出して、その ID を `.sdd/asked/` に記録する。sdd-design は設計の終わりにこの一覧をそのまま人に見せ、未回答を1件ずつ聞き、回答済みが人の答えたとおりかを確かめる。
 - `answer` を書けるのは、verify が未回答として一覧に出した項目（記録にある ID）と、直前のコミットの design.ts にすでにある項目だけ（それ以外は verify がエラーにする）。
-- 一覧に出た項目でも、`answer` はユーザーが答えたものだけを書き、`deno task verify <ID> --answered <回答の ID>` で記録する。
+- 一覧に出た項目でも、`answer` はユーザーが答えたものだけを書き、`bun docs/sdd/scripts/verify.ts <ID> --answered <回答の ID>` で記録する。
   記録の無い `answer` は verify がエラーにする（直前のコミットの design.ts にすでにある項目を除く）。
 - 置き場所の未回答の項目は1件にまとめる。機能の置き場所と、それに伴う前例どおりの場所のうち `{ component }` で根拠にできないものを、同じ項目の `placement` にすべて書く（2件以上あれば verify がエラーにする）。
 

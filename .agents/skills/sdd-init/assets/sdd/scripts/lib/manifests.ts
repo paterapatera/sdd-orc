@@ -13,6 +13,6 @@ export const MANIFESTS: readonly RegExp[] = [
 ];
 
 export function isManifest(path: string): boolean {
-  // docs/sdd/deno.json は SDD の道具なので除く
+  // docs/sdd は SDD の道具なので除く
   return !path.startsWith("docs/sdd/") && MANIFESTS.some((re) => re.test(path));
 }

@@ -1,7 +1,7 @@
 /**
  * 完了処理（sdd-finish）の材料を洗い出す。ファイルは変更しない。
  *
- * 使い方: deno task --config docs/sdd/deno.json finish-report <ISSUE>
+ * 使い方: bun docs/sdd/scripts/finish-report.ts <ISSUE>
  *
  * 表示する内容:
  *   - 完了の条件（verify --finish）を満たしているか。
@@ -11,6 +11,7 @@
  *   - 非機能要件のうち、プロジェクト全体の基準（nfr.ts）にするか検討が要るもの
  *   - このブランチのコミット
  */
+import { args, exit, readDir, remove, runCommand, writeTextFile } from "./lib/io.ts";
 import { join } from "node:path";
 import { importDefault, loadArchitecture, loadConfig } from "./lib/config.ts";
 import { findGateSkips } from "./lib/gate-skips.ts";
@@ -23,16 +24,16 @@ import { loadIssue, loadVerifyContext } from "./lib/load.ts";
 import { exists, SDD_DIR } from "./lib/paths.ts";
 import { verifyIssue } from "./lib/rules.ts";
 
-const id = Deno.args[0];
+const id = args[0];
 if (!id) {
-  console.error("使い方: deno task finish-report <ISSUE>");
-  Deno.exit(1);
+  console.error("使い方: bun docs/sdd/scripts/finish-report.ts <ISSUE>");
+  exit(1);
 }
 
 const issue = await loadIssue(id);
 if (issue.mode === "none") {
   console.error(`docs/specs/${id} にspecがありません`);
-  Deno.exit(1);
+  exit(1);
 }
 
 // このブランチで変更したファイル（既定ブランチとの分岐点から）
@@ -74,19 +75,19 @@ if (base) {
 }
 
 // 品質ゲート（E2E を含む）を実行する。AIの自己申告に頼らないため、ここで実行する
-const skipGate = Deno.args.includes("--skip-gate");
+const skipGate = args.includes("--skip-gate");
 const config = await loadConfig();
 if (config.ui && !config.commands?.e2e) {
   errors.push("画面がある案件（config.ts の ui: true）なのに commands.e2e がありません。E2E を外さない");
 }
 if (!skipGate) {
-  console.log("■ 品質ゲート（deno task gate --full）を実行します");
-  const { code } = await new Deno.Command(Deno.execPath(), {
-    args: ["task", "--quiet", "--config", join(SDD_DIR, "deno.json"), "gate", "--full"],
+  console.log("■ 品質ゲート（bun docs/sdd/scripts/gate.ts --full）を実行します");
+  const { code } = await runCommand(process.execPath, {
+    args: [join(SDD_DIR, "scripts/gate.ts"), "--full"],
     cwd: ROOT,
     stdout: "inherit",
     stderr: "inherit",
-  }).output();
+  });
   if (code !== 0) errors.push("品質ゲート（gate --full）が失敗しています");
 }
 
@@ -180,7 +181,7 @@ console.log("\n■ ADRに記録する設計判断");
 const adrDir = join(SDD_DIR, "adr");
 let maxAdr = 0;
 if (await exists(adrDir)) {
-  for await (const e of Deno.readDir(adrDir)) {
+  for (const e of await readDir(adrDir)) {
     const m = e.name.match(/^ADR-(\d+)\.ts$/);
     if (m) maxAdr = Math.max(maxAdr, Number(m[1]));
   }
@@ -265,7 +266,7 @@ console.log(
   log ? log.split("\n").map((l) => `  ${l}`).join("\n") : "  （既定ブランチとの分岐点が分からないため表示できません）",
 );
 
-Deno.exit(errors.length ? 1 : 0);
+exit(errors.length ? 1 : 0);
 
 /** 空白の違いを除いて、rule が振る舞いの文面を含んでいるか */
 function ruleCopiesBehavior(rule: string, behavior: string): boolean {
@@ -290,11 +291,11 @@ async function conventionRulesAt(rev: string): Promise<Map<string, string>> {
   const text = await gitOut(["show", `${rev}:docs/sdd/conventions.ts`]);
   if (!text) return new Map();
   const path = join(SDD_DIR, ".conventions-base.ts");
-  await Deno.writeTextFile(path, text);
+  await writeTextFile(path, text);
   try {
     return await conventionRules(path);
   } finally {
-    await Deno.remove(path).catch(() => {});
+    await remove(path).catch(() => {});
   }
 }
 

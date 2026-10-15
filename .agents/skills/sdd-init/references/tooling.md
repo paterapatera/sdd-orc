@@ -44,7 +44,7 @@ propose-quality-tools はテストのツールを扱わないので、ここで�
 
 E2E を品質ゲートに入れるときの決まり:
 
-- `docs/sdd/config.ts` の `commands.e2e` に登録する。タスクごとの品質ゲートには含まれず、`deno task gate --full` で実行される
+- `docs/sdd/config.ts` の `commands.e2e` に登録する。タスクごとの品質ゲートには含まれず、`bun docs/sdd/scripts/gate.ts --full` で実行される
   （sdd-impl の完了時と sdd-finish の開始時）。
 - アプリの起動（Docker、開発サーバー）、テスト用のデータとアカウントの用意も、E2E のコマンドの中で行えるようにする
   （人が手順を覚えていなくても、コマンド1つで実行できるように）。

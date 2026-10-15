@@ -1,7 +1,5 @@
 import { defineScenario } from "../../schema.ts";
 
-const SDD = "deno task --config docs/sdd/deno.json";
-
 export default defineScenario({
   id: "INIT-001",
   title: "既存案件（Laravel + Inertia React、モジュール構成、Sail）への導入",
@@ -23,8 +21,14 @@ export default defineScenario({
         ".git/hooks/pre-commit",
       ],
     },
-    { id: "check", kind: "command", must: true, label: "恒久ドキュメントの型チェックが通る", run: `${SDD} check` },
-    { id: "doctor", kind: "command", must: true, label: "doctor が通る", run: `${SDD} doctor` },
+    {
+      id: "check",
+      kind: "command",
+      must: true,
+      label: "恒久ドキュメントの型チェックが通る",
+      run: `bun docs/sdd/scripts/check.ts`,
+    },
+    { id: "doctor", kind: "command", must: true, label: "doctor が通る", run: `bun docs/sdd/scripts/doctor.ts` },
     {
       id: "config",
       kind: "contains",
@@ -53,7 +57,7 @@ export default defineScenario({
       kind: "command",
       must: true,
       label: "登録した品質ゲートが、基準のコードで E2E まで通る（hook と同じく format を除く）",
-      run: `rm -f .sdd/gate-passed.json && ${SDD} gate --if-changed`,
+      run: `rm -f .sdd/gate-passed.json && bun docs/sdd/scripts/gate.ts --if-changed`,
     },
     {
       id: "app-unchanged",

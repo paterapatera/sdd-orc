@@ -8,7 +8,7 @@ disable-model-invocation: true
 
 specのタスクを上から順に、1タスク＝1コミットで、**すべて完了するまで止まらずに**実装する。
 
-- 人のコードレビューは行わない。コードの品質は品質ゲート（`deno task gate`: フォーマッタ → check → テスト）で担保する。
+- 人のコードレビューは行わない。コードの品質は品質ゲート（`bun docs/sdd/scripts/gate.ts`: フォーマッタ → check → テスト）で担保する。
 - 人は、実装の完了後に受け入れテストだけを行う。受け入れテストを頼む前に、AIが実際に動かして確かめ、準備を整える。
 
 対象リポジトリの手引き:
@@ -16,8 +16,7 @@ specのタスクを上から順に、1タスク＝1コミットで、**すべて
 - `docs/sdd/guides/writing-tasks.md`: タスクの状態と、受け入れ条件のテストの書き方
 - `docs/sdd/guides/review-feedback.md`: specを直すときの手順
 
-`docs/sdd/deno.json` のタスクは、リポジトリのルートで `deno task --config docs/sdd/deno.json <タスク名>` として実行する。
-以下では `deno task <タスク名>` と略す。
+道具は、リポジトリのルートで `bun docs/sdd/scripts/<タスク名>.ts` として実行する。render は `bun docs/sdd/render/main.ts` である。
 
 ## 止まる条件
 
@@ -45,7 +44,7 @@ specのタスクを上から順に、1タスク＝1コミットで、**すべて
 - `git commit --amend`、`--allow-empty`、`--no-verify` は使わない。タスクの内容が他のタスクに含まれてしまった場合は、
   空のコミットを作らず、tasks.ts でタスクを統合する（`docs/sdd/guides/review-feedback.md` の手順2と4）。
 - **specと違う実装を、specを直さずに進めない。**
-- **時間のかかるコマンドを待ち続けない。** 開発サーバーや監視（watch）は、バックグラウンドで起動するか、`deno task acceptance` に任せる。
+- **時間のかかるコマンドを待ち続けない。** 開発サーバーや監視（watch）は、バックグラウンドで起動するか、`bun docs/sdd/scripts/acceptance.ts` に任せる。
   コマンドには上限時間を決めて実行する。同じコマンドが2回止まったら、再実行せずに原因を調べる
   （試行で、テストが品質ゲートを呼び、無限に再帰して止まった）。
 - **品質ゲートを緩めて通さない**（止まる条件3）。finish-report が、除外の追加やレベルの引き下げを検出する。コマンドに残っているテストの除外も、完了の条件のエラーにする。
@@ -54,13 +53,13 @@ specのタスクを上から順に、1タスク＝1コミットで、**すべて
 
 ## 1. 前提を確かめる（ここで問題があれば、実装を始めずに止まる）
 
-1. `deno task current` で issue の ID とモードを特定する。
-2. `deno task verify <ID>` のエラーが無いことを確かめる。
+1. `bun docs/sdd/scripts/current.ts` で issue の ID とモードを特定する。
+2. `bun docs/sdd/scripts/verify.ts <ID>` のエラーが無いことを確かめる。
 3. `git status --porcelain` で作業ツリーを確かめる。
-   - **変更が無い**: 最初から、または前回の続きから始める（`deno task next <ID>` で次のタスクが分かる）。
-   - **変更がある（中断からの再開）**: `deno task next <ID>` で作業中（`doing`）のタスクを確かめ、変更がそのタスクの分かを
+   - **変更が無い**: 最初から、または前回の続きから始める（`bun docs/sdd/scripts/next.ts <ID>` で次のタスクが分かる）。
+   - **変更がある（中断からの再開）**: `bun docs/sdd/scripts/next.ts <ID>` で作業中（`doing`）のタスクを確かめ、変更がそのタスクの分かを
      `git diff` で確かめる。そのタスクの分なら、続きを実装して手順2-5から進める。そうでなければ止まってユーザーに確認する。
-4. `deno task gate` を一度実行し、**実装を始める前の時点の結果**を控えておく（再開の場合は省いてよい）。
+4. `bun docs/sdd/scripts/gate.ts` を一度実行し、**実装を始める前の時点の結果**を控えておく（再開の場合は省いてよい）。
    - 失敗しているものがあっても止まらない。自分の変更による失敗と区別するために控え、最後の報告に含める。
    - 品質ゲートが設定されていない（`commands` が空）場合も止まらない。`package.json` の scripts、`composer.json`、
      `pyproject.toml`、`Makefile` などからテストのコマンドを推定して使い、品質ゲートが未設定であることを報告に含める。
@@ -72,7 +71,7 @@ specのタスクを上から順に、1タスク＝1コミットで、**すべて
 ### 2-1. 次のタスクを確かめる
 
 ```sh
-deno task next <ID>
+bun docs/sdd/scripts/next.ts <ID>
 ```
 
 タスクの説明、実現する要件、関係するコンポーネント、エラー処理、検証する対象（受け入れ条件）、影響範囲が表示される。
@@ -105,12 +104,12 @@ spec のそのタスクの `status` を `"doing"` にする。
 | 品質ゲートを緩める（除外の追加、レベルの引き下げ） | **止まる**（止まる条件3） |
 
 AIが直した場合は、`docs/sdd/guides/review-feedback.md` の手順2（影響の洗い出し）と手順4（check、verify）を行い、
-直した内容を控えて最後の報告に含める。impact を直した場合は `deno task conflicts --issue <ID>` も実行する。
+直した内容を控えて最後の報告に含める。impact を直した場合は `bun docs/sdd/scripts/conflicts.ts --issue <ID>` も実行する。
 
 ### 2-5. 品質ゲートを通す
 
 ```sh
-deno task gate
+bun docs/sdd/scripts/gate.ts
 ```
 
 失敗したら直して、通るまで繰り返す。手順1で控えた「開始前から失敗していたもの」は、このタスクで悪化していなければよい。
@@ -126,8 +125,8 @@ deno task gate
 
 ## 3. すべてのタスクが終わったら
 
-1. `deno task scope <ID>` で、実際に変えたファイルと影響範囲を照合する。影響範囲の外の変更があれば spec を直す（手順2-4）。
-2. `deno task gate --full`（E2E テストを含む）と `deno task verify <ID>` を実行し、通ることを確かめる。
+1. `bun docs/sdd/scripts/scope.ts <ID>` で、実際に変えたファイルと影響範囲を照合する。影響範囲の外の変更があれば spec を直す（手順2-4）。
+2. `bun docs/sdd/scripts/gate.ts --full`（E2E テストを含む）と `bun docs/sdd/scripts/verify.ts <ID>` を実行し、通ることを確かめる。
    ビルドが失敗していたら、以前からの失敗でも直す（人の受け入れテストで同じ手順が失敗するため）。直せなければ止まる（止まる条件4）。
 3. **受け入れテストの準備を、実行できる形で書く。** spec の `acceptanceGuide`（tasks.ts、軽量モードは spec.ts）に書く（型の説明に従う）。
    - `setup`: 準備のコマンド。**人の手元の環境（すでにセットアップ済みのDB）でも通るように**、マイグレーションを含める
@@ -135,16 +134,16 @@ deno task gate
    - `accounts`: テスト用のアカウント（ID、パスワード、権限）。人に登録させない
    - `data`: 受け入れ条件ごとのデータを用意するコマンド（開発用のシーダーなど）と、実行後の状態（件数など）
    - `check`: 確かめる画面の URL と、表示されるべき文字列
-4. **`deno task acceptance <ID>` を実行し、通るまで直す。** 準備のコマンドとデータのコマンドを実際に実行し、サーバーを起動して画面を確かめる。
+4. **`bun docs/sdd/scripts/acceptance.ts <ID>` を実行し、通るまで直す。** 準備のコマンドとデータのコマンドを実際に実行し、サーバーを起動して画面を確かめる。
    これが通らないまま、受け入れテストを頼まない。画面がある案件では、E2E のスクリーンショットを見て、表示の崩れが無いかも確かめる。
    通ったら `chore(<ID>): 受け入れテストの準備を追加` としてコミットする。
-5. `deno task render <ID>` でHTMLを生成し直す。
+5. `bun docs/sdd/render/main.ts <ID>` でHTMLを生成し直す。
 6. push する（リモートが無ければ省く）。
 7. ユーザーに報告し、**受け入れテストを依頼する**。
-   - 実装したタスクとコミットの一覧（`deno task next <ID>` で確かめられる）
+   - 実装したタスクとコミットの一覧（`bun docs/sdd/scripts/next.ts <ID>` で確かめられる）
    - 品質ゲートの結果（開始前から失敗していたもの、未設定のものを含む）
    - AIが直した spec の内容（あれば）
-   - `deno task acceptance <ID>` の結果と、自分で確かめた受け入れ条件・確かめられなかったもの
+   - `bun docs/sdd/scripts/acceptance.ts <ID>` の結果と、自分で確かめた受け入れ条件・確かめられなかったもの
    - 受け入れテストの手順（起動の手順、アカウント、データ）と、生成したHTMLのパス。HTMLの「受け入れテスト」の章に、
      人が確かめる受け入れ条件の一覧と準備が載っている
    - 合格したら sdd-finish、不合格なら内容をチャットで伝えてもらうよう案内する

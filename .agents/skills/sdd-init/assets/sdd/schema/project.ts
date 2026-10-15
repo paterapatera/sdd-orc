@@ -34,7 +34,7 @@ export type Config = {
   ui?: boolean;
   /**
    * 対象プロジェクトのコマンド（リポジトリのルートで実行する）。コードの品質は、人のコードレビューではなく
-   * これらで担保する。sdd-impl が各タスクの最後に `deno task gate` で実行する（format → check → build → test）。
+   * これらで担保する。sdd-impl が各タスクの最後に `bun docs/sdd/scripts/gate.ts` で実行する（format → check → build → test）。
    * ツールの選定には propose-quality-tools スキルを使う。分からないものは書かない。
    */
   commands?: {
@@ -55,7 +55,7 @@ export type Config = {
     build?: string;
     /**
      * E2E テスト（ブラウザなどで、利用者と同じ操作をして確かめる。例: "bunx playwright test"）。
-     * 時間がかかるので、タスクごとの品質ゲートには含めず、`deno task gate --full` で実行する
+     * 時間がかかるので、タスクごとの品質ゲートには含めず、`bun docs/sdd/scripts/gate.ts --full` で実行する
      * （sdd-impl の完了時と sdd-finish の開始時）。アプリの起動が必要なら、コマンドの中で起動する。
      */
     e2e?: string;
