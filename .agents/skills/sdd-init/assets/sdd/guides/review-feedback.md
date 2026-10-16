@@ -55,6 +55,7 @@ bun docs/sdd/render/main.ts <ID>
 2. tasks（軽量モードは spec の tasks）の末尾にタスクを追加する。同じ不具合を防ぐテスト（画面なら E2E）を含める。
 3. 品質ゲートを通し、`docs/sdd/guides/commits.md` の形式でコミットする。
 4. `bun docs/sdd/scripts/acceptance.ts <ID>` を通してから、受け入れテストをもう一度頼む。
+5. 開いている PR/MR があれば、修正をそこへ push する。新しくは作らない。マージしない。
 
 ## 受け入れテストでの、受け入れ条件の範囲外の調整
 
@@ -67,7 +68,10 @@ bun docs/sdd/render/main.ts <ID>
 
 ## PR/MR を作った後に変更が入った場合
 
-sdd-finish の後（spec を削除した後）に変更が入った場合は、spec は直せないので、次を行う。
+実装の完了で PR/MR を開いたあと、受け入れテストの前と、不合格の修正は、spec を直して同じ PR/MR に push する。新しい PR/MR は作らない。
+
+spec を削除したあと（sdd-finish の反映のあと）に変更が入った場合は、spec は直せないので、次を行う。
 
 - 品質ゲートを通してからコミットする。
 - 要件が変わった場合（受け入れ条件を削除した、変えたなど）は、PR/MR の本文の要約を直す。
+- マージは、受け入れテストに合格しているときだけ sdd-finish が行う。

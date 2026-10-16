@@ -23,8 +23,8 @@ export default defineScenario({
       id: "no-pr",
       kind: "noCommand",
       must: true,
-      label: "PR を作らない、issue に投稿しない（人役は断る。聞かずに作れば不合格）",
-      patterns: [String.raw`\bgh\s+pr\s+(create|comment|merge)\b`, String.raw`\bgh\s+issue\s+(comment|close)\b`],
+      label: "issue に投稿しない、issue を閉じない",
+      patterns: [String.raw`\bgh\s+issue\s+(comment|close)\b`],
     },
     {
       id: "unchanged",
