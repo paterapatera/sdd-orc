@@ -25,6 +25,9 @@ SDD のスキル（`.agents/skills/`）と、対象リポジトリにコピー�
 | 品質ツールの提案 | `.agents/skills/propose-quality-tools/`（更新の手順は `MAINTAIN.md`） |
 | 訓練（試験場での実行と採点、失敗パターンの記録） | `eval/`（使い方は下の「訓練」） |
 | スキルへの依頼（「〇〇機能も追加したい」「〇〇が出ないから出るようにして」） | `.cursor/skills/optimize-fix/SKILL.md`（記録は `eval/wiki/requests/`。訓練のパターンを閉じるのは `.cursor/skills/close-pattern/SKILL.md`） |
+| スキルや道具の変更を issue にする | このリポジトリ（`paterapatera/sdd-orc`）。受け取り側のリポジトリには作らず、その変更は完了条件に書く |
+
+対象リポジトリの製品の不具合は、そのリポジトリの issue にする。訓練の失敗と、optimize-fix の依頼は、GitHub の issue にしない。
 
 ## コマンド
 
