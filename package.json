@@ -12,29 +12,5 @@
     "url": "https://github.com/paterapatera/sdd-orc/issues"
   },
   "homepage": "https://github.com/paterapatera/sdd-orc#readme",
-  "type": "module",
-  "scripts": {
-    "test": "bun --check --tsconfig-override tsconfig.json && bun test tests",
-    "fmt": "biome format --write .",
-    "fmt:check": "biome format .",
-    "lint": "biome lint ."
-  },
-  "bin": {
-    "sdd-orc": "cli/install.mjs"
-  },
-  "files": [
-    "cli",
-    ".agents/skills"
-  ],
-  "engines": {
-    "node": ">=20"
-  },
-  "publishConfig": {
-    "access": "public"
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.5.15",
-    "@types/bun": "^1.4.3",
-    "@types/node": "^26.6.5"
-  }
+  "type": "module"
 }
