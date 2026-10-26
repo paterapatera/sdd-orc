@@ -1,0 +1,38 @@
+---
+name: sdd-req
+description: Write the requirements delta for the current SDD issue. Use when the user runs /sdd-req.
+---
+
+# sdd-req
+
+Docs directory: `__SDD_DOCS_DIR__`. Write bodies in `__SDD_LANG__`. Issue directory: `__SDD_DOCS_DIR__/issues/<current-branch>/`. Stop when that directory is missing.
+
+Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first and stop on failure. Read `proposal.md`, related specs, and steering. Ask at most 5 questions at a time. Leave unanswered questions under Open Questions as `- [ ] Qn: ...`. When answered, check the box and add `Answer:` plus the delta id.
+
+## requirements.md
+
+Headings stay in English. Use Context, Open Questions, and `# Delta`. Context has Actors, Current behavior (existing ids, or `path:line` when specs do not exist yet), and Assumptions. Do not repeat Why.
+
+Delta order: Coverage, Structure, New domain, Domain metadata, New capability, Removed capability, spec file sections in path order, then `product.md` and `glossary.md` only. `architecture.md`, `tech.md`, `structure.md`, and topic files belong in `design.md`.
+
+Coverage lists every touched capability and all four files as `changed` or `no change: <reason>`. Use one line, `none`, when specs do not change, and explain that in Context.
+
+Use `spec.md` for behavior, `interfaces.md` for contracts that cross a capability, `data.md` for persisted data, and `quality.md` for measurable quality. New ids are `REQ|IF|DATA|NFR-<CODE>-NEW-<k>`. `MODIFIED` is a full replacement and includes `- change:`. `REMOVED` includes `- reason:`. Do not edit Identifier. A new spec needs Purpose and Scope. A new contract file needs METADATA and Purpose.
+
+## EARS
+
+One requirement, one sentence, one scenario or more. Include an exception scenario when failure behavior exists. Do not name tables, classes, or libraries. Put numbers in `quality.md`.
+
+| Pattern | en | ja |
+|---|---|---|
+| Ubiquitous | `The <system> SHALL <response>.` | `<システム>は<応答>しなければならない。` |
+| Event-driven | `When <trigger>, the <system> SHALL ...` | `<トリガー>とき、<システム>は…しなければならない。` |
+| State-driven | `While <state>, the <system> SHALL ...` | `<状態>の間、<システム>は…しなければならない。` |
+| Unwanted behavior | `If <condition>, then the <system> SHALL ...` | `<条件>場合、<システム>は…しなければならない。` |
+| Optional feature | `Where <feature>, the <system> SHALL ...` | `<機能>を含む場合、<システム>は…しなければならない。` |
+
+Scenarios use `**Given**`, `**When**`, `**Then**`, `**And**` in en, and `**前提**`, `**もし**`, `**ならば**`, `**かつ**` in ja. For any other language, keep those English keywords and write the rest in `__SDD_LANG__`. Headings such as `#### REQ-...` and `##### Scenario:` stay in English. Define a term in the spec when one capability uses it, and in `glossary.md` when two or more do.
+
+## Finish
+
+Delete `base:` lines you rewrote, then run `__SDD_RUNTIME__ __SDD_SCRIPT__ stamp --issue <feature>` and `__SDD_RUNTIME__ __SDD_SCRIPT__ check --issue <feature>`. Commit only this issue directory, including `proposal.md` when it is still uncommitted, as `docs: ...` in `__SDD_LANG__`. Stage named paths. Do not use `git add -A` or `git add .`. A tracker key prefix becomes the commit scope.

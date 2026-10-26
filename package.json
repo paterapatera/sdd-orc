@@ -1,7 +1,22 @@
 {
   "name": "@paterapatera/sdd-orc",
-  "version": "0.2.0",
-  "description": "Cursor、Codex、Claude Code へ SDD のスキルを入れる",
+  "version": "0.3.0",
+  "description": "Install SDD skills for Cursor, Codex, and Claude Code",
+  "bin": {
+    "sdd-orc": "./src/cli.mjs"
+  },
+  "files": [
+    "src",
+    "templates",
+    "README.md",
+    "README.ja.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node src/build.mjs",
+    "test": "node --test",
+    "test:bun": "bun test"
+  },
   "license": "MIT",
   "author": "patera",
   "repository": {

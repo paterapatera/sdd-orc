@@ -1,0 +1,23 @@
+---
+name: sdd-impl
+description: Implement the unchecked major tasks for the current SDD issue. Use when the user runs /sdd-impl.
+---
+
+# sdd-impl
+
+Docs directory: `__SDD_DOCS_DIR__`. Issue directory: `__SDD_DOCS_DIR__/issues/<current-branch>/`. Stop when `task.md` is missing.
+
+Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Read the issue documents plus the current specs and the issue delta together. Do not edit `__SDD_DOCS_DIR__/specs/`, `decision/`, or `steering/`.
+
+## Execution
+
+1. Run unchecked major items in dependency order. Run `(P)` majors in parallel subagents.
+2. Implement every minor item. Run Local tests. Check the major item only when its minor items are done and those tests pass.
+3. On a test failure, fix and rerun. Stop that major on the third failure, wait for majors already running, and do not start later majors.
+4. Stop and report when the design cannot be implemented as written.
+5. Prepare Manual verification steps, and leave that major unchecked for the person who performs it.
+6. Write CI and Staging tests, and do not run them.
+
+Refer to requirement ids only in test names and comments. Commit the checked work with the proposal Impact type. When the feature name starts with a tracker key, use that key as the commit scope and write the description in `__SDD_LANG__`. Stage the issue directory and the files this implementation changed. Do not use `git add -A` or `git add .`.
+
+If steering does not match the code and the difference is outside this issue, finish the implementation and recommend `/sdd-steering`.
