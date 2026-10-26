@@ -2,7 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
-import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks } from "./delta.mjs";
+import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
 
 const SPEC_FILES = ["spec.md", "interfaces.md", "data.md", "quality.md"];
 const ITEM_SECTION = { REQ: "Requirements", IF: "Interfaces", DATA: "Entities", NFR: "Quality Requirements" };
@@ -1094,11 +1094,10 @@ function validateItems(docsDir, rel, text, lang, removed, seen, diags, options) 
     if (seen.has(id)) diags.push(diag(rel, node.line, "ID_DUPLICATE", `${id} is also defined in ${seen.get(id)}`));
     else seen.set(id, rel);
     if (removed.has(id)) diags.push(diag(rel, node.line, "ID_REUSED", `${id} was removed and cannot be reused`));
-    const sentence = requirementSentence(node.full);
     const ears = EARS[lang] || EARS.en;
-    const count = lang === "ja" ? sentence.split(ears.shall).length - 1 : sentence.split(/\bSHALL\b/).length - 1;
     if (filename !== "interfaces.md" || !/^-\s+Direction:\s*Consumed/m.test(node.full)) {
-      if (count !== 1) diags.push(diag(rel, node.line, "EARS_SHALL", `${id} must contain exactly one ${ears.shall}`));
+      const problem = shallProblem(requirementSentence(node.full), lang);
+      if (problem) diags.push(diag(rel, node.line, "EARS_SHALL", `${id} ${problem}`));
     }
     if (filename === "spec.md") {
       const scenarios = headingNodes(node.full).filter((item) => item.title.startsWith("Scenario:"));
@@ -1396,9 +1395,8 @@ function validateDeltaEars(delta, lang, diags) {
   for (const file of delta.files) {
     for (const item of [...file.added, ...file.modified]) {
       if (!/^(REQ|IF|DATA|NFR)-/.test(item.title)) continue;
-      const sentence = requirementSentence(item.content);
-      const count = lang === "ja" ? sentence.split(ears.shall).length - 1 : sentence.split(/\bSHALL\b/).length - 1;
-      if (count !== 1 && !/^-\s+Direction:\s*Consumed/m.test(item.content)) diags.push(diag(file.path, item.line, "EARS_SHALL", `${item.title} must contain exactly one ${ears.shall}`));
+      const problem = shallProblem(requirementSentence(item.content), lang);
+      if (problem && !/^-\s+Direction:\s*Consumed/m.test(item.content)) diags.push(diag(file.path, item.line, "EARS_SHALL", `${item.title} ${problem}`));
       if (item.title.startsWith("REQ-")) {
         const scenarios = scenarioBlocks(shiftHeadings(item.content, -1));
         const found = scenarios.length ? scenarios : headingNodes(item.content).filter((node) => node.title.startsWith("Scenario:"));
@@ -1544,18 +1542,21 @@ function validateClose(root, config, issue, files, docsOnly, quick, diags) {
       if (tokenHits(value, token)) diags.push(diag(rel, 1, "CLOSE_ISSUE_NAME", `Durable docs must not mention ${token}`));
     }
   }
-  const code = git(root, ["ls-files", "-z"]);
-  if (code.status === 0) {
-    for (const rel of code.stdout.split("\0").filter(Boolean)) {
-      if (rel.startsWith(`${config.docsDir}/`)) continue;
-      const abs = path.join(root, rel);
-      if (!fs.existsSync(abs) || fs.statSync(abs).isDirectory()) continue;
-      const text = fs.readFileSync(abs);
-      if (text.includes(0)) continue;
-      if (PROVISIONAL_RE.test(text.toString("utf8"))) diags.push(diag(rel, 1, "CLOSE_PROVISIONAL", "Replace provisional IDs in code before close"));
-      PROVISIONAL_RE.lastIndex = 0;
-    }
+  for (const rel of codePaths(root, config)) {
+    const abs = path.join(root, rel);
+    if (!fs.existsSync(abs) || fs.statSync(abs).isDirectory()) continue;
+    const text = fs.readFileSync(abs);
+    if (text.includes(0)) continue;
+    if (PROVISIONAL_RE.test(text.toString("utf8"))) diags.push(diag(rel, 1, "CLOSE_PROVISIONAL", "Replace provisional IDs in code before close"));
+    PROVISIONAL_RE.lastIndex = 0;
   }
+}
+
+function codePaths(root, config) {
+  const listed = git(root, ["ls-files", "-z"]);
+  if (listed.status !== 0) return [];
+  const skipped = [config.docsDir, ...(config.skillsDir || []).map((dir) => `${dir}/skills`)].map((dir) => `${dir.replace(/\/+$/, "")}/`);
+  return listed.stdout.split("\0").filter((rel) => rel && !skipped.some((prefix) => rel.startsWith(prefix)));
 }
 
 function issueTokens(issue) {
@@ -1572,12 +1573,9 @@ function tokenHits(text, token) {
   return new RegExp(`(^|[^a-z0-9-])${token}([^a-z0-9-]|$)`).test(text);
 }
 
-function loadCodeFiles(root, docsDir) {
+function loadCodeFiles(root, config) {
   const files = new Map();
-  const listed = git(root, ["ls-files", "-z"]);
-  if (listed.status !== 0) return files;
-  for (const rel of listed.stdout.split("\0").filter(Boolean)) {
-    if (rel.startsWith(`${docsDir}/`)) continue;
+  for (const rel of codePaths(root, config)) {
     const abs = path.join(root, rel);
     if (!fs.existsSync(abs) || fs.statSync(abs).isDirectory()) continue;
     const buffer = fs.readFileSync(abs);
@@ -1732,7 +1730,7 @@ function runApply(root, config, opts) {
   const simulated = simulate(tree, config.docsDir, issueResult.deltas, issue, { lang: config.lang || "en", root });
   const diags = [...issueResult.diags, ...simulated.diags];
   if (diags.length) return { code: exitCode(diags), stdout: output(diags, opts.format), stderr: "" };
-  const code = loadCodeFiles(root, config.docsDir);
+  const code = loadCodeFiles(root, config);
   for (const [rel, text] of code) {
     const next = replaceTokens(text, simulated.idMap);
     if (next !== text) fs.writeFileSync(path.join(root, rel), next);
@@ -1763,7 +1761,7 @@ function runRenumber(root, config, opts) {
     if (typeof value !== "string" || rel.startsWith(`${config.docsDir}/issues/`)) continue;
     tree.set(rel, preserveBaseIds(value, gitFile(root, base, rel), idMap));
   }
-  applyRenumberToCode(root, config.docsDir, base, idMap);
+  applyRenumberToCode(root, config, base, idMap);
   recomputeFormer(tree, config.docsDir);
   regenerateIndexes(tree, config.docsDir);
   writeTree(root, before, tree);
@@ -1857,11 +1855,8 @@ function rewriteCode(tree, docsDir, from, to, root, base) {
   }
 }
 
-function applyRenumberToCode(root, docsDir, base, idMap) {
-  const listed = git(root, ["ls-files", "-z"]);
-  if (listed.status !== 0) return;
-  for (const rel of listed.stdout.split("\0").filter(Boolean)) {
-    if (rel.startsWith(`${docsDir}/`)) continue;
+function applyRenumberToCode(root, config, base, idMap) {
+  for (const rel of codePaths(root, config)) {
     const abs = path.join(root, rel);
     if (!fs.existsSync(abs) || fs.statSync(abs).isDirectory()) continue;
     const work = fs.readFileSync(abs);

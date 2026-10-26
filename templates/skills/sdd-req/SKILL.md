@@ -11,9 +11,11 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first and stop on failu
 
 ## Questions
 
-Ask first about points that leave an acceptance result undecided, then about points the proposal marks for this phase. Look for gaps the proposal does not mention: each way a user reaches the behavior (a link, a direct URL, a retry), who creates the accounts or records the behavior needs, failure and empty states, and who may see or change what. Ask at most 5 questions at a time. Leave unanswered questions under Open Questions as `- [ ] Qn: ...`. When answered, check the box and add `Answer:` plus where the answer landed: a delta id, a section such as `Definitions` in a named spec, or `no delta` when the answer is to require nothing.
+Ask first about points that leave an acceptance result undecided, then about points the proposal marks for this phase. Look for gaps the proposal does not mention: each way a user reaches the behavior (a link, a direct URL, a retry), who creates the accounts or records the behavior needs, failure and empty states, and who may see or change what. Ask at most 5 questions at a time, and ask the next 5 after the answers arrive; rounds have no limit. Each question decides one thing, and each option states only the result that differs. Put background in one or two chat sentences before the questions, not in them. Keep a question near 30 characters and an option near 15 in ja, or near 12 and 6 words otherwise, not counting its score. Prefix each option with a score from 1 to 5, as in `[5] ...`, where 5 is best. The score weighs safety most, then closeness to the ideal form, then low implementation effort. List options from the highest score. Leave unanswered questions under Open Questions as `- [ ] Qn: ...`. When answered, check the box and add `Answer:` plus where the answer landed: a delta id, a section such as `Definitions` in a named spec, or `no delta` when the answer is to require nothing.
 
 ## requirements.md
+
+`example.md` next to this file is a complete file that passes `check`. Copy its headings, field names, and table shapes, and read `__SDD_SCRIPT__` only when `check` reports something this skill and the example do not explain. Write the bodies in `__SDD_LANG__`, and keep only the parts the issue needs.
 
 Headings stay in English. Use Context, Open Questions, and `# Delta`. Context has Actors, Current behavior (existing ids, or `path:line` when specs do not exist yet), Proposal Coverage, and Assumptions. Do not repeat Why.
 
@@ -29,6 +31,8 @@ Coverage lists every touched capability and all four files as `changed` or `no c
 
 Use `spec.md` for behavior, `interfaces.md` for contracts at a boundary, `data.md` for persisted data, and `quality.md` for measurable quality. A boundary is an API, an event, a job, an external system, or code that another capability calls. A screen that shows content owned by another capability links it under Related and adds no interface. Each obligation belongs to one capability; others link to it instead of restating it. New ids are `REQ|IF|DATA|NFR-<CODE>-NEW-<k>`, and `Uses:` may name a provisional id. `MODIFIED` is a full replacement and includes `- change:`. `REMOVED` includes `- reason:`. Do not edit Identifier. A new spec needs Purpose and Scope. A new contract file needs METADATA and Purpose.
 
+Field values come from fixed lists. Interfaces: `Kind` is `REST API`, `Event`, `File`, `UI`, `CLI`, `Library`, or `Batch`, and `Direction` is `Provided` or `Consumed`. A `Consumed` interface needs only `Direction` and `Uses: IF-...`. Data: `Classification` is `Public`, `Internal`, `Confidential`, or `Personal`, and a `Type` cell is `string`, `integer`, `decimal`, `boolean`, `date`, `datetime`, `enum(...)`, `ref(DATA-...)`, or `list<...>` of one of them. Quality: `Characteristic` is `Functional suitability`, `Performance efficiency`, `Compatibility`, `Interaction capability`, `Reliability`, `Security`, `Maintainability`, `Flexibility`, or `Safety`, and `Verification` is `Test`, `Analysis`, `Inspection`, or `Demonstration`.
+
 ## EARS
 
 One requirement, one sentence, one obligation, one scenario or more. Include an exception scenario when failure behavior exists. Do not name tables, classes, or libraries. Put numbers in `quality.md`.
@@ -43,11 +47,13 @@ Choose the pattern from the trigger: Event-driven for an action or arrival, Stat
 | Unwanted behavior | `If <condition>, then the <system> SHALL ...` | `<条件>場合、<システム>は…しなければならない。` |
 | Optional feature | `Where <feature>, the <system> SHALL ...` | `<機能>を含む場合、<システム>は…しなければならない。` |
 
+Each requirement sentence has exactly one `SHALL` in en. In ja, it has exactly one `なければならない`, conjugated to fit the verb as in `示さなければならない`, and the sentence ends there. Quoted text in `「」`, `『』`, double quotes, or backticks does not count.
+
 Scenarios use `**Given**`, `**When**`, `**Then**`, `**And**` in en, and `**前提**`, `**もし**`, `**ならば**`, `**かつ**` in ja. For any other language, keep those English keywords and write the rest in `__SDD_LANG__`. Headings such as `#### REQ-...` and `##### Scenario:` stay in English. Define a term in the spec when one capability uses it, and in `glossary.md` when two or more do.
 
 ## Review
 
-Before Finish, reread the whole file against this list. Fix each failure, or turn it into an Open Question when the proposal and the answers do not settle it.
+Before Finish, reread the whole file against this list. Fix each failure. Ask another round about a point the proposal and the answers do not settle, and leave it as an Open Question only when the user leaves it unanswered.
 
 - Every What Changes item appears in Proposal Coverage, and no observable result is left to design.
 - Each requirement has one obligation and one reading, and its own scenario decides pass or fail.

@@ -31,8 +31,8 @@ export const SPEC_H2 = ["Purpose", "Scope", "Definitions", "Identifier", "Requir
 export const LOCKED_SECTIONS = new Set(["Identifier", "Status"]);
 
 export const EARS = {
-  en: { shall: "SHALL", given: "**Given**", when: "**When**", then: "**Then**", suite: "full existing test suite" },
-  ja: { shall: "しなければならない", given: "**前提**", when: "**もし**", then: "**ならば**", suite: "既存のテストをすべて実行" },
+  en: { given: "**Given**", when: "**When**", then: "**Then**", suite: "full existing test suite" },
+  ja: { given: "**前提**", when: "**もし**", then: "**ならば**", suite: "既存のテストをすべて実行" },
 };
 
 export function localDate(date = new Date()) {

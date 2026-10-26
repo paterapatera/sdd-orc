@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
+import { shallProblem } from "../src/script/delta.mjs";
+import { CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, KINDS, VERIFICATIONS } from "../src/script/util.mjs";
 import { cliPath, commitAll, git, initRepo, run, sdd, tempRepo, writeInvoiceIssue, writeSteering } from "./helpers.mjs";
 
 function read(dir, rel) {
@@ -20,7 +22,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "0.3.1");
+  assert.equal(config.version, "0.3.2");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -691,6 +693,143 @@ test("issue checks cover traceability, research, ears, and close", () => {
   assert.match(close.stdout, /CLOSE_TASKS/);
 });
 
+test("ja obligations accept any verb form and ignore quoted text", () => {
+  const accepted = [
+    "利用者が保存したとき、システムは記録を保存しなければならない。",
+    "認証済み利用者がダッシュボードを開いたとき、アプリケーションはタイトルを示さなければならない。",
+    "登録に成功したとき、アプリケーションはダッシュボードを開かなければならない。",
+    "資格が一致しない場合、アプリケーションはダッシュボードを開かないままにしなければならない。",
+    "利用者が設定を開いたとき、システムは「入力しなければならない」という案内を消さなければならない。",
+    "利用者が設定を開いたとき、システムは『保存しなければならない』という見出しを消さなければならない。",
+    "利用者が設定を開いたとき、システムは `しなければならない` を文字のまま示さなければならない。",
+    "利用者が一覧を開いたとき、システムは新しい順に並べなければならない",
+    "利用者が一覧を開いたとき、システムは新しい順に並べなければならない。並びの基準は保存時刻である。",
+  ];
+  for (const sentence of accepted) assert.equal(shallProblem(sentence, "ja"), "", sentence);
+  const rejected = [
+    "利用者が保存したとき、システムは記録を保存する。",
+    "利用者が保存したとき、システムは記録を保存する必要がある。",
+    "利用者が保存したとき、システムは記録を保存しなければならず、通知を送らなければならない。",
+    "利用者が保存したとき、システムは記録を保存しなければならない。システムは通知を送らなければならない。",
+    "保存しなければならないとき、システムは通知を送る。",
+    "利用者が設定を開いたとき、システムは「保存しなければならない」と表示する。",
+  ];
+  for (const sentence of rejected) assert.notEqual(shallProblem(sentence, "ja"), "", sentence);
+});
+
+test("en obligations ignore quoted SHALL", () => {
+  assert.equal(shallProblem("When a clerk reissues an invoice, the system SHALL issue a copy.", "en"), "");
+  assert.equal(shallProblem('When a user opens terms, the system SHALL show "You SHALL agree" as plain text.', "en"), "");
+  assert.equal(shallProblem("When a user opens help, the system SHALL show `SHALL` as plain text.", "en"), "");
+  assert.notEqual(shallProblem("When a clerk reissues an invoice, the system should issue a copy.", "en"), "");
+  assert.notEqual(shallProblem("When a clerk reissues an invoice, the system SHALL issue a copy and SHALL notify.", "en"), "");
+  assert.notEqual(shallProblem('When a user opens terms, the system shows "You SHALL agree".', "en"), "");
+});
+
+function prepareInvoiceWithReprint(dir) {
+  prepare(dir);
+  writeInvoiceIssue(dir);
+  const invoice = path.join(dir, "docs/sdd/issues/invoice-reissue/requirements.md");
+  fs.appendFileSync(invoice, `
+#### REQ-INV-NEW-2: Reprint invoice
+When a clerk reprints an invoice, the system SHALL issue a copy.
+
+##### Scenario: Reprint
+- **Given** an issued invoice
+- **When** the clerk reprints it
+- **Then** a copy is issued
+`);
+  const design = path.join(dir, "docs/sdd/issues/invoice-reissue/design.md");
+  fs.writeFileSync(design, read(dir, "docs/sdd/issues/invoice-reissue/design.md").replace("| REQ-INV-NEW-1 | InvoiceService | Integration |", "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| REQ-INV-NEW-2 | InvoiceService | Integration |"));
+  const task = path.join(dir, "docs/sdd/issues/invoice-reissue/task.md");
+  fs.writeFileSync(task, read(dir, "docs/sdd/issues/invoice-reissue/task.md").replaceAll("Requirements: REQ-INV-NEW-1", "Requirements: REQ-INV-NEW-1, REQ-INV-NEW-2"));
+  const applied = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
+  assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+  commitAll(dir, "docs: invoice");
+}
+
+function installedSkill(dir, name, file) {
+  const config = JSON.parse(read(dir, "sdd.config.json"));
+  return read(dir, `${config.skillsDir[0]}/skills/${name}/${file}`);
+}
+
+test("the req, design, and task examples pass check and apply together", () => {
+  const dir = tempRepo();
+  prepareInvoiceWithReprint(dir);
+  const issue = path.join(dir, "docs/sdd/issues/credit-note");
+  fs.mkdirSync(issue, { recursive: true });
+  fs.writeFileSync(path.join(issue, "proposal.md"), `# Credit notes
+
+## Why
+- Background: Returned orders keep their charge.
+- Affected: Billing clerks
+- Outcome: A returned order can be credited.
+
+## What Changes
+- Credit notes for returned orders.
+
+## Impact
+- Type: feat
+- Capabilities:
+  - New: /specs/returns/credit-note (new domain: returns)
+  - Changed: /specs/billing/invoice
+- Steering: /steering/product.md, /steering/glossary.md, /steering/tech.md, /steering/messaging.md (new)
+- Decisions: Candidate - delivery to accounting
+- Code: src/returns
+
+## Out of Scope
+- Partial refunds
+`);
+  const requirements = path.join(issue, "requirements.md");
+  fs.writeFileSync(requirements, installedSkill(dir, "sdd-req", "example.md"));
+  fs.writeFileSync(path.join(issue, "research.md"), installedSkill(dir, "sdd-design", "example-research.md"));
+  fs.writeFileSync(path.join(issue, "design.md"), installedSkill(dir, "sdd-design", "example-design.md"));
+  const task = /```markdown\n([\s\S]*?)\n```/.exec(installedSkill(dir, "sdd-task", "SKILL.md"))[1];
+  fs.writeFileSync(path.join(issue, "task.md"), `${task}\n`);
+  const stamped = sdd(dir, ["stamp", "--issue", "credit-note"]);
+  assert.equal(stamped.status, 0, stamped.stdout + stamped.stderr);
+  assert.equal((read(dir, "docs/sdd/issues/credit-note/requirements.md").match(/^- base: /gm) || []).length, 3);
+  assert.equal((read(dir, "docs/sdd/issues/credit-note/design.md").match(/^- base: /gm) || []).length, 1);
+  const checked = sdd(dir, ["check", "--issue", "credit-note"]);
+  assert.equal(checked.status, 0, checked.stdout + checked.stderr);
+  assert.doesNotMatch(checked.stdout, /\b(ERROR|WARN)/, checked.stdout);
+  const stampedText = read(dir, "docs/sdd/issues/credit-note/requirements.md");
+  fs.writeFileSync(requirements, stampedText.replace("- Kind: Event", "- Kind: Webhook"));
+  assert.match(sdd(dir, ["check", "--issue", "credit-note"]).stdout, /IF_FIELDS/);
+  fs.writeFileSync(requirements, stampedText);
+  commitAll(dir, "docs: credit note");
+  const applied = sdd(dir, ["apply", "--issue", "credit-note"]);
+  assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+  assert.match(read(dir, "docs/sdd/specs/returns/credit-note/spec.md"), /### REQ-CRN-1: Issue credit note/);
+  assert.doesNotMatch(read(dir, "docs/sdd/specs/billing/invoice/spec.md"), /REQ-INV-2/);
+  assert.match(read(dir, "docs/sdd/decision/1-send-accounting-documents-as-broker-events.md"), /## Pros and Cons of the Options/);
+  assert.match(read(dir, "docs/sdd/steering/tech.md"), /Rationale: \[ADR-1\]/);
+  assert.match(read(dir, "docs/sdd/steering/messaging.md"), /Rationale: \[ADR-1\]/);
+  assert.match(read(dir, "docs/sdd/steering/glossary.md"), /### Issued invoice/);
+  const after = sdd(dir, ["check"]);
+  assert.equal(after.status, 0, after.stdout + after.stderr);
+});
+
+test("the sdd-steering example passes check", () => {
+  const dir = tempRepo();
+  prepareInvoiceWithReprint(dir);
+  const example = installedSkill(dir, "sdd-steering", "example.md");
+  const files = [...example.matchAll(/^## (\S+\.md)\n\n```markdown\n([\s\S]*?)\n```$/gm)];
+  assert.deepEqual(files.map((match) => match[1]), ["product.md", "glossary.md", "architecture.md", "tech.md", "structure.md"]);
+  for (const [, name, body] of files) fs.writeFileSync(path.join(dir, "docs/sdd/steering", name), `${body}\n`);
+  assert.equal(sdd(dir, ["index"]).status, 0);
+  const checked = sdd(dir, ["check"]);
+  assert.equal(checked.status, 0, checked.stdout + checked.stderr);
+  assert.doesNotMatch(checked.stdout, /\b(ERROR|WARN)/, checked.stdout);
+});
+
+test("sdd-req lists every fixed field value", () => {
+  const skill = fs.readFileSync(new URL("../templates/skills/sdd-req/SKILL.md", import.meta.url), "utf8");
+  for (const value of [...KINDS, ...DIRECTIONS, ...CLASSIFICATIONS, ...CHARACTERISTICS, ...VERIFICATIONS]) {
+    assert.match(skill, new RegExp(`\`${value}\``), value);
+  }
+});
+
 test("init through close check ships one package version", () => {
   const dir = tempRepo();
   prepare(dir);
@@ -705,7 +844,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "0.3.1");
+  assert.equal(config.version, "0.3.2");
   assert.match(read(dir, "docs/sdd/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });

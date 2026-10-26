@@ -281,7 +281,7 @@ function fileRecord(nodes, index) {
     if (title === "SECTIONS") {
       for (const item of childIndexes(nodes, child)) {
         const parsed = parseMeta(nodes[item].full);
-        record.sections.push({ title: nodes[item].title, base: parsed.meta.base || "", content: parsed.content, line: nodes[item].line });
+        record.sections.push({ title: nodes[item].title, base: parsed.meta.base || "", rationale: parsed.meta.rationale || "", content: parsed.content, line: nodes[item].line });
       }
     } else if (title === "ADDED" || title === "MODIFIED" || title === "REMOVED") {
       const bucket = title === "ADDED" ? record.added : title === "MODIFIED" ? record.modified : record.removed;
@@ -391,6 +391,18 @@ export function requirementSentence(body) {
     lines.push(line);
   }
   return lines.join("\n").trim();
+}
+
+const QUOTED = /「[^」]*」|『[^』]*』|“[^”]*”|"[^"\n]*"|`[^`\n]*`/g;
+
+export function shallProblem(sentence, lang) {
+  const text = sentence.replace(QUOTED, "");
+  if (lang === "ja") {
+    if (text.split("なければなら").length - 1 !== 1) return "must contain exactly one なければならない";
+    if (!/なければならない(?=。|\s*$)/.test(text)) return "must end its obligation with なければならない";
+    return "";
+  }
+  return text.split(/\bSHALL\b/).length - 1 === 1 ? "" : "must contain exactly one SHALL";
 }
 
 export function scenarioBlocks(body) {

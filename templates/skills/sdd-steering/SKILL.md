@@ -13,6 +13,8 @@ If `steering/` is missing, create it. If it exists, resynchronize it. When a req
 
 ## Required files and headings
 
+`example.md` next to this file shows all five required files in a form that passes `check`. Copy its frontmatter, heading order, glossary term level, and link form, and read `__SDD_SCRIPT__` only when `check` reports something this skill and the example do not explain.
+
 Keep this order:
 
 - `product.md`: Purpose, Stakeholders and Users, Capabilities Overview, External Systems, Operational Scenarios, Constraints, Related
