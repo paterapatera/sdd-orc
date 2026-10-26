@@ -20,7 +20,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "0.3.0");
+  assert.equal(config.version, "0.3.1");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -102,6 +102,102 @@ test("apply adds one invoice requirement and replaces provisional ids", () => {
   assert.equal(again.status, 0, again.stdout);
   const closed = sdd(dir, ["check", "--stage", "close", "--issue", "invoice-reissue"]);
   assert.equal(closed.status, 0, closed.stdout);
+});
+
+test("a consumed interface may use a provisional id without recording a former code", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  writeInvoiceIssue(dir);
+  const requirements = path.join(dir, "docs/sdd/issues/invoice-reissue/requirements.md");
+  let text = fs.readFileSync(requirements, "utf8");
+  text = text.replace(
+    "| /specs/billing/invoice | changed | no change: no contract |",
+    "| /specs/billing/invoice | changed | changed |",
+  ).replace(
+    "\n## New domain: /specs/billing",
+    "\n| /specs/billing/receipt | changed | changed | no change: no persisted data | no change: no quality target |\n\n## New domain: /specs/billing",
+  ).replace("\n## /specs/billing/invoice/spec.md", `
+## New capability: /specs/billing/receipt
+
+- Code: RCPT
+- title: Receipt
+- description: Sends receipts for invoices.
+- tags: [billing]
+
+## /specs/billing/invoice/interfaces.md
+
+### METADATA
+- title: Invoice screen
+- description: Invoice view contract.
+- tags: [billing]
+
+### SECTIONS
+#### Purpose
+Show issued invoices.
+
+### ADDED
+#### IF-INV-NEW-1: Show invoice
+- Kind: UI
+- Direction: Provided
+- Counterpart: Receipt
+- Compatibility: compatible
+
+The system SHALL show an issued invoice.
+
+## /specs/billing/invoice/spec.md`);
+  fs.writeFileSync(requirements, `${text}
+## /specs/billing/receipt/interfaces.md
+
+### METADATA
+- title: Receipt uses invoices
+- description: Receipt reads invoices.
+- tags: [billing]
+
+### SECTIONS
+#### Purpose
+Read invoices for receipts.
+
+### ADDED
+#### IF-RCPT-NEW-1: Read invoice
+- Direction: Consumed
+- Uses: IF-INV-NEW-1
+
+## /specs/billing/receipt/spec.md
+
+### SECTIONS
+#### Purpose
+Receipts confirm payment.
+
+#### Scope
+- In: receipts
+- Out: refunds
+
+### ADDED
+#### REQ-RCPT-NEW-1: Send receipt
+When an invoice is paid, the system SHALL send a receipt.
+
+##### Scenario: Paid
+- **Given** an issued invoice
+- **When** the invoice is paid
+- **Then** a receipt is sent
+`);
+  const design = read(dir, "docs/sdd/issues/invoice-reissue/design.md");
+  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/design.md"), design.replace(
+    "| REQ-INV-NEW-1 | InvoiceService | Integration |",
+    "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| IF-INV-NEW-1 | InvoiceService | Contract |\n| IF-RCPT-NEW-1 | InvoiceService | Contract |\n| REQ-RCPT-NEW-1 | InvoiceService | Unit |",
+  ));
+  const task = read(dir, "docs/sdd/issues/invoice-reissue/task.md");
+  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/task.md"), task.replace(
+    "Requirements: REQ-INV-NEW-1",
+    "Requirements: REQ-INV-NEW-1, IF-INV-NEW-1, IF-RCPT-NEW-1, REQ-RCPT-NEW-1",
+  ));
+  commitAll(dir, "docs: proposal");
+  const checked = sdd(dir, ["check", "--issue", "invoice-reissue"]);
+  assert.equal(checked.status, 0, checked.stdout);
+  const applied = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
+  assert.equal(applied.status, 0, applied.stdout);
+  assert.match(read(dir, "docs/sdd/specs/billing/receipt/interfaces.md"), /Uses: IF-INV-1/);
+  assert.doesNotMatch(read(dir, "docs/sdd/specs/billing/receipt/spec.md"), /Former codes/);
 });
 
 test("stamp records base and apply refuses a stale replacement", () => {
@@ -609,7 +705,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "0.3.0");
+  assert.equal(config.version, "0.3.1");
   assert.match(read(dir, "docs/sdd/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });

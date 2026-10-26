@@ -407,6 +407,10 @@ function collectIds(text) {
   return [...text.matchAll(/\b((?:REQ|IF|DATA|NFR)-[A-Z]{2,6}-\d+)\b/g)].map((match) => match[1]);
 }
 
+function itemCodes(text) {
+  return [...text.matchAll(/^###\s+(?:REQ|IF|DATA|NFR)-([A-Z]{2,6})-\d+\b/gm)].map((match) => match[1]);
+}
+
 function countIds(text) {
   const counts = new Map();
   for (const id of collectIds(text)) counts.set(id, (counts.get(id) || 0) + 1);
@@ -614,7 +618,7 @@ function recomputeFormer(map, docsDir) {
     for (const filename of SPEC_FILES) {
       const text = map.get(`${cap.dir}/${filename}`);
       if (typeof text !== "string") continue;
-      for (const match of text.matchAll(/\b(?:REQ|IF|DATA|NFR)-([A-Z]{2,6})-\d+\b/g)) codes.add(match[1]);
+      for (const item of itemCodes(text)) codes.add(item);
     }
     const code = readCode(map, cap.spec);
     const former = [...codes].filter((item) => item !== code).sort();
@@ -1032,7 +1036,7 @@ function validateTree(map, docsDir, options = {}) {
       const text = map.get(`${cap.dir}/${filename}`);
       if (typeof text !== "string") continue;
       validateItems(docsDir, `${cap.dir}/${filename}`, text, lang, removed, seen, diags, options);
-      for (const match of text.matchAll(/\b(?:REQ|IF|DATA|NFR)-([A-Z]{2,6})-\d+\b/g)) actual.add(match[1]);
+      for (const item of itemCodes(text)) actual.add(item);
     }
     actual.delete(code);
     const left = [...actual].sort();
