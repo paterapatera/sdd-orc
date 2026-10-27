@@ -48,6 +48,7 @@
 ### ADR-NEW-1: Send accounting documents as broker events
 - description: Accounting receives credit notes as message broker events.
 - tags: [messaging]
+- slug: broker-events-for-accounting
 
 #### Context and Problem Statement
 

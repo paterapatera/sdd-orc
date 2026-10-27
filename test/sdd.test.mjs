@@ -22,7 +22,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "0.3.9");
+  assert.equal(config.version, "0.3.10");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -802,12 +802,18 @@ test("the req, design, and task examples pass check and apply together", () => {
   fs.writeFileSync(designPath, stampedDesign.replace("##### Messaging", "### Messaging"));
   assert.match(sdd(dir, ["check", "--issue", "credit-note"]).stdout, /DELTA_HEADING/);
   fs.writeFileSync(designPath, stampedDesign);
+  const researchPath = path.join(issue, "research.md");
+  const researchText = read(dir, "docs/sdd/issues/credit-note/research.md");
+  fs.writeFileSync(researchPath, researchText.replace("- slug: broker-events-for-accounting", "- slug: 会計イベント"));
+  assert.match(sdd(dir, ["check", "--issue", "credit-note"]).stdout, /ADR_SLUG/);
+  fs.writeFileSync(researchPath, researchText);
   commitAll(dir, "docs: credit note");
   const applied = sdd(dir, ["apply", "--issue", "credit-note"]);
   assert.equal(applied.status, 0, applied.stdout + applied.stderr);
   assert.match(read(dir, "docs/sdd/specs/returns/credit-note/spec.md"), /### REQ-CRN-1: Issue credit note/);
   assert.doesNotMatch(read(dir, "docs/sdd/specs/billing/invoice/spec.md"), /REQ-INV-2/);
-  assert.match(read(dir, "docs/sdd/decision/1-send-accounting-documents-as-broker-events.md"), /## Pros and Cons of the Options/);
+  assert.match(read(dir, "docs/sdd/decision/1-broker-events-for-accounting.md"), /## Pros and Cons of the Options/);
+  assert.doesNotMatch(read(dir, "docs/sdd/decision/1-broker-events-for-accounting.md"), /slug:/);
   assert.match(read(dir, "docs/sdd/steering/tech.md"), /Rationale: \[ADR-1\]/);
   assert.match(read(dir, "docs/sdd/steering/tech.md"), /^## Stack\n[\s\S]*^### Messaging$/m);
   assert.doesNotMatch(read(dir, "docs/sdd/steering/tech.md"), /^#####/m);
@@ -859,7 +865,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "0.3.9");
+  assert.equal(config.version, "0.3.10");
   assert.match(read(dir, "docs/sdd/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });

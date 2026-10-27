@@ -864,6 +864,10 @@ function findAdr(map, docsDir, id) {
 
 function applyAdrs(map, docsDir, delta, diags, logs, idMap) {
   for (const adr of delta.adrs) {
+    if (adr.slug && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(adr.slug)) {
+      diags.push(diag("research.md", adr.line, "ADR_SLUG", `${adr.id} slug must be lowercase ASCII letters and digits joined by hyphens`));
+      continue;
+    }
     const existingRel = [...map.keys()].find((rel) => rel.startsWith(`${docsDir}/decision/`) && rel.endsWith(".md") && bodyOf(map, rel)?.data?.title === adr.title);
     if (existingRel) {
       const heading = /^# (ADR-\d+):/m.exec(bodyOf(map, existingRel).body);
@@ -873,7 +877,7 @@ function applyAdrs(map, docsDir, delta, diags, logs, idMap) {
     const number = nextAdr(map, docsDir);
     const id = `ADR-${number}`;
     idMap.set(adr.id, id);
-    const slug = kebab(adr.title) || `adr-${number}`;
+    const slug = adr.slug || kebab(adr.title) || `adr-${number}`;
     let body = `# ${id}: ${adr.title}\n\n## Status\nAccepted\nDate: ${localDate()}\n\n`;
     for (const section of adr.sections) {
       if (section.title === "Status") continue;

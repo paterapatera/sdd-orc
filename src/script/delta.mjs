@@ -324,6 +324,7 @@ function adrRecords(nodes, index) {
       title: match[2].trim(),
       description: parsed.meta.description || "",
       tags: parseListValue(parsed.meta.tags || ""),
+      slug: parsed.meta.slug || "",
       sections,
       line: node.line,
     });

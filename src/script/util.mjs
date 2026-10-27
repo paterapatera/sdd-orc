@@ -153,7 +153,7 @@ export function stripCodeFences(text) {
   return text.replace(/```[\s\S]*?```/g, "");
 }
 
-const META_KEYS = new Set(["base", "change", "reason", "after", "rationale", "title", "description", "tags", "code", "compatibility"]);
+const META_KEYS = new Set(["base", "change", "reason", "after", "rationale", "title", "description", "tags", "code", "compatibility", "slug"]);
 
 export function parseMeta(block) {
   const lines = block.replace(/\r\n/g, "\n").split("\n");
