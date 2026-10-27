@@ -28,4 +28,4 @@ Use this mode when the issue directory is gone and this branch already has a clo
 3. Run `__SDD_RUNTIME__ __SDD_SCRIPT__ renumber --base __SDD_BASE_BRANCH__`. It renumbers only ids this branch added that collide with the base, and it does not change ids already on the base. When it stops for a capability code collision, propose a new code, get confirmation, and rerun with `--code OLD=NEW`.
 4. Run index and `check --stage close`, then commit as `docs: <description>` in `__SDD_LANG__`.
 
-Recommend that pull request CI run `check` as a required status check, and that the base branch be up to date before merge. Those are recommendations, not requirements of this package.
+This package recommends that pull request CI run `check` as a required status check, and that the base branch be up to date before merge. Those are not requirements, and they are not part of the close output.
