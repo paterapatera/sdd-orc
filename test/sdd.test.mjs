@@ -22,7 +22,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "0.3.2");
+  assert.equal(config.version, "0.3.3");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -792,7 +792,7 @@ test("the req, design, and task examples pass check and apply together", () => {
   assert.equal((read(dir, "docs/sdd/issues/credit-note/design.md").match(/^- base: /gm) || []).length, 1);
   const checked = sdd(dir, ["check", "--issue", "credit-note"]);
   assert.equal(checked.status, 0, checked.stdout + checked.stderr);
-  assert.doesNotMatch(checked.stdout, /\b(ERROR|WARN)/, checked.stdout);
+  assert.equal(checked.stdout, "ok: issue credit-note\n");
   const stampedText = read(dir, "docs/sdd/issues/credit-note/requirements.md");
   fs.writeFileSync(requirements, stampedText.replace("- Kind: Event", "- Kind: Webhook"));
   assert.match(sdd(dir, ["check", "--issue", "credit-note"]).stdout, /IF_FIELDS/);
@@ -820,7 +820,9 @@ test("the sdd-steering example passes check", () => {
   assert.equal(sdd(dir, ["index"]).status, 0);
   const checked = sdd(dir, ["check"]);
   assert.equal(checked.status, 0, checked.stdout + checked.stderr);
-  assert.doesNotMatch(checked.stdout, /\b(ERROR|WARN)/, checked.stdout);
+  assert.equal(checked.stdout, "ok: tree\n");
+  assert.equal(sdd(dir, ["check", "--scope", "setup"]).stdout, "ok: setup\n");
+  assert.equal(JSON.parse(sdd(dir, ["check", "--format", "json"]).stdout).ok, true);
 });
 
 test("sdd-req lists every fixed field value", () => {
@@ -844,7 +846,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "0.3.2");
+  assert.equal(config.version, "0.3.3");
   assert.match(read(dir, "docs/sdd/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });

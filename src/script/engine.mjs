@@ -1649,7 +1649,7 @@ function runCheck(root, config, opts) {
   if (opts.scope === "setup" || setup.some((item) => item.rule !== "SETUP_STEERING_MISSING")) {
     const relevant = opts.scope === "setup" ? setup : setup;
     if (opts.scope === "setup" || relevant.some((item) => item.rule !== "SETUP_STEERING_MISSING" || opts.scope === "setup")) {
-      if (opts.scope === "setup") return { code: exitCode(setup), stdout: output(setup, opts.format), stderr: "" };
+      if (opts.scope === "setup") return { code: exitCode(setup), stdout: checkOutput(setup, opts.format, "setup"), stderr: "" };
       if (relevant.some((item) => item.rule !== "SETUP_STEERING_MISSING")) return { code: exitCode(relevant.filter((item) => item.rule !== "SETUP_STEERING_MISSING")), stdout: output(relevant.filter((item) => item.rule !== "SETUP_STEERING_MISSING"), opts.format), stderr: "" };
     }
   }
@@ -1671,7 +1671,12 @@ function runCheck(root, config, opts) {
   } else if (issue && !fs.existsSync(issueDir(root, config, issue))) {
     diags.push(diag(`${config.docsDir}/issues/${issue}`, 1, "ISSUE_NOT_FOUND", "The branch has no matching issue directory"));
   }
-  return { code: exitCode(diags), stdout: output(diags, opts.format), stderr: "" };
+  return { code: exitCode(diags), stdout: checkOutput(diags, opts.format, issue ? `issue ${issue}` : "tree"), stderr: "" };
+}
+
+function checkOutput(diags, format, scope) {
+  if (format === "text" && !diags.length) return `ok: ${scope}\n`;
+  return output(diags, format);
 }
 
 function runStamp(root, config, opts) {

@@ -26,11 +26,18 @@
 
 # Open Questions
 
-- [x] Q1: May a clerk issue a credit note for an invoice that already has one?
+- [x] Q1: Second credit note for one invoice?
+  - [5] Refuse it (chosen)
+  - [3] Replace the first one
+  - [2] Allow both
   Answer: REQ-CRN-NEW-2
 - [x] Q2: Does the customer see credit notes?
+  - [4] No (chosen)
+  - [3] Yes, on the invoice page
   Answer: no delta
 - [ ] Q3: Does a credit note expire?
+  - [4] Never
+  - [3] After one year
 
 # Delta
 

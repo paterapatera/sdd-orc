@@ -4,7 +4,7 @@
 
 Cursor、Codex、Claude Code 向けの [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) スキルと、共通の検査スクリプトをインストールします。
 
-パッケージ名は `@paterapatera/sdd-orc` 0.3.2 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs/sdd`）の下でフォーマット版 1 を使います。
+パッケージ名は `@paterapatera/sdd-orc` 0.3.3 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs/sdd`）の下でフォーマット版 1 を使います。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
