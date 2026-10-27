@@ -15,8 +15,8 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Read the issue d
 2. Implement every minor item. Run Local tests. Check the major item only when its minor items are done and those tests pass.
 3. On a test failure, fix and rerun. Stop that major on the third failure, wait for majors already running, and do not start later majors.
 4. Stop and report when the design cannot be implemented as written.
-5. Prepare Manual verification steps, and leave that major unchecked for the person who performs it.
-6. Write CI and Staging tests, and do not run them.
+5. Prepare Manual verification steps, and leave that major unchecked for the person who performs it. When you also try the steps yourself, report which ones you tried and what you saw, separately from the steps left for the person.
+6. Write CI and Staging tests, and do not run them. Put them where the project's CI or a named command runs them, outside the Local run, and report that command. When the project has no such place, say so in the report.
 
 Refer to requirement ids only in test names and comments. Commit the checked work with the proposal Impact type. When the feature name starts with a tracker key, use that key as the commit scope and write the description in `__SDD_LANG__`. Stage the issue directory and the files this implementation changed. Do not use `git add -A` or `git add .`.
 
