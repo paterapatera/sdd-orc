@@ -17,7 +17,7 @@ Each minor item is implementation or a test at the design's test level, followed
 
 When traceability is `none`, omit `Requirements:` and put "run the full existing test suite" on the last implementation major, before Manual verification.
 
-This example passes `check` with the `/sdd-req` and `/sdd-design` examples. Keep its indentation and labels, and write the text in `__SDD_LANG__`.
+This example passes `check` with the `/sdd-req` and `/sdd-design` examples. Keep its indentation and labels, and write the text in `__SDD_LANG__`. On `task.md`, `check` verifies only that `Depends on:` cites smaller existing majors and that the `Requirements:` ids match the design's traceability ids exactly. The other rules here are yours to follow. Write `task.md` first, then check. Do not open `__SDD_SCRIPT__` before that check, and afterwards open it only for a report this skill does not explain.
 
 ```markdown
 # Tasks

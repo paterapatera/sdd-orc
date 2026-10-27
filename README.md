@@ -4,7 +4,7 @@
 
 Installs [Specification-Driven Development](https://github.com/paterapatera/sdd-orc) skills for Cursor, Codex, and Claude Code, and one shared checker script.
 
-The package is `@paterapatera/sdd-orc` 0.3.5. Durable docs use format version 1 under a directory you choose (default `docs/sdd`).
+The package is `@paterapatera/sdd-orc` 0.3.6. Durable docs use format version 1 under a directory you choose (default `docs/sdd`).
 
 Registering issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
