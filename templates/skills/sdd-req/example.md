@@ -91,7 +91,7 @@ When an order is confirmed, the system SHALL issue an invoice that shows its due
 
 #### Purpose
 
-Keep issued credit notes.
+Keep issued credit notes. DATA-CRN-NEW-1 is the record.
 
 ### ADDED
 
@@ -184,7 +184,7 @@ When a clerk issues a credit note for an issued invoice, the system SHALL record
 - **Then** a credit note for the whole amount is listed on the invoice
 
 #### REQ-CRN-NEW-2: Refuse a second credit note
-If a clerk issues a credit note for an invoice that already has one, then the system SHALL leave the existing credit note unchanged and show that the invoice is already credited.
+If a clerk issues a credit note for an invoice that already has one, then the system SHALL leave the existing credit note from REQ-CRN-NEW-1 unchanged and show that the invoice is already credited.
 
 ##### Scenario: Second credit note
 - **Given** an issued invoice with a credit note

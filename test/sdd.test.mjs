@@ -22,7 +22,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "0.3.7");
+  assert.equal(config.version, "0.3.8");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -813,8 +813,14 @@ test("the req, design, and task examples pass check and apply together", () => {
   assert.doesNotMatch(read(dir, "docs/sdd/steering/tech.md"), /^#####/m);
   assert.match(read(dir, "docs/sdd/steering/messaging.md"), /Rationale: \[ADR-1\]/);
   assert.match(read(dir, "docs/sdd/steering/glossary.md"), /### Issued invoice/);
+  assert.match(read(dir, "docs/sdd/specs/returns/credit-note/data.md"), /DATA-CRN-1 is the record/);
   const after = sdd(dir, ["check"]);
   assert.equal(after.status, 0, after.stdout + after.stderr);
+  const reapplied = sdd(dir, ["check", "--issue", "credit-note"]);
+  assert.equal(reapplied.stdout, "ok: issue credit-note\n");
+  commitAll(dir, "docs: apply credit note");
+  assert.equal(sdd(dir, ["apply", "--issue", "credit-note"]).status, 0);
+  assert.equal(git(["status", "--porcelain"], dir).stdout, "");
 });
 
 test("the sdd-steering example passes check", () => {
@@ -853,7 +859,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "0.3.7");
+  assert.equal(config.version, "0.3.8");
   assert.match(read(dir, "docs/sdd/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });

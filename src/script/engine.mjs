@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
+import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, sameAfterApply, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
 
 const SPEC_FILES = ["spec.md", "interfaces.md", "data.md", "quality.md"];
@@ -667,7 +667,7 @@ function baseDecision(current, base, next) {
   const currentHash = current == null ? "" : baseHash(current);
   const nextHash = next == null ? "" : baseHash(next);
   if (current == null) return { status: "missing" };
-  if (normalizeForHash(current) === normalizeForHash(next || "")) return { status: "applied", current, next };
+  if (sameAfterApply(current, next || "")) return { status: "applied", current, next };
   if (!base) return { status: "missing-base", current, next };
   if (currentHash === base) return { status: "ready", current, next };
   return { status: "mismatch", current, next };
@@ -740,7 +740,7 @@ function applySpecFile(map, docsDir, file, diags, logs, idMap, reserved) {
   for (const item of file.added) {
     const provisional = item.title.split(":")[0].trim();
     const name = item.title.includes(":") ? item.title.slice(item.title.indexOf(":") + 1).trim() : "";
-    const already = headingNodes(parsed.body).find((node) => node.level === 3 && normalizeForHash(node.full) === normalizeForHash(shiftHeadings(item.content.trim(), -1)));
+    const already = headingNodes(parsed.body).find((node) => node.level === 3 && sameAfterApply(node.full, shiftHeadings(item.content.trim(), -1)));
     if (already) {
       idMap.set(provisional, already.title.split(":")[0].trim());
       continue;
@@ -957,7 +957,7 @@ function applyNewSteering(map, docsDir, delta, diags, logs, idMap) {
       continue;
     }
     if (!item.reason) diags.push(diag(item.path, item.line, "STRUCTURE", "Removed steering requires a reason"));
-    map.delete(docsRel(docsDir, item.path));
+    if (!map.delete(docsRel(docsDir, item.path))) continue;
     logs.push({ area: "steering", action: "Removed", text: `${item.path} - ${item.reason}` });
   }
   for (const item of delta.newSteering) {
@@ -967,7 +967,9 @@ function applyNewSteering(map, docsDir, delta, diags, logs, idMap) {
       const rationale = rationaleLine(map, docsDir, section.rationale, idMap);
       body = replaceH2(body, section.title, `${shiftHeadings(section.content, -2)}${rationale}`);
     }
-    map.set(rel, joinDoc({ type: "Steering", title: item.title, description: item.description, tags: item.tags }, body));
+    const doc = joinDoc({ type: "Steering", title: item.title, description: item.description, tags: item.tags }, body);
+    if (typeof map.get(rel) === "string" && sameAfterApply(map.get(rel), doc)) continue;
+    map.set(rel, doc);
     logs.push({ area: "steering", action: "Added", text: item.path });
   }
 }

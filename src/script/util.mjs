@@ -50,6 +50,17 @@ export function normalizeForHash(text) {
   return value;
 }
 
+export function sameAfterApply(current, next) {
+  const left = normalizeForHash(current);
+  const right = normalizeForHash(next);
+  if (left === right) return true;
+  if (!/-NEW-\d+\b/.test(right)) return false;
+  const pattern = right
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\b((?:REQ|IF|DATA|NFR)-[A-Z]{2,6}|ADR)-NEW-\d+\b/g, "$1-\\d+");
+  return new RegExp(`^${pattern}$`).test(left);
+}
+
 export function baseHash(text) {
   return createHash("sha256").update(normalizeForHash(text)).digest("hex").slice(0, 12);
 }
