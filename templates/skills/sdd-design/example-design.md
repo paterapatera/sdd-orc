@@ -92,4 +92,7 @@ How capabilities publish events for other systems.
 - rationale: ADR-NEW-1
 
 - Node.js services
-- A message broker for events to other systems
+
+##### Messaging
+
+A message broker carries events to other systems.

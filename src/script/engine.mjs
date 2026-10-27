@@ -706,9 +706,10 @@ function applySpecFile(map, docsDir, file, diags, logs, idMap, reserved) {
       continue;
     }
     const current = h2Raw(parsed.body, section.title);
-    const next = `## ${section.title}\n${section.content.trim()}\n`;
+    const content = shiftHeadings(section.content, -2);
+    const next = `## ${section.title}\n${content.trim()}\n`;
     if (!current || !current.replace(/^## .+\n?/, "").trim()) {
-      parsed.body = replaceH2(parsed.body, section.title, section.content);
+      parsed.body = replaceH2(parsed.body, section.title, content);
       continue;
     }
     const decision = baseDecision(current, section.base, next);
@@ -717,7 +718,7 @@ function applySpecFile(map, docsDir, file, diags, logs, idMap, reserved) {
       continue;
     }
     if (decision.status === "applied") continue;
-    parsed.body = replaceH2(parsed.body, section.title, section.content);
+    parsed.body = replaceH2(parsed.body, section.title, content);
     logs.push({ action: "Modified", text: `${section.title} in [${info.title}](${info.href})` });
   }
   for (const item of file.modified) {
@@ -809,7 +810,7 @@ function applySteeringFile(map, docsDir, file, diags, logs, idMap) {
     if (item.op === "removed" && !item.reason) diags.push(diag(file.path, item.line, "STRUCTURE", `${item.title} removal requires a reason`));
     const current = glossary && item.op !== "section" ? termRaw(parsed.body, item.title) : h2Raw(parsed.body, item.title);
     const rationale = rationaleLine(map, docsDir, item.rationale, idMap);
-    const content = `${item.content || ""}${rationale}`.trim();
+    const content = `${shiftHeadings(item.content || "", glossary && item.op !== "section" ? -1 : -2)}${rationale}`.trim();
     const next = glossary && item.op !== "section" ? `### ${item.title}\n${content}\n` : `## ${item.title}\n${content}\n`;
     if (item.op === "removed" && REQUIRED_STEERING.includes(name) && (STEERING_H2[name] || []).includes(item.title)) continue;
     if (item.op === "removed") {
@@ -964,7 +965,7 @@ function applyNewSteering(map, docsDir, delta, diags, logs, idMap) {
     let body = `# ${item.title}\n`;
     for (const section of item.sections) {
       const rationale = rationaleLine(map, docsDir, section.rationale, idMap);
-      body = replaceH2(body, section.title, `${section.content}${rationale}`);
+      body = replaceH2(body, section.title, `${shiftHeadings(section.content, -2)}${rationale}`);
     }
     map.set(rel, joinDoc({ type: "Steering", title: item.title, description: item.description, tags: item.tags }, body));
     logs.push({ area: "steering", action: "Added", text: item.path });
@@ -1332,6 +1333,7 @@ function staticIssueDiags(root, config, issue, stage) {
     diags.push(diag(`${config.docsDir}/issues/${issue}/requirements.md`, 1, "DELTA_EMPTY", "Use /sdd-quick when specs, steering, and decisions do not change"));
   }
   validateCoverage(delta, diags, issue, config);
+  validateDeltaHeadings(delta, diags);
   validateOwnership(delta, diags);
   validateDeltaEars(delta, config.lang || "en", diags);
   validateDeltaIds(root, config, delta, diags);
@@ -1374,6 +1376,14 @@ function validateCoverage(delta, diags, issue, config) {
   }
   for (const cap of touched) {
     if (!delta.coverage.rows.some((row) => row.capability === cap)) diags.push(diag("requirements.md", delta.coverage.line, "COVERAGE", `${cap} is missing from Coverage`));
+  }
+}
+
+function validateDeltaHeadings(delta, diags) {
+  for (const file of delta.files) {
+    for (const item of file.unknown) {
+      diags.push(diag(file.path, item.line, "DELTA_HEADING", `${item.title} is not SECTIONS, ADDED, MODIFIED, REMOVED, or METADATA. Write sub-headings inside a section two levels deeper than in the permanent file`));
+    }
   }
 }
 

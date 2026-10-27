@@ -274,10 +274,12 @@ function fileRecord(nodes, index) {
     modified: [],
     removed: [],
     metadata: {},
+    unknown: [],
     line: node.line,
   };
   for (const child of childIndexes(nodes, index)) {
     const title = nodes[child].title;
+    if (!["SECTIONS", "ADDED", "MODIFIED", "REMOVED", "METADATA"].includes(title)) record.unknown.push({ title, line: nodes[child].line });
     if (title === "SECTIONS") {
       for (const item of childIndexes(nodes, child)) {
         const parsed = parseMeta(nodes[item].full);

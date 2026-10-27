@@ -15,7 +15,7 @@ Ask first about points that leave an acceptance result undecided, then about poi
 
 ## requirements.md
 
-`example.md` next to this file is a complete file that passes `check`. Copy its headings, field names, and table shapes, and read `__SDD_SCRIPT__` only when `check` reports something this skill and the example do not explain. Write the bodies in `__SDD_LANG__`, and keep only the parts the issue needs.
+`example.md` next to this file is a complete file that passes `check`. Copy its headings, field names, and table shapes, and read `__SDD_SCRIPT__` only when `check` reports something this skill and the example do not explain. Write the bodies in `__SDD_LANG__`, and keep only the parts the issue needs. Inside a SECTIONS item, write sub-headings two levels deeper than in the permanent file, as `#####` for `###`; apply moves them back.
 
 Headings stay in English. Use Context, Open Questions, and `# Delta`. Context has Actors, Current behavior (existing ids, or `path:line` when specs do not exist yet), Proposal Coverage, and Assumptions. Do not repeat Why.
 
