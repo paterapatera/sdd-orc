@@ -18,6 +18,7 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 5. Impact always has Type, Capabilities, Steering, Decisions, and Code. Use `none` when an item does not apply. Steering lists only the files whose text would be wrong after this change; do not list a file that is merely related or touched. A change inside existing files, or one that adds no new file, usually leaves steering `none`. Decisions likewise lists only the ADRs this change would supersede, deprecate, or add. Type is a Conventional Commits type. Capabilities use New, Modified, Removed, Moved, Split, or Merged plus a `/specs/...` path. Name a new domain explicitly.
 6. When Capabilities cross two domains, or six or more capabilities, suggest splitting the issue. Do not force the split.
 7. Do not rename directories or branches, and do not create the branch.
+8. Name the next skill: `/sdd-quick` when Capabilities, Steering, and Decisions are all `none`, `/sdd-reverse` for `Type: docs` that only records existing behavior, and `/sdd-req` otherwise.
 
 `check` reads only the `- Type:` line of `proposal.md`, so there is no need to open `__SDD_SCRIPT__`. Follow this shape, and write the text in `__SDD_LANG__`:
 
