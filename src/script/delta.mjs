@@ -275,11 +275,18 @@ function fileRecord(nodes, index) {
     removed: [],
     metadata: {},
     unknown: [],
+    misplaced: [],
     line: node.line,
   };
   for (const child of childIndexes(nodes, index)) {
     const title = nodes[child].title;
     if (!["SECTIONS", "ADDED", "MODIFIED", "REMOVED", "METADATA"].includes(title)) record.unknown.push({ title, line: nodes[child].line });
+    else if (title !== "METADATA") {
+      for (let index = child + 1; index < nodes.length && nodes[index].index < nodes[child].end; index += 1) {
+        if (nodes[index].level === nodes[child].level + 1) break;
+        record.misplaced.push({ title: nodes[index].title, bucket: title, line: nodes[index].line });
+      }
+    }
     if (title === "SECTIONS") {
       for (const item of childIndexes(nodes, child)) {
         const parsed = parseMeta(nodes[item].full);

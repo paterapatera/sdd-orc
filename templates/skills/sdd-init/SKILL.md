@@ -19,6 +19,33 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 6. When Capabilities cross two domains, or six or more capabilities, suggest splitting the issue. Do not force the split.
 7. Do not rename directories or branches, and do not create the branch.
 
+`check` reads only the `- Type:` line of `proposal.md`, so there is no need to open `__SDD_SCRIPT__`. Follow this shape, and write the text in `__SDD_LANG__`:
+
+```markdown
+# Credit notes for returned orders
+
+## Why
+
+Clerks refund returned orders by hand, and accounting cannot see the refunds.
+
+## What Changes
+
+- Clerks issue a credit note for a returned order.
+- Accounting receives each credit note.
+
+## Impact
+
+- Type: feat
+- Capabilities: New /specs/returns/credit-note (new domain /specs/returns), Modified /specs/billing/invoice
+- Steering: /steering/tech.md
+- Decisions: none
+- Code: invoice screens and the accounting client
+
+## Out of Scope
+
+- Partial refunds
+```
+
 ## Commit
 
 Do not commit `proposal.md`. A later `/sdd-req`, `/sdd-quick`, or `/sdd-reverse` commit includes it unless it was already committed on the base branch.

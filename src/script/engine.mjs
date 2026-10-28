@@ -1390,6 +1390,9 @@ function validateDeltaHeadings(delta, diags) {
     for (const item of file.unknown) {
       diags.push(diag(file.path, item.line, "DELTA_HEADING", `${item.title} is not SECTIONS, ADDED, MODIFIED, REMOVED, or METADATA. Write sub-headings inside a section two levels deeper than in the permanent file`));
     }
+    for (const item of file.misplaced) {
+      diags.push(diag(file.path, item.line, "DELTA_HEADING", `${item.title} sits under ${item.bucket} without an item heading. Start with the item one level below ${item.bucket}, such as the permanent section name for SECTIONS, and nest sub-headings inside it`));
+    }
   }
 }
 
