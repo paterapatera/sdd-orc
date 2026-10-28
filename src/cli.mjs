@@ -25,14 +25,14 @@ const COPY = {
 
 function usage() {
   return `Usage:
-  npx @paterapatera/sdd-orc init [--docs-dir docs/sdd] [--lang en] [--skills-dir .agents ...] [--runtime node] [--base-branch main] [--force]
+  npx @paterapatera/sdd-orc init [--docs-dir docs] [--lang en] [--skills-dir .agents ...] [--runtime node] [--base-branch main] [--force]
   npx @paterapatera/sdd-orc update
   npx @paterapatera/sdd-orc migrate
 `;
 }
 
 function parseArgs(argv) {
-  const opts = { _: [], skillsDir: [], force: false, docsDir: "docs/sdd", lang: "en", runtime: "node", baseBranch: "main", set: new Set() };
+  const opts = { _: [], skillsDir: [], force: false, docsDir: "docs", lang: "en", runtime: "node", baseBranch: "main", set: new Set() };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     const take = () => argv[++index];
@@ -86,6 +86,8 @@ function walk(dir, visit) {
 
 function isAllowedMarkdown(rel) {
   if (rel.startsWith("issues/")) return true;
+  if (!rel.startsWith("knowledge/")) return false;
+  rel = rel.slice("knowledge/".length);
   if (["index.md", "specs/index.md", "specs/log.md", "decision/index.md", "decision/log.md", "steering/index.md", "steering/log.md"].includes(rel)) return true;
   if (/^specs\/[^/]+\/index\.md$/.test(rel) || /^specs\/[^/]+\/[^/]+\/index\.md$/.test(rel)) return true;
   if (/^specs\/[^/]+\/[^/]+\/(spec|interfaces|data|quality)\.md$/.test(rel)) return true;
@@ -135,7 +137,7 @@ function installScript(root, skillsDir) {
 
 function writeSkeleton(root, docsDir, lang) {
   const copy = COPY[lang] || COPY.en;
-  const base = path.join(root, docsDir);
+  const base = path.join(root, docsDir, "knowledge");
   fs.mkdirSync(path.join(base, "specs"), { recursive: true });
   fs.mkdirSync(path.join(base, "decision"), { recursive: true });
   const files = {
@@ -194,6 +196,7 @@ function init(root, opts) {
   const scriptRel = installScript(root, opts.skillsDir[0]);
   copySkills(root, opts.skillsDir, {
     __SDD_DOCS_DIR__: opts.docsDir,
+    __SDD_KNOWLEDGE_DIR__: `${opts.docsDir}/knowledge`,
     __SDD_LANG__: opts.lang,
     __SDD_RUNTIME__: opts.runtime,
     __SDD_BASE_BRANCH__: opts.baseBranch,
@@ -215,6 +218,7 @@ function update(root) {
   const scriptRel = installScript(root, config.skillsDir[0]);
   copySkills(root, config.skillsDir, {
     __SDD_DOCS_DIR__: config.docsDir,
+    __SDD_KNOWLEDGE_DIR__: `${config.docsDir}/knowledge`,
     __SDD_LANG__: config.lang,
     __SDD_RUNTIME__: config.runtime,
     __SDD_BASE_BRANCH__: config.baseBranch,

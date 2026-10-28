@@ -7,7 +7,7 @@ description: Implement the unchecked major tasks for the current SDD issue. Use 
 
 Docs directory: `__SDD_DOCS_DIR__`. Issue directory: `__SDD_DOCS_DIR__/issues/<current-branch>/`. Stop when `task.md` is missing.
 
-Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Read the issue documents plus the current specs and the issue delta together. Do not edit `__SDD_DOCS_DIR__/specs/`, `decision/`, or `steering/`.
+Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Read the issue documents plus the current specs and the issue delta together. Do not edit `__SDD_KNOWLEDGE_DIR__/specs/`, `decision/`, or `steering/`.
 
 ## Execution
 

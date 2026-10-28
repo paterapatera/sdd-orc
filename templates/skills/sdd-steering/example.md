@@ -1,6 +1,6 @@
 # Steering example
 
-Each block below is one file in `__SDD_DOCS_DIR__/steering/`, and together they pass `check` once `/specs/billing/` exists. Copy the frontmatter, heading order, glossary term level, and link form. Write the bodies in `__SDD_LANG__` from the code, and replace every product fact.
+Each block below is one file in `__SDD_KNOWLEDGE_DIR__/steering/`, and together they pass `check` once `/specs/billing/` exists. Copy the frontmatter, heading order, glossary term level, and link form. Write the bodies in `__SDD_LANG__` from the code, and replace every product fact.
 
 ## product.md
 

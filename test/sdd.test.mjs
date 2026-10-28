@@ -22,15 +22,15 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "0.3.12");
+  assert.equal(config.version, "0.3.13");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-scripts/sdd.mjs")), true);
   assert.equal(fs.existsSync(path.join(dir, ".claude/skills/sdd-scripts/sdd.mjs")), false);
-  assert.equal(fs.existsSync(path.join(dir, "docs/sdd/steering")), false);
-  assert.match(read(dir, "docs/sdd/index.md"), /okf_version: "0\.2"/);
-  assert.match(read(dir, "docs/sdd/specs/index.md"), /仕様/);
+  assert.equal(fs.existsSync(path.join(dir, "docs/knowledge/steering")), false);
+  assert.match(read(dir, "docs/knowledge/index.md"), /okf_version: "0\.2"/);
+  assert.match(read(dir, "docs/knowledge/specs/index.md"), /仕様/);
   const skill = read(dir, ".agents/skills/sdd-init/SKILL.md");
   assert.match(skill, /bun \.agents\/skills\/sdd-scripts\/sdd\.mjs check --scope setup/);
   assert.doesNotMatch(skill, /__SDD_/);
@@ -45,16 +45,16 @@ test("init, update, and migrate install one shared script", () => {
   const changed = initRepo(dir, ["--lang", "en"]);
   assert.equal(changed.status, 2);
   assert.match(changed.stderr, /--force/);
-  fs.writeFileSync(path.join(dir, "docs/sdd/README.md"), "# notes\n");
+  fs.writeFileSync(path.join(dir, "docs/knowledge/README.md"), "# notes\n");
   const stray = initRepo(dir, ["--force", "--lang", "en"]);
   assert.equal(stray.status, 2);
   assert.match(stray.stderr, /dedicated --docs-dir/);
-  fs.rmSync(path.join(dir, "docs/sdd/README.md"));
+  fs.rmSync(path.join(dir, "docs/knowledge/README.md"));
 
-  fs.writeFileSync(path.join(dir, "docs/sdd/specs/billing.md"), "keep\n");
+  fs.writeFileSync(path.join(dir, "docs/knowledge/specs/billing.md"), "keep\n");
   const updated = run([cliPath, "update"], dir);
   assert.equal(updated.status, 0, updated.stderr);
-  assert.equal(read(dir, "docs/sdd/specs/billing.md"), "keep\n");
+  assert.equal(read(dir, "docs/knowledge/specs/billing.md"), "keep\n");
   const migrated = run([cliPath, "migrate"], dir);
   assert.equal(migrated.status, 0);
   assert.match(migrated.stdout, /Nothing to convert/);
@@ -72,8 +72,8 @@ test("index regenerates descriptions and setup passes after steering", () => {
   const setup = sdd(dir, ["check", "--scope", "setup", "--format", "json"]);
   assert.equal(setup.status, 0, setup.stdout);
   assert.equal(JSON.parse(setup.stdout).ok, true);
-  assert.match(read(dir, "docs/sdd/index.md"), /\/steering\//);
-  assert.match(read(dir, "docs/sdd/steering/index.md"), /# product/);
+  assert.match(read(dir, "docs/knowledge/index.md"), /\/steering\//);
+  assert.match(read(dir, "docs/knowledge/steering/index.md"), /# product/);
   const version = sdd(dir, ["check"]);
   assert.equal(version.status, 0, version.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
@@ -91,13 +91,13 @@ test("apply adds one invoice requirement and replaces provisional ids", () => {
   commitAll(dir, "docs: proposal");
   const applied = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
   assert.equal(applied.status, 0, applied.stdout);
-  const spec = read(dir, "docs/sdd/specs/billing/invoice/spec.md");
+  const spec = read(dir, "docs/knowledge/specs/billing/invoice/spec.md");
   assert.match(spec, /### REQ-INV-1: Issue invoice on confirmation/);
   assert.match(spec, /SHALL issue an invoice/);
   assert.match(spec, /Code: INV/);
   assert.doesNotMatch(spec, /NEW/);
-  assert.match(read(dir, "docs/sdd/specs/log.md"), /\*\*Added\*\*: REQ-INV-1/);
-  assert.match(read(dir, "docs/sdd/specs/billing/index.md"), /\/specs\/billing\/invoice\//);
+  assert.match(read(dir, "docs/knowledge/specs/log.md"), /\*\*Added\*\*: REQ-INV-1/);
+  assert.match(read(dir, "docs/knowledge/specs/billing/index.md"), /\/specs\/billing\/invoice\//);
   assert.match(read(dir, "src/invoice.js"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /NEW/);
   const again = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
@@ -110,7 +110,7 @@ test("a consumed interface may use a provisional id without recording a former c
   const dir = tempRepo();
   prepare(dir);
   writeInvoiceIssue(dir);
-  const requirements = path.join(dir, "docs/sdd/issues/invoice-reissue/requirements.md");
+  const requirements = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
   let text = fs.readFileSync(requirements, "utf8");
   text = text.replace(
     "| /specs/billing/invoice | changed | no change: no contract |",
@@ -183,13 +183,13 @@ When an invoice is paid, the system SHALL send a receipt.
 - **When** the invoice is paid
 - **Then** a receipt is sent
 `);
-  const design = read(dir, "docs/sdd/issues/invoice-reissue/design.md");
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/design.md"), design.replace(
+  const design = read(dir, "docs/issues/invoice-reissue/design.md");
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/design.md"), design.replace(
     "| REQ-INV-NEW-1 | InvoiceService | Integration |",
     "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| IF-INV-NEW-1 | InvoiceService | Contract |\n| IF-RCPT-NEW-1 | InvoiceService | Contract |\n| REQ-RCPT-NEW-1 | InvoiceService | Unit |",
   ));
-  const task = read(dir, "docs/sdd/issues/invoice-reissue/task.md");
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/task.md"), task.replace(
+  const task = read(dir, "docs/issues/invoice-reissue/task.md");
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), task.replace(
     "Requirements: REQ-INV-NEW-1",
     "Requirements: REQ-INV-NEW-1, IF-INV-NEW-1, IF-RCPT-NEW-1, REQ-RCPT-NEW-1",
   ));
@@ -198,8 +198,8 @@ When an invoice is paid, the system SHALL send a receipt.
   assert.equal(checked.status, 0, checked.stdout);
   const applied = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
   assert.equal(applied.status, 0, applied.stdout);
-  assert.match(read(dir, "docs/sdd/specs/billing/receipt/interfaces.md"), /Uses: IF-INV-1/);
-  assert.doesNotMatch(read(dir, "docs/sdd/specs/billing/receipt/spec.md"), /Former codes/);
+  assert.match(read(dir, "docs/knowledge/specs/billing/receipt/interfaces.md"), /Uses: IF-INV-1/);
+  assert.doesNotMatch(read(dir, "docs/knowledge/specs/billing/receipt/spec.md"), /Former codes/);
 });
 
 test("stamp records base and apply refuses a stale replacement", () => {
@@ -208,7 +208,7 @@ test("stamp records base and apply refuses a stale replacement", () => {
   writeInvoiceIssue(dir);
   commitAll(dir, "docs: proposal");
   assert.equal(sdd(dir, ["apply", "--issue", "invoice-reissue"]).status, 0);
-  const requirements = path.join(dir, "docs/sdd/issues/invoice-reissue/requirements.md");
+  const requirements = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
   fs.appendFileSync(requirements, `
 ### MODIFIED
 #### REQ-INV-1: Issue invoice on confirmation
@@ -220,13 +220,13 @@ When an order is confirmed, the system SHALL issue a numbered invoice.
 - **When** the confirmation is recorded
 - **Then** a numbered invoice is issued
 `);
-  const design = read(dir, "docs/sdd/issues/invoice-reissue/design.md");
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/design.md"), design.replace("| REQ-INV-NEW-1 |", "| REQ-INV-1 |"));
-  const task = read(dir, "docs/sdd/issues/invoice-reissue/task.md");
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/task.md"), task.replaceAll("REQ-INV-NEW-1", "REQ-INV-1"));
+  const design = read(dir, "docs/issues/invoice-reissue/design.md");
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/design.md"), design.replace("| REQ-INV-NEW-1 |", "| REQ-INV-1 |"));
+  const task = read(dir, "docs/issues/invoice-reissue/task.md");
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), task.replaceAll("REQ-INV-NEW-1", "REQ-INV-1"));
   assert.equal(sdd(dir, ["stamp", "--issue", "invoice-reissue"]).status, 0);
-  assert.match(read(dir, "docs/sdd/issues/invoice-reissue/requirements.md"), /- base: [0-9a-f]{12}/);
-  const specPath = path.join(dir, "docs/sdd/specs/billing/invoice/spec.md");
+  assert.match(read(dir, "docs/issues/invoice-reissue/requirements.md"), /- base: [0-9a-f]{12}/);
+  const specPath = path.join(dir, "docs/knowledge/specs/billing/invoice/spec.md");
   const original = fs.readFileSync(specPath, "utf8");
   fs.writeFileSync(specPath, original.replace("issue an invoice", "issue a draft invoice"));
   const rejected = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
@@ -246,7 +246,7 @@ test("contracts, removal, and empty requirements are checked", () => {
   fs.mkdirSync(path.join(dir, "api"), { recursive: true });
   fs.writeFileSync(path.join(dir, "api/openapi.yaml"), "openapi: 3.0.0\n");
   commitAll(dir, "chore: api");
-  const requirements = path.join(dir, "docs/sdd/issues/invoice-reissue/requirements.md");
+  const requirements = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
   fs.appendFileSync(requirements, `
 ## /specs/billing/invoice/interfaces.md
 
@@ -316,16 +316,16 @@ The system SHALL answer within 200 ms at p95.
   text = text.replace("no change: no contract", "changed").replace("no change: no persisted data", "changed").replace("no change: no quality target", "changed");
   fs.writeFileSync(requirements, text);
   for (const id of ["IF-INV-NEW-1", "DATA-INV-NEW-1", "NFR-INV-NEW-1"]) {
-    const design = read(dir, "docs/sdd/issues/invoice-reissue/design.md");
-    fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/design.md"), design.replace("| REQ-INV-NEW-1 | InvoiceService | Integration |", `| REQ-INV-NEW-1 | InvoiceService | Integration |\n| ${id} | InvoiceService | Contract |`));
-    const task = read(dir, "docs/sdd/issues/invoice-reissue/task.md");
-    fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/task.md"), task.replace("Requirements: REQ-INV-NEW-1", `Requirements: REQ-INV-NEW-1, ${id}`));
+    const design = read(dir, "docs/issues/invoice-reissue/design.md");
+    fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/design.md"), design.replace("| REQ-INV-NEW-1 | InvoiceService | Integration |", `| REQ-INV-NEW-1 | InvoiceService | Integration |\n| ${id} | InvoiceService | Contract |`));
+    const task = read(dir, "docs/issues/invoice-reissue/task.md");
+    fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), task.replace("Requirements: REQ-INV-NEW-1", `Requirements: REQ-INV-NEW-1, ${id}`));
   }
   const applied = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
   assert.equal(applied.status, 0, applied.stdout);
-  assert.match(read(dir, "docs/sdd/specs/billing/invoice/interfaces.md"), /IF-INV-1/);
-  assert.match(read(dir, "docs/sdd/specs/billing/invoice/data.md"), /DATA-INV-1/);
-  assert.match(read(dir, "docs/sdd/specs/billing/invoice/quality.md"), /NFR-INV-1/);
+  assert.match(read(dir, "docs/knowledge/specs/billing/invoice/interfaces.md"), /IF-INV-1/);
+  assert.match(read(dir, "docs/knowledge/specs/billing/invoice/data.md"), /DATA-INV-1/);
+  assert.match(read(dir, "docs/knowledge/specs/billing/invoice/quality.md"), /NFR-INV-1/);
 
   let removal = fs.readFileSync(requirements, "utf8");
   removal = removal.replace(
@@ -333,13 +333,13 @@ The system SHALL answer within 200 ms at p95.
     "- **Then** an invoice is issued\n\n### REMOVED\n#### REQ-INV-1\n- reason: Replaced by manual approval.\n",
   );
   fs.writeFileSync(requirements, removal);
-  const design = read(dir, "docs/sdd/issues/invoice-reissue/design.md");
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/design.md"), design.replace(
+  const design = read(dir, "docs/issues/invoice-reissue/design.md");
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/design.md"), design.replace(
     "| REQ-INV-NEW-1 | InvoiceService | Integration |",
     "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| REQ-INV-1 | InvoiceService | Integration |",
   ));
-  const task = read(dir, "docs/sdd/issues/invoice-reissue/task.md");
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/task.md"), task.replace(
+  const task = read(dir, "docs/issues/invoice-reissue/task.md");
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), task.replace(
     "Requirements: REQ-INV-NEW-1",
     "Requirements: REQ-INV-NEW-1, REQ-INV-1",
   ));
@@ -348,14 +348,14 @@ The system SHALL answer within 200 ms at p95.
   const failed = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
   assert.equal(failed.status, 1, failed.stdout);
   assert.match(failed.stdout, /REQ_EMPTY/);
-  assert.match(read(dir, "docs/sdd/specs/billing/invoice/spec.md"), /REQ-INV-1/);
+  assert.match(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-1/);
 });
 
 test("structure operations move, split, and record former codes", () => {
   const dir = tempRepo();
   prepare(dir);
   writeInvoiceIssue(dir);
-  const requirements = path.join(dir, "docs/sdd/issues/invoice-reissue/requirements.md");
+  const requirements = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
   fs.appendFileSync(requirements, `
 ### ADDED
 #### REQ-INV-NEW-2: Void an invoice
@@ -366,10 +366,10 @@ When a clerk voids an invoice, the system SHALL mark that invoice void.
 - **When** the clerk voids it
 - **Then** the invoice is void
 `);
-  const design = read(dir, "docs/sdd/issues/invoice-reissue/design.md");
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/design.md"), design.replace("| REQ-INV-NEW-1 | InvoiceService | Integration |", "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| REQ-INV-NEW-2 | InvoiceService | Unit |"));
-  const task = read(dir, "docs/sdd/issues/invoice-reissue/task.md");
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/task.md"), `${task}\n    - Requirements: REQ-INV-NEW-2\n`);
+  const design = read(dir, "docs/issues/invoice-reissue/design.md");
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/design.md"), design.replace("| REQ-INV-NEW-1 | InvoiceService | Integration |", "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| REQ-INV-NEW-2 | InvoiceService | Unit |"));
+  const task = read(dir, "docs/issues/invoice-reissue/task.md");
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), `${task}\n    - Requirements: REQ-INV-NEW-2\n`);
   commitAll(dir, "docs: proposal");
   const first = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
   assert.equal(first.status, 0, first.stdout);
@@ -425,7 +425,7 @@ Adjustments group voids.
 - In: voids
 - Out: refunds
 `);
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/design.md"), `# Design
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/design.md"), `# Design
 
 ## Overview
 Move invoices and split voids.
@@ -452,7 +452,7 @@ Run the full existing test suite to confirm behavior is unchanged.
 ## Migration
 none
 `);
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/task.md"), `# Tasks
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), `# Tasks
 
 - [x] 1. Split voids
   - 1.1 Move the requirement
@@ -460,18 +460,18 @@ none
 `);
   const moved = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
   assert.equal(moved.status, 0, moved.stdout);
-  assert.match(read(dir, "docs/sdd/specs/finance/adjustment/spec.md"), /REQ-INV-2/);
-  assert.match(read(dir, "docs/sdd/specs/finance/adjustment/spec.md"), /Former codes: INV/);
-  assert.match(read(dir, "docs/sdd/specs/finance/invoice/spec.md"), /REQ-INV-1/);
-  assert.doesNotMatch(read(dir, "docs/sdd/specs/finance/invoice/spec.md"), /REQ-INV-2/);
-  assert.match(read(dir, "docs/sdd/specs/log.md"), /\*\*Moved\*\*/);
-  assert.match(read(dir, "docs/sdd/specs/log.md"), /\*\*Split\*\*/);
+  assert.match(read(dir, "docs/knowledge/specs/finance/adjustment/spec.md"), /REQ-INV-2/);
+  assert.match(read(dir, "docs/knowledge/specs/finance/adjustment/spec.md"), /Former codes: INV/);
+  assert.match(read(dir, "docs/knowledge/specs/finance/invoice/spec.md"), /REQ-INV-1/);
+  assert.doesNotMatch(read(dir, "docs/knowledge/specs/finance/invoice/spec.md"), /REQ-INV-2/);
+  assert.match(read(dir, "docs/knowledge/specs/log.md"), /\*\*Moved\*\*/);
+  assert.match(read(dir, "docs/knowledge/specs/log.md"), /\*\*Split\*\*/);
 });
 
 test("ADR apply supersedes, amends metadata, and rejects outcome edits", () => {
   const dir = tempRepo();
   prepare(dir);
-  const issue = path.join(dir, "docs/sdd/issues/choose-mail");
+  const issue = path.join(dir, "docs/issues/choose-mail");
   fs.mkdirSync(issue, { recursive: true });
   fs.writeFileSync(path.join(issue, "proposal.md"), `# Choose mail
 
@@ -594,9 +594,9 @@ none
   commitAll(dir, "docs: mail");
   const applied = sdd(dir, ["apply", "--issue", "choose-mail"]);
   assert.equal(applied.status, 0, applied.stdout);
-  const adr = fs.readdirSync(path.join(dir, "docs/sdd/decision")).find((name) => name.startsWith("1-"));
-  assert.match(read(dir, `docs/sdd/decision/${adr}`), /Status\nAccepted/);
-  assert.match(read(dir, "docs/sdd/decision/index.md"), /# mail/);
+  const adr = fs.readdirSync(path.join(dir, "docs/knowledge/decision")).find((name) => name.startsWith("1-"));
+  assert.match(read(dir, `docs/knowledge/decision/${adr}`), /Status\nAccepted/);
+  assert.match(read(dir, "docs/knowledge/decision/index.md"), /# mail/);
   fs.appendFileSync(path.join(issue, "research.md"), `
 ## SUPERSEDED
 ### ADR-1 -> ADR-NEW-2
@@ -626,18 +626,18 @@ Use Provider B.
 #### Decision Outcome
 Use neither provider.
 `);
-  let research = read(dir, "docs/sdd/issues/choose-mail/research.md");
+  let research = read(dir, "docs/issues/choose-mail/research.md");
   research = research.replace("D1: Provider A -> ADR-NEW-1", "D1: Provider A -> ADR-NEW-1\n- D2: Replacement -> ADR-NEW-2");
   research = research.replace("### D1: Mail provider", "### D1: Mail provider\n### D2: Replacement");
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/choose-mail/research.md"), research);
+  fs.writeFileSync(path.join(dir, "docs/issues/choose-mail/research.md"), research);
   const amended = sdd(dir, ["apply", "--issue", "choose-mail"]);
   assert.equal(amended.status, 1, amended.stdout);
   assert.match(amended.stdout, /AMENDED_SCOPE/);
-  research = read(dir, "docs/sdd/issues/choose-mail/research.md").replace("#### Decision Outcome\nUse neither provider.\n", "- title: Use Provider A for transactional email\n");
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/choose-mail/research.md"), research);
+  research = read(dir, "docs/issues/choose-mail/research.md").replace("#### Decision Outcome\nUse neither provider.\n", "- title: Use Provider A for transactional email\n");
+  fs.writeFileSync(path.join(dir, "docs/issues/choose-mail/research.md"), research);
   const superseded = sdd(dir, ["apply", "--issue", "choose-mail"]);
   assert.equal(superseded.status, 0, superseded.stdout);
-  assert.match(read(dir, `docs/sdd/decision/${adr}`), /Superseded by ADR-2/);
+  assert.match(read(dir, `docs/knowledge/decision/${adr}`), /Superseded by ADR-2/);
 });
 
 test("renumber changes only the duplicate id added on this branch", () => {
@@ -647,8 +647,8 @@ test("renumber changes only the duplicate id added on this branch", () => {
   commitAll(dir, "docs: proposal");
   assert.equal(sdd(dir, ["apply", "--issue", "invoice-reissue"]).status, 0, sdd(dir, ["apply", "--issue", "invoice-reissue"]).stdout);
   commitAll(dir, "docs: invoice");
-  const spec = path.join(dir, "docs/sdd/specs/billing/invoice/spec.md");
-  const baseSpec = read(dir, "docs/sdd/specs/billing/invoice/spec.md");
+  const spec = path.join(dir, "docs/knowledge/specs/billing/invoice/spec.md");
+  const baseSpec = read(dir, "docs/knowledge/specs/billing/invoice/spec.md");
   const featureBlock = "### REQ-INV-2: Feature copy\nWhen a clerk reprints an invoice, the system SHALL reprint it.\n\n#### Scenario: Reprint\n- **Given** an invoice\n- **When** the clerk reprints it\n- **Then** a copy is issued\n";
   const mainBlock = "### REQ-INV-2: Main copy\nWhen the system archives an invoice, the system SHALL archive it.\n\n#### Scenario: Archive\n- **Given** an invoice\n- **When** the archive job runs\n- **Then** the invoice is archived\n";
   git(["checkout", "-b", "other-invoice"], dir);
@@ -662,12 +662,12 @@ test("renumber changes only the duplicate id added on this branch", () => {
   fs.writeFileSync(spec, `${baseSpec.trim()}\n\n${featureBlock}\n${mainBlock}`);
   const numbered = sdd(dir, ["renumber", "--base", "main"]);
   assert.equal(numbered.status, 0, numbered.stdout + numbered.stderr);
-  const after = read(dir, "docs/sdd/specs/billing/invoice/spec.md");
+  const after = read(dir, "docs/knowledge/specs/billing/invoice/spec.md");
   assert.match(after, /### REQ-INV-2: Main copy/);
   assert.match(after, /### REQ-INV-3: Feature copy/);
   assert.match(read(dir, "src/extra.js"), /REQ-INV-3/);
-  assert.match(read(dir, "docs/sdd/specs/log.md"), /REQ-INV-1/);
-  assert.doesNotMatch(read(dir, "docs/sdd/specs/log.md"), /REQ-INV-3/);
+  assert.match(read(dir, "docs/knowledge/specs/log.md"), /REQ-INV-1/);
+  assert.doesNotMatch(read(dir, "docs/knowledge/specs/log.md"), /REQ-INV-3/);
   assert.doesNotMatch(after, /\u0000/);
 });
 
@@ -677,7 +677,7 @@ test("issue checks cover traceability, research, ears, and close", () => {
   writeInvoiceIssue(dir);
   const broken = sdd(dir, ["check", "--issue", "invoice-reissue"]);
   assert.equal(broken.status, 0, broken.stdout);
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/task.md"), `# Tasks
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), `# Tasks
 
 - [ ] 1. Issue invoice
   - Depends on: 2
@@ -686,7 +686,7 @@ test("issue checks cover traceability, research, ears, and close", () => {
 `);
   const depends = sdd(dir, ["check", "--issue", "invoice-reissue"]);
   assert.match(depends.stdout, /TASK_DEPENDS/);
-  fs.writeFileSync(path.join(dir, "docs/sdd/issues/invoice-reissue/requirements.md"), read(dir, "docs/sdd/issues/invoice-reissue/requirements.md").replace("SHALL", "should"));
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/requirements.md"), read(dir, "docs/issues/invoice-reissue/requirements.md").replace("SHALL", "should"));
   const ears = sdd(dir, ["check", "--issue", "invoice-reissue"]);
   assert.match(ears.stdout, /EARS_SHALL/);
   const close = sdd(dir, ["check", "--stage", "close", "--issue", "invoice-reissue"]);
@@ -729,7 +729,7 @@ test("en obligations ignore quoted SHALL", () => {
 function prepareInvoiceWithReprint(dir) {
   prepare(dir);
   writeInvoiceIssue(dir);
-  const invoice = path.join(dir, "docs/sdd/issues/invoice-reissue/requirements.md");
+  const invoice = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
   fs.appendFileSync(invoice, `
 #### REQ-INV-NEW-2: Reprint invoice
 When a clerk reprints an invoice, the system SHALL issue a copy.
@@ -739,10 +739,10 @@ When a clerk reprints an invoice, the system SHALL issue a copy.
 - **When** the clerk reprints it
 - **Then** a copy is issued
 `);
-  const design = path.join(dir, "docs/sdd/issues/invoice-reissue/design.md");
-  fs.writeFileSync(design, read(dir, "docs/sdd/issues/invoice-reissue/design.md").replace("| REQ-INV-NEW-1 | InvoiceService | Integration |", "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| REQ-INV-NEW-2 | InvoiceService | Integration |"));
-  const task = path.join(dir, "docs/sdd/issues/invoice-reissue/task.md");
-  fs.writeFileSync(task, read(dir, "docs/sdd/issues/invoice-reissue/task.md").replaceAll("Requirements: REQ-INV-NEW-1", "Requirements: REQ-INV-NEW-1, REQ-INV-NEW-2"));
+  const design = path.join(dir, "docs/issues/invoice-reissue/design.md");
+  fs.writeFileSync(design, read(dir, "docs/issues/invoice-reissue/design.md").replace("| REQ-INV-NEW-1 | InvoiceService | Integration |", "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| REQ-INV-NEW-2 | InvoiceService | Integration |"));
+  const task = path.join(dir, "docs/issues/invoice-reissue/task.md");
+  fs.writeFileSync(task, read(dir, "docs/issues/invoice-reissue/task.md").replaceAll("Requirements: REQ-INV-NEW-1", "Requirements: REQ-INV-NEW-1, REQ-INV-NEW-2"));
   const applied = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
   assert.equal(applied.status, 0, applied.stdout + applied.stderr);
   commitAll(dir, "docs: invoice");
@@ -756,7 +756,7 @@ function installedSkill(dir, name, file) {
 test("the req, design, and task examples pass check and apply together", () => {
   const dir = tempRepo();
   prepareInvoiceWithReprint(dir);
-  const issue = path.join(dir, "docs/sdd/issues/credit-note");
+  const issue = path.join(dir, "docs/issues/credit-note");
   fs.mkdirSync(issue, { recursive: true });
   fs.writeFileSync(path.join(issue, "proposal.md"), `# Credit notes
 
@@ -788,40 +788,40 @@ test("the req, design, and task examples pass check and apply together", () => {
   fs.writeFileSync(path.join(issue, "task.md"), `${task}\n`);
   const stamped = sdd(dir, ["stamp", "--issue", "credit-note"]);
   assert.equal(stamped.status, 0, stamped.stdout + stamped.stderr);
-  assert.equal((read(dir, "docs/sdd/issues/credit-note/requirements.md").match(/^- base: /gm) || []).length, 3);
-  assert.equal((read(dir, "docs/sdd/issues/credit-note/design.md").match(/^- base: /gm) || []).length, 1);
+  assert.equal((read(dir, "docs/issues/credit-note/requirements.md").match(/^- base: /gm) || []).length, 3);
+  assert.equal((read(dir, "docs/issues/credit-note/design.md").match(/^- base: /gm) || []).length, 1);
   const checked = sdd(dir, ["check", "--issue", "credit-note"]);
   assert.equal(checked.status, 0, checked.stdout + checked.stderr);
   assert.equal(checked.stdout, "ok: issue credit-note\n");
-  const stampedText = read(dir, "docs/sdd/issues/credit-note/requirements.md");
+  const stampedText = read(dir, "docs/issues/credit-note/requirements.md");
   fs.writeFileSync(requirements, stampedText.replace("- Kind: Event", "- Kind: Webhook"));
   assert.match(sdd(dir, ["check", "--issue", "credit-note"]).stdout, /IF_FIELDS/);
   fs.writeFileSync(requirements, stampedText);
   const designPath = path.join(issue, "design.md");
-  const stampedDesign = read(dir, "docs/sdd/issues/credit-note/design.md");
+  const stampedDesign = read(dir, "docs/issues/credit-note/design.md");
   fs.writeFileSync(designPath, stampedDesign.replace("##### Messaging", "### Messaging"));
   assert.match(sdd(dir, ["check", "--issue", "credit-note"]).stdout, /DELTA_HEADING/);
   fs.writeFileSync(designPath, stampedDesign.replace("#### Stack\n", ""));
   assert.match(sdd(dir, ["check", "--issue", "credit-note"]).stdout, /DELTA_HEADING Messaging sits under SECTIONS without an item heading/);
   fs.writeFileSync(designPath, stampedDesign);
   const researchPath = path.join(issue, "research.md");
-  const researchText = read(dir, "docs/sdd/issues/credit-note/research.md");
+  const researchText = read(dir, "docs/issues/credit-note/research.md");
   fs.writeFileSync(researchPath, researchText.replace("- slug: broker-events-for-accounting", "- slug: 会計イベント"));
   assert.match(sdd(dir, ["check", "--issue", "credit-note"]).stdout, /ADR_SLUG/);
   fs.writeFileSync(researchPath, researchText);
   commitAll(dir, "docs: credit note");
   const applied = sdd(dir, ["apply", "--issue", "credit-note"]);
   assert.equal(applied.status, 0, applied.stdout + applied.stderr);
-  assert.match(read(dir, "docs/sdd/specs/returns/credit-note/spec.md"), /### REQ-CRN-1: Issue credit note/);
-  assert.doesNotMatch(read(dir, "docs/sdd/specs/billing/invoice/spec.md"), /REQ-INV-2/);
-  assert.match(read(dir, "docs/sdd/decision/1-broker-events-for-accounting.md"), /## Pros and Cons of the Options/);
-  assert.doesNotMatch(read(dir, "docs/sdd/decision/1-broker-events-for-accounting.md"), /slug:/);
-  assert.match(read(dir, "docs/sdd/steering/tech.md"), /Rationale: \[ADR-1\]/);
-  assert.match(read(dir, "docs/sdd/steering/tech.md"), /^## Stack\n[\s\S]*^### Messaging$/m);
-  assert.doesNotMatch(read(dir, "docs/sdd/steering/tech.md"), /^#####/m);
-  assert.match(read(dir, "docs/sdd/steering/messaging.md"), /Rationale: \[ADR-1\]/);
-  assert.match(read(dir, "docs/sdd/steering/glossary.md"), /### Issued invoice/);
-  assert.match(read(dir, "docs/sdd/specs/returns/credit-note/data.md"), /DATA-CRN-1 is the record/);
+  assert.match(read(dir, "docs/knowledge/specs/returns/credit-note/spec.md"), /### REQ-CRN-1: Issue credit note/);
+  assert.doesNotMatch(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-2/);
+  assert.match(read(dir, "docs/knowledge/decision/1-broker-events-for-accounting.md"), /## Pros and Cons of the Options/);
+  assert.doesNotMatch(read(dir, "docs/knowledge/decision/1-broker-events-for-accounting.md"), /slug:/);
+  assert.match(read(dir, "docs/knowledge/steering/tech.md"), /Rationale: \[ADR-1\]/);
+  assert.match(read(dir, "docs/knowledge/steering/tech.md"), /^## Stack\n[\s\S]*^### Messaging$/m);
+  assert.doesNotMatch(read(dir, "docs/knowledge/steering/tech.md"), /^#####/m);
+  assert.match(read(dir, "docs/knowledge/steering/messaging.md"), /Rationale: \[ADR-1\]/);
+  assert.match(read(dir, "docs/knowledge/steering/glossary.md"), /### Issued invoice/);
+  assert.match(read(dir, "docs/knowledge/specs/returns/credit-note/data.md"), /DATA-CRN-1 is the record/);
   const after = sdd(dir, ["check"]);
   assert.equal(after.status, 0, after.stdout + after.stderr);
   const reapplied = sdd(dir, ["check", "--issue", "credit-note"]);
@@ -837,7 +837,7 @@ test("the sdd-steering example passes check", () => {
   const example = installedSkill(dir, "sdd-steering", "example.md");
   const files = [...example.matchAll(/^## (\S+\.md)\n\n```markdown\n([\s\S]*?)\n```$/gm)];
   assert.deepEqual(files.map((match) => match[1]), ["product.md", "glossary.md", "architecture.md", "tech.md", "structure.md"]);
-  for (const [, name, body] of files) fs.writeFileSync(path.join(dir, "docs/sdd/steering", name), `${body}\n`);
+  for (const [, name, body] of files) fs.writeFileSync(path.join(dir, "docs/knowledge/steering", name), `${body}\n`);
   assert.equal(sdd(dir, ["index"]).status, 0);
   const checked = sdd(dir, ["check"]);
   assert.equal(checked.status, 0, checked.stdout + checked.stderr);
@@ -867,7 +867,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "0.3.12");
-  assert.match(read(dir, "docs/sdd/specs/billing/invoice/spec.md"), /REQ-INV-1/);
+  assert.equal(config.version, "0.3.13");
+  assert.match(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });

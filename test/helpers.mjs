@@ -48,8 +48,8 @@ const STEERING = {
   "structure.md": ["Repository Layout", "Module Boundaries", "Naming Conventions", "Dependency Rules", "Code-to-Specs Mapping", "Related"],
 };
 
-export function writeSteering(dir, docsDir = "docs/sdd") {
-  const base = path.join(dir, docsDir, "steering");
+export function writeSteering(dir, docsDir = "docs") {
+  const base = path.join(dir, docsDir, "knowledge", "steering");
   fs.mkdirSync(base, { recursive: true });
   for (const [filename, headings] of Object.entries(STEERING)) {
     const title = filename.replace(".md", "");
@@ -63,7 +63,7 @@ export function commitAll(dir, message) {
   return git(["commit", "-m", message], dir);
 }
 
-export function writeInvoiceIssue(dir, docsDir = "docs/sdd") {
+export function writeInvoiceIssue(dir, docsDir = "docs") {
   const issue = path.join(dir, docsDir, "issues/invoice-reissue");
   fs.mkdirSync(issue, { recursive: true });
   fs.writeFileSync(path.join(issue, "proposal.md"), `# Issue an invoice

@@ -1279,12 +1279,16 @@ function finishRefs(map, docsDir, diags) {
   }
 }
 
+function kdir(config) {
+  return `${config.docsDir.replace(/\/+$/, "")}/knowledge`;
+}
+
 function setupDiags(root, config) {
   if (!config || config.invalid) return [diag("sdd.config.json", 1, "SETUP_CONFIG_MISSING", "Run npx @paterapatera/sdd-orc init")];
   if (Number(config.formatVersion) !== FORMAT_VERSION) {
     return [diag("sdd.config.json", 1, "FORMAT_VERSION", "Run npx @paterapatera/sdd-orc update or npx @paterapatera/sdd-orc migrate")];
   }
-  const docsDir = config.docsDir;
+  const docsDir = kdir(config);
   const required = ["index.md", "specs/index.md", "specs/log.md", "decision/index.md"].map((rel) => path.join(root, docsDir, rel));
   if (required.some((file) => !fs.existsSync(file))) return [diag(`${docsDir}/index.md`, 1, "SETUP_SKELETON_MISSING", "Run npx @paterapatera/sdd-orc init")];
   const missing = REQUIRED_STEERING.filter((file) => !fs.existsSync(path.join(root, docsDir, "steering", file)));
@@ -1430,13 +1434,13 @@ function validateDeltaEars(delta, lang, diags) {
 }
 
 function validateDeltaIds(root, config, delta, diags) {
-  const map = loadTree(root, config.docsDir);
-  const ids = knownIdSet(map, config.docsDir);
+  const map = loadTree(root, kdir(config));
+  const ids = knownIdSet(map, kdir(config));
   for (const file of delta.files) {
     for (const item of [...file.modified, ...file.removed]) {
       const id = item.title.split(":")[0].trim();
       if (!/^(REQ|IF|DATA|NFR)-[A-Z]{2,6}-\d+$/.test(id)) continue;
-      if (!ids.has(id) && !(item.title && file.removed.includes(item) && loggedIds(map, config.docsDir, "Removed").has(id))) {
+      if (!ids.has(id) && !(item.title && file.removed.includes(item) && loggedIds(map, kdir(config), "Removed").has(id))) {
         diags.push(diag(file.path, item.line, "ID_FORMAT", `${id} does not exist`));
       }
     }
@@ -1553,7 +1557,7 @@ function validateClose(root, config, issue, files, docsOnly, quick, diags) {
   const majors = files.task ? parseTasks(files.task) : [];
   if (!quick && !files.design) diags.push(diag(`${config.docsDir}/issues/${issue}/design.md`, 1, "CLOSE_TASKS", "design.md is required before close"));
   if (!files.task || majors.some((item) => !item.done)) diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "CLOSE_TASKS", "Every major task must be checked"));
-  const map = loadTree(root, config.docsDir);
+  const map = loadTree(root, kdir(config));
   const tokens = issueTokens(issue);
   for (const [rel, value] of map) {
     if (typeof value !== "string" || rel.startsWith(`${config.docsDir}/issues/`)) continue;
@@ -1651,9 +1655,9 @@ export function runCommand(start, argv) {
     if (blocking.length) return { code: exitCode(blocking), stdout: output(blocking, opts.format), stderr: "" };
   }
   if (command === "index") {
-    const tree = loadTree(root, config.docsDir);
+    const tree = loadTree(root, kdir(config));
     const before = cloneTree(tree);
-    regenerateIndexes(tree, config.docsDir);
+    regenerateIndexes(tree, kdir(config));
     writeTree(root, before, tree);
     return { code: 0, stdout: "", stderr: "" };
   }
@@ -1680,12 +1684,12 @@ function runCheck(root, config, opts) {
     const diags = [diag(`${config.docsDir}/issues/${opts.issue}`, 1, "ISSUE_NOT_FOUND", "The issue directory does not exist")];
     return { code: 2, stdout: output(diags, opts.format), stderr: "" };
   }
-  const tree = loadTree(root, config.docsDir);
-  let diags = validateTree(tree, config.docsDir, { lang: config.lang || "en", root, stage: opts.stage });
+  const tree = loadTree(root, kdir(config));
+  let diags = validateTree(tree, kdir(config), { lang: config.lang || "en", root, stage: opts.stage });
   if (issue && fs.existsSync(issueDir(root, config, issue))) {
     const issueResult = staticIssueDiags(root, config, issue, opts.stage);
     diags = diags.concat(issueResult.diags);
-    const simulated = simulate(tree, config.docsDir, issueResult.deltas, issue, { lang: config.lang || "en", root });
+    const simulated = simulate(tree, kdir(config), issueResult.deltas, issue, { lang: config.lang || "en", root });
     diags = diags.concat(simulated.diags.filter((item) => !diags.some((existing) => existing.rule === item.rule && existing.path === item.path && existing.message === item.message)));
   } else if (issue && !fs.existsSync(issueDir(root, config, issue))) {
     diags.push(diag(`${config.docsDir}/issues/${issue}`, 1, "ISSUE_NOT_FOUND", "The branch has no matching issue directory"));
@@ -1704,11 +1708,11 @@ function runStamp(root, config, opts) {
     const diags = [diag("issues", 1, "ISSUE_NOT_FOUND", "Pass --issue or run stamp on the issue branch")];
     return { code: 2, stdout: output(diags, opts.format), stderr: "" };
   }
-  const tree = loadTree(root, config.docsDir);
+  const tree = loadTree(root, kdir(config));
   for (const name of ["requirements.md", "design.md"]) {
     const abs = path.join(issueDir(root, config, issue), name);
     if (!fs.existsSync(abs)) continue;
-    const next = stampText(fs.readFileSync(abs, "utf8"), tree, config.docsDir);
+    const next = stampText(fs.readFileSync(abs, "utf8"), tree, kdir(config));
     fs.writeFileSync(abs, next);
   }
   return { code: 0, stdout: "", stderr: "" };
@@ -1749,9 +1753,9 @@ function runApply(root, config, opts) {
     return { code: 2, stdout: output([diag("issues", 1, "ISSUE_NOT_FOUND", "Pass --issue or run apply on the issue branch")], opts.format), stderr: "" };
   }
   const issueResult = staticIssueDiags(root, config, issue, "");
-  const tree = loadTree(root, config.docsDir);
+  const tree = loadTree(root, kdir(config));
   const before = cloneTree(tree);
-  const simulated = simulate(tree, config.docsDir, issueResult.deltas, issue, { lang: config.lang || "en", root });
+  const simulated = simulate(tree, kdir(config), issueResult.deltas, issue, { lang: config.lang || "en", root });
   const diags = [...issueResult.diags, ...simulated.diags];
   if (diags.length) return { code: exitCode(diags), stdout: output(diags, opts.format), stderr: "" };
   const code = loadCodeFiles(root, config);
@@ -1767,7 +1771,7 @@ function runRenumber(root, config, opts) {
   const base = opts.base || config.baseBranch || "main";
   const baseRev = git(root, ["rev-parse", "--verify", base]);
   if (baseRev.status !== 0) return { code: 2, stdout: output([diag(base, 1, "USAGE", `Base branch ${base} does not exist`)], "text"), stderr: "" };
-  const tree = loadTree(root, config.docsDir);
+  const tree = loadTree(root, kdir(config));
   const diags = [];
   const codeMap = new Map(opts.codes.map((pair) => {
     const [from, to] = pair.split("=");
@@ -1780,14 +1784,14 @@ function runRenumber(root, config, opts) {
   if (diags.length) return { code: 1, stdout: output(diags, "text"), stderr: "" };
   const before = cloneTree(tree);
   const idMap = renumberIds(root, config, tree, base);
-  for (const [from, to] of codeMap) rewriteCode(tree, config.docsDir, from, to, root, base);
+  for (const [from, to] of codeMap) rewriteCode(tree, kdir(config), from, to, root, base);
   for (const [rel, value] of [...tree.entries()]) {
     if (typeof value !== "string" || rel.startsWith(`${config.docsDir}/issues/`)) continue;
     tree.set(rel, preserveBaseIds(value, gitFile(root, base, rel), idMap));
   }
   applyRenumberToCode(root, config, base, idMap);
-  recomputeFormer(tree, config.docsDir);
-  regenerateIndexes(tree, config.docsDir);
+  recomputeFormer(tree, kdir(config));
+  regenerateIndexes(tree, kdir(config));
   writeTree(root, before, tree);
   return { code: 0, stdout: "", stderr: "" };
 }
@@ -1802,13 +1806,13 @@ function collidingCodes(root, config, base) {
   const baseCodes = new Set();
   const listed = git(root, ["ls-tree", "-r", "--name-only", base]);
   for (const rel of listed.stdout.split("\n")) {
-    if (!rel.endsWith("/spec.md") || !rel.startsWith(`${config.docsDir}/`)) continue;
+    if (!rel.endsWith("/spec.md") || !rel.startsWith(`${kdir(config)}/`)) continue;
     const text = gitFile(root, base, rel);
     const code = /^Code:\s*([A-Z]{2,6})\s*$/m.exec(text || "");
     if (code) baseCodes.add(code[1]);
   }
-  const tree = loadTree(root, config.docsDir);
-  for (const cap of listCapabilities(tree, config.docsDir)) {
+  const tree = loadTree(root, kdir(config));
+  for (const cap of listCapabilities(tree, kdir(config))) {
     const rel = cap.spec;
     if (gitFile(root, base, rel) != null) continue;
     const code = readCode(tree, rel);
@@ -1822,13 +1826,13 @@ function renumberIds(root, config, tree, base) {
   const baseText = new Map();
   const listed = git(root, ["ls-tree", "-r", "--name-only", base]);
   for (const rel of listed.stdout.split("\n")) {
-    if (rel.startsWith(`${config.docsDir}/`) && rel.endsWith(".md")) baseText.set(rel, gitFile(root, base, rel) || "");
+    if (rel.startsWith(`${kdir(config)}/`) && rel.endsWith(".md")) baseText.set(rel, gitFile(root, base, rel) || "");
   }
   const baseIds = new Set();
   for (const text of baseText.values()) for (const id of collectIds(text)) baseIds.add(id);
   const extras = new Set();
   for (const [rel, value] of tree) {
-    if (typeof value !== "string" || !rel.startsWith(`${config.docsDir}/`) || rel.includes("/issues/")) continue;
+    if (typeof value !== "string" || !rel.startsWith(`${kdir(config)}/`) || rel.includes("/issues/")) continue;
     const baseCounts = countIds(baseText.get(rel) || "");
     const workCounts = countIds(value);
     for (const [id, count] of workCounts) {
@@ -1839,7 +1843,7 @@ function renumberIds(root, config, tree, base) {
   for (const id of [...extras].sort()) {
     const match = /^(REQ|IF|DATA|NFR)-([A-Z]{2,6})-(\d+)$/.exec(id);
     if (!match) continue;
-    const finalId = `${match[1]}-${match[2]}-${maxNumber(tree, config.docsDir, match[1], match[2], reserved) + 1}`;
+    const finalId = `${match[1]}-${match[2]}-${maxNumber(tree, kdir(config), match[1], match[2], reserved) + 1}`;
     reserved.add(finalId);
     map.set(id, finalId);
   }
@@ -1852,12 +1856,12 @@ function renumberAdrFiles(root, config, tree, base, idMap) {
   const baseNumbers = new Set([...baseFiles].map((rel) => /^.*\/decision\/(\d+)-/.exec(rel)?.[1]).filter(Boolean).map(Number));
   let max = Math.max(0, ...baseNumbers, ...[...tree.keys()].map((rel) => Number(/^.*\/decision\/(\d+)-/.exec(rel)?.[1] || 0)));
   for (const rel of [...tree.keys()]) {
-    const match = new RegExp(`^${config.docsDir}/decision/(\\d+)-(.+\\.md)$`).exec(rel);
+    const match = new RegExp(`^${kdir(config)}/decision/(\\d+)-(.+\\.md)$`).exec(rel);
     if (!match || baseFiles.has(rel)) continue;
     const number = Number(match[1]);
     if (!baseNumbers.has(number)) continue;
     max += 1;
-    const nextRel = `${config.docsDir}/decision/${max}-${match[2]}`;
+    const nextRel = `${kdir(config)}/decision/${max}-${match[2]}`;
     let text = tree.get(rel);
     text = text.replaceAll(`ADR-${number}`, `ADR-${max}`);
     tree.delete(rel);
