@@ -22,7 +22,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "1.0.0");
+  assert.equal(config.version, "1.0.1");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -693,6 +693,7 @@ test("issue checks cover traceability, research, ears, and close", () => {
   const ears = sdd(dir, ["check", "--issue", "invoice-reissue"]);
   assert.match(ears.stdout, /EARS_SHALL/);
   const close = sdd(dir, ["check", "--stage", "close", "--issue", "invoice-reissue"]);
+  assert.equal(close.status, 1);
   assert.match(close.stdout, /CLOSE_TASKS/);
 });
 
@@ -870,7 +871,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "1.0.0");
+  assert.equal(config.version, "1.0.1");
   assert.match(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });
@@ -897,10 +898,47 @@ test("check --stage impl runs testCommand and reports human verification separat
   config.testCommand = "node -e \"process.exit(3)\"";
   fs.writeFileSync(path.join(dir, "sdd.config.json"), `${JSON.stringify(config, null, 2)}\n`);
   const failed = sdd(dir, ["check", "--stage", "impl"]);
+  assert.equal(failed.status, 1);
   assert.match(failed.stdout, /IMPL_TEST_COMMAND/);
   fs.unlinkSync(path.join(dir, "test/invoice.test.js"));
   const missing = sdd(dir, ["check", "--stage", "impl"]);
   assert.match(missing.stdout, /IMPL_TEST_MISSING/);
+});
+
+test("check --stage close exits 1 when manual verification is unchecked", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  assert.equal(sdd(dir, ["apply"]).status, 0);
+  let task = read(dir, "docs/issues/invoice-reissue/task.md");
+  task = `${task.trim()}\n- [ ] 2. Manual verification\n  - Depends on: 1\n  - 2.1 Check on screen\n    - Requirements: REQ-INV-1\n  - 2.2 Confirm error text\n    - Requirements: REQ-INV-1\n`;
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), `${task}\n`);
+  const close = sdd(dir, ["check", "--stage", "close"]);
+  assert.equal(close.status, 1, close.stdout);
+  assert.match(close.stdout, /CLOSE_TASKS/);
+  assert.doesNotMatch(close.stdout, /^ok:/m);
+});
+
+test("check --stage impl exits 0 for pending manual verification notes only", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  fs.mkdirSync(path.join(dir, "test"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "test/invoice.test.js"), "// REQ-INV-NEW-1\n");
+  let task = read(dir, "docs/issues/invoice-reissue/task.md");
+  task = `${task.trim()}\n- [ ] 2. Manual verification\n  - Depends on: 1\n  - 2.1 Check on screen\n    - Requirements: REQ-INV-NEW-1\n  - 2.2 Confirm error text\n    - Requirements: REQ-INV-NEW-1\n`;
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), `${task}\n`);
+  const config = JSON.parse(read(dir, "sdd.config.json"));
+  config.testCommand = "node -e \"process.exit(0)\"";
+  fs.writeFileSync(path.join(dir, "sdd.config.json"), `${JSON.stringify(config, null, 2)}\n`);
+  commitAll(dir, "docs: proposal");
+  const impl = sdd(dir, ["check", "--stage", "impl", "--format", "json"]);
+  assert.equal(impl.status, 0, impl.stdout);
+  const body = JSON.parse(impl.stdout);
+  assert.equal(body.ok, true);
+  assert.match(body.notes.map((item) => item.rule).join(","), /IMPL_HUMAN_PENDING/);
 });
 
 test("check --stage impl reads untracked test files without git add", () => {

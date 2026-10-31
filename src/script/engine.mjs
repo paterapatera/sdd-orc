@@ -1827,9 +1827,12 @@ function runTestCommand(root, config, diags) {
   const shell = process.platform === "win32" ? "cmd.exe" : "/bin/sh";
   const args = process.platform === "win32" ? ["/d", "/s", "/c", command] : ["-c", command];
   const result = spawnSync(shell, args, { cwd: root, encoding: "utf8" });
-  if ((result.status ?? 1) !== 0) {
-    const detail = `${result.stdout || ""}${result.stderr || ""}`.trim();
-    diags.push(diag("sdd.config.json", 1, "IMPL_TEST_COMMAND", `testCommand failed with exit ${result.status ?? 1}`, detail ? { detail } : {}));
+  if (result.error || (result.status ?? 1) !== 0) {
+    const detail = `${result.error?.message || ""}\n${result.stdout || ""}${result.stderr || ""}`.trim();
+    const message = result.error
+      ? `testCommand failed: ${result.error.message}`
+      : `testCommand failed with exit ${result.status ?? 1}`;
+    diags.push(diag("sdd.config.json", 1, "IMPL_TEST_COMMAND", message, detail ? { detail } : {}));
   }
 }
 

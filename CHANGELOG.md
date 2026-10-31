@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.1
+
+- `check --stage close` and `check --stage impl` exit non-zero when `CLOSE_TASKS`, `IMPL_TEST_COMMAND`, or other blocking diagnostics fire (regression tests; `IMPL_HUMAN_PENDING` at impl remains a note only).
+
 ## 1.0.0
 
 - Add project knowledge wiki under `knowledge/lessons/` with issue `feedback.md` capture and `/sdd-close` lesson promotion workflow.
