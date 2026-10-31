@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown under your repo, and you run `check` (or let skills run it) before you merge. Package: `@paterapatera/sdd-orc` 0.3.20. Node.js 18 or later.
+**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 0.3.20. Node.js 18 or later.
 
 Registering tracker issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -56,43 +56,19 @@ npx @paterapatera/sdd-orc migrate
 
 `update` refreshes skills and the script; it does not edit `knowledge/`. `migrate` is for future format changes; format version 1 has nothing to convert.
 
-## Checker commands (reference)
+## Script and status
 
-Default path: `node .agents/skills/sdd-scripts/sdd.mjs`
+Skills run the bundled checker (`check`, `stamp`, `apply`, `renumber`, `index`, and related steps) during each phase. You do not need to run those commands yourself in normal work.
+
+To see the current phase and the next skill for your branch, run:
 
 ```sh
-node .agents/skills/sdd-scripts/sdd.mjs check
-node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
-node .agents/skills/sdd-scripts/sdd.mjs stamp --issue <name>
-node .agents/skills/sdd-scripts/sdd.mjs apply --issue <name>
-node .agents/skills/sdd-scripts/sdd.mjs index
-node .agents/skills/sdd-scripts/sdd.mjs renumber [--base main] [--code OLD=NEW]
+node .agents/skills/sdd-scripts/sdd.mjs status
 ```
 
-Skills call these for you; you often run `check` and `status` yourself.
+Add `--issue <name>` or `--all` when you want a specific issue or every open issue.
 
-| Command | When you use it |
-|---|---|
-| `check` | After doc edits; skills run it at setup, before close, and during impl |
-| `status` | See the next skill for this branch or issue |
-| `apply` | Usually via `/sdd-close` (merges issue docs into `knowledge/`) |
-| `stamp` | When a skill or error message tells you the durable file changed under a delta |
-| `index` | Re-close after merge conflicts on indexes |
-| `renumber` | Re-close when ids or capability codes collide with the base branch |
-
-Useful `check` flags:
-
-| Flag | When |
-|---|---|
-| `--scope setup` | First step of most skills |
-| `--stage impl` | End of `/sdd-impl` (tests and open tasks) |
-| `--stage close` | End of `/sdd-close` |
-| `--allow-missing` | Re-close when the issue folder is already gone |
-| `--format json` | Scripts or CI parsing |
-
-Optional `testCommand` in `sdd.config.json` runs only with `check --stage impl`.
-
-If `runtime` is `bun` and Bun is installed, you may use `bun` instead of `node`; otherwise use `node` for `sdd.mjs`.
+If `/sdd-impl` should run your test suite automatically, set optional `testCommand` in `sdd.config.json`.
 
 ## Skills included
 

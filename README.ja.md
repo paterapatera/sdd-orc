@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、マージ前に `check`（スキルが実行することもあります）で体裁を確認します。パッケージ名は `@paterapatera/sdd-orc` 0.3.20 です。Node.js 18 以降が必要です。
+sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、検査は各スキルがスクリプト経由で実行します。パッケージ名は `@paterapatera/sdd-orc` 0.3.20 です。Node.js 18 以降が必要です。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
@@ -56,43 +56,19 @@ npx @paterapatera/sdd-orc migrate
 
 `update` はスキルとスクリプトだけを更新し、`knowledge/` は触りません。`migrate` は将来のフォーマット変更用で、現在のフォーマット版 1 では変換はありません。
 
-## 検査スクリプト（参照）
+## スクリプトと status
 
-実行例は次のとおりです。
+`check` や `stamp`、`apply`、`renumber`、`index` などは、通常の作業では各スキルが自動で実行します。人が手で叩く必要はありません。
+
+今のフェーズと、次に使うスキルを確認したいときだけ、次を実行します。
 
 ```sh
-node .agents/skills/sdd-scripts/sdd.mjs check
-node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
-node .agents/skills/sdd-scripts/sdd.mjs stamp --issue <name>
-node .agents/skills/sdd-scripts/sdd.mjs apply --issue <name>
-node .agents/skills/sdd-scripts/sdd.mjs index
-node .agents/skills/sdd-scripts/sdd.mjs renumber [--base main] [--code OLD=NEW]
+node .agents/skills/sdd-scripts/sdd.mjs status
 ```
 
-多くはスキルが代わりに呼び出します。手元でよく使うのは `check` と `status` です。
+特定の issue や、開いている issue すべてを見る場合は `--issue <name>` や `--all` を付けます。
 
-| コマンド | 使う場面 |
-|---|---|
-| `check` | ドキュメントを直したあと。各スキルの setup、close、実装の段階でも実行 |
-| `status` | このブランチや issue の次に使うスキルを確認 |
-| `apply` | 通常は `/sdd-close` 経由（issue の内容を `knowledge/` に反映） |
-| `stamp` | スキルやエラー表示で、恒久ファイル側が変わったと言われたとき |
-| `index` | Re-close で index だけ直すとき |
-| `renumber` | Re-close で ID や capability コードがベースとぶつかったとき |
-
-`check` の主なオプションは次のとおりです。
-
-| オプション | 使う場面 |
-|---|---|
-| `--scope setup` | ほとんどのスキルの最初 |
-| `--stage impl` | `/sdd-impl` の終わり（テストと未完了タスク） |
-| `--stage close` | `/sdd-close` の終わり |
-| `--allow-missing` | issue フォルダを既に消した Re-close |
-| `--format json` | CI やスクリプトから結果を読むとき |
-
-`sdd.config.json` の `testCommand` は `check --stage impl` のときだけ実行されます（未設定なら実行しません）。
-
-`runtime` が `bun` で Bun が入っていれば `bun` でも実行できます。Bun が無い環境では `sdd.mjs` は `node` で実行してください。
+実装の段階でテストを自動実行したい場合だけ、`sdd.config.json` の任意項目 `testCommand` にコマンドを書きます。
 
 ## 同梱スキル
 
