@@ -16,3 +16,13 @@ Allowed work is a defect fix back to specified behavior, an internal defect, a r
 For `Type: fix`, the first minor item is a regression test that fails before the fix and passes after it. Add Manual verification only when a person must look. Implement majors in order. Retry a failing test twice, then stop. If implementation discovers a stopping condition, leave the edits uncommitted and report the condition, the switch to `/sdd-req` then `/sdd-design` then `/sdd-task`, and a revised Impact.
 
 When the work is done, commit `proposal.md`, `task.md`, and the implementation together with the proposal type. Stage named paths only.
+
+## Issue feedback (`feedback.md`)
+
+Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-quick — <kind>` then a short summary. Commit `feedback.md` on the branch when you append. Do not read `knowledge/lessons/`.
+
+Record when:
+
+- You stop mid-implementation because a stopping condition was found: kind `quick-stop`.
+- You stop after test retries (two failures on a major): kind `test-stop`.
+- The same `check` diagnostic code appears again on this issue: kind `repeat-check` (include the code and count).

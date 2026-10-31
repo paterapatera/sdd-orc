@@ -11,7 +11,7 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
 ## Steps
 
-1. Read the requested change, `__SDD_KNOWLEDGE_DIR__/specs/`, and `__SDD_KNOWLEDGE_DIR__/steering/`.
+1. Read the requested change, `__SDD_KNOWLEDGE_DIR__/specs/`, and `__SDD_KNOWLEDGE_DIR__/steering/`. You may read only `__SDD_KNOWLEDGE_DIR__/lessons/index.md` (not individual lesson pages) when the change fixes something missed in a previously closed issue.
 2. Propose a feature name: lowercase kebab-case, at most 40 characters. A tracker key may be a prefix (`1-invoice-reissue` or `PROJ-123-invoice-reissue`). Stop if that directory or branch already exists, with or without a key.
 3. Ask at most 3 questions, only to settle Why, What Changes, and Out of Scope. Each question decides one thing, and each option states only the result that differs. Put background in one or two chat sentences before the questions, not in them. Keep a question near 30 characters and an option near 15 in ja, or near 12 and 6 words otherwise, not counting its score. Prefix each option with a score from 1 to 5, as in `[5] ...`, where 5 is best. The score weighs safety most, then closeness to the ideal form, then low implementation effort. List options from the highest score. The score is the recommendation, so add no separate recommended label.
 4. Write `__SDD_DOCS_DIR__/issues/<feature>/proposal.md` with `# <title>`, Why, What Changes, Impact, and Out of Scope. The title is one line in `__SDD_LANG__` and does not contain the feature name or tracker key.
@@ -50,3 +50,7 @@ Clerks refund returned orders by hand, and accounting cannot see the refunds.
 ## Commit
 
 Do not commit `proposal.md`. A later `/sdd-req`, `/sdd-quick`, or `/sdd-reverse` commit includes it unless it was already committed on the base branch.
+
+## Issue feedback (`feedback.md`)
+
+When this issue fixes something that should have been caught in a previously closed issue (for example post-merge CI or staging failure), append to `__SDD_DOCS_DIR__/issues/<feature>/feedback.md` (create with `# Feedback` if missing): `## YYYY-MM-DD sdd-init — missed-prior-close` and a short summary of what was missed and which closed issue it relates to. Commit `feedback.md` on the branch when you append.

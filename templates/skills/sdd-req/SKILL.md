@@ -65,3 +65,13 @@ Before Finish, reread the whole file against this list. Fix each failure. Ask an
 ## Finish
 
 Delete `base:` lines you rewrote, then run `__SDD_RUNTIME__ __SDD_SCRIPT__ stamp --issue <feature>` and `__SDD_RUNTIME__ __SDD_SCRIPT__ check --issue <feature>`. Commit only this issue directory, including `proposal.md` when it is still uncommitted, as `docs: ...` in `__SDD_LANG__`. Stage named paths. Do not use `git add -A` or `git add .`. A tracker key prefix becomes the commit scope.
+
+## Issue feedback (`feedback.md`)
+
+Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-req — <kind>` then a short summary. Commit `feedback.md` on the branch when you append. Do not read `knowledge/lessons/`.
+
+Record when:
+
+- The user answers with something other than the offered options: kind `off-script-answer` (question, options shown, and the answer).
+- The user points out missing content during review or confirmation: kind `review-gap` (what was missing).
+- The same `check` diagnostic code appears again on this issue: kind `repeat-check` (include the code and count).

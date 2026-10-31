@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { regenerateLessonsIndex, validateLessons, validateCloseLessons } from "./lessons.mjs";
 import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, sameAfterApply, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
 
@@ -90,6 +91,8 @@ function classify(docsDir, rel) {
   if (!rel.startsWith(`${docsDir}/`)) return "";
   const inner = rel.slice(docsDir.length + 1);
   if (inner.startsWith("issues/")) return "issue";
+  if (inner === "lessons/index.md") return "lesson-index";
+  if (/^lessons\/(?!index\.md$)[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(inner)) return "lesson";
   if (inner === "index.md" || inner === "specs/index.md" || inner === "decision/index.md" || inner === "steering/index.md") return "index";
   if (/^specs\/[^/]+\/index\.md$/.test(inner) || /^specs\/[^/]+\/[^/]+\/index\.md$/.test(inner)) return "index";
   if (inner === "specs/log.md" || inner === "decision/log.md" || inner === "steering/log.md") return "log";
@@ -314,12 +317,13 @@ export function regenerateIndexes(map, docsDir) {
     writeTaggedIndex(map, docsDir, "steering", "Steering", "How the product is built and operated today.", "steering");
   }
   const rootEntries = [];
-  for (const area of ["specs", "decision", "steering"]) {
+  for (const area of ["specs", "decision", "steering", "lessons"]) {
     const indexRel = `${docsDir}/${area}/index.md`;
     if (!map.has(indexRel)) continue;
-    const header = areaHeader(map.get(indexRel), area, "");
+    const header = areaHeader(map.get(indexRel), area, area === "lessons" ? "What went wrong in past work and which policy prevents a repeat." : "");
     rootEntries.push(`* [${header.title}](/${area}/) - ${header.description}`);
   }
+  regenerateLessonsIndex(map, docsDir);
   const root = `${renderFrontmatter({ okf_version: "0.2" }, ["okf_version"])}${rootEntries.join("\n")}\n`;
   map.set(`${docsDir}/index.md`, root);
 }
@@ -1063,6 +1067,7 @@ function validateTree(map, docsDir, options = {}) {
     if (["doc", "adr", "steering", "index"].includes(kind)) validateLinks(rel, value, map, docsDir, diags);
   }
   validateGlossary(map, docsDir, diags);
+  validateLessons(map, docsDir, diags);
   finishRefs(map, docsDir, diags);
   if (options.stage === "close") {
     for (const [rel, value] of map) {
@@ -1075,6 +1080,7 @@ function validateTree(map, docsDir, options = {}) {
   regenerateIndexes(fresh, docsDir);
   for (const [rel, value] of fresh) {
     if (!rel.endsWith("/index.md") && rel !== `${docsDir}/index.md`) continue;
+    if (classify(docsDir, rel) === "lesson") continue;
     if (map.get(rel) !== value) diags.push(diag(rel, 1, "INDEX_STALE", `Run ${indexCommand(options.config)} to regenerate this file`));
   }
   return diags;
@@ -1321,6 +1327,7 @@ function readIssue(root, config, issue) {
     design: read("design.md"),
     research: read("research.md"),
     task: read("task.md"),
+    feedback: read("feedback.md"),
   };
 }
 
@@ -1598,18 +1605,34 @@ function indexCommand(config) {
   return `${runtime} ${script} index`;
 }
 
-function healStaleIndexes(root, config, tree) {
+function ensureLessonsIndexOnClose(root, config) {
+  const docsDir = kdir(config);
+  const indexAbs = path.join(root, docsDir, "lessons", "index.md");
+  if (fs.existsSync(indexAbs)) return;
+  fs.mkdirSync(path.dirname(indexAbs), { recursive: true });
+  fs.writeFileSync(indexAbs, "# Lessons\n\nWhat went wrong in past work and which policy prevents a repeat.\n");
+}
+
+function healStaleIndexes(root, config, tree, notes) {
   const docsDir = kdir(config);
   const fresh = cloneTree(tree);
   regenerateIndexes(fresh, docsDir);
   let stale = false;
+  let lessonsIndexHealed = false;
+  const lessonsIndexRel = `${docsDir}/lessons/index.md`;
   for (const [rel, value] of fresh) {
     if (!rel.endsWith("/index.md") && rel !== `${docsDir}/index.md`) continue;
-    if (tree.get(rel) !== value) stale = true;
+    if (tree.get(rel) !== value) {
+      stale = true;
+      if (rel === lessonsIndexRel) lessonsIndexHealed = true;
+    }
   }
   if (!stale) return tree;
   const before = cloneTree(tree);
   writeTree(root, before, fresh);
+  if (lessonsIndexHealed && notes) {
+    notes.push(diag(lessonsIndexRel, 1, "LESSONS_INDEX_REGEN", "Regenerated lessons/index.md to match lesson pages", { note: true }));
+  }
   return loadTree(root, docsDir);
 }
 function validateClose(root, config, issue, files, docsOnly, quick, diags) {
@@ -1620,6 +1643,9 @@ function validateClose(root, config, issue, files, docsOnly, quick, diags) {
   const majors = files.task ? parseTasks(files.task) : [];
   if (!quick && !files.design) diags.push(diag(`${config.docsDir}/issues/${issue}/design.md`, 1, "CLOSE_TASKS", "design.md is required before close"));
   if (!files.task || majors.some((item) => !item.done)) diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "CLOSE_TASKS", "Every major task must be checked"));
+  ensureLessonsIndexOnClose(root, config);
+  const knowledge = loadTree(root, kdir(config));
+  validateCloseLessons(config, issue, files, knowledge, diags, kdir(config));
   validateCloseTreeChecks(root, config, issue, diags);
 }
 
@@ -1892,8 +1918,9 @@ function runCheck(root, config, opts) {
     const diags = [diag(`${config.docsDir}/issues/${opts.issue}`, 1, "ISSUE_NOT_FOUND", "The issue directory does not exist")];
     return { code: 2, stdout: output(diags, opts.format), stderr: "" };
   }
-  const tree = healStaleIndexes(root, config, loadTree(root, kdir(config)));
-  let diags = validateTree(tree, kdir(config), { lang: config.lang || "en", root, stage: opts.stage, config });
+  const healNotes = [];
+  const tree = healStaleIndexes(root, config, loadTree(root, kdir(config)), healNotes);
+  let diags = [...healNotes, ...validateTree(tree, kdir(config), { lang: config.lang || "en", root, stage: opts.stage, config })];
   if (issuePresent) {
     const issueResult = staticIssueDiags(root, config, issue, opts.stage);
     diags = diags.concat(issueResult.diags);

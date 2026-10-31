@@ -40,3 +40,13 @@ Before Finish or handing off to `/sdd-task`, reread both files against this list
 ## Finish
 
 Run stamp and check again after every edit. Commit `research.md` and `design.md` together as one `docs` commit. Stage only this issue directory.
+
+## Issue feedback (`feedback.md`)
+
+Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-design — <kind>` then a short summary. Commit `feedback.md` on the branch when you append (with the related doc commit or right after). Do not read `knowledge/lessons/`.
+
+Record when:
+
+- The user answers with something other than the offered options: kind `off-script-answer` (question, options shown, and the answer).
+- The user points out missing content during review or confirmation: kind `review-gap` (what was missing).
+- The same `check` diagnostic code appears again on this issue: kind `repeat-check` (include the code and count).
