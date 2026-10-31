@@ -5,6 +5,7 @@ import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERS
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
 
 const SPEC_FILES = ["spec.md", "interfaces.md", "data.md", "quality.md"];
+const AUTO_TEST_LEVELS = TEST_LEVELS.filter((level) => level !== "Manual");
 const ITEM_SECTION = { REQ: "Requirements", IF: "Interfaces", DATA: "Entities", NFR: "Quality Requirements" };
 
 export function findRoot(start) {
@@ -1348,9 +1349,11 @@ function staticIssueDiags(root, config, issue, stage) {
   validateDeltaEars(delta, config.lang || "en", diags);
   validateDeltaIds(root, config, delta, diags);
   if (files.design) validateTraceability(files, delta, config, issue, diags);
+  if (files.design) validateDesignMechanical(files, config, issue, diags);
   if (files.task && files.design) validateTasks(files, config, issue, diags);
   if (files.research) validateResearch(files.research, delta, diags, config, issue);
   if (stage === "close") validateClose(root, config, issue, files, docsOnly, quick, diags);
+  if (stage === "impl") validateImpl(root, config, issue, files, diags);
   return { diags, deltas, docsOnly, quick };
 }
 
@@ -1504,8 +1507,13 @@ function parseTasks(task) {
   for (const line of task.split("\n")) {
     const major = /^- \[([ xX])\] (\d+)\.\s+(.*)$/.exec(line);
     if (major) {
-      current = { id: Number(major[2]), done: major[1].toLowerCase() === "x", title: major[3], depends: [], requirements: [] };
+      current = { id: Number(major[2]), done: major[1].toLowerCase() === "x", title: major[3], depends: [], requirements: [], minors: [] };
       majors.push(current);
+      continue;
+    }
+    const minor = /^\s+- (\d+\.\d+)\s/.exec(line);
+    if (minor && current) {
+      current.minors.push(minor[1]);
       continue;
     }
     const depends = /^\s+- Depends on:\s*(.+)$/.exec(line);
@@ -1516,6 +1524,19 @@ function parseTasks(task) {
   return majors;
 }
 
+function isManualMajor(title) {
+  return /manual\s+verification/i.test(title.replace(/\s*\(P\)\s*$/i, "").trim());
+}
+
+function validateDesignMechanical(files, config, issue, diags) {
+  const section = sectionText(files.design, "Requirements Traceability");
+  if (/^\s*none\s*$/i.test(section.trim())) return;
+  const strategy = sectionText(files.design, "Testing Strategy");
+  if (!/\|[^|\n]*Test Level[^|\n]*\|/i.test(strategy)) {
+    diags.push(diag(`${config.docsDir}/issues/${issue}/design.md`, 1, "DESIGN_TESTING", "Testing Strategy needs a table with a Test Level column"));
+  }
+}
+
 function validateTasks(files, config, issue, diags) {
   const majors = parseTasks(files.task);
   const ids = new Set(majors.map((item) => item.id));
@@ -1523,6 +1544,13 @@ function validateTasks(files, config, issue, diags) {
     for (const dep of major.depends) {
       if (!ids.has(dep) || dep >= major.id) diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "TASK_DEPENDS", `Task ${major.id} depends on ${dep}, which must be a smaller existing task`));
     }
+    if (major.minors.length && (major.minors.length < 2 || major.minors.length > 6)) {
+      diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "TASK_MINOR_COUNT", `Task ${major.id} needs 2 to 6 minor items, found ${major.minors.length}`));
+    }
+  }
+  const manual = majors.filter((item) => isManualMajor(item.title));
+  if (manual.length && manual.some((item) => item.id !== Math.max(...majors.map((entry) => entry.id)))) {
+    diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "TASK_MANUAL_ORDER", "Manual verification must be the last major task"));
   }
   if (files.traceRows) {
     const mentioned = new Set(majors.flatMap((item) => item.requirements));
@@ -1557,6 +1585,10 @@ function validateClose(root, config, issue, files, docsOnly, quick, diags) {
   const majors = files.task ? parseTasks(files.task) : [];
   if (!quick && !files.design) diags.push(diag(`${config.docsDir}/issues/${issue}/design.md`, 1, "CLOSE_TASKS", "design.md is required before close"));
   if (!files.task || majors.some((item) => !item.done)) diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "CLOSE_TASKS", "Every major task must be checked"));
+  validateCloseTreeChecks(root, config, issue, diags);
+}
+
+function validateCloseTreeChecks(root, config, issue, diags) {
   const map = loadTree(root, kdir(config));
   const tokens = issueTokens(issue);
   for (const [rel, value] of map) {
@@ -1576,7 +1608,7 @@ function validateClose(root, config, issue, files, docsOnly, quick, diags) {
 }
 
 function codePaths(root, config) {
-  const listed = git(root, ["ls-files", "-z"]);
+  const listed = git(root, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"]);
   if (listed.status !== 0) return [];
   const skipped = [config.docsDir, ...(config.skillsDir || []).map((dir) => `${dir}/skills`)].map((dir) => `${dir.replace(/\/+$/, "")}/`);
   return listed.stdout.split("\0").filter((rel) => rel && !skipped.some((prefix) => rel.startsWith(prefix)));
@@ -1608,20 +1640,25 @@ function loadCodeFiles(root, config) {
 }
 
 function output(diags, format) {
-  if (format === "json") return `${JSON.stringify({ ok: diags.length === 0, diagnostics: diags }, null, 2)}\n`;
+  if (format === "json") {
+    const errors = diags.filter((item) => !item.note);
+    const notes = diags.filter((item) => item.note);
+    return `${JSON.stringify({ ok: errors.length === 0, diagnostics: errors, notes }, null, 2)}\n`;
+  }
   const text = formatDiagnostics(diags);
   const details = diags.filter((item) => item.detail).map((item) => item.detail).join("\n");
   return `${[text, details].filter(Boolean).join("\n")}${text || details ? "\n" : ""}`;
 }
 
 function exitCode(diags) {
-  if (!diags.length) return 0;
+  const errors = diags.filter((item) => !item.note);
+  if (!errors.length) return 0;
   const fatal = new Set(["FORMAT_VERSION", "SETUP_CONFIG_MISSING", "SETUP_SKELETON_MISSING", "USAGE", "ISSUE_NOT_FOUND"]);
-  return diags.some((item) => fatal.has(item.rule)) ? 2 : 1;
+  return errors.some((item) => fatal.has(item.rule)) ? 2 : 1;
 }
 
 function parseScriptArgs(argv) {
-  const opts = { _: [], issue: "", scope: "", stage: "", format: "text", base: "", codes: [] };
+  const opts = { _: [], issue: "", scope: "", stage: "", format: "text", base: "", codes: [], allowMissing: false, all: false };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
     if (arg === "--issue") opts.issue = argv[++index] || "";
@@ -1630,6 +1667,8 @@ function parseScriptArgs(argv) {
     else if (arg === "--format") opts.format = argv[++index] || "text";
     else if (arg === "--base") opts.base = argv[++index] || "";
     else if (arg === "--code") opts.codes.push(argv[++index] || "");
+    else if (arg === "--allow-missing" || arg === "--if-issue") opts.allowMissing = true;
+    else if (arg === "--all") opts.all = true;
     else if (arg.startsWith("--")) opts.unknown = arg;
     else opts._.push(arg);
   }
@@ -1643,8 +1682,8 @@ export function runCommand(start, argv) {
   }
   const opts = parseScriptArgs(argv);
   const command = opts._[0] || "";
-  if (!command || opts.unknown || !["check", "stamp", "apply", "renumber", "index"].includes(command)) {
-    return { code: 2, stdout: "Usage: sdd.mjs check|stamp|apply|renumber|index [options]\n", stderr: "" };
+  if (!command || opts.unknown || !["check", "stamp", "apply", "renumber", "index", "status"].includes(command)) {
+    return { code: 2, stdout: "Usage: sdd.mjs check|stamp|apply|renumber|index|status [options]\n", stderr: "" };
   }
   const root = findRoot(start);
   if (!root) return { code: 2, stdout: "", stderr: "sdd.config.json:1: USAGE Run this command inside a repository.\n" };
@@ -1661,10 +1700,143 @@ export function runCommand(start, argv) {
     writeTree(root, before, tree);
     return { code: 0, stdout: "", stderr: "" };
   }
+  if (command === "status") return runStatus(root, config, opts);
   if (command === "check") return runCheck(root, config, opts);
   if (command === "stamp") return runStamp(root, config, opts);
   if (command === "apply") return runApply(root, config, opts);
   return runRenumber(root, config, opts);
+}
+
+function isTestPath(rel) {
+  return /(?:^|\/)(?:test|tests|__tests__)(?:\/|$)/.test(rel)
+    || /\.(?:test|spec)\.[cm]?[jt]sx?$/.test(rel)
+    || /_(?:test|spec)\.(?:py|go|rb)$/.test(rel);
+}
+
+function loadTestFileTexts(root, config) {
+  const files = new Map();
+  for (const rel of codePaths(root, config)) {
+    if (!isTestPath(rel)) continue;
+    const abs = path.join(root, rel);
+    if (!fs.existsSync(abs) || fs.statSync(abs).isDirectory()) continue;
+    const buffer = fs.readFileSync(abs);
+    if (buffer.includes(0)) continue;
+    files.set(rel, buffer.toString("utf8"));
+  }
+  return files;
+}
+
+function idNeedsAutomatedTest(levels) {
+  const parsed = levels.split(",").map((item) => item.trim()).filter(Boolean);
+  if (!parsed.length) return true;
+  return parsed.some((level) => AUTO_TEST_LEVELS.includes(level));
+}
+
+function validateImpl(root, config, issue, files, diags) {
+  if (!files.design || !files.task) {
+    diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "IMPL_DOCS", "design.md and task.md are required before impl verification"));
+    return;
+  }
+  const majors = parseTasks(files.task);
+  for (const major of majors) {
+    if (major.done || isManualMajor(major.title)) continue;
+    diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "IMPL_TASK_OPEN", `Task ${major.id} ${major.title.replace(/\s*\(P\)\s*$/i, "").trim()} is not checked`));
+  }
+  for (const major of majors.filter((item) => isManualMajor(item.title) && !item.done)) {
+    diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "IMPL_HUMAN_PENDING", `Task ${major.id} awaits human verification`, { note: true }));
+  }
+  const section = sectionText(files.design, "Requirements Traceability");
+  if (/^\s*none\s*$/i.test(section.trim())) return;
+  const rows = markdownTable(section);
+  const tests = loadTestFileTexts(root, config);
+  const testBlob = [...tests.values()].join("\n");
+  for (const row of rows) {
+    if (!idNeedsAutomatedTest(row[2] || "")) continue;
+    const id = row[0];
+    const pattern = new RegExp(`\\b${id.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`);
+    if (!pattern.test(testBlob)) {
+      diags.push(diag(`${config.docsDir}/issues/${issue}/design.md`, 1, "IMPL_TEST_MISSING", `${id} has no reference in automated test files`));
+    }
+  }
+}
+
+function runTestCommand(root, config, diags) {
+  const command = config.testCommand;
+  if (!command || typeof command !== "string" || !command.trim()) return;
+  const shell = process.platform === "win32" ? "cmd.exe" : "/bin/sh";
+  const args = process.platform === "win32" ? ["/d", "/s", "/c", command] : ["-c", command];
+  const result = spawnSync(shell, args, { cwd: root, encoding: "utf8" });
+  if ((result.status ?? 1) !== 0) {
+    const detail = `${result.stdout || ""}${result.stderr || ""}`.trim();
+    diags.push(diag("sdd.config.json", 1, "IMPL_TEST_COMMAND", `testCommand failed with exit ${result.status ?? 1}`, detail ? { detail } : {}));
+  }
+}
+
+function proposalQuick(proposal) {
+  const caps = /^-\s+Capabilities:\s*(.+)$/m.exec(proposal)?.[1]?.trim();
+  const steering = /^-\s+Steering:\s*(.+)$/m.exec(proposal)?.[1]?.trim();
+  const decisions = /^-\s+Decisions:\s*(.+)$/m.exec(proposal)?.[1]?.trim();
+  return caps === "none" && steering === "none" && decisions === "none";
+}
+
+function issueStatus(root, config, issue) {
+  const branch = branchName(root);
+  const dir = issueDir(root, config, issue);
+  const onBranch = branch === issue;
+  if (!fs.existsSync(dir)) {
+    return {
+      issue,
+      onBranch,
+      phase: onBranch ? "re-close" : "missing",
+      nextSkill: onBranch ? "sdd-close" : "",
+      detail: onBranch ? "Issue directory removed; use Re-close in sdd-close" : "Issue directory not found",
+    };
+  }
+  const files = readIssue(root, config, issue);
+  const type = proposalType(files.proposal);
+  const quick = !files.requirements && !files.design && !!files.task;
+  if (!files.proposal) return { issue, onBranch, phase: "init", nextSkill: "sdd-init", detail: "proposal.md is missing" };
+  if (quick) return { issue, onBranch, phase: "quick", nextSkill: "sdd-close", detail: "Quick issue ready to close" };
+  if (type === "docs" && !files.requirements) return { issue, onBranch, phase: "reverse", nextSkill: "sdd-reverse", detail: "Docs-only reverse issue" };
+  if (!files.requirements) {
+    return { issue, onBranch, phase: "proposal", nextSkill: proposalQuick(files.proposal) ? "sdd-quick" : "sdd-req", detail: "Proposal written" };
+  }
+  if (!files.design) return { issue, onBranch, phase: "requirements", nextSkill: "sdd-design", detail: "requirements.md written" };
+  if (!files.task) return { issue, onBranch, phase: "design", nextSkill: "sdd-task", detail: "design.md written" };
+  const majors = parseTasks(files.task);
+  const open = majors.filter((item) => !item.done && !isManualMajor(item.title));
+  const pendingHuman = majors.filter((item) => !item.done && isManualMajor(item.title));
+  if (open.length) {
+    return { issue, onBranch, phase: "implementation", nextSkill: "sdd-impl", detail: `Open tasks: ${open.map((item) => item.id).join(", ")}` };
+  }
+  if (pendingHuman.length) {
+    return { issue, onBranch, phase: "manual", nextSkill: "sdd-impl", detail: `Human verification pending: ${pendingHuman.map((item) => item.id).join(", ")}` };
+  }
+  return { issue, onBranch, phase: "ready", nextSkill: "sdd-close", detail: "Ready to close" };
+}
+
+function listIssues(root, config) {
+  const dir = path.join(root, config.docsDir, "issues");
+  if (!fs.existsSync(dir)) return [];
+  return fs.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+}
+
+function runStatus(root, config, opts) {
+  const setup = setupDiags(root, config);
+  if (setup.some((item) => item.rule !== "SETUP_STEERING_MISSING")) {
+    return { code: exitCode(setup), stdout: output(setup, opts.format), stderr: "" };
+  }
+  const branch = branchName(root);
+  let issues = [];
+  if (opts.issue) issues = [opts.issue];
+  else if (opts.all) issues = listIssues(root, config);
+  else if (branch && branch !== config.baseBranch) issues = [branch];
+  else issues = listIssues(root, config);
+  const rows = issues.map((issue) => issueStatus(root, config, issue));
+  if (opts.format === "json") return { code: 0, stdout: `${JSON.stringify({ branch, issues: rows }, null, 2)}\n`, stderr: "" };
+  const lines = rows.map((row) => `${row.issue}: ${row.phase} -> /${row.nextSkill}${row.detail ? ` (${row.detail})` : ""}`);
+  if (branch) lines.unshift(`branch: ${branch}`);
+  return { code: 0, stdout: `${lines.join("\n")}\n`, stderr: "" };
 }
 
 function runCheck(root, config, opts) {
@@ -1680,25 +1852,37 @@ function runCheck(root, config, opts) {
     return { code: 1, stdout: output(setup, opts.format), stderr: "" };
   }
   const issue = resolveIssue(root, config, opts.issue);
-  if (opts.issue && !fs.existsSync(issueDir(root, config, opts.issue))) {
+  const issuePresent = issue && fs.existsSync(issueDir(root, config, issue));
+  if (opts.issue && !issuePresent && !opts.allowMissing) {
     const diags = [diag(`${config.docsDir}/issues/${opts.issue}`, 1, "ISSUE_NOT_FOUND", "The issue directory does not exist")];
     return { code: 2, stdout: output(diags, opts.format), stderr: "" };
   }
   const tree = loadTree(root, kdir(config));
   let diags = validateTree(tree, kdir(config), { lang: config.lang || "en", root, stage: opts.stage });
-  if (issue && fs.existsSync(issueDir(root, config, issue))) {
+  if (issuePresent) {
     const issueResult = staticIssueDiags(root, config, issue, opts.stage);
     diags = diags.concat(issueResult.diags);
     const simulated = simulate(tree, kdir(config), issueResult.deltas, issue, { lang: config.lang || "en", root });
     diags = diags.concat(simulated.diags.filter((item) => !diags.some((existing) => existing.rule === item.rule && existing.path === item.path && existing.message === item.message)));
-  } else if (issue && !fs.existsSync(issueDir(root, config, issue))) {
-    diags.push(diag(`${config.docsDir}/issues/${issue}`, 1, "ISSUE_NOT_FOUND", "The branch has no matching issue directory"));
+  } else if (issue && !issuePresent) {
+    if (!opts.allowMissing) {
+      diags.push(diag(`${config.docsDir}/issues/${issue}`, 1, "ISSUE_NOT_FOUND", "The branch has no matching issue directory"));
+    } else if (opts.stage === "close") {
+      validateCloseTreeChecks(root, config, issue, diags);
+    }
   }
-  return { code: exitCode(diags), stdout: checkOutput(diags, opts.format, issue ? `issue ${issue}` : "tree"), stderr: "" };
+  if (opts.stage === "impl" && issuePresent) runTestCommand(root, config, diags);
+  return { code: exitCode(diags), stdout: checkOutput(diags, opts.format, issue && (issuePresent || !opts.allowMissing) ? `issue ${issue}` : "tree"), stderr: "" };
 }
 
 function checkOutput(diags, format, scope) {
-  if (format === "text" && !diags.length) return `ok: ${scope}\n`;
+  const errors = diags.filter((item) => !item.note);
+  if (format === "text" && !errors.length) {
+    const notes = diags.filter((item) => item.note);
+    const base = `ok: ${scope}\n`;
+    if (!notes.length) return base;
+    return `${base}${formatDiagnostics(notes)}\n`;
+  }
   return output(diags, format);
 }
 

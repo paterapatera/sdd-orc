@@ -70,7 +70,10 @@ export function diag(file, line, rule, message, extra = {}) {
 }
 
 export function formatDiagnostics(items) {
-  return items.map((item) => `${item.path}:${item.line}: ${item.rule} ${item.message}`).join("\n");
+  return items.map((item) => {
+    const prefix = item.note ? "note: " : "";
+    return `${item.path}:${item.line}: ${prefix}${item.rule} ${item.message}`;
+  }).join("\n");
 }
 
 export function splitFrontmatter(text) {

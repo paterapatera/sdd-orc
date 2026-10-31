@@ -20,4 +20,6 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Read the issue d
 
 Refer to requirement ids only in test names and comments. Commit the checked work with the proposal Impact type. When the feature name starts with a tracker key, use that key as the commit scope and write the description in `__SDD_LANG__`. Stage the issue directory and the files this implementation changed. Do not use `git add -A` or `git add .`.
 
+Before reporting completion, run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --stage impl --issue <feature>`. It runs `testCommand` from `sdd.config.json` when set, checks that automated test files reference each non-Manual traceability id, and reports unchecked implementation tasks separately from human Manual verification (notes, not failures). Do not check Manual verification majors automatically.
+
 If steering does not match the code and the difference is outside this issue, finish the implementation and recommend `/sdd-steering`.
