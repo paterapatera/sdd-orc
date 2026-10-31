@@ -80,7 +80,7 @@ node .agents/skills/sdd-scripts/sdd.mjs status
 
 ```mermaid
 flowchart TD
-  init[/sdd-init/] --> branch["git checkout -b name"]
+  init["/sdd-init"] --> branch["git checkout -b name"]
   branch --> route{変更の種類}
   route -->|要件や設計を変えない小さな修正| quickPath["/sdd-quick → /sdd-close"]
   route -->|今ある動きを文書にするだけ| revPath["/sdd-reverse → /sdd-close"]
@@ -95,13 +95,13 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-  R[/sdd-req/] --> D[/sdd-design/]
-  D --> T[/sdd-task/]
-  T --> I[/sdd-impl/]
+  R["/sdd-req"] --> D["/sdd-design"]
+  D --> T["/sdd-task"]
+  T --> I["/sdd-impl"]
   I --> F{内容のずれ}
-  F -->|ある| X[/sdd-fix/]
+  F -->|ある| X["/sdd-fix"]
   X --> I
-  F -->|ない| C[/sdd-close/]
+  F -->|ない| C["/sdd-close"]
 ```
 
 手順。**エージェントチャット**と書いてある操作はチャット、それ以外はターミナルです。
@@ -134,7 +134,7 @@ GitHub Issues で進捗を管理するときの例です（issue や PR の作�
 1. **エージェントチャット:** ベースブランチで、予定している変更の数だけ `/sdd-init` を実行する。
 2. 各変更を GitHub issue として登録する（トラッカースキルまたは手動）。
 3. フォルダ名・ブランチ名の先頭に issue 番号やキーを付ける（例: `42-invoice-fix`）。
-4. **ターミナル:** ブランチを切る前に、ベースブランチへ変更概要をコミットしておく場合はここで行う。
+4. **ターミナル:** ベースブランチへ変更概要をコミットする。
 5. **ターミナル:** issue ごとに `git checkout -b <name>`。**エージェントチャット:** スキルを `/sdd-close` まで実行する。PR を開くときは `Closes #42` などで issue と結び付ける（手動またはトラッカースキル）。
 
 ## 人が決めるところ

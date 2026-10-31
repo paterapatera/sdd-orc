@@ -80,7 +80,7 @@ After `/sdd-init` creates the change summary file, it picks the path for you and
 
 ```mermaid
 flowchart TD
-  init[/sdd-init/] --> branch["git checkout -b name"]
+  init["/sdd-init"] --> branch["git checkout -b name"]
   branch --> route{Kind of change}
   route -->|Small fix, no spec or steering change| quickPath["/sdd-quick then /sdd-close"]
   route -->|Write down behavior that already exists| revPath["/sdd-reverse then /sdd-close"]
@@ -95,13 +95,13 @@ New behavior or a spec change. After init points you to `/sdd-req`:
 
 ```mermaid
 flowchart LR
-  R[/sdd-req/] --> D[/sdd-design/]
-  D --> T[/sdd-task/]
-  T --> I[/sdd-impl/]
+  R["/sdd-req"] --> D["/sdd-design"]
+  D --> T["/sdd-task"]
+  T --> I["/sdd-impl"]
   I --> F{Drift?}
-  F -->|yes| X[/sdd-fix/]
+  F -->|yes| X["/sdd-fix"]
   X --> I
-  F -->|no| C[/sdd-close/]
+  F -->|no| C["/sdd-close"]
 ```
 
 Steps (**agent chat** unless noted):
@@ -134,7 +134,7 @@ Optional pattern when you track work in GitHub Issues (this package does not cre
 1. **Agent chat:** On the base branch, `/sdd-init` once per planned change.
 2. Create a GitHub issue for each change (tracker skill or manually).
 3. Use a folder and branch name that starts with the issue number or key (example: `42-invoice-fix`).
-4. **Terminal:** Commit the change summaries on the base branch if you want them there before branching.
+4. **Terminal:** Commit the change summaries on the base branch.
 5. **Terminal:** `git checkout -b <name>` per issue; **agent chat:** run skills through `/sdd-close`. Link the PR to the issue (`Closes #42`) when you open it yourself or via your tracker skill.
 
 ## Where you decide (not the script)
