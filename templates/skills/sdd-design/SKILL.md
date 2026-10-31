@@ -27,6 +27,15 @@ Inside a steering section, write sub-headings two levels deeper than in the perm
 
 `Runs on` is Local, CI, Staging, or Human. Contract tests check the shape without the counterpart running. Performance tests measure latency, throughput, or error rate. Security tests include SAST, DAST, or vulnerability checks.
 
+## Review
+
+Before Finish, reread both files against this list. Fix each failure.
+
+- Every requirements delta id appears in Requirements Traceability with a valid test level.
+- Testing Strategy includes a table with Test Level and Runs on when traceability is not `none`.
+- Components and Interfaces match the traceability components.
+- Steering deltas follow the rationale rules above.
+
 ## Finish
 
 Run stamp and check again after every edit. Commit `research.md` and `design.md` together as one `docs` commit. Stage only this issue directory.

@@ -61,4 +61,12 @@ This example passes `check` with the `/sdd-req` and `/sdd-design` examples. Keep
 
 Write the CI and Staging test code during implementation, and do not run those suites here. Human checks are only those a person can do before close. A visual check that needs a deployed environment is Staging.
 
+## Review
+
+Before Finish, reread `task.md` against this list. Fix each failure.
+
+- Each major has 2 to 6 minor items and can pass its tests alone.
+- Every traceability id appears on a minor item; Manual verification is the last major when used.
+- CI and Staging tests appear as minor items but are not run during `/sdd-task`.
+
 Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --issue <feature>`, then commit only this issue directory as `docs`.
