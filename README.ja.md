@@ -29,6 +29,8 @@ docs/
 npx @paterapatera/sdd-orc init
 ```
 
+**インストール後:** まず **エージェントチャット**で `/sdd-steering` を実行します。`docs/knowledge/steering/` の steering ドキュメントを作成します（`init` コマンドでは作りません）。すでにアプリのコードがあるリポジトリでは、コードを読んで steering を合わせます。新規プロジェクトでは初期の steering を作成します。そのあと、変更ごとにベースブランチで `/sdd-init` から始めます。
+
 | オプション | 既定値 |
 |---|---|
 | `--docs-dir` | `docs` |
@@ -45,7 +47,7 @@ npx @paterapatera/sdd-orc init --lang ja --runtime bun --skills-dir .agents --sk
 
 `sdd.config.json` を書き、各 `<skills-dir>/skills/` に同じスキルをコピーし、検査スクリプトは最初の skills ディレクトリだけに置きます（例: `.agents/skills/sdd-scripts/sdd.mjs`）。CI でネットワークなしに `check` できるよう、`<skills-dir>` をコミットしてください。
 
-`npx @paterapatera/sdd-orc init` は `docs/knowledge/` の骨組みだけを作ります。`steering/` は作りません（エージェントチャットで `/sdd-steering`）。docs 配下に、このレイアウト外の Markdown があるとコマンドは止まるので、別の `--docs-dir` を指定してください。インストール後に設定を変える場合は `--force` が必要です。
+`npx @paterapatera/sdd-orc init` は `docs/knowledge/` の骨組みだけを作ります。`steering/` は作りません（上の **インストール後** を参照）。docs 配下に、このレイアウト外の Markdown があるとコマンドは止まるので、別の `--docs-dir` を指定してください。インストール後に設定を変える場合は `--force` が必要です。
 
 ## 更新
 
@@ -120,12 +122,6 @@ flowchart LR
 **コードにはすでに動きがあるのに、仕様に書かれていない**ときに使います。典型例は既存アプリに SDD を入れた直後（コードから仕様を埋める）、または残したい動きが文書化されていないと気づいたときです。
 
 最初から `/sdd-reverse` だけを呼ばないでください。**ベースブランチ**で **エージェントチャット** `/sdd-init` を実行し、**既存の動きを文書に残す**（新機能を作るのではない）と伝えます。init が変更の概要を書き、次は `/sdd-reverse` と案内します。そのあと **ターミナル** `git checkout -b <name>`、**エージェントチャット** `/sdd-reverse` → `/sdd-close`。設計やタスクのドキュメントは省略されることが多く、close でも検査は走ります。
-
-### 既存アプリに SDD を入れる
-
-1. **ターミナル:** `npx @paterapatera/sdd-orc init`
-2. **エージェントチャット:** `/sdd-steering`
-3. 変更ごと: **エージェントチャット** ベースで `/sdd-init` → **ターミナル** `git checkout -b <name>` → **エージェントチャット** init が案内したスキル（仕様の埋め込みなら `/sdd-reverse`、新規開発なら `/sdd-req` など）を `/sdd-close` まで
 
 ## GitHub の issue と連携して使う場合
 

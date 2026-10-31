@@ -29,6 +29,8 @@ Skill text is **English**. Branch name must match the issue folder name (for exa
 npx @paterapatera/sdd-orc init
 ```
 
+**After installing:** In **agent chat**, run `/sdd-steering` first. It creates the steering documents under `docs/knowledge/steering/` (the install command does not). If the repository already has application code, the skill also reads the code and updates steering to match; on a new project it creates the initial steering set. Then start each change with `/sdd-init` on the base branch.
+
 | Flag | Default |
 |---|---|
 | `--docs-dir` | `docs` |
@@ -45,7 +47,7 @@ npx @paterapatera/sdd-orc init --lang ja --runtime bun --skills-dir .agents --sk
 
 This writes `sdd.config.json`, copies skills to each `<skills-dir>/skills/`, and installs the checker at the first skills dir only (for example `.agents/skills/sdd-scripts/sdd.mjs`). Commit `<skills-dir>` so CI can run `check` offline.
 
-`npx @paterapatera/sdd-orc init` creates `docs/knowledge/` skeleton files. It does not create `steering/` (use `/sdd-steering` in agent chat). If unrelated Markdown already lives under the docs dir, the command stops; pick another `--docs-dir`. After install, different settings require `--force`.
+`npx @paterapatera/sdd-orc init` creates `docs/knowledge/` skeleton files. It does not create `steering/` (see **After installing** above). If unrelated Markdown already lives under the docs dir, the command stops; pick another `--docs-dir`. After install, different settings require `--force`.
 
 ## Update
 
@@ -120,12 +122,6 @@ A small fix that does not change requirements, steering, or decision records. Sa
 Use reverse when the **code already behaves a certain way** but specs do not describe it yet. Typical cases: right after you adopt SDD on an existing app (backfill specs from the code), or when you find behavior you want to keep and it is not written down.
 
 Do **not** start with `/sdd-reverse` alone. On the **base branch**, **agent chat** `/sdd-init` and say you are **documenting existing behavior** (not shipping new features). Init writes the change summary and tells you to run `/sdd-reverse` next. Then **terminal** `git checkout -b <name>`, **agent chat** `/sdd-reverse` → `/sdd-close`. Design and task documents are often skipped; close still runs checks.
-
-### SDD on an existing app
-
-1. **Terminal:** `npx @paterapatera/sdd-orc init`
-2. **Agent chat:** `/sdd-steering`
-3. For each change: **agent chat** `/sdd-init` on the base branch → **terminal** `git checkout -b <name>` → **agent chat** the skill init names (often `/sdd-reverse` while backfilling specs, or `/sdd-req` for new work) through `/sdd-close`
 
 ## Using with GitHub issues
 
