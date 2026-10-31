@@ -119,9 +119,19 @@ A small fix that does not change requirements, steering, or decision records. Sa
 
 ### Reverse (document existing behavior)
 
-Use reverse when the **code already behaves a certain way** but specs do not describe it yet. Typical cases: right after you adopt SDD on an existing app (backfill specs from the code), or when you find behavior you want to keep and it is not written down.
+Use reverse when the **code already behaves a certain way** but specs do not describe it yet. Typical cases: right after you adopt SDD on an existing app (backfill specs from the code), or when you find behavior you want to keep and it is not written down. You do not need to spec everything at once; start with important areas or features you will change soon.
 
-Do **not** start with `/sdd-reverse` alone. On the **base branch**, **agent chat** `/sdd-init` and say you are **documenting existing behavior** (not shipping new features). Init writes the change summary and tells you to run `/sdd-reverse` next. Then **terminal** `git checkout -b <name>`, **agent chat** `/sdd-reverse` → `/sdd-close`. Design and task documents are often skipped; close still runs checks.
+**How this differs from `/sdd-steering`:** Steering captures **project-wide** context (purpose, tech stack, repo layout). Run it once after install. Reverse writes **one feature’s** requirements in `specs/` from code that already exists, one change at a time.
+
+Do **not** start with `/sdd-reverse` alone. On the **base branch**, open **agent chat** and paste something like:
+
+```text
+/sdd-init Record how invoice month-end closing works today in the specs. Do not change code.
+```
+
+The important part is that you are **documenting behavior that already exists**, not shipping new features or fixing bugs. Init may ask up to three short questions; keep your answers on that same goal.
+
+After init finishes, it writes the change summary, classifies the work as **documentation-only** (no code change in the proposal), and tells you the next skill is **`/sdd-reverse`**. Then **terminal** `git checkout -b <name>`, **agent chat** `/sdd-reverse` → `/sdd-close`. Design and task documents are often skipped; close still runs checks.
 
 ## Using with GitHub issues
 
