@@ -2,11 +2,56 @@
 
 [日本語](README.ja.md)
 
-Installs [Specification-Driven Development](https://github.com/paterapatera/sdd-orc) skills for Cursor, Codex, and Claude Code, and one shared checker script.
+This package installs [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) skills for Cursor, Codex, and Claude Code, plus one shared checker script that every skill calls.
 
-The package is `@paterapatera/sdd-orc` 0.3.20. Durable docs use format version 1 under a directory you choose (default `docs`): `knowledge/{specs,decision,steering}` plus `issues/`. Requires Node.js 18 or later.
+Package name: `@paterapatera/sdd-orc` 0.3.20. Node.js 18 or later is required.
 
-Registering issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
+Registering tracker issues, opening pull requests, and writing `Closes #1` are handled by a separate tracker skill. **This package does not talk to a tracker.**
+
+## What you get
+
+After `init`, your repository contains:
+
+| Location | Role |
+|---|---|
+| `sdd.config.json` | Docs path, language, runtime, base branch, skills directories |
+| `<skills-dir>/skills/sdd-*` | Agent skills (skill text is **English**) |
+| `<skills-dir>/skills/sdd-scripts/sdd.mjs` | Shared checker (installed under the **first** `--skills-dir` only) |
+| `<docs-dir>/knowledge/` | **Durable** specs, decisions, and steering (format version 1) |
+| `<docs-dir>/issues/<name>/` | **Temporary** work for one change while you are on branch `<name>` |
+
+Default `<docs-dir>` is `docs`. Example layout:
+
+```text
+docs/
+  knowledge/
+    index.md
+    specs/...
+    decision/...
+    steering/...        ← created by /sdd-steering, not by init
+  issues/
+    my-feature/         ← exists only on branch my-feature until close
+      proposal.md
+      requirements.md   ← normal path
+      design.md
+      task.md
+```
+
+```mermaid
+flowchart LR
+  subgraph durable ["Durable docs (knowledge/)"]
+    S[specs]
+    D[decision]
+    ST[steering]
+  end
+  subgraph wip ["Work in progress (issues/)"]
+    I[issue delta files]
+  end
+  I -->|apply on close| durable
+  durable -->|base hashes in delta| I
+```
+
+Durable files stay on the base branch. Issue folders hold **deltas** (ADDED / MODIFIED / REMOVED sections) until `/sdd-close` runs `apply`, which merges them into `knowledge/` and deletes the issue directory.
 
 ## Install
 
@@ -38,11 +83,11 @@ This writes `sdd.config.json`, copies the same skills into every `<skills-dir>/s
 .agents/skills/sdd-scripts/sdd.mjs
 ```
 
-Every skill calls that path. Commit `<skills-dir>` so CI can run the script without the network.
+Commit `<skills-dir>` so CI can run the script without the network.
 
-`init` creates the docs skeleton (`index.md`, `specs/index.md`, `specs/log.md`, `decision/index.md`). It does not create `steering/`. Use `/sdd-steering` for that. If the docs directory already contains Markdown that this layout does not manage, `init` stops and asks for a dedicated `--docs-dir`.
+`init` creates the skeleton under **`<docs-dir>/knowledge/`** (`index.md`, `specs/index.md`, `specs/log.md`, `decision/index.md`). It does **not** create `steering/`. Use `/sdd-steering` for that. If the docs directory already contains Markdown outside this layout, `init` stops and asks for a dedicated `--docs-dir`.
 
-Passing different settings after install exits with an error. `--force` overwrites them.
+Passing different settings after install exits with an error. Use `--force` to overwrite.
 
 ## Update and migrate
 
@@ -51,13 +96,13 @@ npx @paterapatera/sdd-orc update
 npx @paterapatera/sdd-orc migrate
 ```
 
-`update` refreshes the skills and the shared script from `sdd.config.json` and bumps `version`. It leaves durable docs alone. If the package format is newer than `formatVersion`, it tells you to run `migrate` and writes nothing. Skills removed from the package are deleted from each skills directory with `UPDATE_REMOVED_SKILL` on stderr.
+`update` refreshes skills and the shared script from `sdd.config.json` and bumps `version`. It does not change durable docs. If the package `formatVersion` is newer than in config, it tells you to run `migrate` and writes nothing. Skills removed from the package are deleted from each skills directory; stderr prints `UPDATE_REMOVED_SKILL`.
 
-`migrate` will convert durable docs when a future format needs it, and it writes nothing when `check` fails. Format version 1 has nothing to convert.
+`migrate` converts durable docs when a future format requires it, and writes nothing when `check` fails. **Format version 1 has nothing to convert** (`migrate` prints “Nothing to convert”).
 
 ## Shared script
 
-Run the installed script with the runtime you chose. With the defaults:
+Run the installed script with your chosen runtime. With the defaults:
 
 ```sh
 node .agents/skills/sdd-scripts/sdd.mjs check
@@ -68,56 +113,186 @@ node .agents/skills/sdd-scripts/sdd.mjs index
 node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
 ```
 
-`check` reads durable docs and the issue for the current branch. `--issue` selects one. `--scope setup` checks only the config, the skeleton, and the five steering files. `--stage close` adds the close rules. `--stage impl` verifies implementation: optional `testCommand` in `sdd.config.json`, requirement ids referenced from automated test files (including untracked tests under git), and open implementation tasks (Manual verification is reported as notes only). `--allow-missing` succeeds when the issue directory is absent (for hotfix branches and Re-close). `--format json` prints `{ "ok", "diagnostics", "notes" }` for check. When steering or specs change descriptions and an `index.md` is stale, `check` regenerates index files before reporting other rules. Run the `index` command when you need to rebuild indexes without a full tree check (for example Re-close in `/sdd-close`); `apply` also regenerates indexes when it succeeds.
+| Command | Purpose |
+|---|---|
+| `check` | Validates durable tree + issue on current branch (or `--issue`) |
+| `stamp` | Writes `base:` hashes on delta edits that lack them |
+| `apply` | Merges issue delta into `knowledge/`; aborts if result would fail `check` |
+| `index` | Rebuilds all `index.md` files from descriptions |
+| `renumber` | Renumbers ids this branch added that collide with the base branch |
+| `status` | Shows phase and next skill for branch, one issue, or `--all` |
 
-Optional `sdd.config.json` field `testCommand` runs during `check --stage impl` (skipped when unset).
+Exit codes: `0` clean, `1` rule failure, `2` usage or setup. Lines look like `path:line: RULE message`.
 
-`status` prints the current phase and next skill for the current branch, one `--issue`, or every issue with `--all`.
+### check options
 
-Exit codes are `0` (clean), `1` (a rule failed), and `2` (usage or setup). Lines look like `path:line: RULE message`.
+| Option | When to use |
+|---|---|
+| `--scope setup` | Config, skeleton, five required steering files only |
+| `--stage close` | Extra rules when closing an issue |
+| `--stage impl` | `testCommand`, test file id references, open implementation tasks |
+| `--allow-missing` | Success when issue directory is absent (Re-close, hotfix) |
+| `--format json` | `{ "ok", "diagnostics", "notes" }` |
 
-`stamp` records a base hash on replacements and removals that do not have one. `apply` copies the issue delta into durable docs, numbers new ids, and writes nothing if the result would fail `check`. `index` rebuilds every `index.md` from descriptions. `renumber` gives a new number only to ids this branch added that already exist on the base branch. A new capability code that already exists on the base branch stops `renumber` until you pass `--code OLD=NEW`.
+Optional `sdd.config.json` field `testCommand` runs only during `check --stage impl` (skipped when unset).
 
-## Flows
+When descriptions change and an `index.md` is stale, **`check` regenerates index files before other rules** (`healStaleIndexes`). Use `index` when you only want indexes rebuilt (for example Re-close). Successful `apply` also regenerates indexes.
 
-Skills are English. Each one runs `check --scope setup` first. The branch name matches `issues/<name>/`.
+**Quick issues:** `task.md` without `requirements.md` and without `design.md` is treated as quick. While the issue is open, **`validateTasks` does not run** (no `TASK_*` rules). Before close, run `check --stage close` so every major task is checked (`CLOSE_TASKS`).
 
-Normal change:
+```mermaid
+flowchart TD
+  start([check]) --> heal[Regenerate stale index.md if needed]
+  heal --> setup{--scope setup?}
+  setup -->|yes| setupOnly[Config skeleton steering]
+  setup -->|no| tree[Validate knowledge tree]
+  tree --> issue[Validate issue delta if present]
+  issue --> stage{--stage?}
+  stage -->|close| closeRules[CLOSE_* tasks provisional ids]
+  stage -->|impl| implRules[testCommand test ids open tasks]
+  stage -->|default| done([Exit code])
+  closeRules --> done
+  implRules --> done
+  setupOnly --> done
+```
 
-1. `/sdd-init` writes `issues/<name>/proposal.md`.
+## Skills and branch names
+
+Each skill runs `check --scope setup` first (except where the skill says otherwise). **Git branch name must equal the issue folder name:** work lives in `<docs-dir>/issues/<name>/` on branch `<name>` (tracker key prefix allowed, for example `PROJ-123-my-feature`).
+
+Included skills: `/sdd-init`, `/sdd-req`, `/sdd-design`, `/sdd-task`, `/sdd-impl`, `/sdd-fix`, `/sdd-close`, `/sdd-quick`, `/sdd-reverse`, `/sdd-steering`. There is **no** `/sdd-brownfield` skill.
+
+### Which skill comes next
+
+After `proposal.md` exists, `/sdd-init` names the next skill from Impact:
+
+```mermaid
+flowchart TD
+  P[proposal.md Impact] --> Q{Capabilities Steering Decisions all none?}
+  Q -->|yes| quick[/sdd-quick/]
+  Q -->|no| T{Type docs?}
+  T -->|yes| rev[/sdd-reverse/]
+  T -->|no| req[/sdd-req/]
+```
+
+During work, `status` reports the phase and next skill (for example `design -> /sdd-task`).
+
+### Normal change (feature)
+
+```mermaid
+flowchart LR
+  A[/sdd-init/] --> B["git checkout -b name"]
+  B --> C[/sdd-req/]
+  C --> D[/sdd-design/]
+  D --> E[/sdd-task/]
+  E --> F[/sdd-impl/]
+  F --> G{Mismatch?}
+  G -->|yes| H[/sdd-fix/]
+  H --> F
+  G -->|no| I[/sdd-close/]
+```
+
+1. `/sdd-init` writes `issues/<name>/proposal.md` (does not create the branch).
 2. `git checkout -b <name>`
-3. `/sdd-req` writes `requirements.md`.
-4. `/sdd-design` writes `research.md` and `design.md`.
-5. `/sdd-task` writes `task.md`.
-6. `/sdd-impl` implements the open tasks. `/sdd-fix` repairs a mismatch.
-7. `/sdd-close` merges the base branch, runs `apply`, runs `check --stage close`, deletes the issue directory, and prints a pull request title and body.
+3. `/sdd-req` → `requirements.md`
+4. `/sdd-design` → `research.md`, `design.md`
+5. `/sdd-task` → `task.md` (with `design.md`, engine checks `Depends on:`, traceability, minor `Requirements:`).
+6. `/sdd-impl` implements open major tasks; `/sdd-fix` repairs doc or code drift.
+7. `/sdd-close` merges base branch, `apply`, `check --stage close`, deletes issue dir, prints PR title and body (does not open PR).
 
-Small change: `/sdd-init`, then `/sdd-quick`, then `/sdd-close`. Quick does not ask questions and does not write requirements, research, or design. It stops when the change needs specs, steering, or decisions.
+### Small change (quick)
 
-Document existing behavior: `/sdd-init` with `Type: docs`, then `/sdd-reverse`, then `/sdd-close`. Reverse adds requirements only.
+`/sdd-init` → `/sdd-quick` → `/sdd-close`. Quick does not ask questions and does not write requirements, research, or design. It stops when specs, steering, or decisions must change.
 
-Adopting SDD on a running app: run `init`, complete `/sdd-steering` (including spec–code id cross-check when specs already exist), then open issues with `/sdd-init` and continue with `/sdd-reverse` or `/sdd-req` as each proposal requires.
+### Document existing behavior (reverse)
 
-Several proposals at once (the usual way to start):
+`/sdd-init` with `Type: docs` → `/sdd-reverse` → `/sdd-close`. Reverse adds requirements only (docs-only delta rules). May close without design or task.
+
+### Adopt SDD on a running app
+
+1. `npx @paterapatera/sdd-orc init`
+2. `/sdd-steering` (Resync cross-checks requirement ids in specs against code when specs already exist)
+3. `/sdd-init` per change → `/sdd-reverse` or `/sdd-req` as each proposal requires
+
+### Several proposals on the base branch
 
 1. Run `/sdd-init` once per change on the base branch.
-2. Register the issues in your tracker, or do that with a separate tracker skill, and prefix each directory with the tracker key.
-3. Commit the `proposal.md` files on the base branch.
-4. Start one with `git checkout -b <key>-<name>` and continue from `/sdd-req` or `/sdd-quick`.
-5. `/sdd-close` deletes that issue directory on the branch. The merge removes it from the base branch.
+2. Register tracker issues separately; prefix directory names with the tracker key.
+3. Commit `proposal.md` files on the base branch.
+4. `git checkout -b <key>-<name>` → `/sdd-req` or `/sdd-quick`.
+5. `/sdd-close` removes that issue directory on the branch; merge removes it from base.
+
+### Fix loop
+
+`/sdd-fix` runs when implementation or review finds drift. The user accepts one plan for L1+ fixes, then documents are edited upstream to downstream. Quick issues: L0 in place; L1+ switches to `/sdd-req`, `/sdd-design`, `/sdd-task`.
+
+```mermaid
+flowchart TD
+  impl[/sdd-impl/] --> chk["check --stage impl"]
+  chk -->|fail| fix[/sdd-fix/]
+  fix --> impl
+  chk -->|pass| close[/sdd-close/]
+```
+
+## Human approval points
+
+The agent asks questions; you choose options. The script does not replace these decisions.
+
+```mermaid
+flowchart TD
+  init["/sdd-init up to 3 questions"] --> req["/sdd-req up to 5 per round"]
+  req --> des["/sdd-design up to 5 per round"]
+  des --> task["/sdd-task no questions"]
+  task --> impl["/sdd-impl Manual verification majors"]
+  impl --> close["/sdd-close merge conflicts renumber --code PR text"]
+  steer["/sdd-steering accept or reject each resync item"] --> init2[/sdd-init/]
+  fix["/sdd-fix user accepts plan L1+"] --> req
+```
+
+| Step | Your role |
+|---|---|
+| `/sdd-init` | Answer up to 3 questions (Why, What Changes, Out of Scope) |
+| `/sdd-req`, `/sdd-design`, `/sdd-reverse`, `/sdd-fix` | Answer up to 5 scored options per round |
+| `/sdd-steering` Resync | Accept, reject, or defer each reported diff |
+| `/sdd-impl` | Perform Manual verification major tasks (not auto-checked) |
+| `/sdd-close` | Resolve merge conflicts; confirm `--code OLD=NEW`; copy PR title/body |
+
+## Delta, stamp, and apply
+
+Issue files use delta sections (ADDED, MODIFIED, REMOVED, …) with optional `base:` hashes pointing at durable file content.
+
+```mermaid
+sequenceDiagram
+  participant Dev as Issue branch
+  participant Stamp as stamp
+  participant Apply as apply
+  participant Know as knowledge/
+
+  Dev->>Stamp: Record base hashes on edits
+  Dev->>Apply: apply --issue name
+  Apply->>Apply: Simulate merge and run check
+  alt check ok
+    Apply->>Know: Write specs decision steering
+    Apply->>Know: Regenerate indexes logs
+  else check fails
+    Apply-->>Dev: No writes
+  end
+```
+
+`/sdd-close` runs `apply` then `check --stage close`. Base mismatch (`BASE_MISMATCH`) means run `/sdd-fix` at L2: remove stale `base:`, `stamp`, retry.
 
 ## Manual verification scripts
 
-Optional scripts under `scripts/` exercise SDD flows outside the automated test suite (they are not run by `node --test`):
+Optional scripts under `scripts/` are **not** run by `node --test`:
 
-- `node scripts/laravel-fixture-walkthrough.mjs` — temp-repo walkthrough similar to a Laravel project.
-- Clone [laravel-fp](https://github.com/paterapatera/laravel-fp), then `node scripts/laravel-fp-walkthrough.mjs` (or set `LARAVEL_FP` to the clone path).
+- `node scripts/laravel-fixture-walkthrough.mjs` (temp repo similar to Laravel, init through close)
+- Clone [laravel-fp](https://github.com/paterapatera/laravel-fp), then `node scripts/laravel-fp-walkthrough.mjs` (`LARAVEL_FP` for path).
 
 ## Pull requests
 
-Run `check` in pull request CI and make that check required. Also require the branch to be up to date with the base branch before merge. Those are recommendations for your repository settings. This package does not require them.
+Run `check` in pull request CI and make that check required. Require the branch to be up to date before merge. These are **recommendations** for repository settings; this package does not enforce them.
 
-The job below only runs the shared script. It does not call a tracker or a CI product beyond the workflow runner.
+The job below only runs the shared script. It does not call a tracker or other CI products.
 
 ```yaml
 name: sdd
@@ -134,4 +309,4 @@ jobs:
       - run: node .agents/skills/sdd-scripts/sdd.mjs check
 ```
 
-Use `bun` instead of `node` when `sdd.config.json` says `"runtime": "bun"` and Bun is installed. The bundled `sdd.mjs` is a Node script (`#!/usr/bin/env node`); when Bun is missing, run it with Node anyway, for example `node .agents/skills/sdd-scripts/sdd.mjs check`. Use Node 18 or later (the CI example below uses 24). Skills may still show `bun` in examples when `runtime` is `bun`; substitute `node` on the command line when needed. If the script lives under another skills directory, use that path.
+When `sdd.config.json` has `"runtime": "bun"` **and Bun is installed**, use `bun` instead of `node`. The bundled `sdd.mjs` is a Node script (`#!/usr/bin/env node`); **if Bun is missing, run it with Node** (for example `node .agents/skills/sdd-scripts/sdd.mjs check`). Use Node 18 or later (the CI example uses 24). Skills may show `bun` when `runtime` is `bun`; substitute `node` on the command line when needed. If the script lives under another skills directory, use that path.
