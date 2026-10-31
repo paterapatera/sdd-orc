@@ -148,7 +148,7 @@ Optional pattern when you track work in GitHub Issues (this package does not cre
 
 While you work, skills may append short notes to `docs/issues/<name>/feedback.md` on the branch (you do not edit this for daily spec work). At **`/sdd-close`**, the agent reads those notes and may propose updates under `docs/knowledge/lessons/`: what went wrong, why, and a policy to prevent a repeat. **You approve all lesson changes once** before the issue folder is removed. Lessons are never deleted; their status (for example trial or rejected) stays in `lessons/`. Work skills keep reading **steering** only, not lessons.
 
-If a lesson says the fix belongs in steering, close **does not edit steering**. It prints a ready-to-send **`/sdd-init ...`** message so you start a **new issue** for that steering change.
+If a lesson says the fix belongs in steering, close **does not edit steering**. It prints a ready-to-send **`/sdd-init ...`** message so you start a **new issue** for that steering change. If you **re-close** after merging the base branch and the same lesson file conflicted, keep the stricter status: rejected beats ineffective, then effective, trial, and candidate; keep the Reason from the winning rejected or ineffective side.
 
 ```mermaid
 flowchart LR

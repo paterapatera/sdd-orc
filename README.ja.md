@@ -148,7 +148,7 @@ GitHub Issues で進捗を管理するときの例です（issue や PR の作�
 
 作業中、スキルがブランチ上の `docs/issues/<name>/feedback.md` に短いメモを追記することがあります（日常の仕様作業で人が編集するものではありません）。**`/sdd-close`** のとき、エージェントがそのメモを読み、`docs/knowledge/lessons/` への更新を提案する。過去に何が起き、なぜ起き、どんな方針で防ぐかを残す。**issue フォルダを消す前に、教訓の変更一式を一度だけ承認**する。教訓は削除しない。状態（試行中・却下など）は `lessons/` に残る。要件や実装のスキルが読むのは **steering だけ**で、lessons は読まない。
 
-教訓の対象が steering のとき、close **は steering を書き換えません**。代わりに、そのまま送れる **`/sdd-init ...`** の文を表示するので、**新しい issue** として steering 変更を始めます。
+教訓の対象が steering のとき、close **は steering を書き換えません**。代わりに、そのまま送れる **`/sdd-init ...`** の文を表示するので、**新しい issue** として steering 変更を始めます。ベースを取り込んで **re-close** するとき、同じ教訓ページが競合したら、状態は rejected → ineffective → effective → trial → candidate の順で厳しい方を残し、rejected または ineffective が勝った場合はその Reason を残します。
 
 ```mermaid
 flowchart LR
