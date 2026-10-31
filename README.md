@@ -4,7 +4,7 @@
 
 Installs [Specification-Driven Development](https://github.com/paterapatera/sdd-orc) skills for Cursor, Codex, and Claude Code, and one shared checker script.
 
-The package is `@paterapatera/sdd-orc` 0.3.18. Durable docs use format version 1 under a directory you choose (default `docs`): `knowledge/{specs,decision,steering}` plus `issues/`. Requires Node.js 18 or later.
+The package is `@paterapatera/sdd-orc` 0.3.19. Durable docs use format version 1 under a directory you choose (default `docs`): `knowledge/{specs,decision,steering}` plus `issues/`. Requires Node.js 18 or later.
 
 Registering issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -96,7 +96,7 @@ Small change: `/sdd-init`, then `/sdd-quick`, then `/sdd-close`. Quick does not 
 
 Document existing behavior: `/sdd-init` with `Type: docs`, then `/sdd-reverse`, then `/sdd-close`. Reverse adds requirements only.
 
-Adopting SDD on a running app: run `init`, complete `/sdd-steering`, then `/sdd-brownfield` to record spec–code gaps before opening issues.
+Adopting SDD on a running app: run `init`, complete `/sdd-steering` (including spec–code id cross-check when specs already exist), then open issues with `/sdd-init` and continue with `/sdd-reverse` or `/sdd-req` as each proposal requires.
 
 Several proposals at once (the usual way to start):
 

@@ -35,7 +35,7 @@ Before Finish or handing off to `/sdd-task`, reread both files against this list
 - No two traced ids share the same obligation in conflicting ways; MODIFIED text matches the requirements delta.
 - Testing Strategy includes a table with Test Level and Runs on when traceability is not `none`.
 - Components and Interfaces match the traceability components and are testable at the chosen levels.
-- Steering deltas follow the rationale rules above; gaps from `/sdd-brownfield` are either closed or called out in Overview.
+- Steering deltas follow the rationale rules above.
 
 ## Finish
 

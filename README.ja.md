@@ -4,7 +4,7 @@
 
 Cursor、Codex、Claude Code 向けの [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) スキルと、共通の検査スクリプトをインストールします。
 
-パッケージ名は `@paterapatera/sdd-orc` 0.3.18 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs`）の下でフォーマット版 1 を使います。Node.js 18 以降が必要です。
+パッケージ名は `@paterapatera/sdd-orc` 0.3.19 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs`）の下でフォーマット版 1 を使います。Node.js 18 以降が必要です。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
@@ -96,7 +96,7 @@ node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
 
 既存の振る舞いの書き起こし: `Type: docs` の `/sdd-init` → `/sdd-reverse` → `/sdd-close`。Reverse は requirements の追加だけを行います。
 
-稼働中のアプリへ SDD を導入するとき: `init` と `/sdd-steering` のあと `/sdd-brownfield` で spec とコードのギャップを洗い出してから issue を切ります。
+稼働中のアプリへ SDD を導入するとき: `init` のあと `/sdd-steering`（既に spec がある場合は要件 ID とコード参照の突合も含む）を完了し、続けて `/sdd-init` で issue を起こし、各 proposal に応じて `/sdd-reverse` または `/sdd-req` へ進みます。
 
 複数の提案をまとめて起票する（よくある開始方法）:
 
