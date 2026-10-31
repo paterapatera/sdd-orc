@@ -1702,7 +1702,7 @@ function parseScriptArgs(argv) {
     else if (arg === "--format") opts.format = argv[++index] || "text";
     else if (arg === "--base") opts.base = argv[++index] || "";
     else if (arg === "--code") opts.codes.push(argv[++index] || "");
-    else if (arg === "--allow-missing" || arg === "--if-issue") opts.allowMissing = true;
+    else if (arg === "--allow-missing") opts.allowMissing = true;
     else if (arg === "--all") opts.all = true;
     else if (arg.startsWith("--")) opts.unknown = arg;
     else opts._.push(arg);

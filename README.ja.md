@@ -4,7 +4,7 @@
 
 Cursor、Codex、Claude Code 向けの [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) スキルと、共通の検査スクリプトをインストールします。
 
-パッケージ名は `@paterapatera/sdd-orc` 0.3.19 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs`）の下でフォーマット版 1 を使います。Node.js 18 以降が必要です。
+パッケージ名は `@paterapatera/sdd-orc` 0.3.20 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs`）の下でフォーマット版 1 を使います。Node.js 18 以降が必要です。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
@@ -68,7 +68,7 @@ node .agents/skills/sdd-scripts/sdd.mjs index
 node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
 ```
 
-`check` は恒久ドキュメント全体と、現在のブランチに対応する issue を検査します。`--issue` で issue を指定できます。`--scope setup` は設定、骨組み、steering の必須 5 ファイルだけを確認します。`--stage close` は close 時の追加ルールを有効にします。`--stage impl` は実装を機械検証します（`sdd.config.json` の任意項目 `testCommand`、git 未追跡を含む自動テストファイル内の要件 ID 参照、未完了の実装タスク。Manual verification は note のみ）。`--allow-missing` または `--if-issue` は issue ディレクトリが無いとき成功します（hotfix や Re-close 向け）。`--format json` は check で `{ "ok", "diagnostics", "notes" }` を出力します。steering 等の変更で `index.md` が古い場合、`check` は他のルールの前に index を再生成します。
+`check` は恒久ドキュメント全体と、現在のブランチに対応する issue を検査します。`--issue` で issue を指定できます。`--scope setup` は設定、骨組み、steering の必須 5 ファイルだけを確認します。`--stage close` は close 時の追加ルールを有効にします。`--stage impl` は実装を機械検証します（`sdd.config.json` の任意項目 `testCommand`、git 未追跡を含む自動テストファイル内の要件 ID 参照、未完了の実装タスク。Manual verification は note のみ）。`--allow-missing` は issue ディレクトリが無いとき成功します（hotfix や Re-close 向け）。`--format json` は check で `{ "ok", "diagnostics", "notes" }` を出力します。steering 等の変更で `index.md` が古い場合、`check` は他のルールの前に index を再生成します。ツリー全体を検査せず index だけ更新したいとき（`/sdd-close` の Re-close など）は `index` コマンドを実行します。`apply` 成功時も index は再生成されます。
 
 `sdd.config.json` の任意項目 `testCommand` は `check --stage impl` のときだけ実行されます（未設定ならスキップ）。
 

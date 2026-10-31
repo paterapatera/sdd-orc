@@ -4,7 +4,7 @@
 
 Installs [Specification-Driven Development](https://github.com/paterapatera/sdd-orc) skills for Cursor, Codex, and Claude Code, and one shared checker script.
 
-The package is `@paterapatera/sdd-orc` 0.3.19. Durable docs use format version 1 under a directory you choose (default `docs`): `knowledge/{specs,decision,steering}` plus `issues/`. Requires Node.js 18 or later.
+The package is `@paterapatera/sdd-orc` 0.3.20. Durable docs use format version 1 under a directory you choose (default `docs`): `knowledge/{specs,decision,steering}` plus `issues/`. Requires Node.js 18 or later.
 
 Registering issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -68,7 +68,7 @@ node .agents/skills/sdd-scripts/sdd.mjs index
 node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
 ```
 
-`check` reads durable docs and the issue for the current branch. `--issue` selects one. `--scope setup` checks only the config, the skeleton, and the five steering files. `--stage close` adds the close rules. `--stage impl` verifies implementation: optional `testCommand` in `sdd.config.json`, requirement ids referenced from automated test files (including untracked tests under git), and open implementation tasks (Manual verification is reported as notes only). `--allow-missing` or `--if-issue` succeeds when the issue directory is absent (for hotfix branches and Re-close). `--format json` prints `{ "ok", "diagnostics", "notes" }` for check. When steering or specs change descriptions and an `index.md` is stale, `check` regenerates index files before reporting other rules.
+`check` reads durable docs and the issue for the current branch. `--issue` selects one. `--scope setup` checks only the config, the skeleton, and the five steering files. `--stage close` adds the close rules. `--stage impl` verifies implementation: optional `testCommand` in `sdd.config.json`, requirement ids referenced from automated test files (including untracked tests under git), and open implementation tasks (Manual verification is reported as notes only). `--allow-missing` succeeds when the issue directory is absent (for hotfix branches and Re-close). `--format json` prints `{ "ok", "diagnostics", "notes" }` for check. When steering or specs change descriptions and an `index.md` is stale, `check` regenerates index files before reporting other rules. Run the `index` command when you need to rebuild indexes without a full tree check (for example Re-close in `/sdd-close`); `apply` also regenerates indexes when it succeeds.
 
 Optional `sdd.config.json` field `testCommand` runs during `check --stage impl` (skipped when unset).
 
