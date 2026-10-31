@@ -155,7 +155,6 @@ fs.writeFileSync(
   path.join(fp, "tests/Unit/Announcements/SddOrcSmokeTest.php"),
   "<?php\n\ntest('REQ-ANR-NEW-1 smoke', function () {\n    expect(true)->toBeTrue();\n});\n",
 );
-run("git", ["add", "docs/issues/sdd-orc-smoke", "tests/Unit/Announcements/SddOrcSmokeTest.php", "app/Announcements/AnnouncementRegistrar.php"], fp);
 
 step("stamp", () => sdd(["stamp", "--issue", "sdd-orc-smoke"]));
 step("check issue", () => sdd(["check", "--issue", "sdd-orc-smoke"]));

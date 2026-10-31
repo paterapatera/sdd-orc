@@ -902,6 +902,25 @@ test("check --stage impl runs testCommand and reports human verification separat
   assert.match(missing.stdout, /IMPL_TEST_MISSING/);
 });
 
+test("check --stage impl reads untracked test files without git add", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  commitAll(dir, "docs: proposal");
+  fs.mkdirSync(path.join(dir, "test"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "test/invoice.test.js"), "// REQ-INV-NEW-1\n");
+  const tracked = sdd(dir, ["check", "--stage", "impl", "--format", "json"]);
+  assert.equal(tracked.status, 0, tracked.stdout);
+  assert.equal(JSON.parse(tracked.stdout).ok, true);
+  fs.mkdirSync(path.join(dir, "node_modules"), { recursive: true });
+  fs.writeFileSync(path.join(dir, ".gitignore"), "node_modules/\n");
+  fs.writeFileSync(path.join(dir, "node_modules/ignored.test.js"), "// REQ-INV-NEW-1\n");
+  fs.unlinkSync(path.join(dir, "test/invoice.test.js"));
+  const ignored = sdd(dir, ["check", "--stage", "impl"]);
+  assert.match(ignored.stdout, /IMPL_TEST_MISSING/);
+});
+
 test("status lists phase and next skill", () => {
   const dir = tempRepo();
   prepare(dir);

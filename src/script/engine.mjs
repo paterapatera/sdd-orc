@@ -1608,7 +1608,7 @@ function validateCloseTreeChecks(root, config, issue, diags) {
 }
 
 function codePaths(root, config) {
-  const listed = git(root, ["ls-files", "-z"]);
+  const listed = git(root, ["ls-files", "-z", "--cached", "--others", "--exclude-standard"]);
   if (listed.status !== 0) return [];
   const skipped = [config.docsDir, ...(config.skillsDir || []).map((dir) => `${dir}/skills`)].map((dir) => `${dir.replace(/\/+$/, "")}/`);
   return listed.stdout.split("\0").filter((rel) => rel && !skipped.some((prefix) => rel.startsWith(prefix)));
