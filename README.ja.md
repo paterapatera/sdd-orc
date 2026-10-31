@@ -96,7 +96,7 @@ node .agents/skills/sdd-scripts/sdd.mjs renumber [--base main] [--code OLD=NEW]
 
 ## 同梱スキル
 
-`/sdd-init`、`/sdd-req`、`/sdd-design`、`/sdd-task`、`/sdd-impl`、`/sdd-fix`、`/sdd-close`、`/sdd-quick`、`/sdd-reverse`、`/sdd-steering` です。`/sdd-brownfield` はありません。
+`/sdd-init`、`/sdd-req`、`/sdd-design`、`/sdd-task`、`/sdd-impl`、`/sdd-fix`、`/sdd-close`、`/sdd-quick`、`/sdd-reverse`、`/sdd-steering` です。
 
 ## どの流れを選ぶか
 

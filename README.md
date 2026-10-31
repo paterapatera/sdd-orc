@@ -96,7 +96,7 @@ If `runtime` is `bun` and Bun is installed, you may use `bun` instead of `node`;
 
 ## Skills included
 
-`/sdd-init`, `/sdd-req`, `/sdd-design`, `/sdd-task`, `/sdd-impl`, `/sdd-fix`, `/sdd-close`, `/sdd-quick`, `/sdd-reverse`, `/sdd-steering`. There is no `/sdd-brownfield`.
+`/sdd-init`, `/sdd-req`, `/sdd-design`, `/sdd-task`, `/sdd-impl`, `/sdd-fix`, `/sdd-close`, `/sdd-quick`, `/sdd-reverse`, `/sdd-steering`.
 
 ## Which path to take
 
