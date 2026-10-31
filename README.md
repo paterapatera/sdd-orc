@@ -8,7 +8,7 @@ Registering tracker issues, opening pull requests, and writing `Closes #1` belon
 
 ## Folders you work with
 
-Default docs root is `docs` (change with `init --docs-dir`).
+Default docs root is `docs` (override with `npx @paterapatera/sdd-orc init --docs-dir <path>`).
 
 | Path | Meaning |
 |---|---|
@@ -45,7 +45,7 @@ npx @paterapatera/sdd-orc init --lang ja --runtime bun --skills-dir .agents --sk
 
 This writes `sdd.config.json`, copies skills to each `<skills-dir>/skills/`, and installs the checker at the first skills dir only (for example `.agents/skills/sdd-scripts/sdd.mjs`). Commit `<skills-dir>` so CI can run `check` offline.
 
-`init` creates `docs/knowledge/` skeleton files. It does not create `steering/` (use `/sdd-steering`). If unrelated Markdown already lives under the docs dir, `init` stops; pick another `--docs-dir`. After install, different settings require `--force`.
+`npx @paterapatera/sdd-orc init` creates `docs/knowledge/` skeleton files. It does not create `steering/` (use `/sdd-steering` in agent chat). If unrelated Markdown already lives under the docs dir, the command stops; pick another `--docs-dir`. After install, different settings require `--force`.
 
 ## Update
 
@@ -91,23 +91,7 @@ flowchart TD
 
 ### Normal feature
 
-New behavior or a spec change: `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl` → `/sdd-close`. If docs or code drift, use `/sdd-fix` then continue.
-
-### Quick (small change)
-
-A small fix that does not change requirements, steering, or decision records: `/sdd-quick` writes a task list only, then `/sdd-close`. The skill stops if a spec or steering update is needed.
-
-### Reverse (document existing behavior)
-
-You only need to record how the app already works: `/sdd-reverse` → `/sdd-close` (sometimes without design or task documents).
-
-### SDD on an existing app
-
-Run `init`, then `/sdd-steering`, then open each change with `/sdd-init` and continue with `/sdd-req` or `/sdd-reverse` as init directs.
-
-### Several changes planned upfront
-
-Run `/sdd-init` once per change on the base branch, use tracker keys in folder names if you use a tracker, branch per change, and close each branch separately.
+New behavior or a spec change. After init points you to `/sdd-req`:
 
 ```mermaid
 flowchart LR
@@ -120,12 +104,38 @@ flowchart LR
   F -->|no| C[/sdd-close/]
 ```
 
-Steps in words:
+Steps (**agent chat** unless noted):
 
-1. `/sdd-init` on the base branch (creates the change summary; no branch yet).
-2. `git checkout -b <name>`
-3. Run the skills init pointed you to; commit docs as each skill says.
-4. `/sdd-close` merges the base branch, updates permanent docs, removes the issue folder, and prints PR title and body (does not open the PR).
+1. **Agent chat:** `/sdd-init` on the base branch (creates the change summary; no branch yet).
+2. **Terminal:** `git checkout -b <name>` (same name as the issue folder init chose).
+3. **Agent chat:** `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl`; commit docs as each skill says. If docs or code drift, `/sdd-fix` then continue.
+4. **Agent chat:** `/sdd-close` merges the base branch, updates permanent docs, removes the issue folder, and prints PR title and body (does not open the PR).
+
+### Quick (small change)
+
+A small fix that does not change requirements, steering, or decision records. Same steps 1–2 as above, then **agent chat** `/sdd-quick` (task list only) → `/sdd-close`. The skill stops if a spec or steering update is needed.
+
+### Reverse (document existing behavior)
+
+Use reverse when the **code already behaves a certain way** but specs do not describe it yet. Typical cases: right after you adopt SDD on an existing app (backfill specs from the code), or when you find behavior you want to keep and it is not written down.
+
+Do **not** start with `/sdd-reverse` alone. On the **base branch**, **agent chat** `/sdd-init` and say you are **documenting existing behavior** (not shipping new features). Init writes the change summary and tells you to run `/sdd-reverse` next. Then **terminal** `git checkout -b <name>`, **agent chat** `/sdd-reverse` → `/sdd-close`. Design and task documents are often skipped; close still runs checks.
+
+### SDD on an existing app
+
+1. **Terminal:** `npx @paterapatera/sdd-orc init`
+2. **Agent chat:** `/sdd-steering`
+3. For each change: **agent chat** `/sdd-init` on the base branch → **terminal** `git checkout -b <name>` → **agent chat** the skill init names (often `/sdd-reverse` while backfilling specs, or `/sdd-req` for new work) through `/sdd-close`
+
+## Using with GitHub issues
+
+Optional pattern when you track work in GitHub Issues (this package does not create issues or PRs; use a separate tracker skill or GitHub by hand).
+
+1. **Agent chat:** On the base branch, `/sdd-init` once per planned change.
+2. Create a GitHub issue for each change (tracker skill or manually).
+3. Use a folder and branch name that starts with the issue number or key (example: `42-invoice-fix`).
+4. **Terminal:** Commit the change summaries on the base branch if you want them there before branching.
+5. **Terminal:** `git checkout -b <name>` per issue; **agent chat:** run skills through `/sdd-close`. Link the PR to the issue (`Closes #42`) when you open it yourself or via your tracker skill.
 
 ## Where you decide (not the script)
 
@@ -138,13 +148,6 @@ Steps in words:
 | `/sdd-close` | Resolve merge conflicts; confirm renamed spec codes if prompted; copy PR text |
 
 Quick path asks no questions. `/sdd-task` asks no questions.
-
-## Optional walkthrough scripts
-
-Not run by `npm test`:
-
-- `node scripts/laravel-fixture-walkthrough.mjs`
-- Clone [laravel-fp](https://github.com/paterapatera/laravel-fp), then `node scripts/laravel-fp-walkthrough.mjs` (`LARAVEL_FP` for path)
 
 ## Pull request CI (recommended)
 

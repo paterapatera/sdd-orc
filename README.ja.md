@@ -8,7 +8,7 @@ issue の登録、プルリクエストの作成、`Closes #1` の記述は別�
 
 ## 日常で触るフォルダ
 
-ドキュメントのルートは既定で `docs` です（`init --docs-dir` で変更できます）。
+ドキュメントのルートは既定で `docs` です（`npx @paterapatera/sdd-orc init --docs-dir <path>` で変更できます）。
 
 | パス | 意味 |
 |---|---|
@@ -45,7 +45,7 @@ npx @paterapatera/sdd-orc init --lang ja --runtime bun --skills-dir .agents --sk
 
 `sdd.config.json` を書き、各 `<skills-dir>/skills/` に同じスキルをコピーし、検査スクリプトは最初の skills ディレクトリだけに置きます（例: `.agents/skills/sdd-scripts/sdd.mjs`）。CI でネットワークなしに `check` できるよう、`<skills-dir>` をコミットしてください。
 
-`init` は `docs/knowledge/` の骨組みだけを作ります。`steering/` は作りません（`/sdd-steering` で作成）。docs 配下に、このレイアウト外の Markdown があると `init` は止まるので、別の `--docs-dir` を指定してください。インストール後に設定を変える場合は `--force` が必要です。
+`npx @paterapatera/sdd-orc init` は `docs/knowledge/` の骨組みだけを作ります。`steering/` は作りません（エージェントチャットで `/sdd-steering`）。docs 配下に、このレイアウト外の Markdown があるとコマンドは止まるので、別の `--docs-dir` を指定してください。インストール後に設定を変える場合は `--force` が必要です。
 
 ## 更新
 
@@ -91,23 +91,7 @@ flowchart TD
 
 ### 通常の機能追加
 
-新しい振る舞いや仕様の変更: `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl` → `/sdd-close`。ドキュメントやコードがずれたら `/sdd-fix` してから続けます。
-
-### 小さな変更（quick）
-
-仕様・steering・決定記録を変えずに済む小さな修正: `/sdd-quick` でタスクだけを書き、`/sdd-close`。仕様や steering の更新が必要ならそこで止まります。
-
-### 既存の振る舞いの記録（reverse）
-
-アプリがすでにしている動きを残すだけ: `/sdd-reverse` → `/sdd-close`（設計やタスクのドキュメントが無くても close できる場合があります）。
-
-### 既存アプリに SDD を入れる
-
-`init` → `/sdd-steering` → 変更ごとに `/sdd-init` → init が案内した `/sdd-req` または `/sdd-reverse`。
-
-### 変更を複数、あらかじめ起票する
-
-ベース上で `/sdd-init` を変更の数だけ繰り返し、トラッカーを使う場合はフォルダ名にキーを付け、ブランチごとに close します。
+新しい振る舞いや仕様の変更です。init が `/sdd-req` を案内したあとの流れは次のとおりです。
 
 ```mermaid
 flowchart LR
@@ -120,12 +104,38 @@ flowchart LR
   F -->|ない| C[/sdd-close/]
 ```
 
-手順の要点は次のとおりです。
+手順。**エージェントチャット**と書いてある操作はチャット、それ以外はターミナルです。
 
-1. ベースブランチで `/sdd-init`（変更の概要を作成。ブランチはまだ作らない）。
-2. `git checkout -b <name>`
-3. init が案内したスキルを順に実行し、各スキルの指示どおりコミットする。
-4. `/sdd-close` でベースを取り込み、恒久ドキュメントを更新し、issue フォルダを削除し、PR 用のタイトルと本文を表示する（PR は開かない）。
+1. **エージェントチャット:** ベースブランチで `/sdd-init`（変更の概要を作成。ブランチはまだ作らない）。
+2. **ターミナル:** `git checkout -b <name>`（init が決めた issue フォルダ名と同じ）。
+3. **エージェントチャット:** `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl`。各スキルの指示どおりコミットする。ずれたら `/sdd-fix` してから続ける。
+4. **エージェントチャット:** `/sdd-close` でベースを取り込み、恒久ドキュメントを更新し、issue フォルダを削除し、PR 用のタイトルと本文を表示する（PR は開かない）。
+
+### 小さな変更（quick）
+
+仕様・steering・決定記録を変えずに済む小さな修正です。上と同じ 1・2 のあと、**エージェントチャット**で `/sdd-quick`（タスクだけ）→ `/sdd-close`。仕様や steering の更新が必要ならそこで止まります。
+
+### 既存の振る舞いの記録（reverse）
+
+**コードにはすでに動きがあるのに、仕様に書かれていない**ときに使います。典型例は既存アプリに SDD を入れた直後（コードから仕様を埋める）、または残したい動きが文書化されていないと気づいたときです。
+
+最初から `/sdd-reverse` だけを呼ばないでください。**ベースブランチ**で **エージェントチャット** `/sdd-init` を実行し、**既存の動きを文書に残す**（新機能を作るのではない）と伝えます。init が変更の概要を書き、次は `/sdd-reverse` と案内します。そのあと **ターミナル** `git checkout -b <name>`、**エージェントチャット** `/sdd-reverse` → `/sdd-close`。設計やタスクのドキュメントは省略されることが多く、close でも検査は走ります。
+
+### 既存アプリに SDD を入れる
+
+1. **ターミナル:** `npx @paterapatera/sdd-orc init`
+2. **エージェントチャット:** `/sdd-steering`
+3. 変更ごと: **エージェントチャット** ベースで `/sdd-init` → **ターミナル** `git checkout -b <name>` → **エージェントチャット** init が案内したスキル（仕様の埋め込みなら `/sdd-reverse`、新規開発なら `/sdd-req` など）を `/sdd-close` まで
+
+## GitHub の issue と連携して使う場合
+
+GitHub Issues で進捗を管理するときの例です（issue や PR の作成はこのパッケージの範囲外。別のトラッカー連携スキルか手作業）。
+
+1. **エージェントチャット:** ベースブランチで、予定している変更の数だけ `/sdd-init` を実行する。
+2. 各変更を GitHub issue として登録する（トラッカースキルまたは手動）。
+3. フォルダ名・ブランチ名の先頭に issue 番号やキーを付ける（例: `42-invoice-fix`）。
+4. **ターミナル:** ブランチを切る前に、ベースブランチへ変更概要をコミットしておく場合はここで行う。
+5. **ターミナル:** issue ごとに `git checkout -b <name>`。**エージェントチャット:** スキルを `/sdd-close` まで実行する。PR を開くときは `Closes #42` などで issue と結び付ける（手動またはトラッカースキル）。
 
 ## 人が決めるところ
 
@@ -138,13 +148,6 @@ flowchart LR
 | `/sdd-close` | マージ競合の解消、仕様コードの変更確認（求められた場合）、PR 文面のコピー |
 
 Quick は質問しません。`/sdd-task` も質問しません。
-
-## 任意のウォークスルー
-
-`npm test` では実行しません。
-
-- `node scripts/laravel-fixture-walkthrough.mjs`
-- [laravel-fp](https://github.com/paterapatera/laravel-fp) を clone したうえで `node scripts/laravel-fp-walkthrough.mjs`（`LARAVEL_FP` でパス指定）
 
 ## プルリクエスト CI（推奨）
 
