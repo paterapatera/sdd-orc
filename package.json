@@ -1,6 +1,6 @@
 {
   "name": "@paterapatera/sdd-orc",
-  "version": "0.3.17",
+  "version": "0.3.18",
   "description": "Install SDD skills for Cursor, Codex, and Claude Code",
   "bin": {
     "sdd-orc": "./src/cli.mjs"
@@ -27,5 +27,8 @@
     "url": "https://github.com/paterapatera/sdd-orc/issues"
   },
   "homepage": "https://github.com/paterapatera/sdd-orc#readme",
-  "type": "module"
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  }
 }

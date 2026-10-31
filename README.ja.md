@@ -4,7 +4,7 @@
 
 Cursor、Codex、Claude Code 向けの [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) スキルと、共通の検査スクリプトをインストールします。
 
-パッケージ名は `@paterapatera/sdd-orc` 0.3.17 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs`）の下でフォーマット版 1 を使います。
+パッケージ名は `@paterapatera/sdd-orc` 0.3.18 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs`）の下でフォーマット版 1 を使います。Node.js 18 以降が必要です。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
@@ -68,7 +68,7 @@ node .agents/skills/sdd-scripts/sdd.mjs index
 node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
 ```
 
-`check` は恒久ドキュメント全体と、現在のブランチに対応する issue を検査します。`--issue` で issue を指定できます。`--scope setup` は設定、骨組み、steering の必須 5 ファイルだけを確認します。`--stage close` は close 時の追加ルールを有効にします。`--stage impl` は実装を機械検証します（`sdd.config.json` の任意項目 `testCommand`、自動テストファイル内の要件 ID 参照、未完了の実装タスク。Manual verification は note のみ）。`--allow-missing` または `--if-issue` は issue ディレクトリが無いとき成功します（hotfix や Re-close 向け）。`--format json` は check で `{ "ok", "diagnostics", "notes" }` を出力します。
+`check` は恒久ドキュメント全体と、現在のブランチに対応する issue を検査します。`--issue` で issue を指定できます。`--scope setup` は設定、骨組み、steering の必須 5 ファイルだけを確認します。`--stage close` は close 時の追加ルールを有効にします。`--stage impl` は実装を機械検証します（`sdd.config.json` の任意項目 `testCommand`、git 未追跡を含む自動テストファイル内の要件 ID 参照、未完了の実装タスク。Manual verification は note のみ）。`--allow-missing` または `--if-issue` は issue ディレクトリが無いとき成功します（hotfix や Re-close 向け）。`--format json` は check で `{ "ok", "diagnostics", "notes" }` を出力します。steering 等の変更で `index.md` が古い場合、`check` は他のルールの前に index を再生成します。
 
 `sdd.config.json` の任意項目 `testCommand` は `check --stage impl` のときだけ実行されます（未設定ならスキップ）。
 
@@ -95,6 +95,8 @@ node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
 小さな変更: `/sdd-init` → `/sdd-quick` → `/sdd-close`。Quick は質問せず、requirements、research、design は書きません。specs、steering、決定の変更が必要な場合は停止します。
 
 既存の振る舞いの書き起こし: `Type: docs` の `/sdd-init` → `/sdd-reverse` → `/sdd-close`。Reverse は requirements の追加だけを行います。
+
+稼働中のアプリへ SDD を導入するとき: `init` と `/sdd-steering` のあと `/sdd-brownfield` で spec とコードのギャップを洗い出してから issue を切ります。
 
 複数の提案をまとめて起票する（よくある開始方法）:
 
