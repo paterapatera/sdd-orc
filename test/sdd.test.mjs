@@ -22,7 +22,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "0.3.17");
+  assert.equal(config.version, "0.3.18");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -869,7 +869,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "0.3.17");
+  assert.equal(config.version, "0.3.18");
   assert.match(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });
@@ -951,6 +951,38 @@ test("check --allow-missing succeeds without an issue directory", () => {
   const relaxed = sdd(dir, ["check", "--stage", "close", "--allow-missing"]);
   assert.equal(relaxed.status, 0, relaxed.stdout);
   assert.match(relaxed.stdout, /ok: tree/);
+});
+
+test("init installs sdd-brownfield skill", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  const config = JSON.parse(read(dir, "sdd.config.json"));
+  assert.equal(fs.existsSync(path.join(dir, `${config.skillsDir[0]}/skills/sdd-brownfield/SKILL.md`)), true);
+  assert.match(read(dir, `${config.skillsDir[0]}/skills/sdd-brownfield/SKILL.md`), /Gap analysis/);
+});
+
+test("check heals stale steering indexes after manual steering edits", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  const rel = "docs/knowledge/steering/index.md";
+  fs.writeFileSync(path.join(dir, rel), `${read(dir, rel).trim()}\n<!-- manual steering edit without index -->\n`);
+  const checked = sdd(dir, ["check"]);
+  assert.equal(checked.status, 0, checked.stdout);
+  assert.doesNotMatch(read(dir, rel), /manual steering edit without index/);
+  assert.match(checked.stdout, /ok: tree/);
+});
+
+test("task check requires Requirements on each non-manual minor", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  writeInvoiceIssue(dir);
+  const task = read(dir, "docs/issues/invoice-reissue/task.md");
+  fs.writeFileSync(
+    path.join(dir, "docs/issues/invoice-reissue/task.md"),
+    task.replace("  - 1.2 Integration test for confirmation\n    - Requirements: REQ-INV-NEW-1", "  - 1.2 Integration test for confirmation"),
+  );
+  const checked = sdd(dir, ["check", "--issue", "invoice-reissue"]);
+  assert.match(checked.stdout, /TASK_MINOR_REQUIREMENTS/);
 });
 
 test("update stops before overwriting when migrate is required and removes obsolete skills", () => {

@@ -1075,7 +1075,7 @@ function validateTree(map, docsDir, options = {}) {
   regenerateIndexes(fresh, docsDir);
   for (const [rel, value] of fresh) {
     if (!rel.endsWith("/index.md") && rel !== `${docsDir}/index.md`) continue;
-    if (map.get(rel) !== value) diags.push(diag(rel, 1, "INDEX_STALE", "Run index to regenerate this file"));
+    if (map.get(rel) !== value) diags.push(diag(rel, 1, "INDEX_STALE", `Run ${indexCommand(options.config)} to regenerate this file`));
   }
   return diags;
 }
@@ -1504,22 +1504,29 @@ function markdownTable(section) {
 function parseTasks(task) {
   const majors = [];
   let current = null;
+  let currentMinor = null;
   for (const line of task.split("\n")) {
     const major = /^- \[([ xX])\] (\d+)\.\s+(.*)$/.exec(line);
     if (major) {
       current = { id: Number(major[2]), done: major[1].toLowerCase() === "x", title: major[3], depends: [], requirements: [], minors: [] };
       majors.push(current);
+      currentMinor = null;
       continue;
     }
     const minor = /^\s+- (\d+\.\d+)\s/.exec(line);
     if (minor && current) {
-      current.minors.push(minor[1]);
+      currentMinor = { id: minor[1], requirements: [] };
+      current.minors.push(currentMinor);
       continue;
     }
     const depends = /^\s+- Depends on:\s*(.+)$/.exec(line);
     if (depends && current) current.depends = depends[1].split(",").map((item) => Number(item.trim())).filter((item) => !Number.isNaN(item));
     const req = /^\s+- Requirements:\s*(.+)$/.exec(line);
-    if (req && current) current.requirements.push(...req[1].split(",").map((item) => item.trim()).filter(Boolean));
+    if (req && current) {
+      const ids = req[1].split(",").map((item) => item.trim()).filter(Boolean);
+      if (currentMinor) currentMinor.requirements.push(...ids);
+      else current.requirements.push(...ids);
+    }
   }
   return majors;
 }
@@ -1553,9 +1560,17 @@ function validateTasks(files, config, issue, diags) {
     diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "TASK_MANUAL_ORDER", "Manual verification must be the last major task"));
   }
   if (files.traceRows) {
-    const mentioned = new Set(majors.flatMap((item) => item.requirements));
+    const mentioned = new Set(majors.flatMap((item) => [...item.requirements, ...item.minors.flatMap((minor) => minor.requirements)]));
     for (const row of files.traceRows) if (!mentioned.has(row[0])) diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "TASK_REQUIREMENTS", `${row[0]} is missing from task requirements`));
     for (const id of mentioned) if (!files.traceRows.some((row) => row[0] === id)) diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "TASK_REQUIREMENTS", `${id} is not in Requirements Traceability`));
+    for (const major of majors) {
+      if (isManualMajor(major.title)) continue;
+      for (const minor of major.minors) {
+        if (!minor.requirements.length) {
+          diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "TASK_MINOR_REQUIREMENTS", `Minor ${minor.id} needs Requirements: <ids>, or move the check into a Manual verification major`));
+        }
+      }
+    }
   }
 }
 
@@ -1577,6 +1592,26 @@ function validateResearch(research, delta, diags, config, issue) {
   for (const id of adrFromConclusions) if (!adrFromDelta.has(id)) diags.push(diag(`${config.docsDir}/issues/${issue}/research.md`, 1, "RESEARCH", `${id} is missing from the ADR delta`));
 }
 
+function indexCommand(config) {
+  const script = path.posix.join((config?.skillsDir || [".agents"])[0], "skills/sdd-scripts/sdd.mjs");
+  const runtime = config?.runtime === "bun" ? "bun" : "node";
+  return `${runtime} ${script} index`;
+}
+
+function healStaleIndexes(root, config, tree) {
+  const docsDir = kdir(config);
+  const fresh = cloneTree(tree);
+  regenerateIndexes(fresh, docsDir);
+  let stale = false;
+  for (const [rel, value] of fresh) {
+    if (!rel.endsWith("/index.md") && rel !== `${docsDir}/index.md`) continue;
+    if (tree.get(rel) !== value) stale = true;
+  }
+  if (!stale) return tree;
+  const before = cloneTree(tree);
+  writeTree(root, before, fresh);
+  return loadTree(root, docsDir);
+}
 function validateClose(root, config, issue, files, docsOnly, quick, diags) {
   if (docsOnly) {
     if (/^- \[ \]\s+Q\d+:/m.test(files.requirements)) diags.push(diag(`${config.docsDir}/issues/${issue}/requirements.md`, 1, "OPEN_QUESTIONS", "Resolve open questions before close"));
@@ -1857,8 +1892,8 @@ function runCheck(root, config, opts) {
     const diags = [diag(`${config.docsDir}/issues/${opts.issue}`, 1, "ISSUE_NOT_FOUND", "The issue directory does not exist")];
     return { code: 2, stdout: output(diags, opts.format), stderr: "" };
   }
-  const tree = loadTree(root, kdir(config));
-  let diags = validateTree(tree, kdir(config), { lang: config.lang || "en", root, stage: opts.stage });
+  const tree = healStaleIndexes(root, config, loadTree(root, kdir(config)));
+  let diags = validateTree(tree, kdir(config), { lang: config.lang || "en", root, stage: opts.stage, config });
   if (issuePresent) {
     const issueResult = staticIssueDiags(root, config, issue, opts.stage);
     diags = diags.concat(issueResult.diags);
