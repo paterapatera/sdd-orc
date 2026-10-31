@@ -2,6 +2,7 @@
 /**
  * Read-only verification against cloned paterapatera/laravel-fp.
  * Does not commit or push in laravel-fp.
+ * Run: git clone ... && node scripts/laravel-fp-walkthrough.mjs
  */
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";

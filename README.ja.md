@@ -104,6 +104,13 @@ node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
 4. `git checkout -b <key>-<name>` で着手し、`/sdd-req` または `/sdd-quick` から進める。
 5. `/sdd-close` でブランチ上の issue ディレクトリを削除する。マージ後はベースブランチからも消える。
 
+## 手動検証スクリプト
+
+`scripts/` には、自動テスト（`node --test`）の対象外の任意スクリプトがあります。
+
+- `node scripts/laravel-fixture-walkthrough.mjs` — Laravel 風の一時リポジトリで init から close まで通す。
+- [laravel-fp](https://github.com/paterapatera/laravel-fp) を clone したうえで `node scripts/laravel-fp-walkthrough.mjs`（`LARAVEL_FP` でパス指定可）。
+
 ## プルリクエスト
 
 プルリクエストの CI で `check` を実行し、そのチェックを必須にすることを推奨します。マージ前にベースブランチへ追従させるブランチ保護も推奨します。これらはリポジトリ設定の推奨であり、このパッケージが必須とするものではありません。

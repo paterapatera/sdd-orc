@@ -1,11 +1,11 @@
 /**
  * Laravel-fp-like walkthrough: init → check stages → impl → close.
- * Run: node test/laravel-fixture-walkthrough.mjs
+ * Run: node scripts/laravel-fixture-walkthrough.mjs
  */
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
-import { cliPath, commitAll, git, initRepo, run, sdd, tempRepo, writeSteering } from "./helpers.mjs";
+import { cliPath, commitAll, git, initRepo, sdd, tempRepo, writeSteering } from "../test/helpers.mjs";
 
 const log = [];
 function step(name, fn) {

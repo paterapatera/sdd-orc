@@ -104,6 +104,13 @@ Several proposals at once (the usual way to start):
 4. Start one with `git checkout -b <key>-<name>` and continue from `/sdd-req` or `/sdd-quick`.
 5. `/sdd-close` deletes that issue directory on the branch. The merge removes it from the base branch.
 
+## Manual verification scripts
+
+Optional scripts under `scripts/` exercise SDD flows outside the automated test suite (they are not run by `node --test`):
+
+- `node scripts/laravel-fixture-walkthrough.mjs` — temp-repo walkthrough similar to a Laravel project.
+- Clone [laravel-fp](https://github.com/paterapatera/laravel-fp), then `node scripts/laravel-fp-walkthrough.mjs` (or set `LARAVEL_FP` to the clone path).
+
 ## Pull requests
 
 Run `check` in pull request CI and make that check required. Also require the branch to be up to date with the base branch before merge. Those are recommendations for your repository settings. This package does not require them.
