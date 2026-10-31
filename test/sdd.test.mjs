@@ -22,7 +22,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "0.3.19");
+  assert.equal(config.version, "0.3.20");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -870,7 +870,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "0.3.19");
+  assert.equal(config.version, "0.3.20");
   assert.match(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });
@@ -952,6 +952,9 @@ test("check --allow-missing succeeds without an issue directory", () => {
   const relaxed = sdd(dir, ["check", "--stage", "close", "--allow-missing"]);
   assert.equal(relaxed.status, 0, relaxed.stdout);
   assert.match(relaxed.stdout, /ok: tree/);
+  const unknown = sdd(dir, ["check", "--if-issue"]);
+  assert.equal(unknown.status, 2);
+  assert.match(unknown.stdout, /Usage:/);
 });
 
 test("update removes obsolete sdd-brownfield skill", () => {

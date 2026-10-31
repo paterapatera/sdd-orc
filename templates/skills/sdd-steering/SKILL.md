@@ -34,7 +34,7 @@ When durable specs already exist under `__SDD_KNOWLEDGE_DIR__/specs/`, also cros
 
 If code contradicts an Accepted ADR, report `ADR-<n>` and do not edit steering. Report an ADR candidate without creating an ADR. Append accepted edits to `steering/log.md` as `* **Resync**: ...` with no issue name. Do not record rejections.
 
-After either mode, run `__SDD_RUNTIME__ __SDD_SCRIPT__ index` and `__SDD_RUNTIME__ __SDD_SCRIPT__ check`.
+After either mode, run `__SDD_RUNTIME__ __SDD_SCRIPT__ check` (it refreshes stale `index.md` files before other tree rules). Run `__SDD_RUNTIME__ __SDD_SCRIPT__ index` only when you need to rebuild indexes without a full tree check.
 
 ## Other skills
 
