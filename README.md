@@ -125,4 +125,4 @@ jobs:
       - run: node .agents/skills/sdd-scripts/sdd.mjs check
 ```
 
-Use `bun` instead of `node` when `sdd.config.json` says `"runtime": "bun"`. If the script lives under another skills directory, use that path.
+Use `bun` instead of `node` when `sdd.config.json` says `"runtime": "bun"` and Bun is installed. The bundled `sdd.mjs` is a Node script (`#!/usr/bin/env node`); when Bun is missing, run it with Node anyway, for example `node .agents/skills/sdd-scripts/sdd.mjs check`. Use Node 18 or later (the CI example below uses 24). Skills may still show `bun` in examples when `runtime` is `bun`; substitute `node` on the command line when needed. If the script lives under another skills directory, use that path.

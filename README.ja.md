@@ -125,4 +125,4 @@ jobs:
       - run: node .agents/skills/sdd-scripts/sdd.mjs check
 ```
 
-`sdd.config.json` の `"runtime"` が `"bun"` のときは `node` の代わりに `bun` を使います。スクリプトが別の skills ディレクトリにある場合は、そのパスに読み替えてください。
+`sdd.config.json` の `"runtime"` が `"bun"` で **Bun が入っている** ときは `node` の代わりに `bun` を使います。同梱の `sdd.mjs` は Node 用スクリプト（`#!/usr/bin/env node`）なので、Bun が無い環境では **Node のまま実行**できます（例: `node .agents/skills/sdd-scripts/sdd.mjs check`）。**Node 18 以降**を想定します（下の CI 例は 24）。スキル本文が `bun` と書いていても、手元で Bun が無ければコマンドだけ `node` に読み替えてください。スクリプトが別の skills ディレクトリにある場合は、そのパスに読み替えてください。
