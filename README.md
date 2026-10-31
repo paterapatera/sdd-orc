@@ -4,7 +4,7 @@
 
 Installs [Specification-Driven Development](https://github.com/paterapatera/sdd-orc) skills for Cursor, Codex, and Claude Code, and one shared checker script.
 
-The package is `@paterapatera/sdd-orc` 0.3.16. Durable docs use format version 1 under a directory you choose (default `docs`): `knowledge/{specs,decision,steering}` plus `issues/`.
+The package is `@paterapatera/sdd-orc` 0.3.17. Durable docs use format version 1 under a directory you choose (default `docs`): `knowledge/{specs,decision,steering}` plus `issues/`.
 
 Registering issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -51,7 +51,7 @@ npx @paterapatera/sdd-orc update
 npx @paterapatera/sdd-orc migrate
 ```
 
-`update` refreshes the skills and the shared script from `sdd.config.json` and bumps `version`. It leaves durable docs alone. If the package format is newer than `formatVersion`, it tells you to run `migrate` and does not change `formatVersion`.
+`update` refreshes the skills and the shared script from `sdd.config.json` and bumps `version`. It leaves durable docs alone. If the package format is newer than `formatVersion`, it tells you to run `migrate` and writes nothing. Skills removed from the package are deleted from each skills directory with `UPDATE_REMOVED_SKILL` on stderr.
 
 `migrate` will convert durable docs when a future format needs it, and it writes nothing when `check` fails. Format version 1 has nothing to convert.
 
@@ -65,9 +65,14 @@ node .agents/skills/sdd-scripts/sdd.mjs stamp --issue <name>
 node .agents/skills/sdd-scripts/sdd.mjs apply --issue <name>
 node .agents/skills/sdd-scripts/sdd.mjs renumber [--base main] [--code OLD=NEW]
 node .agents/skills/sdd-scripts/sdd.mjs index
+node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
 ```
 
-`check` reads durable docs and the issue for the current branch. `--issue` selects one. `--scope setup` checks only the config, the skeleton, and the five steering files. `--stage close` adds the close rules. `--format json` prints `{ "ok", "diagnostics" }`.
+`check` reads durable docs and the issue for the current branch. `--issue` selects one. `--scope setup` checks only the config, the skeleton, and the five steering files. `--stage close` adds the close rules. `--stage impl` verifies implementation: optional `testCommand` in `sdd.config.json`, requirement ids referenced from automated test files, and open implementation tasks (Manual verification is reported as notes only). `--allow-missing` or `--if-issue` succeeds when the issue directory is absent (for hotfix branches and Re-close). `--format json` prints `{ "ok", "diagnostics", "notes" }` for check.
+
+Optional `sdd.config.json` field `testCommand` runs during `check --stage impl` (skipped when unset).
+
+`status` prints the current phase and next skill for the current branch, one `--issue`, or every issue with `--all`.
 
 Exit codes are `0` (clean), `1` (a rule failed), and `2` (usage or setup). Lines look like `path:line: RULE message`.
 

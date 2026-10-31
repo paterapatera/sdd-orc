@@ -22,7 +22,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "0.3.16");
+  assert.equal(config.version, "0.3.17");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -683,6 +683,8 @@ test("issue checks cover traceability, research, ears, and close", () => {
   - Depends on: 2
   - 1.1 Create the invoice service
     - Requirements: REQ-INV-NEW-1
+  - 1.2 Add integration coverage
+    - Requirements: REQ-INV-NEW-1
 `);
   const depends = sdd(dir, ["check", "--issue", "invoice-reissue"]);
   assert.match(depends.stdout, /TASK_DEPENDS/);
@@ -867,7 +869,89 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "0.3.16");
+  assert.equal(config.version, "0.3.17");
   assert.match(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
+});
+
+test("check --stage impl runs testCommand and reports human verification separately", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  fs.mkdirSync(path.join(dir, "test"), { recursive: true });
+  fs.writeFileSync(path.join(dir, "test/invoice.test.js"), "// REQ-INV-NEW-1\n");
+  let task = read(dir, "docs/issues/invoice-reissue/task.md");
+  task = `${task.trim()}\n- [ ] 2. Manual verification\n  - Depends on: 1\n  - 2.1 Check on screen\n    - Requirements: REQ-INV-NEW-1\n  - 2.2 Confirm error text\n    - Requirements: REQ-INV-NEW-1\n`;
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), `${task}\n`);
+  const config = JSON.parse(read(dir, "sdd.config.json"));
+  config.testCommand = "node -e \"process.exit(0)\"";
+  fs.writeFileSync(path.join(dir, "sdd.config.json"), `${JSON.stringify(config, null, 2)}\n`);
+  commitAll(dir, "docs: proposal");
+  const ok = sdd(dir, ["check", "--stage", "impl", "--format", "json"]);
+  assert.equal(ok.status, 0, ok.stdout);
+  const body = JSON.parse(ok.stdout);
+  assert.equal(body.ok, true);
+  assert.match(body.notes.map((item) => item.rule).join(","), /IMPL_HUMAN_PENDING/);
+  config.testCommand = "node -e \"process.exit(3)\"";
+  fs.writeFileSync(path.join(dir, "sdd.config.json"), `${JSON.stringify(config, null, 2)}\n`);
+  const failed = sdd(dir, ["check", "--stage", "impl"]);
+  assert.match(failed.stdout, /IMPL_TEST_COMMAND/);
+  fs.unlinkSync(path.join(dir, "test/invoice.test.js"));
+  const missing = sdd(dir, ["check", "--stage", "impl"]);
+  assert.match(missing.stdout, /IMPL_TEST_MISSING/);
+});
+
+test("status lists phase and next skill", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  writeInvoiceIssue(dir);
+  fs.rmSync(path.join(dir, "docs/issues/invoice-reissue/design.md"));
+  fs.rmSync(path.join(dir, "docs/issues/invoice-reissue/task.md"));
+  commitAll(dir, "docs: proposal on main");
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  const onBranch = sdd(dir, ["status"]);
+  assert.match(onBranch.stdout, /invoice-reissue: requirements -> \/sdd-design/);
+  const all = sdd(dir, ["status", "--all", "--format", "json"]);
+  const parsed = JSON.parse(all.stdout);
+  assert.ok(parsed.issues.some((item) => item.issue === "invoice-reissue"));
+});
+
+test("check --allow-missing succeeds without an issue directory", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  commitAll(dir, "docs: proposal");
+  assert.equal(sdd(dir, ["apply", "--issue", "invoice-reissue"]).status, 0);
+  fs.rmSync(path.join(dir, "docs/issues/invoice-reissue"), { recursive: true, force: true });
+  commitAll(dir, "docs: close issue dir");
+  const strict = sdd(dir, ["check", "--stage", "close"]);
+  assert.equal(strict.status, 2);
+  assert.match(strict.stdout, /ISSUE_NOT_FOUND/);
+  const relaxed = sdd(dir, ["check", "--stage", "close", "--allow-missing"]);
+  assert.equal(relaxed.status, 0, relaxed.stdout);
+  assert.match(relaxed.stdout, /ok: tree/);
+});
+
+test("update stops before overwriting when migrate is required and removes obsolete skills", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  const config = JSON.parse(read(dir, "sdd.config.json"));
+  const skillRel = `${config.skillsDir[0]}/skills/sdd-req/SKILL.md`;
+  const before = read(dir, skillRel);
+  fs.mkdirSync(path.join(dir, `${config.skillsDir[0]}/skills/sdd-legacy`), { recursive: true });
+  fs.writeFileSync(path.join(dir, `${config.skillsDir[0]}/skills/sdd-legacy/SKILL.md`), "# legacy\n");
+  config.formatVersion = 0;
+  fs.writeFileSync(path.join(dir, "sdd.config.json"), `${JSON.stringify(config, null, 2)}\n`);
+  const blocked = run([cliPath, "update"], dir);
+  assert.equal(blocked.status, 2);
+  assert.match(blocked.stdout, /migrate is required/);
+  assert.equal(read(dir, skillRel), before);
+  config.formatVersion = 1;
+  fs.writeFileSync(path.join(dir, "sdd.config.json"), `${JSON.stringify(config, null, 2)}\n`);
+  const updated = run([cliPath, "update"], dir);
+  assert.equal(updated.status, 0, updated.stderr);
+  assert.match(updated.stderr, /UPDATE_REMOVED_SKILL/);
+  assert.equal(fs.existsSync(path.join(dir, `${config.skillsDir[0]}/skills/sdd-legacy`)), false);
 });

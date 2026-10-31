@@ -4,7 +4,7 @@
 
 Cursor、Codex、Claude Code 向けの [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) スキルと、共通の検査スクリプトをインストールします。
 
-パッケージ名は `@paterapatera/sdd-orc` 0.3.16 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs`）の下でフォーマット版 1 を使います。
+パッケージ名は `@paterapatera/sdd-orc` 0.3.17 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs`）の下でフォーマット版 1 を使います。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
@@ -51,7 +51,7 @@ npx @paterapatera/sdd-orc update
 npx @paterapatera/sdd-orc migrate
 ```
 
-`update` は `sdd.config.json` に従ってスキルと共通スクリプトを更新し、`version` を上げます。恒久ドキュメントは変更しません。パッケージのフォーマットが `formatVersion` より新しい場合は `migrate` の実行を促し、`formatVersion` は変えません。
+`update` は `sdd.config.json` に従ってスキルと共通スクリプトを更新し、`version` を上げます。恒久ドキュメントは変更しません。パッケージのフォーマットが `formatVersion` より新しい場合は `migrate` の実行を促し、ファイルは書き込みません。パッケージから消えた skill は各 skills ディレクトリから削除し、`UPDATE_REMOVED_SKILL` を stderr に出します。
 
 `migrate` は将来フォーマットが変わったときに恒久ドキュメントを機械的に変換します。`check` が失敗した場合は何も書き込みません。フォーマット版 1 では変換対象はありません。
 
@@ -65,9 +65,14 @@ node .agents/skills/sdd-scripts/sdd.mjs stamp --issue <name>
 node .agents/skills/sdd-scripts/sdd.mjs apply --issue <name>
 node .agents/skills/sdd-scripts/sdd.mjs renumber [--base main] [--code OLD=NEW]
 node .agents/skills/sdd-scripts/sdd.mjs index
+node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
 ```
 
-`check` は恒久ドキュメント全体と、現在のブランチに対応する issue を検査します。`--issue` で issue を指定できます。`--scope setup` は設定、骨組み、steering の必須 5 ファイルだけを確認します。`--stage close` は close 時の追加ルールを有効にします。`--format json` は `{ "ok", "diagnostics" }` を出力します。
+`check` は恒久ドキュメント全体と、現在のブランチに対応する issue を検査します。`--issue` で issue を指定できます。`--scope setup` は設定、骨組み、steering の必須 5 ファイルだけを確認します。`--stage close` は close 時の追加ルールを有効にします。`--stage impl` は実装を機械検証します（`sdd.config.json` の任意項目 `testCommand`、自動テストファイル内の要件 ID 参照、未完了の実装タスク。Manual verification は note のみ）。`--allow-missing` または `--if-issue` は issue ディレクトリが無いとき成功します（hotfix や Re-close 向け）。`--format json` は check で `{ "ok", "diagnostics", "notes" }` を出力します。
+
+`sdd.config.json` の任意項目 `testCommand` は `check --stage impl` のときだけ実行されます（未設定ならスキップ）。
+
+`status` は現在ブランチ、指定 `--issue`、または `--all` の全 issue について、フェーズと次に使う skill を表示します。
 
 終了コードは `0`（問題なし）、`1`（ルール違反）、`2`（使い方またはセットアップ）です。行の形式は `path:line: RULE message` です。
 
