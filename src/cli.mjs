@@ -213,6 +213,20 @@ function update(root) {
     process.stderr.write("sdd.config.json:1: SETUP_CONFIG_MISSING Run npx @paterapatera/sdd-orc init\n");
     return 2;
   }
+  if (FORMAT_VERSION > Number(config.formatVersion)) {
+    process.stdout.write("migrate is required\n");
+    return 2;
+  }
+  const templateNames = new Set(fs.readdirSync(path.join(packageRoot, "templates/skills")));
+  for (const skillsDir of config.skillsDir || [".agents"]) {
+    const destination = path.join(root, skillsDir, "skills");
+    if (!fs.existsSync(destination)) continue;
+    for (const name of fs.readdirSync(destination)) {
+      if (name === "sdd-scripts" || templateNames.has(name)) continue;
+      fs.rmSync(path.join(destination, name), { recursive: true, force: true });
+      process.stderr.write(`sdd.config.json:1: UPDATE_REMOVED_SKILL Removed obsolete skill ${name} from ${skillsDir}/skills/\n`);
+    }
+  }
   config.version = packageJson.version;
   writeConfig(root, config);
   const scriptRel = installScript(root, config.skillsDir[0]);
@@ -224,10 +238,6 @@ function update(root) {
     __SDD_BASE_BRANCH__: config.baseBranch,
     __SDD_SCRIPT__: scriptRel,
   });
-  if (FORMAT_VERSION > Number(config.formatVersion)) {
-    process.stdout.write("migrate is required\n");
-    return 2;
-  }
   return 0;
 }
 
