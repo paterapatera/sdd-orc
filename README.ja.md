@@ -18,7 +18,7 @@ issue の登録、プルリクエストの作成、`Closes #1` の記述は別�
 ```text
 docs/
   knowledge/          ← 恒久の specs、decision/、steering/
-  issues/<name>/      ← proposal、requirements、design、task（ブランチ上のみ）
+  issues/<name>/      ← 変更概要、要件、設計、タスク（ブランチ上のみ）
 ```
 
 スキル本文は英語です。Git のブランチ名は issue フォルダ名と同じにしてください（例: ブランチもフォルダも `invoice-fix`、または `PROJ-12-invoice-fix` のようにトラッカーキーを付ける）。
@@ -76,38 +76,38 @@ node .agents/skills/sdd-scripts/sdd.mjs status
 
 ## どの流れを選ぶか
 
-`/sdd-init` で `proposal.md` を書いたら、ブランチを切り、Impact に合った流れに進みます。
+`/sdd-init` で変更の概要を書くと、内容から流れを決め、次に使うスキル（例: `/sdd-quick` や `/sdd-req`）を案内します。ブランチを切り、そのスキルから進めます。
 
 ```mermaid
 flowchart TD
-  init[/sdd-init proposal.md/] --> branch["git checkout -b name"]
-  branch --> route{Impact}
-  route -->|Capabilities Steering Decisions がすべて none| quickPath["/sdd-quick → /sdd-close"]
-  route -->|Type が docs| revPath["/sdd-reverse → /sdd-close"]
-  route -->|それ以外| fullPath["/sdd-req → design → task → impl → close"]
-  quickPath --> noteQuick["Quick は task.md のみ。requirements と design は書かない"]
-  revPath --> noteRev["Reverse は requirements の追加のみ"]
+  init[/sdd-init/] --> branch["git checkout -b name"]
+  branch --> route{変更の種類}
+  route -->|要件や設計を変えない小さな修正| quickPath["/sdd-quick → /sdd-close"]
+  route -->|今ある動きを文書にするだけ| revPath["/sdd-reverse → /sdd-close"]
+  route -->|機能追加や仕様変更| fullPath["/sdd-req から /sdd-close まで"]
+  quickPath --> noteQuick["タスクだけ。要件・設計のドキュメントは書かない"]
+  revPath --> noteRev["コードに合わせて要件を追加"]
 ```
 
 ### 通常の機能追加
 
-`/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl` → `/sdd-close`。ドキュメントやコードがずれたら `/sdd-fix` してから続けます。
+新しい振る舞いや仕様の変更: `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl` → `/sdd-close`。ドキュメントやコードがずれたら `/sdd-fix` してから続けます。
 
 ### 小さな変更（quick）
 
-`/sdd-quick` で `task.md` だけを書き、`/sdd-close`。仕様・steering・ADR を変える必要がある場合はそこで止まります。
+仕様・steering・決定記録を変えずに済む小さな修正: `/sdd-quick` でタスクだけを書き、`/sdd-close`。仕様や steering の更新が必要ならそこで止まります。
 
 ### 既存の振る舞いの記録（reverse）
 
-proposal の `Type: docs` のあと `/sdd-reverse` → `/sdd-close`（design や task が無くても close できる場合あり）。
+アプリがすでにしている動きを残すだけ: `/sdd-reverse` → `/sdd-close`（設計やタスクのドキュメントが無くても close できる場合があります）。
 
 ### 既存アプリに SDD を入れる
 
-`init` → `/sdd-steering` → 変更ごとに `/sdd-init` → `/sdd-req` または `/sdd-reverse`。
+`init` → `/sdd-steering` → 変更ごとに `/sdd-init` → init が案内した `/sdd-req` または `/sdd-reverse`。
 
-### proposal を複数ベースに置く
+### 変更を複数、あらかじめ起票する
 
-ベース上で `/sdd-init` を繰り返し、フォルダ名にトラッカーキーを付け、ブランチごとに close します。
+ベース上で `/sdd-init` を変更の数だけ繰り返し、トラッカーを使う場合はフォルダ名にキーを付け、ブランチごとに close します。
 
 ```mermaid
 flowchart LR
@@ -122,20 +122,20 @@ flowchart LR
 
 手順の要点は次のとおりです。
 
-1. `/sdd-init` で `proposal.md` をベースブランチに作成（ブランチはまだ作らない）。
+1. ベースブランチで `/sdd-init`（変更の概要を作成。ブランチはまだ作らない）。
 2. `git checkout -b <name>`
-3. 選んだ流れのスキルを順に実行し、各スキルの指示どおりコミットする。
-4. `/sdd-close` でベースを取り込み、恒久ドキュメントへ反映し、`issues/<name>/` を削除し、PR 用のタイトルと本文を表示する（PR は開かない）。
+3. init が案内したスキルを順に実行し、各スキルの指示どおりコミットする。
+4. `/sdd-close` でベースを取り込み、恒久ドキュメントを更新し、issue フォルダを削除し、PR 用のタイトルと本文を表示する（PR は開かない）。
 
 ## 人が決めるところ
 
 | スキル | 作業内容 |
 |---|---|
-| `/sdd-init` | 最大 3 問（Why、What Changes、Out of Scope） |
+| `/sdd-init` | 目的・変更内容・対象外について最大 3 問 |
 | `/sdd-req`、`/sdd-design`、`/sdd-reverse`、`/sdd-fix` | 1 ラウンド最大 5 問（スコア付き選択肢） |
 | `/sdd-steering` の Resync | 差分を 1 件ずつ承認・却下・保留 |
-| `/sdd-impl` | `task.md` の手動確認タスクを実施（自動ではチェックしない） |
-| `/sdd-close` | マージ競合の解消、capability コード変更の確認、PR 文面のコピー |
+| `/sdd-impl` | タスク一覧の手動確認項目を実施（自動ではチェックしない） |
+| `/sdd-close` | マージ競合の解消、仕様コードの変更確認（求められた場合）、PR 文面のコピー |
 
 Quick は質問しません。`/sdd-task` も質問しません。
 

@@ -18,7 +18,7 @@ Default docs root is `docs` (change with `init --docs-dir`).
 ```text
 docs/
   knowledge/          ← permanent specs, decision/, steering/
-  issues/<name>/      ← proposal, requirements, design, task (while on branch <name>)
+  issues/<name>/      ← change summary, requirements, design, task (while on branch <name>)
 ```
 
 Skill text is **English**. Branch name must match the issue folder name (for example branch and folder `invoice-fix`, or `PROJ-12-invoice-fix` with a tracker prefix).
@@ -76,38 +76,38 @@ If `/sdd-impl` should run your test suite automatically, set optional `testComma
 
 ## Which path to take
 
-After `/sdd-init` writes `proposal.md`, start the branch and follow the path that matches Impact:
+After `/sdd-init` creates the change summary file, it picks the path for you and names the next skill (for example `/sdd-quick` or `/sdd-req`). Create the branch and follow that skill.
 
 ```mermaid
 flowchart TD
-  init[/sdd-init proposal.md/] --> branch["git checkout -b name"]
-  branch --> route{Impact}
-  route -->|Capabilities Steering Decisions all none| quickPath["/sdd-quick then /sdd-close"]
-  route -->|Type docs| revPath["/sdd-reverse then /sdd-close"]
-  route -->|otherwise| fullPath["/sdd-req → design → task → impl → close"]
-  quickPath --> noteQuick["Quick writes task.md only; no requirements or design"]
-  revPath --> noteRev["Reverse adds requirements only"]
+  init[/sdd-init/] --> branch["git checkout -b name"]
+  branch --> route{Kind of change}
+  route -->|Small fix, no spec or steering change| quickPath["/sdd-quick then /sdd-close"]
+  route -->|Write down behavior that already exists| revPath["/sdd-reverse then /sdd-close"]
+  route -->|New feature or spec change| fullPath["/sdd-req through /sdd-close"]
+  quickPath --> noteQuick["Tasks only, no requirements or design docs"]
+  revPath --> noteRev["Add requirements to match the code"]
 ```
 
 ### Normal feature
 
-`/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl` → `/sdd-close`. If docs or code drift, use `/sdd-fix` then continue.
+New behavior or a spec change: `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl` → `/sdd-close`. If docs or code drift, use `/sdd-fix` then continue.
 
 ### Quick (small change)
 
-`/sdd-quick` writes `task.md` only, then `/sdd-close`. Stops if specs, steering, or ADRs must change.
+A small fix that does not change requirements, steering, or decision records: `/sdd-quick` writes a task list only, then `/sdd-close`. The skill stops if a spec or steering update is needed.
 
 ### Reverse (document existing behavior)
 
-`Type: docs` in the proposal, then `/sdd-reverse` → `/sdd-close` without design or task when rules allow.
+You only need to record how the app already works: `/sdd-reverse` → `/sdd-close` (sometimes without design or task documents).
 
 ### SDD on an existing app
 
-`init`, then `/sdd-steering`, then issues via `/sdd-init` and `/sdd-req` or `/sdd-reverse`.
+Run `init`, then `/sdd-steering`, then open each change with `/sdd-init` and continue with `/sdd-req` or `/sdd-reverse` as init directs.
 
-### Several proposals on the base branch
+### Several changes planned upfront
 
-Create each `proposal.md` on the base branch, use tracker keys in folder names, branch per item, close per branch.
+Run `/sdd-init` once per change on the base branch, use tracker keys in folder names if you use a tracker, branch per change, and close each branch separately.
 
 ```mermaid
 flowchart LR
@@ -122,20 +122,20 @@ flowchart LR
 
 Steps in words:
 
-1. `/sdd-init` → `proposal.md` on the base branch (no branch yet).
+1. `/sdd-init` on the base branch (creates the change summary; no branch yet).
 2. `git checkout -b <name>`
-3. Run the skills for your path; commit docs as each skill says.
-4. `/sdd-close` merges the base branch, applies docs to `knowledge/`, runs checks, deletes `issues/<name>/`, prints PR title and body (does not open the PR).
+3. Run the skills init pointed you to; commit docs as each skill says.
+4. `/sdd-close` merges the base branch, updates permanent docs, removes the issue folder, and prints PR title and body (does not open the PR).
 
 ## Where you decide (not the script)
 
 | Skill | You |
 |---|---|
-| `/sdd-init` | Up to 3 questions (Why, What Changes, Out of Scope) |
+| `/sdd-init` | Up to 3 questions about purpose, what changes, and what is out of scope |
 | `/sdd-req`, `/sdd-design`, `/sdd-reverse`, `/sdd-fix` | Up to 5 scored choices per round |
 | `/sdd-steering` Resync | Accept, reject, or defer each reported item |
-| `/sdd-impl` | Complete manual verification tasks in `task.md` (not auto-checked) |
-| `/sdd-close` | Resolve merge conflicts; confirm capability renames; copy PR text |
+| `/sdd-impl` | Complete manual verification tasks in the task list (not auto-checked) |
+| `/sdd-close` | Resolve merge conflicts; confirm renamed spec codes if prompted; copy PR text |
 
 Quick path asks no questions. `/sdd-task` asks no questions.
 
