@@ -3,8 +3,11 @@ import { diag } from "./util.mjs";
 
 export const LESSON_STATUSES = ["candidate", "trial", "effective", "ineffective", "rejected"];
 export const LESSON_TARGETS = ["steering", "config-or-code", "sdd-orc-skill"];
-export const LESSON_SECTIONS = ["What happened", "Why", "Policy", "Occurrences", "Related issues", "Status", "Reason", "Target"];
+export const LESSON_SECTIONS = ["What happened", "Why", "Policy", "Occurrences", "Occurrence log", "Review closes", "Status", "Reason", "Target"];
 export const TRIAL_TO_EFFECTIVE_ISSUE_COUNT = 3;
+
+const OCCURRENCE_LOG_LINE = /^-\s+(\d{4}-\d{2}-\d{2}):\s+(\S(?:.*\S)?)\s*$/;
+const REVIEW_CLOSE_LINE = /^-\s+(\d{4}-\d{2}-\d{2})\s*$/;
 
 const SLUG_RE = /^lessons\/(?!index\.md$)[a-z0-9]+(?:-[a-z0-9]+)*\.md$/;
 const LESSONS_LINE = /^-\s+Lessons:\s*(.+)\s*$/;
@@ -64,8 +67,43 @@ function lessonSlugs(map, docsDir) {
     .sort();
 }
 
-function countRelatedIssues(text) {
-  return text.split(",").map((item) => item.trim()).filter(Boolean).length;
+function countOccurrenceLogEntries(text) {
+  let count = 0;
+  for (const line of String(text || "").split("\n")) {
+    if (OCCURRENCE_LOG_LINE.test(line.trim())) count += 1;
+  }
+  return count;
+}
+
+export function parseOccurrenceLogLines(text) {
+  const entries = [];
+  for (const line of String(text || "").split("\n")) {
+    const match = OCCURRENCE_LOG_LINE.exec(line.trim());
+    if (match) entries.push({ date: match[1], description: match[2] });
+  }
+  return entries;
+}
+
+function validateOccurrenceLogSection(rel, text, diags) {
+  for (const line of String(text || "").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (!OCCURRENCE_LOG_LINE.test(trimmed)) {
+      diags.push(diag(rel, 1, "LESSONS_OCCURRENCE_LOG", "Each Occurrence log line must be - YYYY-MM-DD: <description> (no issue or branch names)"));
+      break;
+    }
+  }
+}
+
+function validateReviewClosesSection(rel, text, diags) {
+  for (const line of String(text || "").split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    if (!REVIEW_CLOSE_LINE.test(trimmed)) {
+      diags.push(diag(rel, 1, "LESSONS_REVIEW_CLOSES", "Each Review closes line must be - YYYY-MM-DD (close date when the lesson was reviewed without a new occurrence)"));
+      break;
+    }
+  }
 }
 
 function parseLessonsDisposition(line) {
@@ -254,11 +292,14 @@ export function validateLessons(map, docsDir, diags) {
       diags.push(diag(rel, 1, "LESSONS_REASON", "Reason must be empty unless status is ineffective or rejected"));
     }
     const occ = (sections.get("Occurrences") || "").trim();
-    const relatedCount = countRelatedIssues(sections.get("Related issues") || "");
+    const logText = sections.get("Occurrence log") || "";
+    const logCount = countOccurrenceLogEntries(logText);
+    validateOccurrenceLogSection(rel, logText, diags);
+    validateReviewClosesSection(rel, sections.get("Review closes") || "", diags);
     if (!/^\d+$/.test(occ) || Number(occ) < 1) {
       diags.push(diag(rel, 1, "LESSONS_OCCURRENCES", "Occurrences must be a positive integer"));
-    } else if (relatedCount > 0 && Number(occ) < relatedCount) {
-      diags.push(diag(rel, 1, "LESSONS_OCCURRENCES", `Occurrences must be at least the number of related issues (${relatedCount})`));
+    } else if (logCount > 0 && Number(occ) < logCount) {
+      diags.push(diag(rel, 1, "LESSONS_OCCURRENCES", `Occurrences must be at least the number of Occurrence log entries (${logCount})`));
     }
   }
 }

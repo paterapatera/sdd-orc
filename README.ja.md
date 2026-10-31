@@ -146,7 +146,7 @@ GitHub Issues で進捗を管理するときの例です（issue や PR の作�
 
 ## 教訓（lessons）と close
 
-作業中、スキルがブランチ上の `docs/issues/<name>/feedback.md` に短いメモを追記することがあります（日常の仕様作業で人が編集するものではありません）。追記したらブランチにコミットしておき、close の前にメモが消えないようにします。**`/sdd-close`** のとき、エージェントがそのメモを読み、`docs/knowledge/lessons/` への更新を提案します。過去に何が起き、なぜ起き、どんな方針で防ぐかを残します。**issue フォルダを消す前に、教訓の変更一式を一度だけ承認**し、承認内容は `feedback.md` の `- Lessons:` 行として残します。教訓は削除しません。状態（試行中・却下など）は `lessons/` に残ります。要件や実装のスキルが読むのは **steering だけ**で、lessons は読みません。通常の `check` で教訓ページが変わったとき、索引だけ自動で直ることがあり、そのとき短いメモが出ます。
+作業中、スキルがブランチ上の `docs/issues/<name>/feedback.md` に短いメモを追記することがあります（日常の仕様作業で人が編集するものではありません）。追記したらブランチにコミットしておき、close の前にメモが消えないようにします。**`/sdd-close`** のとき、エージェントがそのメモを読み、`docs/knowledge/lessons/` への更新を提案します。教訓ページには日付付きの **Occurrence log**（何が起きたか。issue 名は書かない）を残します。**issue フォルダを消す前に、教訓の変更一式を一度だけ承認**し、承認内容は `feedback.md` の `- Lessons:` 行として残します。教訓は削除しません。状態（試行中・却下など）は `lessons/` に残ります。要件や実装のスキルが読むのは **steering だけ**で、lessons は読みません。通常の `check` で教訓ページが変わったとき、索引だけ自動で直ることがあり、そのとき短いメモが出ます。
 
 教訓の対象が steering のとき、close **は steering を書き換えません**。代わりに、そのまま送れる **`/sdd-init ...`** の文を表示するので、**新しい issue** として steering 変更を始めます。ベースを取り込んで **re-close** するとき、同じ教訓ページが競合したら、状態は rejected → ineffective → effective → trial → candidate の順で厳しい方を残し、rejected または ineffective が勝った場合はその Reason を残します。
 

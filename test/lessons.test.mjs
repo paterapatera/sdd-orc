@@ -32,9 +32,13 @@ Document the canonical dev port in steering; do not rely on ad hoc ports.
 
 1
 
-## Related issues
+## Occurrence log
 
-demo-issue
+- 2026-01-15: Local dev port clash during tests.
+
+## Review closes
+
+
 
 ## Status
 
@@ -189,13 +193,79 @@ test("Reason required only for ineffective or rejected", () => {
   assert.match(sdd(dir, ["check"]).stdout, /LESSONS_REASON/);
 });
 
-test("Occurrences must cover related issue count", () => {
+test("Occurrences must cover occurrence log entry count", () => {
   const dir = tempRepo();
   assert.equal(initRepo(dir).status, 0);
   writeSteering(dir);
   let body = sampleLesson("occ");
-  body = body.replace("## Occurrences\n\n1", "## Occurrences\n\n1").replace("demo-issue", "a, b, c");
+  body = body.replace(
+    "## Occurrence log\n\n- 2026-01-15: Local dev port clash during tests.",
+    "## Occurrence log\n\n- 2026-01-01: a\n- 2026-01-02: b\n- 2026-01-03: c",
+  );
   fs.writeFileSync(path.join(dir, "docs/knowledge/lessons/occ.md"), body);
   sdd(dir, ["index"]);
   assert.match(sdd(dir, ["check"]).stdout, /LESSONS_OCCURRENCES/);
+});
+
+test("close check passes with occurrence log and no issue names in lessons", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  writeSteering(dir);
+  git(["checkout", "-b", "eval-empty-hint"], dir);
+  const issue = path.join(dir, "docs/issues/eval-empty-hint");
+  fs.mkdirSync(issue, { recursive: true });
+  fs.writeFileSync(
+    path.join(issue, "proposal.md"),
+    `# 空一覧案内\n\n## Why\nx\n\n## What Changes\n- y\n\n## Impact\n- Type: chore\n- Capabilities: none\n- Steering: none\n- Decisions: none\n- Code: none\n\n## Out of Scope\nn\n`,
+  );
+  fs.writeFileSync(path.join(issue, "task.md"), "# Tasks\n\n- [x] 1. Done\n");
+  fs.writeFileSync(
+    path.join(issue, "feedback.md"),
+    "# Feedback\n\n## 2026-10-31 sdd-impl — test-stop\nBlank list confused users.\n\n- Lessons: empty-hint\n",
+  );
+  fs.writeFileSync(
+    path.join(dir, "docs/knowledge/lessons/empty-hint.md"),
+    `# 空一覧の案内不足
+
+## What happened
+
+公開対象ゼロ件で画面が空白に見えた。
+
+## Why
+
+空状態の方針が steering に無かった。
+
+## Policy
+
+空一覧時は固定案内文を必ず示す。
+
+## Occurrences
+
+1
+
+## Occurrence log
+
+- 2026-10-31: 公開対象ゼロ件で一覧が空白に見えた。
+
+## Review closes
+
+
+
+## Status
+
+trial
+
+## Reason
+
+
+
+## Target
+
+steering
+`,
+  );
+  commitAll(dir, "docs: eval empty hint");
+  const result = sdd(dir, ["check", "--stage", "close", "--issue", "eval-empty-hint"]);
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /CLOSE_ISSUE_NAME/);
 });
