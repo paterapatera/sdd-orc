@@ -2,122 +2,160 @@
 
 [日本語](README.ja.md)
 
-Installs [Specification-Driven Development](https://github.com/paterapatera/sdd-orc) skills for Cursor, Codex, and Claude Code, and one shared checker script.
+**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 0.3.20. Node.js 18 or later.
 
-The package is `@paterapatera/sdd-orc` 0.3.20. Durable docs use format version 1 under a directory you choose (default `docs`): `knowledge/{specs,decision,steering}` plus `issues/`. Requires Node.js 18 or later.
+Registering tracker issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
-Registering issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
+## Folders you work with
+
+Default docs root is `docs` (override with `npx @paterapatera/sdd-orc init --docs-dir <path>`).
+
+| Path | Meaning |
+|---|---|
+| `docs/knowledge/` | Specs, ADRs, and steering that stay on the main branch |
+| `docs/issues/<name>/` | Draft for one change while you are on Git branch `<name>`; removed when you close |
+
+```text
+docs/
+  knowledge/          ← permanent specs, decision/, steering/
+  issues/<name>/      ← change summary, requirements, design, task (while on branch <name>)
+```
+
+Skill text is **English**. Branch name must match the issue folder name (for example branch and folder `invoice-fix`, or `PROJ-12-invoice-fix` with a tracker prefix).
 
 ## Install
-
-From the repository root:
 
 ```sh
 npx @paterapatera/sdd-orc init
 ```
 
-`init` does not prompt. Defaults:
+**After installing:** In **agent chat**, run `/sdd-steering` first. It creates the steering documents under `docs/knowledge/steering/` (the install command does not). If the repository already has application code, the skill also reads the code and updates steering to match; on a new project it creates the initial steering set. Then start each change with `/sdd-init` on the base branch.
 
 | Flag | Default |
 |---|---|
 | `--docs-dir` | `docs` |
-| `--lang` | `en` (`en` or `ja`) |
-| `--runtime` | `node` (`node` or `bun`) |
+| `--lang` | `en` |
+| `--runtime` | `node` |
 | `--base-branch` | `main` |
-| `--skills-dir` | `.agents` (repeat the flag for each agent) |
+| `--skills-dir` | `.agents` (repeat per agent) |
 
-Example for two agents:
+Example:
 
 ```sh
 npx @paterapatera/sdd-orc init --lang ja --runtime bun --skills-dir .agents --skills-dir .claude
 ```
 
-This writes `sdd.config.json`, copies the same skills into every `<skills-dir>/skills/`, and copies one script to the first skills directory only:
+This writes `sdd.config.json`, copies skills to each `<skills-dir>/skills/`, and installs the checker at the first skills dir only (for example `.agents/skills/sdd-scripts/sdd.mjs`). Commit `<skills-dir>` so CI can run `check` offline.
 
-```text
-.agents/skills/sdd-scripts/sdd.mjs
-```
+`npx @paterapatera/sdd-orc init` creates `docs/knowledge/` skeleton files. It does not create `steering/` (see **After installing** above). If unrelated Markdown already lives under the docs dir, the command stops; pick another `--docs-dir`. After install, different settings require `--force`.
 
-Every skill calls that path. Commit `<skills-dir>` so CI can run the script without the network.
-
-`init` creates the docs skeleton (`index.md`, `specs/index.md`, `specs/log.md`, `decision/index.md`). It does not create `steering/`. Use `/sdd-steering` for that. If the docs directory already contains Markdown that this layout does not manage, `init` stops and asks for a dedicated `--docs-dir`.
-
-Passing different settings after install exits with an error. `--force` overwrites them.
-
-## Update and migrate
+## Update
 
 ```sh
 npx @paterapatera/sdd-orc update
 npx @paterapatera/sdd-orc migrate
 ```
 
-`update` refreshes the skills and the shared script from `sdd.config.json` and bumps `version`. It leaves durable docs alone. If the package format is newer than `formatVersion`, it tells you to run `migrate` and writes nothing. Skills removed from the package are deleted from each skills directory with `UPDATE_REMOVED_SKILL` on stderr.
+`update` refreshes skills and the script; it does not edit `knowledge/`. `migrate` is for future format changes; format version 1 has nothing to convert.
 
-`migrate` will convert durable docs when a future format needs it, and it writes nothing when `check` fails. Format version 1 has nothing to convert.
+## Script and status
 
-## Shared script
+Skills run the bundled checker (`check`, `stamp`, `apply`, `renumber`, `index`, and related steps) during each phase. You do not need to run those commands yourself in normal work.
 
-Run the installed script with the runtime you chose. With the defaults:
+To see the current phase and the next skill for your branch, run:
 
 ```sh
-node .agents/skills/sdd-scripts/sdd.mjs check
-node .agents/skills/sdd-scripts/sdd.mjs stamp --issue <name>
-node .agents/skills/sdd-scripts/sdd.mjs apply --issue <name>
-node .agents/skills/sdd-scripts/sdd.mjs renumber [--base main] [--code OLD=NEW]
-node .agents/skills/sdd-scripts/sdd.mjs index
-node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
+node .agents/skills/sdd-scripts/sdd.mjs status
 ```
 
-`check` reads durable docs and the issue for the current branch. `--issue` selects one. `--scope setup` checks only the config, the skeleton, and the five steering files. `--stage close` adds the close rules. `--stage impl` verifies implementation: optional `testCommand` in `sdd.config.json`, requirement ids referenced from automated test files (including untracked tests under git), and open implementation tasks (Manual verification is reported as notes only). `--allow-missing` succeeds when the issue directory is absent (for hotfix branches and Re-close). `--format json` prints `{ "ok", "diagnostics", "notes" }` for check. When steering or specs change descriptions and an `index.md` is stale, `check` regenerates index files before reporting other rules. Run the `index` command when you need to rebuild indexes without a full tree check (for example Re-close in `/sdd-close`); `apply` also regenerates indexes when it succeeds.
+Add `--issue <name>` or `--all` when you want a specific issue or every open issue.
 
-Optional `sdd.config.json` field `testCommand` runs during `check --stage impl` (skipped when unset).
+If `/sdd-impl` should run your test suite automatically, set optional `testCommand` in `sdd.config.json`.
 
-`status` prints the current phase and next skill for the current branch, one `--issue`, or every issue with `--all`.
+## Skills included
 
-Exit codes are `0` (clean), `1` (a rule failed), and `2` (usage or setup). Lines look like `path:line: RULE message`.
+`/sdd-init`, `/sdd-req`, `/sdd-design`, `/sdd-task`, `/sdd-impl`, `/sdd-fix`, `/sdd-close`, `/sdd-quick`, `/sdd-reverse`, `/sdd-steering`.
 
-`stamp` records a base hash on replacements and removals that do not have one. `apply` copies the issue delta into durable docs, numbers new ids, and writes nothing if the result would fail `check`. `index` rebuilds every `index.md` from descriptions. `renumber` gives a new number only to ids this branch added that already exist on the base branch. A new capability code that already exists on the base branch stops `renumber` until you pass `--code OLD=NEW`.
+## Which path to take
 
-## Flows
+After `/sdd-init` creates the change summary file, it picks the path for you and names the next skill (for example `/sdd-quick` or `/sdd-req`). Create the branch and follow that skill.
 
-Skills are English. Each one runs `check --scope setup` first. The branch name matches `issues/<name>/`.
+```mermaid
+flowchart TD
+  init["/sdd-init"] --> branch["git checkout -b name"]
+  branch --> route{Kind of change}
+  route -->|Small fix, no spec or steering change| quickPath["/sdd-quick then /sdd-close"]
+  route -->|Write down behavior that already exists| revPath["/sdd-reverse then /sdd-close"]
+  route -->|New feature or spec change| fullPath["/sdd-req through /sdd-close"]
+  quickPath --> noteQuick["Tasks only, no requirements or design docs"]
+  revPath --> noteRev["Add requirements to match the code"]
+```
 
-Normal change:
+### Normal feature
 
-1. `/sdd-init` writes `issues/<name>/proposal.md`.
-2. `git checkout -b <name>`
-3. `/sdd-req` writes `requirements.md`.
-4. `/sdd-design` writes `research.md` and `design.md`.
-5. `/sdd-task` writes `task.md`.
-6. `/sdd-impl` implements the open tasks. `/sdd-fix` repairs a mismatch.
-7. `/sdd-close` merges the base branch, runs `apply`, runs `check --stage close`, deletes the issue directory, and prints a pull request title and body.
+New behavior or a spec change. After init points you to `/sdd-req`:
 
-Small change: `/sdd-init`, then `/sdd-quick`, then `/sdd-close`. Quick does not ask questions and does not write requirements, research, or design. It stops when the change needs specs, steering, or decisions.
+```mermaid
+flowchart LR
+  R["/sdd-req"] --> D["/sdd-design"]
+  D --> T["/sdd-task"]
+  T --> I["/sdd-impl"]
+  I --> F{Drift?}
+  F -->|yes| X["/sdd-fix"]
+  X --> I
+  F -->|no| C["/sdd-close"]
+```
 
-Document existing behavior: `/sdd-init` with `Type: docs`, then `/sdd-reverse`, then `/sdd-close`. Reverse adds requirements only.
+Steps (**agent chat** unless noted):
 
-Adopting SDD on a running app: run `init`, complete `/sdd-steering` (including spec–code id cross-check when specs already exist), then open issues with `/sdd-init` and continue with `/sdd-reverse` or `/sdd-req` as each proposal requires.
+1. **Agent chat:** `/sdd-init` on the base branch (creates the change summary; no branch yet).
+2. **Terminal:** `git checkout -b <name>` (same name as the issue folder init chose).
+3. **Agent chat:** `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl`; commit docs as each skill says. If docs or code drift, `/sdd-fix` then continue.
+4. **Agent chat:** `/sdd-close` merges the base branch, updates permanent docs, removes the issue folder, and prints PR title and body (does not open the PR).
 
-Several proposals at once (the usual way to start):
+### Quick (small change)
 
-1. Run `/sdd-init` once per change on the base branch.
-2. Register the issues in your tracker, or do that with a separate tracker skill, and prefix each directory with the tracker key.
-3. Commit the `proposal.md` files on the base branch.
-4. Start one with `git checkout -b <key>-<name>` and continue from `/sdd-req` or `/sdd-quick`.
-5. `/sdd-close` deletes that issue directory on the branch. The merge removes it from the base branch.
+A small fix that does not change requirements, steering, or decision records. Same steps 1–2 as above, then **agent chat** `/sdd-quick` (task list only) → `/sdd-close`. The skill stops if a spec or steering update is needed.
 
-## Manual verification scripts
+### Reverse (document existing behavior)
 
-Optional scripts under `scripts/` exercise SDD flows outside the automated test suite (they are not run by `node --test`):
+Use reverse when the **code already behaves a certain way** but specs do not describe it yet. Typical cases: right after you adopt SDD on an existing app (backfill specs from the code), or when you find behavior you want to keep and it is not written down. You do not need to spec everything at once; start with important areas or features you will change soon.
 
-- `node scripts/laravel-fixture-walkthrough.mjs` — temp-repo walkthrough similar to a Laravel project.
-- Clone [laravel-fp](https://github.com/paterapatera/laravel-fp), then `node scripts/laravel-fp-walkthrough.mjs` (or set `LARAVEL_FP` to the clone path).
+**How this differs from `/sdd-steering`:** Steering captures **project-wide** context (purpose, tech stack, repo layout). Run it once after install. Reverse writes **one feature’s** requirements in `specs/` from code that already exists, one change at a time.
 
-## Pull requests
+Do **not** start with `/sdd-reverse` alone. On the **base branch**, open **agent chat** and paste something like:
 
-Run `check` in pull request CI and make that check required. Also require the branch to be up to date with the base branch before merge. Those are recommendations for your repository settings. This package does not require them.
+```text
+/sdd-init Record how invoice month-end closing works today in the specs. Do not change code.
+```
 
-The job below only runs the shared script. It does not call a tracker or a CI product beyond the workflow runner.
+The important part is that you are **documenting behavior that already exists**, not shipping new features or fixing bugs. Init may ask up to three short questions; keep your answers on that same goal.
+
+After init finishes, it writes the change summary, classifies the work as **documentation-only** (no code change in the proposal), and tells you the next skill is **`/sdd-reverse`**. Then **terminal** `git checkout -b <name>`, **agent chat** `/sdd-reverse` → `/sdd-close`. Design and task documents are often skipped; close still runs checks.
+
+## Using with GitHub issues
+
+Optional pattern when you track work in GitHub Issues (this package does not create issues or PRs; use a separate tracker skill or GitHub by hand).
+
+1. **Agent chat:** On the base branch, `/sdd-init` once per planned change.
+2. Create a GitHub issue for each change (tracker skill or manually).
+3. Use a folder and branch name that starts with the issue number or key (example: `42-invoice-fix`).
+4. **Terminal:** Commit the change summaries on the base branch.
+5. **Terminal:** `git checkout -b <name>` per issue; **agent chat:** run skills through `/sdd-close`. Link the PR to the issue (`Closes #42`) when you open it yourself or via your tracker skill.
+
+## Where you decide (not the script)
+
+| Skill | You |
+|---|---|
+| `/sdd-init` | Up to 3 questions about purpose, what changes, and what is out of scope |
+| `/sdd-req`, `/sdd-design`, `/sdd-reverse`, `/sdd-fix` | Up to 5 scored choices per round |
+| `/sdd-steering` Resync | Accept, reject, or defer each reported item |
+| `/sdd-impl` | Complete manual verification tasks in the task list (not auto-checked) |
+| `/sdd-close` | Resolve merge conflicts; confirm renamed spec codes if prompted; copy PR text |
+
+Quick path asks no questions. `/sdd-task` asks no questions.
+
+## Pull request CI (recommended)
 
 ```yaml
 name: sdd
@@ -134,4 +172,4 @@ jobs:
       - run: node .agents/skills/sdd-scripts/sdd.mjs check
 ```
 
-Use `bun` instead of `node` when `sdd.config.json` says `"runtime": "bun"` and Bun is installed. The bundled `sdd.mjs` is a Node script (`#!/usr/bin/env node`); when Bun is missing, run it with Node anyway, for example `node .agents/skills/sdd-scripts/sdd.mjs check`. Use Node 18 or later (the CI example below uses 24). Skills may still show `bun` in examples when `runtime` is `bun`; substitute `node` on the command line when needed. If the script lives under another skills directory, use that path.
+Making this check required and keeping the branch up to date with the base branch are repository settings; this package does not enforce them.

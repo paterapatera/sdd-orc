@@ -2,122 +2,160 @@
 
 [English](README.md)
 
-Cursor、Codex、Claude Code 向けの [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) スキルと、共通の検査スクリプトをインストールします。
-
-パッケージ名は `@paterapatera/sdd-orc` 0.3.20 です。恒久ドキュメントは、指定したディレクトリ（既定は `docs`）の下でフォーマット版 1 を使います。Node.js 18 以降が必要です。
+sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、検査は各スキルがスクリプト経由で実行します。パッケージ名は `@paterapatera/sdd-orc` 0.3.20 です。Node.js 18 以降が必要です。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
-## インストール
+## 日常で触るフォルダ
 
-リポジトリのルートで:
+ドキュメントのルートは既定で `docs` です（`npx @paterapatera/sdd-orc init --docs-dir <path>` で変更できます）。
+
+| パス | 意味 |
+|---|---|
+| `docs/knowledge/` | マージ後も残る仕様・決定記録（ADR）・steering |
+| `docs/issues/<name>/` | ブランチ `<name>` で作業中の変更用ファイル。close 後に削除 |
+
+```text
+docs/
+  knowledge/          ← 恒久の specs、decision/、steering/
+  issues/<name>/      ← 変更概要、要件、設計、タスク（ブランチ上のみ）
+```
+
+スキル本文は英語です。Git のブランチ名は issue フォルダ名と同じにしてください（例: ブランチもフォルダも `invoice-fix`、または `PROJ-12-invoice-fix` のようにトラッカーキーを付ける）。
+
+## インストール
 
 ```sh
 npx @paterapatera/sdd-orc init
 ```
 
-`init` は対話しません。既定値は次のとおりです。
+**インストール後:** まず **エージェントチャット**で `/sdd-steering` を実行します。`docs/knowledge/steering/` の steering ドキュメントを作成します（`init` コマンドでは作りません）。すでにアプリのコードがあるリポジトリでは、コードを読んで steering を合わせます。新規プロジェクトでは初期の steering を作成します。そのあと、変更ごとにベースブランチで `/sdd-init` から始めます。
 
 | オプション | 既定値 |
 |---|---|
 | `--docs-dir` | `docs` |
-| `--lang` | `en`（`en` または `ja`） |
-| `--runtime` | `node`（`node` または `bun`） |
+| `--lang` | `en` |
 | `--base-branch` | `main` |
-| `--skills-dir` | `.agents`（エージェントごとにフラグを繰り返す） |
+| `--runtime` | `node` |
+| `--skills-dir` | `.agents`（エージェントごとに繰り返す） |
 
-2 つのエージェント向けの例:
+例は次のとおりです。
 
 ```sh
 npx @paterapatera/sdd-orc init --lang ja --runtime bun --skills-dir .agents --skills-dir .claude
 ```
 
-`sdd.config.json` を書き、同じスキルをすべての `<skills-dir>/skills/` にコピーし、スクリプトは最初の skills ディレクトリだけに置きます。
+`sdd.config.json` を書き、各 `<skills-dir>/skills/` に同じスキルをコピーし、検査スクリプトは最初の skills ディレクトリだけに置きます（例: `.agents/skills/sdd-scripts/sdd.mjs`）。CI でネットワークなしに `check` できるよう、`<skills-dir>` をコミットしてください。
 
-```text
-.agents/skills/sdd-scripts/sdd.mjs
-```
+`npx @paterapatera/sdd-orc init` は `docs/knowledge/` の骨組みだけを作ります。`steering/` は作りません（上の **インストール後** を参照）。docs 配下に、このレイアウト外の Markdown があるとコマンドは止まるので、別の `--docs-dir` を指定してください。インストール後に設定を変える場合は `--force` が必要です。
 
-すべてのスキルはこのパスを呼び出します。CI がネットワークなしでスクリプトを実行できるよう、`<skills-dir>` をコミットしてください。
-
-`init` はドキュメントの骨組み（`index.md`、`specs/index.md`、`specs/log.md`、`decision/index.md`）を作ります。`steering/` は作りません。`/sdd-steering` で作成します。ドキュメントディレクトリに、このレイアウトで管理しない Markdown が既にある場合は `init` が停止し、専用の `--docs-dir` を指定するよう案内します。
-
-インストール後に異なる設定を渡すとエラーで終了します。`--force` で上書きできます。
-
-## 更新と移行
+## 更新
 
 ```sh
 npx @paterapatera/sdd-orc update
 npx @paterapatera/sdd-orc migrate
 ```
 
-`update` は `sdd.config.json` に従ってスキルと共通スクリプトを更新し、`version` を上げます。恒久ドキュメントは変更しません。パッケージのフォーマットが `formatVersion` より新しい場合は `migrate` の実行を促し、ファイルは書き込みません。パッケージから消えた skill は各 skills ディレクトリから削除し、`UPDATE_REMOVED_SKILL` を stderr に出します。
+`update` はスキルとスクリプトだけを更新し、`knowledge/` は触りません。`migrate` は将来のフォーマット変更用で、現在のフォーマット版 1 では変換はありません。
 
-`migrate` は将来フォーマットが変わったときに恒久ドキュメントを機械的に変換します。`check` が失敗した場合は何も書き込みません。フォーマット版 1 では変換対象はありません。
+## スクリプトと status
 
-## 同梱スクリプト
+`check` や `stamp`、`apply`、`renumber`、`index` などは、通常の作業では各スキルが自動で実行します。人が手で叩く必要はありません。
 
-選んだランタイムで、インストール済みのスクリプトを実行します。既定の例:
+今のフェーズと、次に使うスキルを確認したいときだけ、次を実行します。
 
 ```sh
-node .agents/skills/sdd-scripts/sdd.mjs check
-node .agents/skills/sdd-scripts/sdd.mjs stamp --issue <name>
-node .agents/skills/sdd-scripts/sdd.mjs apply --issue <name>
-node .agents/skills/sdd-scripts/sdd.mjs renumber [--base main] [--code OLD=NEW]
-node .agents/skills/sdd-scripts/sdd.mjs index
-node .agents/skills/sdd-scripts/sdd.mjs status [--issue <name>] [--all]
+node .agents/skills/sdd-scripts/sdd.mjs status
 ```
 
-`check` は恒久ドキュメント全体と、現在のブランチに対応する issue を検査します。`--issue` で issue を指定できます。`--scope setup` は設定、骨組み、steering の必須 5 ファイルだけを確認します。`--stage close` は close 時の追加ルールを有効にします。`--stage impl` は実装を機械検証します（`sdd.config.json` の任意項目 `testCommand`、git 未追跡を含む自動テストファイル内の要件 ID 参照、未完了の実装タスク。Manual verification は note のみ）。`--allow-missing` は issue ディレクトリが無いとき成功します（hotfix や Re-close 向け）。`--format json` は check で `{ "ok", "diagnostics", "notes" }` を出力します。steering 等の変更で `index.md` が古い場合、`check` は他のルールの前に index を再生成します。ツリー全体を検査せず index だけ更新したいとき（`/sdd-close` の Re-close など）は `index` コマンドを実行します。`apply` 成功時も index は再生成されます。
+特定の issue や、開いている issue すべてを見る場合は `--issue <name>` や `--all` を付けます。
 
-`sdd.config.json` の任意項目 `testCommand` は `check --stage impl` のときだけ実行されます（未設定ならスキップ）。
+実装の段階でテストを自動実行したい場合だけ、`sdd.config.json` の任意項目 `testCommand` にコマンドを書きます。
 
-`status` は現在ブランチ、指定 `--issue`、または `--all` の全 issue について、フェーズと次に使う skill を表示します。
+## 同梱スキル
 
-終了コードは `0`（問題なし）、`1`（ルール違反）、`2`（使い方またはセットアップ）です。行の形式は `path:line: RULE message` です。
+`/sdd-init`、`/sdd-req`、`/sdd-design`、`/sdd-task`、`/sdd-impl`、`/sdd-fix`、`/sdd-close`、`/sdd-quick`、`/sdd-reverse`、`/sdd-steering` です。
 
-`stamp` は、`base` のない置換・削除に、現在の恒久ドキュメント本文から求めた base ハッシュを書き込みます。`apply` は issue の差分を恒久ドキュメントに反映し、新しい ID を採番します。結果が `check` に通らない場合は何も書き込みません。`index` はすべての `index.md` を `description` から再生成します。`renumber` は、このブランチで追加した ID のうち、ベースブランチに既に存在するものだけを空き番号に振り直します。新しい capability のコードがベースブランチと重複する場合は、`--code OLD=NEW` を渡すまで `renumber` は停止します。
+## どの流れを選ぶか
 
-## 利用の流れ
+`/sdd-init` で変更の概要を書くと、内容から流れを決め、次に使うスキル（例: `/sdd-quick` や `/sdd-req`）を案内します。ブランチを切り、そのスキルから進めます。
 
-スキル本文は英語です。各スキルは最初に `check --scope setup` を実行します。ブランチ名は `issues/<name>/` と一致させます。
+```mermaid
+flowchart TD
+  init["/sdd-init"] --> branch["git checkout -b name"]
+  branch --> route{変更の種類}
+  route -->|要件や設計を変えない小さな修正| quickPath["/sdd-quick → /sdd-close"]
+  route -->|今ある動きを文書にするだけ| revPath["/sdd-reverse → /sdd-close"]
+  route -->|機能追加や仕様変更| fullPath["/sdd-req から /sdd-close まで"]
+  quickPath --> noteQuick["タスクだけ。要件・設計のドキュメントは書かない"]
+  revPath --> noteRev["コードに合わせて要件を追加"]
+```
 
-通常の変更:
+### 通常の機能追加
 
-1. `/sdd-init` で `issues/<name>/proposal.md` を作成する。
-2. `git checkout -b <name>`
-3. `/sdd-req` で `requirements.md` を作成する。
-4. `/sdd-design` で `research.md` と `design.md` を作成する。
-5. `/sdd-task` で `task.md` を作成する。
-6. `/sdd-impl` で未完了の大項目を実装する。ずれがあれば `/sdd-fix` で直す。
-7. `/sdd-close` でベースブランチを取り込み、`apply` と `check --stage close` を実行し、issue ディレクトリを削除し、プルリクエストのタイトルと本文を出力する。
+新しい振る舞いや仕様の変更です。init が `/sdd-req` を案内したあとの流れは次のとおりです。
 
-小さな変更: `/sdd-init` → `/sdd-quick` → `/sdd-close`。Quick は質問せず、requirements、research、design は書きません。specs、steering、決定の変更が必要な場合は停止します。
+```mermaid
+flowchart LR
+  R["/sdd-req"] --> D["/sdd-design"]
+  D --> T["/sdd-task"]
+  T --> I["/sdd-impl"]
+  I --> F{内容のずれ}
+  F -->|ある| X["/sdd-fix"]
+  X --> I
+  F -->|ない| C["/sdd-close"]
+```
 
-既存の振る舞いの書き起こし: `Type: docs` の `/sdd-init` → `/sdd-reverse` → `/sdd-close`。Reverse は requirements の追加だけを行います。
+手順。**エージェントチャット**と書いてある操作はチャット、それ以外はターミナルです。
 
-稼働中のアプリへ SDD を導入するとき: `init` のあと `/sdd-steering`（既に spec がある場合は要件 ID とコード参照の突合も含む）を完了し、続けて `/sdd-init` で issue を起こし、各 proposal に応じて `/sdd-reverse` または `/sdd-req` へ進みます。
+1. **エージェントチャット:** ベースブランチで `/sdd-init`（変更の概要を作成。ブランチはまだ作らない）。
+2. **ターミナル:** `git checkout -b <name>`（init が決めた issue フォルダ名と同じ）。
+3. **エージェントチャット:** `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl`。各スキルの指示どおりコミットする。ずれたら `/sdd-fix` してから続ける。
+4. **エージェントチャット:** `/sdd-close` でベースを取り込み、恒久ドキュメントを更新し、issue フォルダを削除し、PR 用のタイトルと本文を表示する（PR は開かない）。
 
-複数の提案をまとめて起票する（よくある開始方法）:
+### 小さな変更（quick）
 
-1. ベースブランチ上で、変更ごとに `/sdd-init` を実行する。
-2. トラッカーに issue を登録する（別のトラッカー連携スキルでも可）。各ディレクトリ名の先頭にトラッカーのキーを付ける。
-3. ベースブランチに `proposal.md` をコミットする。
-4. `git checkout -b <key>-<name>` で着手し、`/sdd-req` または `/sdd-quick` から進める。
-5. `/sdd-close` でブランチ上の issue ディレクトリを削除する。マージ後はベースブランチからも消える。
+仕様・steering・決定記録を変えずに済む小さな修正です。上と同じ 1・2 のあと、**エージェントチャット**で `/sdd-quick`（タスクだけ）→ `/sdd-close`。仕様や steering の更新が必要ならそこで止まります。
 
-## 手動検証スクリプト
+### 既存の振る舞いの記録（reverse）
 
-`scripts/` には、自動テスト（`node --test`）の対象外の任意スクリプトがあります。
+**コードにはすでに動きがあるのに、仕様に書かれていない**ときに使います。典型例は既存アプリに SDD を入れた直後（コードから仕様を埋める）、または残したい動きが文書化されていないと気づいたときです。一度に全部を書く必要はありません。重要な機能や、これから手を入れる機能から始めてください。
 
-- `node scripts/laravel-fixture-walkthrough.mjs` — Laravel 風の一時リポジトリで init から close まで通す。
-- [laravel-fp](https://github.com/paterapatera/laravel-fp) を clone したうえで `node scripts/laravel-fp-walkthrough.mjs`（`LARAVEL_FP` でパス指定可）。
+**`/sdd-steering` との違い:** steering は**プロジェクト全体**の前提（目的、技術、構成など）をまとめます。インストール後に一度行う。reverse は**一つの機能**について、すでにあるコードの動きを `specs/` の要件として残す。機能ごとに `/sdd-init` から繰り返す。
 
-## プルリクエスト
+最初から `/sdd-reverse` だけを呼ばないでください。**ベースブランチ**で **エージェントチャット**に、次のような文をそのまま送れます。
 
-プルリクエストの CI で `check` を実行し、そのチェックを必須にすることを推奨します。マージ前にベースブランチへ追従させるブランチ保護も推奨します。これらはリポジトリ設定の推奨であり、このパッケージが必須とするものではありません。
+```text
+/sdd-init 請求書の締め処理の今の動きを仕様に記録したい。コードは変えない。
+```
 
-次のジョブは共通スクリプトだけを実行します。トラッカーや、ワークフロー実行環境以外の CI 製品は呼びません。
+要点は **すでにある動きを文書に残す**ことで、新機能の追加やバグ修正ではないと伝えることです。init が最大 3 問聞く場合も、同じ目的で答えてください。
+
+init が終わると変更の概要を書き、**コードを変えない文書化**として分類し、次のスキルは **`/sdd-reverse`** と案内します。そのあと **ターミナル** `git checkout -b <name>`、**エージェントチャット** `/sdd-reverse` → `/sdd-close`。設計やタスクのドキュメントは省略されることが多く、close でも検査は走ります。
+
+## GitHub の issue と連携して使う場合
+
+GitHub Issues で進捗を管理するときの例です（issue や PR の作成はこのパッケージの範囲外。別のトラッカー連携スキルか手作業）。
+
+1. **エージェントチャット:** ベースブランチで、予定している変更の数だけ `/sdd-init` を実行する。
+2. 各変更を GitHub issue として登録する（トラッカースキルまたは手動）。
+3. フォルダ名・ブランチ名の先頭に issue 番号やキーを付ける（例: `42-invoice-fix`）。
+4. **ターミナル:** ベースブランチへ変更概要をコミットする。
+5. **ターミナル:** issue ごとに `git checkout -b <name>`。**エージェントチャット:** スキルを `/sdd-close` まで実行する。PR を開くときは `Closes #42` などで issue と結び付ける（手動またはトラッカースキル）。
+
+## 人が決めるところ
+
+| スキル | 作業内容 |
+|---|---|
+| `/sdd-init` | 目的・変更内容・対象外について最大 3 問 |
+| `/sdd-req`、`/sdd-design`、`/sdd-reverse`、`/sdd-fix` | 1 ラウンド最大 5 問（スコア付き選択肢） |
+| `/sdd-steering` の Resync | 差分を 1 件ずつ承認・却下・保留 |
+| `/sdd-impl` | タスク一覧の手動確認項目を実施（自動ではチェックしない） |
+| `/sdd-close` | マージ競合の解消、仕様コードの変更確認（求められた場合）、PR 文面のコピー |
+
+Quick は質問しません。`/sdd-task` も質問しません。
+
+## プルリクエスト CI（推奨）
 
 ```yaml
 name: sdd
@@ -134,4 +172,4 @@ jobs:
       - run: node .agents/skills/sdd-scripts/sdd.mjs check
 ```
 
-`sdd.config.json` の `"runtime"` が `"bun"` で **Bun が入っている** ときは `node` の代わりに `bun` を使います。同梱の `sdd.mjs` は Node 用スクリプト（`#!/usr/bin/env node`）なので、Bun が無い環境では **Node のまま実行**できます（例: `node .agents/skills/sdd-scripts/sdd.mjs check`）。**Node 18 以降**を想定します（下の CI 例は 24）。スキル本文が `bun` と書いていても、手元で Bun が無ければコマンドだけ `node` に読み替えてください。スクリプトが別の skills ディレクトリにある場合は、そのパスに読み替えてください。
+このチェックを必須にすることや、マージ前にベースへ追従させることはリポジトリ設定の推奨であり、このパッケージが強制するものではありません。
