@@ -26,7 +26,7 @@ If steering does not match the code and the difference is outside this issue, fi
 
 ## Issue feedback (`feedback.md`)
 
-Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-impl — <kind>` then a short summary. Do not read `knowledge/lessons/`.
+Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-impl — <kind>` then a short summary. Commit `feedback.md` on the branch when you append. Do not read `knowledge/lessons/`.
 
 Record when:
 

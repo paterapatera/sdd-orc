@@ -53,4 +53,4 @@ Do not commit `proposal.md`. A later `/sdd-req`, `/sdd-quick`, or `/sdd-reverse`
 
 ## Issue feedback (`feedback.md`)
 
-When this issue fixes something that should have been caught in a previously closed issue (for example post-merge CI or staging failure), append to `__SDD_DOCS_DIR__/issues/<feature>/feedback.md` (create with `# Feedback` if missing): `## YYYY-MM-DD sdd-init — missed-prior-close` and a short summary of what was missed and which closed issue it relates to.
+When this issue fixes something that should have been caught in a previously closed issue (for example post-merge CI or staging failure), append to `__SDD_DOCS_DIR__/issues/<feature>/feedback.md` (create with `# Feedback` if missing): `## YYYY-MM-DD sdd-init — missed-prior-close` and a short summary of what was missed and which closed issue it relates to. Commit `feedback.md` on the branch when you append.

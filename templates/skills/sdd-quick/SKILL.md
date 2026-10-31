@@ -19,7 +19,7 @@ When the work is done, commit `proposal.md`, `task.md`, and the implementation t
 
 ## Issue feedback (`feedback.md`)
 
-Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-quick — <kind>` then a short summary. Do not read `knowledge/lessons/`.
+Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-quick — <kind>` then a short summary. Commit `feedback.md` on the branch when you append. Do not read `knowledge/lessons/`.
 
 Record when:
 

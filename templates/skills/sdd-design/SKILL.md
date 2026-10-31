@@ -43,7 +43,7 @@ Run stamp and check again after every edit. Commit `research.md` and `design.md`
 
 ## Issue feedback (`feedback.md`)
 
-Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-design — <kind>` then a short summary. Do not read `knowledge/lessons/`.
+Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-design — <kind>` then a short summary. Commit `feedback.md` on the branch when you append (with the related doc commit or right after). Do not read `knowledge/lessons/`.
 
 Record when:
 

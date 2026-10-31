@@ -28,7 +28,7 @@ Commit L0 once with the proposal type. For L1 and above, commit the documents as
 
 ## Issue feedback (`feedback.md`)
 
-Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-fix — <kind>` then a short summary.
+Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-fix — <kind>` then a short summary. Commit `feedback.md` on the branch when you append.
 
 Record when:
 
