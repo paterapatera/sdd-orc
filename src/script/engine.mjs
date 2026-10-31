@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { regenerateLessonsIndex, validateLessons } from "./lessons.mjs";
 import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, sameAfterApply, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
 
@@ -90,6 +91,8 @@ function classify(docsDir, rel) {
   if (!rel.startsWith(`${docsDir}/`)) return "";
   const inner = rel.slice(docsDir.length + 1);
   if (inner.startsWith("issues/")) return "issue";
+  if (inner === "lessons/index.md") return "lesson-index";
+  if (/^lessons\/(?!index\.md$)[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(inner)) return "lesson";
   if (inner === "index.md" || inner === "specs/index.md" || inner === "decision/index.md" || inner === "steering/index.md") return "index";
   if (/^specs\/[^/]+\/index\.md$/.test(inner) || /^specs\/[^/]+\/[^/]+\/index\.md$/.test(inner)) return "index";
   if (inner === "specs/log.md" || inner === "decision/log.md" || inner === "steering/log.md") return "log";
@@ -314,12 +317,13 @@ export function regenerateIndexes(map, docsDir) {
     writeTaggedIndex(map, docsDir, "steering", "Steering", "How the product is built and operated today.", "steering");
   }
   const rootEntries = [];
-  for (const area of ["specs", "decision", "steering"]) {
+  for (const area of ["specs", "decision", "steering", "lessons"]) {
     const indexRel = `${docsDir}/${area}/index.md`;
     if (!map.has(indexRel)) continue;
-    const header = areaHeader(map.get(indexRel), area, "");
+    const header = areaHeader(map.get(indexRel), area, area === "lessons" ? "What went wrong in past work and which policy prevents a repeat." : "");
     rootEntries.push(`* [${header.title}](/${area}/) - ${header.description}`);
   }
+  regenerateLessonsIndex(map, docsDir);
   const root = `${renderFrontmatter({ okf_version: "0.2" }, ["okf_version"])}${rootEntries.join("\n")}\n`;
   map.set(`${docsDir}/index.md`, root);
 }
@@ -1063,6 +1067,7 @@ function validateTree(map, docsDir, options = {}) {
     if (["doc", "adr", "steering", "index"].includes(kind)) validateLinks(rel, value, map, docsDir, diags);
   }
   validateGlossary(map, docsDir, diags);
+  validateLessons(map, docsDir, diags);
   finishRefs(map, docsDir, diags);
   if (options.stage === "close") {
     for (const [rel, value] of map) {
@@ -1075,6 +1080,7 @@ function validateTree(map, docsDir, options = {}) {
   regenerateIndexes(fresh, docsDir);
   for (const [rel, value] of fresh) {
     if (!rel.endsWith("/index.md") && rel !== `${docsDir}/index.md`) continue;
+    if (classify(docsDir, rel) === "lesson") continue;
     if (map.get(rel) !== value) diags.push(diag(rel, 1, "INDEX_STALE", `Run ${indexCommand(options.config)} to regenerate this file`));
   }
   return diags;

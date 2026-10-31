@@ -1,6 +1,6 @@
 {
   "name": "@paterapatera/sdd-orc",
-  "version": "0.3.20",
+  "version": "1.0.0",
   "description": "Install SDD skills for Cursor, Codex, and Claude Code",
   "bin": {
     "sdd-orc": "./src/cli.mjs"
@@ -10,6 +10,7 @@
     "templates",
     "README.md",
     "README.ja.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "scripts": {

@@ -14,12 +14,16 @@ const COPY = {
     specsDescription: "Behavioral specifications for the product.",
     decisionTitle: "Decisions",
     decisionDescription: "Architecture decision records.",
+    lessonsTitle: "Lessons",
+    lessonsDescription: "What went wrong in past work and which policy prevents a repeat.",
   },
   ja: {
     specsTitle: "仕様",
     specsDescription: "プロダクトの振る舞いの仕様。",
     decisionTitle: "決定",
     decisionDescription: "アーキテクチャ決定記録。",
+    lessonsTitle: "Lessons",
+    lessonsDescription: "過去の作業で起きた問題と、再発を防ぐ方針。",
   },
 };
 
@@ -88,7 +92,8 @@ function isAllowedMarkdown(rel) {
   if (rel.startsWith("issues/")) return true;
   if (!rel.startsWith("knowledge/")) return false;
   rel = rel.slice("knowledge/".length);
-  if (["index.md", "specs/index.md", "specs/log.md", "decision/index.md", "decision/log.md", "steering/index.md", "steering/log.md"].includes(rel)) return true;
+  if (["index.md", "specs/index.md", "specs/log.md", "decision/index.md", "decision/log.md", "steering/index.md", "steering/log.md", "lessons/index.md"].includes(rel)) return true;
+  if (/^lessons\/(?!index\.md$)[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(rel)) return true;
   if (/^specs\/[^/]+\/index\.md$/.test(rel) || /^specs\/[^/]+\/[^/]+\/index\.md$/.test(rel)) return true;
   if (/^specs\/[^/]+\/[^/]+\/(spec|interfaces|data|quality)\.md$/.test(rel)) return true;
   if (/^decision\/\d+-[a-z0-9]+(?:-[a-z0-9]+)*\.md$/.test(rel)) return true;
@@ -135,6 +140,16 @@ function installScript(root, skillsDir) {
   return path.join(skillsDir, "skills", "sdd-scripts", "sdd.mjs").split(path.sep).join("/");
 }
 
+function ensureLessonsIndex(root, docsDir, lang) {
+  const copy = COPY[lang] || COPY.en;
+  const base = path.join(root, docsDir, "knowledge", "lessons");
+  const index = path.join(base, "index.md");
+  if (fs.existsSync(index)) return false;
+  fs.mkdirSync(base, { recursive: true });
+  fs.writeFileSync(index, `# ${copy.lessonsTitle}\n\n${copy.lessonsDescription}\n`);
+  return true;
+}
+
 function writeSkeleton(root, docsDir, lang) {
   const copy = COPY[lang] || COPY.en;
   const base = path.join(root, docsDir, "knowledge");
@@ -156,6 +171,7 @@ function writeSkeleton(root, docsDir, lang) {
     }
   }
   if (!fs.existsSync(path.join(base, "index.md"))) created = true;
+  if (ensureLessonsIndex(root, docsDir, lang)) created = true;
   return created;
 }
 
@@ -238,6 +254,7 @@ function update(root) {
     __SDD_BASE_BRANCH__: config.baseBranch,
     __SDD_SCRIPT__: scriptRel,
   });
+  if (ensureLessonsIndex(root, config.docsDir, config.lang)) runIndex(root, scriptRel);
   return 0;
 }
 
@@ -246,6 +263,11 @@ function migrate(root) {
   if (!config) {
     process.stderr.write("sdd.config.json:1: SETUP_CONFIG_MISSING Run npx @paterapatera/sdd-orc init\n");
     return 2;
+  }
+  const scriptRel = installScript(root, config.skillsDir[0]);
+  if (ensureLessonsIndex(root, config.docsDir, config.lang)) {
+    runIndex(root, scriptRel);
+    process.stdout.write("Created missing knowledge/lessons/index.md\n");
   }
   process.stdout.write("Nothing to convert for formatVersion 1.\n");
   return 0;

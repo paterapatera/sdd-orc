@@ -25,3 +25,13 @@ Do not uncheck finished majors. Put the changed ids, including MODIFIED and REMO
 For an issue created by `/sdd-quick`, L0 can be fixed in place. L1 and above stop and propose `/sdd-req`, `/sdd-design`, and `/sdd-task`.
 
 Commit L0 once with the proposal type. For L1 and above, commit the documents as `docs`, then commit the implementation with the proposal type. Stage named files only.
+
+## Issue feedback (`feedback.md`)
+
+Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-fix — <kind>` then a short summary.
+
+Record when:
+
+- Each applied fix (in addition to the `Fix:` item in `task.md`): kind `applied-fix`.
+- The person reports a problem found during Manual verification: kind `manual-verification`.
+- The same `check` diagnostic code appears again on this issue: kind `repeat-check` (include the code and how many times seen).

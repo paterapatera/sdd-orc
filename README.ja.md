@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、検査は各スキルがスクリプト経由で実行します。パッケージ名は `@paterapatera/sdd-orc` 0.3.20 です。Node.js 18 以降が必要です。
+sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、検査は各スキルがスクリプト経由で実行します。パッケージ名は `@paterapatera/sdd-orc` 1.0.0 です。Node.js 18 以降が必要です。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
@@ -13,12 +13,13 @@ issue の登録、プルリクエストの作成、`Closes #1` の記述は別�
 | パス | 意味 |
 |---|---|
 | `docs/knowledge/` | マージ後も残る仕様・決定記録（ADR）・steering |
+| `docs/knowledge/lessons/` | 過去に起きた問題と再発防止の方針（削除せず、状態はここで管理） |
 | `docs/issues/<name>/` | ブランチ `<name>` で作業中の変更用ファイル。close 後に削除 |
 
 ```text
 docs/
-  knowledge/          ← 恒久の specs、decision/、steering/
-  issues/<name>/      ← 変更概要、要件、設計、タスク（ブランチ上のみ）
+  knowledge/          ← 恒久の specs、decision/、steering/、lessons/
+  issues/<name>/      ← 変更概要、要件、設計、タスク、feedback（ブランチ上のみ）
 ```
 
 スキル本文は英語です。Git のブランチ名は issue フォルダ名と同じにしてください（例: ブランチもフォルダも `invoice-fix`、または `PROJ-12-invoice-fix` のようにトラッカーキーを付ける）。
@@ -143,6 +144,20 @@ GitHub Issues で進捗を管理するときの例です（issue や PR の作�
 4. **ターミナル:** ベースブランチへ変更概要をコミットする。
 5. **ターミナル:** issue ごとに `git checkout -b <name>`。**エージェントチャット:** スキルを `/sdd-close` まで実行する。PR を開くときは `Closes #42` などで issue と結び付ける（手動またはトラッカースキル）。
 
+## 教訓（lessons）と close
+
+作業中、スキルがブランチ上の `docs/issues/<name>/feedback.md` に短いメモを追記することがあります（日常の仕様作業で人が編集するものではありません）。**`/sdd-close`** のとき、エージェントがそのメモを読み、`docs/knowledge/lessons/` への更新を提案する。過去に何が起き、なぜ起き、どんな方針で防ぐかを残す。**issue フォルダを消す前に、教訓の変更一式を一度だけ承認**する。教訓は削除しない。状態（試行中・却下など）は `lessons/` に残る。要件や実装のスキルが読むのは **steering だけ**で、lessons は読まない。
+
+教訓の対象が steering のとき、close **は steering を書き換えません**。代わりに、そのまま送れる **`/sdd-init ...`** の文を表示するので、**新しい issue** として steering 変更を始めます。
+
+```mermaid
+flowchart LR
+  issue["issues/ の feedback"] --> close["/sdd-close"]
+  close --> lessons["knowledge/lessons/"]
+  close --> steerMsg["表示される /sdd-init"]
+  steerMsg --> newIssue["新 issue → steering"]
+```
+
 ## 人が決めるところ
 
 | スキル | 作業内容 |
@@ -151,7 +166,7 @@ GitHub Issues で進捗を管理するときの例です（issue や PR の作�
 | `/sdd-req`、`/sdd-design`、`/sdd-reverse`、`/sdd-fix` | 1 ラウンド最大 5 問（スコア付き選択肢） |
 | `/sdd-steering` の Resync | 差分を 1 件ずつ承認・却下・保留 |
 | `/sdd-impl` | タスク一覧の手動確認項目を実施（自動ではチェックしない） |
-| `/sdd-close` | マージ競合の解消、仕様コードの変更確認（求められた場合）、PR 文面のコピー |
+| `/sdd-close` | マージ競合の解消、仕様コードの変更確認（求められた場合）、**教訓の更新一式の承認**、PR 文面のコピー |
 
 Quick は質問しません。`/sdd-task` も質問しません。
 

@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 0.3.20. Node.js 18 or later.
+**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.0.0. Node.js 18 or later.
 
 Registering tracker issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -13,12 +13,13 @@ Default docs root is `docs` (override with `npx @paterapatera/sdd-orc init --doc
 | Path | Meaning |
 |---|---|
 | `docs/knowledge/` | Specs, ADRs, and steering that stay on the main branch |
+| `docs/knowledge/lessons/` | What went wrong before and which policy prevents a repeat (kept forever; status lives here) |
 | `docs/issues/<name>/` | Draft for one change while you are on Git branch `<name>`; removed when you close |
 
 ```text
 docs/
-  knowledge/          ← permanent specs, decision/, steering/
-  issues/<name>/      ← change summary, requirements, design, task (while on branch <name>)
+  knowledge/          ← permanent specs, decision/, steering/, lessons/
+  issues/<name>/      ← change summary, requirements, design, task, feedback (while on branch <name>)
 ```
 
 Skill text is **English**. Branch name must match the issue folder name (for example branch and folder `invoice-fix`, or `PROJ-12-invoice-fix` with a tracker prefix).
@@ -143,6 +144,20 @@ Optional pattern when you track work in GitHub Issues (this package does not cre
 4. **Terminal:** Commit the change summaries on the base branch.
 5. **Terminal:** `git checkout -b <name>` per issue; **agent chat:** run skills through `/sdd-close`. Link the PR to the issue (`Closes #42`) when you open it yourself or via your tracker skill.
 
+## Lessons and close
+
+While you work, skills may append short notes to `docs/issues/<name>/feedback.md` on the branch (you do not edit this for daily spec work). At **`/sdd-close`**, the agent reads those notes and may propose updates under `docs/knowledge/lessons/`: what went wrong, why, and a policy to prevent a repeat. **You approve all lesson changes once** before the issue folder is removed. Lessons are never deleted; their status (for example trial or rejected) stays in `lessons/`. Work skills keep reading **steering** only, not lessons.
+
+If a lesson says the fix belongs in steering, close **does not edit steering**. It prints a ready-to-send **`/sdd-init ...`** message so you start a **new issue** for that steering change.
+
+```mermaid
+flowchart LR
+  issue["issues/ feedback"] --> close["/sdd-close"]
+  close --> lessons["knowledge/lessons/"]
+  close --> steerMsg["printed /sdd-init for steering"]
+  steerMsg --> newIssue["new issue → steering"]
+```
+
 ## Where you decide (not the script)
 
 | Skill | You |
@@ -151,7 +166,7 @@ Optional pattern when you track work in GitHub Issues (this package does not cre
 | `/sdd-req`, `/sdd-design`, `/sdd-reverse`, `/sdd-fix` | Up to 5 scored choices per round |
 | `/sdd-steering` Resync | Accept, reject, or defer each reported item |
 | `/sdd-impl` | Complete manual verification tasks in the task list (not auto-checked) |
-| `/sdd-close` | Resolve merge conflicts; confirm renamed spec codes if prompted; copy PR text |
+| `/sdd-close` | Resolve merge conflicts; confirm renamed spec codes if prompted; **approve lesson updates as a whole**; copy PR text |
 
 Quick path asks no questions. `/sdd-task` asks no questions.
 

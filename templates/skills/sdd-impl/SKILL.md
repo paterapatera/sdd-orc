@@ -23,3 +23,14 @@ Refer to requirement ids only in test names and comments. Commit the checked wor
 Before reporting completion, run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --stage impl --issue <feature>`. It runs `testCommand` from `sdd.config.json` when set, checks that automated test files reference each non-Manual traceability id, and reports unchecked implementation tasks separately from human Manual verification (notes, not failures). Do not check Manual verification majors automatically.
 
 If steering does not match the code and the difference is outside this issue, finish the implementation and recommend `/sdd-steering`.
+
+## Issue feedback (`feedback.md`)
+
+Append to `__SDD_DOCS_DIR__/issues/<current-branch>/feedback.md` (create with `# Feedback` if missing). One entry per event: `## YYYY-MM-DD sdd-impl — <kind>` then a short summary. Do not read `knowledge/lessons/`.
+
+Record when:
+
+- A major stops after the third test failure: kind `test-stop`.
+- You stop because the design cannot be implemented as written: kind `design-blocked`.
+- Steering does not match the code and you recommend `/sdd-steering`: kind `steering-drift`.
+- The same `check` diagnostic code appears again on this issue: kind `repeat-check` (include the code and count).
