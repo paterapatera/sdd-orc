@@ -38,7 +38,7 @@ test("init, update, and migrate install one shared script", () => {
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-lessons/SKILL.md")), true);
   assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Record these lesson entries/i);
   assert.doesNotMatch(read(dir, ".agents/skills/sdd-close/SKILL.md"), /ready-to-send agent chat line/i);
-  assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /\/sdd-lessons/);
+  assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /check --scope knowledge/);
   assert.match(read(dir, ".agents/skills/sdd-scripts/sdd.mjs"), /^#!\/usr\/bin\/env node/);
   assert.doesNotMatch(read(dir, ".agents/skills/sdd-scripts/sdd.mjs"), /from "\.\/|from '\.\//);
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-brownfield")), false);
@@ -939,6 +939,18 @@ test("status lists phase and next skill", () => {
   const all = sdd(dir, ["status", "--all", "--format", "json"]);
   const parsed = JSON.parse(all.stdout);
   assert.ok(parsed.issues.some((item) => item.issue === "invoice-reissue"));
+});
+
+test("check --scope knowledge passes without an issue directory on the branch", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "docs-lessons-review-2026-11"], dir);
+  const plain = sdd(dir, ["check"]);
+  assert.equal(plain.status, 2);
+  assert.match(plain.stdout, /ISSUE_NOT_FOUND/);
+  const knowledge = sdd(dir, ["check", "--scope", "knowledge"]);
+  assert.equal(knowledge.status, 0, knowledge.stdout);
+  assert.match(knowledge.stdout, /ok: knowledge/);
 });
 
 test("check --allow-missing succeeds without an issue directory", () => {

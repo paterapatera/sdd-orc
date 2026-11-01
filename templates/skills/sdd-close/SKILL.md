@@ -20,9 +20,9 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Only this skill 
 
    **Never write issue folder names, branch names, or tracker keys into `knowledge/lessons/`** (or any other durable doc). Those names stay in `issues/` only (for example in `feedback.md` dispositions).
 
-   Each lesson page is `lessons/<kebab-slug>.md` with an H1 title and these `##` sections in order: What happened, Why, Policy, Occurrences, Occurrence log, Review closes, Status, Reason, Target. Status is one of `candidate`, `trial`, `effective`, `ineffective`, `rejected`. Target is one of `steering`, `config-or-code`, `sdd-orc-skill`. **Reason** is required exactly when Status is `ineffective` or `rejected`; leave Reason empty for all other statuses.
+   Each lesson page is `lessons/<kebab-slug>.md` with an H1 title and these `##` sections in order: What happened, Why, Policy, Occurrences, Occurrence log, Review closes, Last reviewed, Status, Reason, Target. Status is one of `candidate`, `trial`, `effective`, `ineffective`, `rejected`. Target is one of `steering`, `config-or-code`, `sdd-orc-skill`. **Reason** is required exactly when Status is `ineffective` or `rejected`; leave Reason empty for all other statuses.
 
-   **New lessons:** set Status to `candidate` and a provisional **Target** (best guess). **Existing lessons:** leave Status and Reason unchanged on this skill.
+   **New lessons:** set Status to `candidate`, a provisional **Target** (best guess), and leave **Last reviewed** empty. Close never updates **Last reviewed** on existing lessons. **Existing lessons:** leave Status, Reason, and Last reviewed unchanged on this skill.
 
    **Occurrences** is a positive integer (total times this lesson matched a real recurrence). **Occurrence log** lists each event as `- YYYY-MM-DD: <short description>` using the **close date** of the issue where it was handled (plain language; no issue or branch names). On every recurrence increment Occurrences by one and append one log line. Occurrences must be **≥** the number of log lines. **Review closes** lists `- YYYY-MM-DD` lines only: one per close where this lesson was reviewed and **no** new log line was added (policy held for that issue).
 

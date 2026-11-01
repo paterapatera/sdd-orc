@@ -13,7 +13,7 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
 **Scope:** read and write **`__SDD_KNOWLEDGE_DIR__/lessons/`** only (pages and index). Never edit specs, decisions, steering, or issue directories. Never apply steering changes here — adoption prints a **`/sdd-init ...`** chat line for the person to start a **new issue**.
 
-**Branching:** work on a short docs branch (for example `docs/lessons-review-2026-11`), same as other knowledge edits. Commit as `docs: <description>` in `__SDD_LANG__`, run `check`, push, and open a PR. If your project allows direct commits to the base branch for docs-only lesson status updates, you may commit there instead; prefer a PR when CI or review is required.
+**Branch:** use a docs branch name that is **not** an issue folder name (for example `docs-lessons-review-2026-11`), or stay on the current branch. Commit as `docs: <description>` in `__SDD_LANG__` on that branch when finished. Do not push or open a pull request from this skill.
 
 ## Steps
 
@@ -23,17 +23,17 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
    **A. Undecided candidates** — Status `candidate` (not yet adopted to trial).
 
-   **B. New activity since last review** — Occurrences or Occurrence log grew since the last time a lead ran this skill (compare log dates and counts; if unsure, treat any new log line or increment since the last `docs:` lesson review commit on the base branch as new activity).
+   **B. New activity since last review** — any **Occurrence log** line whose date is **after** the lesson’s **Last reviewed** date (section `## Last reviewed`: one `YYYY-MM-DD` or empty). If Last reviewed is empty or the section is missing, every log line counts as new activity.
 
    **C. Trial → effective** — Status `trial` and **Review closes** has at least **3** date lines **after** the date on the latest **Occurrence log** line (three later closes reviewed the lesson without a new occurrence). Propose moving to `effective`.
 
-   **D. Ineffective candidates (computed, no extra field)** — Status `trial` or `effective`, and **either** a new Occurrence log line was added on a recent close while the lesson’s Policy is already reflected in steering (or the agreed config/code fix is in place), **or** the same failure pattern clearly matches steering that already states the policy. Compare Policy wording to steering files; do not guess from memory. These are candidates to mark `ineffective` with a Reason, not automatic status changes.
+   **D. Ineffective candidates (computed)** — Status `trial` or `effective`, and **either** group B applies while the lesson’s Policy is already reflected in steering (or the agreed config/code fix is in place), **or** the same failure pattern clearly matches steering that already states the policy. Compare Policy wording to steering files; do not guess from memory. These are candidates to mark `ineffective` with a Reason, not automatic status changes.
 
 3. For each listed item (or batch), ask the lead to choose **adopt**, **reject**, or **hold**.
 
-   - **Hold:** no file change for that slug this round.
-   - **Reject:** set Status `rejected`, require **Reason**, clear Target if you standardize rejected pages (Reason required; Target may stay for history).
-   - **Adopt:** set Status `trial`, confirm **Target** (`steering`, `config-or-code`, or `sdd-orc-skill`). Then print ready-to-send output (do not edit steering):
+   - **Hold:** set **Last reviewed** to today’s date (`YYYY-MM-DD`) so the lesson leaves group B until a newer Occurrence log line appears. No other change unless the lead asks.
+   - **Reject:** set Status `rejected`, require **Reason**, set **Last reviewed** to today’s date.
+   - **Adopt:** set Status `trial`, confirm **Target** (`steering`, `config-or-code`, or `sdd-orc-skill`), set **Last reviewed** to today’s date. Then print ready-to-send output (do not edit steering):
 
      **Target `steering` or `config-or-code`:** one agent chat line plus the Impact block shape from `/sdd-init`:
 
@@ -55,14 +55,14 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
      **Target `sdd-orc-skill`:** print an improvement request for the `@paterapatera/sdd-orc` package (bundled skill change), not a project-local skill edit — project skill dirs are overwritten by `npx @paterapatera/sdd-orc update`.
 
-   - **Trial → effective:** when the lead confirms group C items, set Status `effective` (Reason empty).
+   - **Trial → effective:** when the lead confirms group C items, set Status `effective` (Reason empty) and **Last reviewed** to today’s date.
 
-   - **Ineffective:** when the lead confirms group D items, set Status `ineffective`, require **Reason**, keep Occurrence log as recorded by close.
+   - **Ineffective:** when the lead confirms group D items, set Status `ineffective`, require **Reason**, keep Occurrence log as recorded by close, set **Last reviewed** to today’s date.
 
 4. Write only changed lesson pages under `__SDD_KNOWLEDGE_DIR__/lessons/`. Regenerate the index: `__SDD_RUNTIME__ __SDD_SCRIPT__ index`.
 
-5. Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check`. Fix any lesson validation errors before commit.
+5. Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope knowledge`. Fix any validation errors before commit.
 
-6. Commit on the docs branch as `docs: <description>` in `__SDD_LANG__` (for example “review lessons for November”). Push and open a PR if your workflow uses one.
+6. Commit on the current branch as `docs: <description>` in `__SDD_LANG__` (for example “review lessons for November”).
 
 Do not delete lesson pages. Work skills continue to read **steering** only, not individual lesson pages (`/sdd-init` may read `lessons/index.md` only per its skill).

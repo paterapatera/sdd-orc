@@ -3,7 +3,8 @@ import { diag } from "./util.mjs";
 
 export const LESSON_STATUSES = ["candidate", "trial", "effective", "ineffective", "rejected"];
 export const LESSON_TARGETS = ["steering", "config-or-code", "sdd-orc-skill"];
-export const LESSON_SECTIONS = ["What happened", "Why", "Policy", "Occurrences", "Occurrence log", "Review closes", "Status", "Reason", "Target"];
+export const LESSON_SECTIONS = ["What happened", "Why", "Policy", "Occurrences", "Occurrence log", "Review closes", "Last reviewed", "Status", "Reason", "Target"];
+const LAST_REVIEWED_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const TRIAL_TO_EFFECTIVE_ISSUE_COUNT = 3;
 
 const OCCURRENCE_LOG_LINE = /^-\s+(\d{4}-\d{2}-\d{2}):\s+(\S(?:.*\S)?)\s*$/;
@@ -103,6 +104,20 @@ function validateReviewClosesSection(rel, text, diags) {
       diags.push(diag(rel, 1, "LESSONS_REVIEW_CLOSES", "Each Review closes line must be - YYYY-MM-DD (close date when the lesson was reviewed without a new occurrence)"));
       break;
     }
+  }
+}
+
+export function parseLastReviewedDate(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return "";
+  return LAST_REVIEWED_DATE.test(trimmed) ? trimmed : null;
+}
+
+function validateLastReviewedSection(rel, text, diags) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return;
+  if (!LAST_REVIEWED_DATE.test(trimmed)) {
+    diags.push(diag(rel, 1, "LESSONS_LAST_REVIEWED", "Last reviewed must be empty or a single YYYY-MM-DD date"));
   }
 }
 
@@ -273,6 +288,10 @@ export function validateLessons(map, docsDir, diags) {
     if (!/^# .+/m.test(body)) diags.push(diag(rel, 1, "LESSONS_PAGE", "Lesson page needs an H1 title"));
     const sections = parseSections(body);
     for (const name of LESSON_SECTIONS) {
+      if (name === "Last reviewed") {
+        if (sections.has(name)) validateLastReviewedSection(rel, sections.get(name), diags);
+        continue;
+      }
       if (!sections.has(name)) diags.push(diag(rel, 1, "LESSONS_PAGE", `Missing section ## ${name}`));
     }
     const status = (sections.get("Status") || "").trim().toLowerCase();
@@ -310,5 +329,5 @@ Append-only log for this issue. Add one \`##\` entry per event (short, plain lan
 
 Entry heading format: \`## YYYY-MM-DD <skill> — <kind>\`
 
-After the person approves lesson handling at close, add \`- Lessons: <kebab-slug>\` or \`- Lessons: excluded: <reason>\` to each entry (and under each Fix: item in task.md when used).
+After the person confirms lesson records at close, add \`- Lessons: <kebab-slug>\` or \`- Lessons: excluded: <reason>\` to each entry (and under each Fix: item in task.md when used).
 `;

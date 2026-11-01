@@ -7,6 +7,7 @@ import {
   parseFixItems,
   validateCloseLessons,
   TRIAL_TO_EFFECTIVE_ISSUE_COUNT,
+  parseLastReviewedDate,
 } from "../src/script/lessons.mjs";
 
 function read(dir, rel) {
@@ -37,6 +38,10 @@ Document the canonical dev port in steering; do not rely on ad hoc ports.
 - 2026-01-15: Local dev port clash during tests.
 
 ## Review closes
+
+
+
+## Last reviewed
 
 
 
@@ -156,6 +161,32 @@ test("close check fails on unprocessed feedback then passes with disposition", (
   assert.equal(ok.status, 0, ok.stdout);
 });
 
+test("Last reviewed accepts empty or YYYY-MM-DD and rejects other text", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  writeSteering(dir);
+  const file = path.join(dir, "docs/knowledge/lessons/reviewed.md");
+  fs.writeFileSync(file, sampleLesson("reviewed").replace("## Last reviewed\n\n\n", "## Last reviewed\n\n2026-11-01\n"));
+  sdd(dir, ["index"]);
+  assert.equal(sdd(dir, ["check", "--scope", "knowledge"]).status, 0);
+  fs.writeFileSync(file, sampleLesson("reviewed").replace("## Last reviewed\n\n\n", "## Last reviewed\n\nnot-a-date\n"));
+  assert.match(sdd(dir, ["check", "--scope", "knowledge"]).stdout, /LESSONS_LAST_REVIEWED/);
+  assert.equal(parseLastReviewedDate("2026-11-01"), "2026-11-01");
+  assert.equal(parseLastReviewedDate(""), "");
+  assert.equal(parseLastReviewedDate("bad"), null);
+});
+
+test("legacy lesson without Last reviewed section still passes check", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  writeSteering(dir);
+  let body = sampleLesson("legacy");
+  body = body.replace(/\n## Last reviewed\n\n\n## Status/, "\n## Status");
+  fs.writeFileSync(path.join(dir, "docs/knowledge/lessons/legacy.md"), body);
+  sdd(dir, ["index"]);
+  assert.equal(sdd(dir, ["check", "--scope", "knowledge"]).status, 0, sdd(dir, ["check", "--scope", "knowledge"]).stdout);
+});
+
 test("close creates lessons index when directory was missing", () => {
   const dir = tempRepo();
   assert.equal(initRepo(dir).status, 0);
@@ -251,6 +282,10 @@ test("close check passes with occurrence log and no issue names in lessons", () 
 
 
 
+## Last reviewed
+
+
+
 ## Status
 
 trial
@@ -268,4 +303,31 @@ steering
   const result = sdd(dir, ["check", "--stage", "close", "--issue", "eval-empty-hint"]);
   assert.equal(result.status, 0, result.stdout);
   assert.doesNotMatch(result.stdout, /CLOSE_ISSUE_NAME/);
+});
+
+test("Last reviewed accepts empty or YYYY-MM-DD and rejects other text", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  writeSteering(dir);
+  const file = path.join(dir, "docs/knowledge/lessons/reviewed.md");
+  fs.writeFileSync(file, sampleLesson("reviewed").replace("## Last reviewed\n\n\n", "## Last reviewed\n\n2026-11-01\n"));
+  sdd(dir, ["index"]);
+  assert.equal(sdd(dir, ["check", "--scope", "knowledge"]).status, 0);
+  fs.writeFileSync(file, sampleLesson("reviewed").replace("## Last reviewed\n\n\n", "## Last reviewed\n\nnot-a-date\n"));
+  assert.match(sdd(dir, ["check", "--scope", "knowledge"]).stdout, /LESSONS_LAST_REVIEWED/);
+  assert.equal(parseLastReviewedDate("2026-11-01"), "2026-11-01");
+  assert.equal(parseLastReviewedDate(""), "");
+  assert.equal(parseLastReviewedDate("bad"), null);
+});
+
+test("legacy lesson without Last reviewed section still passes check", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  writeSteering(dir);
+  let body = sampleLesson("legacy");
+  body = body.replace(/\n## Last reviewed\n\n\n## Status/, "\n## Status");
+  fs.writeFileSync(path.join(dir, "docs/knowledge/lessons/legacy.md"), body);
+  sdd(dir, ["index"]);
+  const result = sdd(dir, ["check", "--scope", "knowledge"]);
+  assert.equal(result.status, 0, result.stdout);
 });

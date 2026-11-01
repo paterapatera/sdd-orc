@@ -1909,8 +1909,21 @@ function runCheck(root, config, opts) {
       if (relevant.some((item) => item.rule !== "SETUP_STEERING_MISSING")) return { code: exitCode(relevant.filter((item) => item.rule !== "SETUP_STEERING_MISSING")), stdout: output(relevant.filter((item) => item.rule !== "SETUP_STEERING_MISSING"), opts.format), stderr: "" };
     }
   }
-  if (setup.some((item) => item.rule === "SETUP_STEERING_MISSING") && opts.scope !== "setup") {
+  if (setup.some((item) => item.rule === "SETUP_STEERING_MISSING") && opts.scope !== "setup" && opts.scope !== "knowledge") {
     return { code: 1, stdout: output(setup, opts.format), stderr: "" };
+  }
+  if (opts.scope === "knowledge") {
+    if (setup.some((item) => item.rule === "SETUP_STEERING_MISSING")) {
+      return { code: 1, stdout: output(setup, opts.format), stderr: "" };
+    }
+    const blocking = setup.filter((item) => item.rule !== "SETUP_STEERING_MISSING");
+    if (blocking.length) {
+      return { code: exitCode(blocking), stdout: checkOutput(blocking, opts.format, "knowledge"), stderr: "" };
+    }
+    const healNotes = [];
+    const tree = healStaleIndexes(root, config, loadTree(root, kdir(config)), healNotes);
+    const diags = [...healNotes, ...validateTree(tree, kdir(config), { lang: config.lang || "en", root, stage: opts.stage, config })];
+    return { code: exitCode(diags), stdout: checkOutput(diags, opts.format, "knowledge"), stderr: "" };
   }
   const issue = resolveIssue(root, config, opts.issue);
   const issuePresent = issue && fs.existsSync(issueDir(root, config, issue));
