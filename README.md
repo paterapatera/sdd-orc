@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.0.0. Node.js 18 or later.
+**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.1.0. Node.js 18 or later.
 
 Registering tracker issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -75,7 +75,7 @@ If `/sdd-impl` should run your test suite automatically, set optional `testComma
 
 ## Skills included
 
-`/sdd-init`, `/sdd-req`, `/sdd-design`, `/sdd-task`, `/sdd-impl`, `/sdd-fix`, `/sdd-close`, `/sdd-quick`, `/sdd-reverse`, `/sdd-steering`.
+`/sdd-init`, `/sdd-req`, `/sdd-design`, `/sdd-task`, `/sdd-impl`, `/sdd-fix`, `/sdd-close`, `/sdd-lessons`, `/sdd-quick`, `/sdd-reverse`, `/sdd-steering`.
 
 ## Which path to take
 
@@ -144,17 +144,20 @@ Optional pattern when you track work in GitHub Issues (this package does not cre
 4. **Terminal:** Commit the change summaries on the base branch.
 5. **Terminal:** `git checkout -b <name>` per issue; **agent chat:** run skills through `/sdd-close`. Link the PR to the issue (`Closes #42`) when you open it yourself or via your tracker skill.
 
-## Lessons and close
+## Lessons, close, and review
 
-While you work, skills may append short notes to `docs/issues/<name>/feedback.md` on the branch (you do not edit this for daily spec work). Keep those commits on the branch so notes are not lost before close. At **`/sdd-close`**, the agent reads those notes and may propose updates under `docs/knowledge/lessons/`: what went wrong, why, and a policy to prevent a repeat. Each lesson keeps a dated **Occurrence log** (what happened, without issue folder names). **You approve all lesson changes once** before the issue folder is removed; the agent records that approval with `- Lessons:` lines in `feedback.md`. Lessons are never deleted; their status (for example trial or rejected) stays in `lessons/`. Work skills keep reading **steering** only, not lessons. Plain `check` may regenerate `lessons/index.md` when lesson pages change and prints a short note so you can commit the diff.
+While you work, skills may append short notes to `docs/issues/<name>/feedback.md` on the branch (you do not edit this for daily spec work). Keep those commits on the branch so notes are not lost before close. At **`/sdd-close`**, the agent reads those notes and **records** updates under `docs/knowledge/lessons/`: what went wrong, why, and a candidate policy. New lessons start as **`candidate`**. Recurrences add dated **Occurrence log** lines (no issue folder names). Lessons you reviewed without a new recurrence get a **Review closes** date. Before the issue folder is removed, the agent asks a **short factual** question (“record these lesson entries?”) and writes `- Lessons:` lines in `feedback.md` for check. Close does **not** adopt policies into steering, change lesson status, or print `/sdd-init`.
 
-If a lesson says the fix belongs in steering, close **does not edit steering**. It prints a ready-to-send **`/sdd-init ...`** message so you start a **new issue** for that steering change. If you **re-close** after merging the base branch and the same lesson file conflicted, keep the stricter status: rejected beats ineffective, then effective, trial, and candidate; keep the Reason from the winning rejected or ineffective side.
+A **lead** runs **`/sdd-lessons`** on a schedule (for example `/sdd-lessons review this month's lessons`) to adopt (`trial`), reject, hold, or promote lessons (`effective` / `ineffective`) and to print **`/sdd-init ...`** when steering or config must change in a **new issue**. Review lists each lesson in at most one of four groups: **A** never-judged candidates, **B** held or rejected candidates with a new recurrence, **C** trials with enough **Review closes** strictly after the latest log and at least one close strictly after **Last reviewed** (same calendar day does not count), **D** trials or effectives that recurred (**D** wins over **C** when both apply; see the skill for exact rules). Lessons are never deleted; status lives in `lessons/`. Work skills read **steering** only, not lesson pages. Plain `check` may regenerate `lessons/index.md` when lesson pages change and prints a short note so you can commit the diff.
+
+If you **re-close** after merging the base branch and the same lesson file conflicted, keep the stricter status: rejected beats ineffective, then effective, trial, and candidate; keep the Reason from the winning rejected or ineffective side.
 
 ```mermaid
 flowchart LR
-  issue["issues/ feedback"] --> close["/sdd-close"]
+  issue["issues/ feedback"] --> close["/sdd-close records"]
   close --> lessons["knowledge/lessons/"]
-  close --> steerMsg["printed /sdd-init for steering"]
+  lessons --> review["/sdd-lessons lead review"]
+  review --> steerMsg["printed /sdd-init for steering"]
   steerMsg --> newIssue["new issue → steering"]
 ```
 
@@ -166,7 +169,8 @@ flowchart LR
 | `/sdd-req`, `/sdd-design`, `/sdd-reverse`, `/sdd-fix` | Up to 5 scored choices per round |
 | `/sdd-steering` Resync | Accept, reject, or defer each reported item |
 | `/sdd-impl` | Complete manual verification tasks in the task list (not auto-checked) |
-| `/sdd-close` | Resolve merge conflicts; confirm renamed spec codes if prompted; **approve lesson updates as a whole**; copy PR text |
+| `/sdd-close` | Resolve merge conflicts; confirm renamed spec codes if prompted; **confirm lesson records**; copy PR text |
+| `/sdd-lessons` | **Lead:** adopt, reject, hold, or promote lessons; copy `/sdd-init` follow-ups (does not edit steering) |
 
 Quick path asks no questions. `/sdd-task` asks no questions.
 

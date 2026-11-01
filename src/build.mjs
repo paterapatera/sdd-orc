@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
-export function bundleSdd() {
+export function generateSddBundle() {
   const entry = path.join(packageRoot, "src/script/main.mjs");
   const nodeImports = new Map();
   const chunks = [];
@@ -87,7 +87,11 @@ export function bundleSdd() {
     for (const info of namespaces) prelude += `import * as ${info.local} from "${spec}";\n`;
   }
   const packageJson = JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"));
-  const out = `#!/usr/bin/env node\nconst PACKAGE_VERSION = ${JSON.stringify(packageJson.version)};\n${prelude}\n${chunks.join("\n\n")}\n`;
+  return `#!/usr/bin/env node\nconst PACKAGE_VERSION = ${JSON.stringify(packageJson.version)};\n${prelude}\n${chunks.join("\n\n")}\n`;
+}
+
+export function bundleSdd() {
+  const out = generateSddBundle();
   const destination = path.join(packageRoot, "dist/sdd.mjs");
   fs.mkdirSync(path.dirname(destination), { recursive: true });
   fs.writeFileSync(destination, out);

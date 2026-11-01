@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { bundleSdd } from "./build.mjs";
+import { generateSddBundle } from "./build.mjs";
 import { FORMAT_VERSION } from "./script/util.mjs";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -23,7 +23,7 @@ const COPY = {
     decisionTitle: "決定",
     decisionDescription: "アーキテクチャ決定記録。",
     lessonsTitle: "Lessons",
-    lessonsDescription: "過去の作業で起きた問題と、再発を防ぐ方針。",
+    lessonsDescription: "What went wrong in past work and which policy prevents a repeat.",
   },
 };
 
@@ -133,10 +133,10 @@ function copySkills(root, skillsDirs, tokens) {
 }
 
 function installScript(root, skillsDir) {
-  const bundled = bundleSdd();
+  const bundled = generateSddBundle();
   const destination = path.join(root, skillsDir, "skills", "sdd-scripts");
   fs.mkdirSync(destination, { recursive: true });
-  fs.copyFileSync(bundled, path.join(destination, "sdd.mjs"));
+  fs.writeFileSync(path.join(destination, "sdd.mjs"), bundled);
   return path.join(skillsDir, "skills", "sdd-scripts", "sdd.mjs").split(path.sep).join("/");
 }
 

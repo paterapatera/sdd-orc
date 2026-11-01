@@ -3,7 +3,8 @@ import { diag } from "./util.mjs";
 
 export const LESSON_STATUSES = ["candidate", "trial", "effective", "ineffective", "rejected"];
 export const LESSON_TARGETS = ["steering", "config-or-code", "sdd-orc-skill"];
-export const LESSON_SECTIONS = ["What happened", "Why", "Policy", "Occurrences", "Occurrence log", "Review closes", "Status", "Reason", "Target"];
+export const LESSON_SECTIONS = ["What happened", "Why", "Policy", "Occurrences", "Occurrence log", "Review closes", "Last reviewed", "Status", "Reason", "Target"];
+const LAST_REVIEWED_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const TRIAL_TO_EFFECTIVE_ISSUE_COUNT = 3;
 
 const OCCURRENCE_LOG_LINE = /^-\s+(\d{4}-\d{2}-\d{2}):\s+(\S(?:.*\S)?)\s*$/;
@@ -106,6 +107,20 @@ function validateReviewClosesSection(rel, text, diags) {
   }
 }
 
+export function parseLastReviewedDate(text) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return "";
+  return LAST_REVIEWED_DATE.test(trimmed) ? trimmed : null;
+}
+
+function validateLastReviewedSection(rel, text, diags) {
+  const trimmed = String(text || "").trim();
+  if (!trimmed) return;
+  if (!LAST_REVIEWED_DATE.test(trimmed)) {
+    diags.push(diag(rel, 1, "LESSONS_LAST_REVIEWED", "Last reviewed must be empty or a single YYYY-MM-DD date"));
+  }
+}
+
 function parseLessonsDisposition(line) {
   const match = LESSONS_LINE.exec(line.trim());
   if (!match) return null;
@@ -119,20 +134,19 @@ export function parseFeedbackEntries(feedbackText) {
   if (!feedbackText.trim()) return [];
   const entries = [];
   const lines = feedbackText.replace(/\r\n/g, "\n").split("\n");
-  let current = null;
-  for (let index = 0; index < lines.length; index += 1) {
+  let index = 0;
+  while (index < lines.length) {
     const match = /^## (.+)$/.exec(lines[index]);
-    if (!match) continue;
-    if (current) entries.push(current);
-    current = { heading: match[1].trim(), line: index + 1, lines: [] };
-  }
-  if (current) {
-    for (let index = current.line; index < lines.length; index += 1) {
-      if (/^## /.test(lines[index])) break;
-      if (index === current.line - 1) continue;
-      current.lines.push(lines[index]);
+    if (!match) {
+      index += 1;
+      continue;
     }
-    entries.push(current);
+    const heading = match[1].trim();
+    const line = index + 1;
+    const start = index + 1;
+    index += 1;
+    while (index < lines.length && !/^## /.test(lines[index])) index += 1;
+    entries.push({ heading, line, lines: lines.slice(start, index) });
   }
   return entries;
 }
@@ -149,15 +163,22 @@ export function parseFixItems(taskText) {
   const fixes = [];
   if (!taskText) return fixes;
   const lines = taskText.replace(/\r\n/g, "\n").split("\n");
+  const topLevelFix = /^\s*-\s+\[[ xX]\]\s+\d+\.\s+Fix:/;
+  const taskLine = /^\s*-\s+\[[ xX]\]\s+\d+(?:\.\d+)?\.\s+/;
   for (let index = 0; index < lines.length; index += 1) {
-    if (!/^\s*-\s+\[[ xX]\]\s+\d+(?:\.\d+)?\.\s+Fix:/.test(lines[index])) continue;
+    if (!topLevelFix.test(lines[index])) continue;
     const block = [lines[index]];
+    const baseIndent = lines[index].match(/^(\s*)/)[1].length;
     for (let j = index + 1; j < lines.length; j += 1) {
-      if (/^\s*-\s+\[[ xX]\]\s+\d+\./.test(lines[j]) && !/Fix:/.test(lines[j])) break;
-      if (/^\s*-\s+\[[ xX]\]\s+\d+(?:\.\d+)?\./.test(lines[j]) && j !== index) break;
-      if (/^-\s+\[[ xX]\]\s+\d+\.\s/.test(lines[j]) && !/^\s+/.test(lines[j]) && j !== index) break;
-      block.push(lines[j]);
-      if (/^\S/.test(lines[j]) && j > index) break;
+      const line = lines[j];
+      if (topLevelFix.test(line) && j !== index) break;
+      if (!line.trim()) {
+        block.push(line);
+        continue;
+      }
+      const indent = line.match(/^(\s*)/)[1].length;
+      if (indent <= baseIndent && taskLine.test(line)) break;
+      block.push(line);
     }
     fixes.push({ line: index + 1, lines: block });
   }
@@ -197,7 +218,7 @@ export function validateCloseLessons(config, issue, files, map, diags, docsDir) 
   for (const fix of fixes) {
     const disposition = fixDisposition(fix);
     if (!disposition) {
-      diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, fix.line, "LESSONS_UNPROCESSED", "Each Fix: item needs - Lessons: <slug> or - Lessons: excluded: <reason> after approval"));
+      diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, fix.line, "LESSONS_UNPROCESSED", "Each top-level Fix: major needs - Lessons: <slug> or - Lessons: excluded: <reason> after confirmation"));
       continue;
     }
     if (disposition.type === "slug") {
@@ -273,6 +294,10 @@ export function validateLessons(map, docsDir, diags) {
     if (!/^# .+/m.test(body)) diags.push(diag(rel, 1, "LESSONS_PAGE", "Lesson page needs an H1 title"));
     const sections = parseSections(body);
     for (const name of LESSON_SECTIONS) {
+      if (name === "Last reviewed") {
+        if (sections.has(name)) validateLastReviewedSection(rel, sections.get(name), diags);
+        continue;
+      }
       if (!sections.has(name)) diags.push(diag(rel, 1, "LESSONS_PAGE", `Missing section ## ${name}`));
     }
     const status = (sections.get("Status") || "").trim().toLowerCase();
@@ -310,5 +335,5 @@ Append-only log for this issue. Add one \`##\` entry per event (short, plain lan
 
 Entry heading format: \`## YYYY-MM-DD <skill> — <kind>\`
 
-After the person approves lesson handling at close, add \`- Lessons: <kebab-slug>\` or \`- Lessons: excluded: <reason>\` to each entry (and under each Fix: item in task.md when used).
+After the person confirms lesson records at close, add \`- Lessons: <kebab-slug>\` or \`- Lessons: excluded: <reason>\` to each feedback entry and to each **top-level** \`N. Fix:\` major in task.md (not to nested \`N.M. Fix:\` minors).
 `;
