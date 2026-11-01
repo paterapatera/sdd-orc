@@ -6,6 +6,7 @@
 - Add bundled skill **`/sdd-lessons`** for leads to adopt, reject, hold, or promote lessons and to print `/sdd-init` follow-ups when steering or config changes are needed.
 - Add **`check --scope knowledge`** to validate the knowledge tree (including lessons) on branches without an issue directory; `/sdd-lessons` uses it after edits.
 - Lesson pages may include **`## Last reviewed`** (`YYYY-MM-DD` or empty). `/sdd-lessons` sets it when the lead decides; group B is Occurrence log lines after that date. Older pages without the section still pass `check`.
+- **`/sdd-lessons`** uses fixed group headings, a numbered review table, and one-line batch replies from the lead.
 
 ## 1.0.0
 

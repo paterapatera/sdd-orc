@@ -39,6 +39,8 @@ test("init, update, and migrate install one shared script", () => {
   assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Record these lesson entries/i);
   assert.doesNotMatch(read(dir, ".agents/skills/sdd-close/SKILL.md"), /ready-to-send agent chat line/i);
   assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /check --scope knowledge/);
+  assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /A 未判断の候補/);
+  assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /Target unchanged/);
   assert.match(read(dir, ".agents/skills/sdd-scripts/sdd.mjs"), /^#!\/usr\/bin\/env node/);
   assert.doesNotMatch(read(dir, ".agents/skills/sdd-scripts/sdd.mjs"), /from "\.\/|from '\.\//);
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-brownfield")), false);

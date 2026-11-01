@@ -17,23 +17,48 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
 ## Steps
 
-1. Read every `__SDD_KNOWLEDGE_DIR__/lessons/*.md` page and `lessons/index.md`. Read `__SDD_KNOWLEDGE_DIR__/steering/` when you need to compare Policy text to what is already documented (for ineffective candidates only).
+1. Read every `__SDD_KNOWLEDGE_DIR__/lessons/*.md` page and `lessons/index.md`. Read `__SDD_KNOWLEDGE_DIR__/steering/` when you need to compare Policy text to what is already documented (for group D only).
 
-2. **Present grouped lists** (skip empty groups). For each item show slug, Status, Target, one-line Policy summary, and why it appears in that group.
+2. **Present the review** in `__SDD_LANG__` using the fixed structure below (translate headings and column labels; keep column order and group order).
 
-   **A. Undecided candidates** — Status `candidate` (not yet adopted to trial).
+   **Group rules (same as before):**
+   - **A** — Status `candidate`.
+   - **B** — any **Occurrence log** line dated **after** **Last reviewed** (`## Last reviewed`: one `YYYY-MM-DD` or empty). If Last reviewed is empty or the section is missing, every log line counts.
+   - **C** — Status `trial` and **Review closes** has at least **3** dates **after** the latest **Occurrence log** date.
+   - **D** — Status `trial` or `effective`, and (group B applies while Policy is already in steering or agreed config/code is in place) or Policy clearly matches steering text.
 
-   **B. New activity since last review** — any **Occurrence log** line whose date is **after** the lesson’s **Last reviewed** date (section `## Last reviewed`: one `YYYY-MM-DD` or empty). If Last reviewed is empty or the section is missing, every log line counts as new activity.
+   **Output rules:**
+   - One `##` heading per **non-empty** group, in this order only:
+     - ja: `A 未判断の候補` / en: `A Undecided candidates`
+     - ja: `B 前回の見直し以降に再発` / en: `B Recurrence since last review`
+     - ja: `C 「有効」に上げられるもの` / en: `C Ready to mark effective`
+     - ja: `D 「効かなかった」の候補` / en: `D Ineffective candidates`
+   - Skip empty groups. If all groups are empty, say there is nothing to review (one short sentence in `__SDD_LANG__`) and **stop**.
+   - Under each heading, one Markdown table with these columns (translate labels):
+     - ja: `No.` | `教訓` | `状態` | `Target` | `回数` | `最後に起きた日` | `方針` | `判断の材料`
+     - en: `No.` | `Lesson` | `Status` | `Target` | `Count` | `Last occurred` | `Policy` | `Why listed`
+   - **教訓 / Lesson:** H1 title and `` `slug` `` on one line. **回数 / Count:** Occurrences. **最後に起きた日 / Last occurred:** latest Occurrence log date. **方針 / Policy:** one line from Policy. **判断の材料 / Why listed:** one line (for example `Review closes 3件` / `3 Review closes after last log`, or `steering/tech.md に同じ方針あり` / `same policy already in steering/tech.md`).
+   - Number rows **1, 2, 3…** across **all** groups (do not restart at 1 per group).
 
-   **C. Trial → effective** — Status `trial` and **Review closes** has at least **3** date lines **after** the date on the latest **Occurrence log** line (three later closes reviewed the lesson without a new occurrence). Propose moving to `effective`.
+   Then, still in chat, for **each numbered row** show the allowed choices and a recommended default:
+   - **A and B:** adopt / reject (Reason required on reject) / hold — recommend adopt for strong new candidates, hold when unsure.
+   - **C:** effective / hold — recommend effective when the rule is met.
+   - **D:** ineffective (Reason required) / hold — recommend ineffective when steering already covered the policy and it recurred.
 
-   **D. Ineffective candidates (computed)** — Status `trial` or `effective`, and **either** group B applies while the lesson’s Policy is already reflected in steering (or the agreed config/code fix is in place), **or** the same failure pattern clearly matches steering that already states the policy. Compare Policy wording to steering files; do not guess from memory. These are candidates to mark `ineffective` with a Reason, not automatic status changes.
+   Ask the lead to reply in **one message**, for example:
+   - ja: `1 採用, 2 却下: 環境依存のため, 3 保留`
+   - en: `1 adopt, 2 reject: environment-only, 3 hold`
 
-3. For each listed item (or batch), ask the lead to choose **adopt**, **reject**, or **hold**.
+   **Any row not mentioned is treated as hold.** Parse adopt/reject/hold/effective/ineffective from that reply (match the language you used in the prompt).
 
-   - **Hold:** set **Last reviewed** to today’s date (`YYYY-MM-DD`), or to the latest **Occurrence log** date when that line was part of this review, whichever is **later**, so group B stays empty until a newer log line appears.
-   - **Reject:** set Status `rejected`, require **Reason**, set **Last reviewed** the same way as hold.
-   - **Adopt:** set Status `trial`, confirm **Target** (`steering`, `config-or-code`, or `sdd-orc-skill`), set **Last reviewed** the same way as hold. Then print ready-to-send output (do not edit steering):
+   See **Example review output** at the end of this step.
+
+3. **After the lead’s reply**, show a **short summary** (before writing files): which slugs change Status, Reason, Last reviewed, and every **`/sdd-init`** or sdd-orc-skill improvement line you will print. Wait for confirmation if anything is ambiguous; otherwise proceed to write.
+
+   Apply decisions:
+   - **Hold:** set **Last reviewed** to today’s date, or the latest **Occurrence log** date reviewed in this session, whichever is **later**. No Status change.
+   - **Reject (A/B):** Status `rejected`, **Reason** required, **Target unchanged** (kept for history), **Last reviewed** as hold.
+   - **Adopt (A/B):** Status `trial`, confirm **Target**, **Last reviewed** as hold. Print ready-to-send output (do not edit steering):
 
      **Target `steering` or `config-or-code`:** one agent chat line plus the Impact block shape from `/sdd-init`:
 
@@ -55,9 +80,8 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
      **Target `sdd-orc-skill`:** print an improvement request for the `@paterapatera/sdd-orc` package (bundled skill change), not a project-local skill edit — project skill dirs are overwritten by `npx @paterapatera/sdd-orc update`.
 
-   - **Trial → effective:** when the lead confirms group C items, set Status `effective` (Reason empty) and **Last reviewed** the same way as hold.
-
-   - **Ineffective:** when the lead confirms group D items, set Status `ineffective`, require **Reason**, keep Occurrence log as recorded by close, set **Last reviewed** the same way as hold.
+   - **Effective (C):** Status `effective`, empty Reason, **Last reviewed** as hold.
+   - **Ineffective (D):** Status `ineffective`, **Reason** required, Occurrence log unchanged, **Last reviewed** as hold.
 
 4. Write only changed lesson pages under `__SDD_KNOWLEDGE_DIR__/lessons/`. Regenerate the index: `__SDD_RUNTIME__ __SDD_SCRIPT__ index`.
 
@@ -66,3 +90,25 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 6. Commit on the current branch as `docs: <description>` in `__SDD_LANG__` (for example “review lessons for November”).
 
 Do not delete lesson pages. Work skills continue to read **steering** only, not individual lesson pages (`/sdd-init` may read `lessons/index.md` only per its skill).
+
+### Example review output
+
+Use this shape; write the real text in `__SDD_LANG__` (below is ja).
+
+```markdown
+## A 未判断の候補
+
+| No. | 教訓 | 状態 | Target | 回数 | 最後に起きた日 | 方針 | 判断の材料 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | 開発ポート競合 `dev-port` | candidate | steering | 1 | 2026-11-01 | steering に正規ポートを書く | 未採用の候補 |
+
+## B 前回の見直し以降に再発
+
+| No. | 教訓 | 状態 | Target | 回数 | 最後に起きた日 | 方針 | 判断の材料 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 2 | 空一覧の案内不足 `empty-hint` | trial | steering | 2 | 2026-11-02 | 空一覧時は案内文を必ず出す | Last reviewed 2026-11-01 より新しい log |
+
+**おすすめ:** 1 → 採用 / 2 → 保留
+
+**返答例:** `1 採用, 2 保留`（書いていない番号は保留）
+```
