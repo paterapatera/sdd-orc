@@ -17,100 +17,80 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
 ## Steps
 
-1. Read every `__SDD_KNOWLEDGE_DIR__/lessons/*.md` page and `lessons/index.md`. Read `__SDD_KNOWLEDGE_DIR__/steering/` when you need to compare Policy text to what is already documented (for group D only).
+1. Read every `__SDD_KNOWLEDGE_DIR__/lessons/*.md` page and `lessons/index.md`. Read `__SDD_KNOWLEDGE_DIR__/steering/` when you need wording for the **判断の材料 / Why listed** column (for example whether steering already states the policy). Steering text is **not** a grouping condition.
 
 2. **Present the review** in `__SDD_LANG__` using the fixed structure below (translate headings and column labels; keep column order and group order).
 
-   **Group definitions:**
-   - **A** — Status `candidate`.
-   - **B** — any **Occurrence log** line dated **after** **Last reviewed** (`## Last reviewed`: one `YYYY-MM-DD` or empty). If Last reviewed is empty or the section is missing, every log line counts.
-   - **C** — Status `trial` and **Review closes** has at least **3** dates **after** the latest **Occurrence log** date.
-   - **D** — Status `trial` or `effective`, and (B would apply while Policy is already in steering or agreed config/code is in place) or Policy clearly matches steering text.
+   **Shared term:** **Recurred since last review** means at least one **Occurrence log** date is **after** the **Last reviewed** date (`## Last reviewed`: one `YYYY-MM-DD`). When Last reviewed is **empty** or the section is missing, that phrase does not apply (except for group **D** below, which defines its own rule for `trial` / `effective`).
 
-   **One group per lesson:** assign each slug to **exactly one** group using this **priority** (first match wins): **B** recurrence since last review → **D** ineffective candidate → **A** undecided candidate → **C** ready for effective. A never-reviewed `candidate` with new log activity goes to **B**, not **A**. Display headings still appear in order **A → B → C → D**, but put each lesson only under its assigned group (omit empty headings).
+   **Groups (mutually exclusive — each lesson matches at most one, or none):**
+
+   - **A** — Status `candidate` and Last reviewed is **empty** (never judged in a prior `/sdd-lessons` round). Choices: adopt / reject (Reason required on reject) / hold.
+   - **B** — Status `candidate` or `rejected`, Last reviewed is **non-empty**, and **recurred since last review**. Choices: adopt / reject (Reason required on reject) / hold.
+   - **C** — Status `trial` and **Review closes** has at least **3** dates **after** the latest **Occurrence log** date. Choices: effective / hold. **Tie:** if a lesson meets both **C** and **D**, list it in **D** only.
+   - **D** — Status `trial` or `effective`, and it **recurred since last review**. For `trial` or `effective` with **empty** Last reviewed, treat **every** Occurrence log line as recurrence (the lesson is in **D**). Choices: ineffective (Reason required) / hold.
+
+   **Not listed** (omit from all tables): for example `candidate` or `rejected` with Last reviewed set but **no** log after that date (held or rejected with nothing new); `ineffective`; `effective` with Last reviewed set and **no** log after it; `trial` that meets neither **C** nor **D**.
+
+   Display headings in order **A → B → C → D**; skip empty groups. If every group is empty, say there is nothing to review (one short sentence) and **stop**.
 
    **Output rules:**
-   - One `##` heading per **non-empty** group, in this order only:
+   - One `##` heading per non-empty group:
      - ja: `A 未判断の候補` / en: `A Undecided candidates`
      - ja: `B 前回の見直し以降に再発` / en: `B Recurrence since last review`
      - ja: `C 「有効」に上げられるもの` / en: `C Ready to mark effective`
      - ja: `D 「効かなかった」の候補` / en: `D Ineffective candidates`
-   - Skip empty groups. If all groups are empty, say there is nothing to review (one short sentence in `__SDD_LANG__`) and **stop**.
-   - Under each heading, one Markdown table with these columns (translate labels):
+   - Under each heading, one Markdown table:
      - ja: `No.` | `教訓` | `状態` | `Target` | `回数` | `最後に起きた日` | `方針` | `判断の材料`
      - en: `No.` | `Lesson` | `Status` | `Target` | `Count` | `Last occurred` | `Policy` | `Why listed`
-   - **教訓 / Lesson:** H1 title and `` `slug` `` on one line. **回数 / Count:** Occurrences. **最後に起きた日 / Last occurred:** latest Occurrence log date. **方針 / Policy:** one line from Policy. **判断の材料 / Why listed:** one line (for example `Review closes 3件` / `3 Review closes after last log`, or `steering/tech.md に同じ方針あり` / `same policy already in steering/tech.md`).
-   - Number rows **1, 2, 3…** across **all** groups (do not restart at 1 per group).
+   - **教訓 / Lesson:** H1 title and `` `slug` ``. **判断の材料 / Why listed:** one line (for example `Last reviewed 2026-11-01 より新しい log`, `Review closes 3件`, or `steering/tech.md に同じ方針あり` — steering match is **informational only**).
+   - Number rows **1, 2, 3…** continuously across all groups.
 
-   Then, still in chat, for **each numbered row** show the allowed choices and a recommended default:
-   - **A and B:** adopt / reject (Reason required on reject) / hold — recommend adopt for strong new candidates, hold when unsure.
-   - **C:** effective / hold — recommend effective when the rule is met.
-   - **D:** ineffective (Reason required) / hold — recommend ineffective when steering already covered the policy and it recurred.
+   For each numbered row, show allowed choices (matching the group above) and a recommended default. Ask the lead to reply in **one message** (ja example: `1 採用, 2 効かなかった: 理由, 3 保留`). **Any row not mentioned is hold.**
 
-   Ask the lead to reply in **one message**, for example:
-   - ja: `1 採用, 2 却下: 環境依存のため, 3 保留`
-   - en: `1 adopt, 2 reject: environment-only, 3 hold`
+   See **Example review output** below.
 
-   **Any row not mentioned is treated as hold.** Parse adopt/reject/hold/effective/ineffective from that reply (match the language you used in the prompt).
+3. **After the lead’s reply**, show a **short summary** (before writing files): Status, Reason, Last reviewed, and every **`/sdd-init`** line you will print. Proceed when clear.
 
-   See **Example review output** at the end of this step.
-
-3. **After the lead’s reply**, show a **short summary** (before writing files): which slugs change Status, Reason, Last reviewed, and every **`/sdd-init`** or sdd-orc-skill improvement line you will print. Wait for confirmation if anything is ambiguous; otherwise proceed to write.
-
-   Apply decisions:
-   - **Hold:** set **Last reviewed** to today’s date, or the latest **Occurrence log** date reviewed in this session, whichever is **later**. No Status change.
-   - **Reject (A/B):** Status `rejected`, **Reason** required, **Target unchanged** (kept for history), **Last reviewed** as hold.
-   - **Adopt (A/B):** Status `trial`, confirm **Target**, **Last reviewed** as hold. Print ready-to-send output (do not edit steering):
-
-     **Target `steering` or `config-or-code`:** one agent chat line plus the Impact block shape from `/sdd-init`:
-
-     ```text
-     /sdd-init <short title for the steering or config change>
-     ```
-
-     ```markdown
-     ## Impact
-
-     - Type: docs
-     - Capabilities: none
-     - Steering: /steering/tech.md
-     - Decisions: none
-     - Code: none
-     ```
-
-     Adjust Type, Capabilities, Steering, Decisions, and Code to match the real follow-up issue (same rules as `/sdd-init`).
-
-     **Target `sdd-orc-skill`:** print an improvement request for the `@paterapatera/sdd-orc` package (bundled skill change), not a project-local skill edit — project skill dirs are overwritten by `npx @paterapatera/sdd-orc update`.
-
-   - **Effective (C):** Status `effective`, empty Reason, **Last reviewed** as hold.
-   - **Ineffective (D):** Status `ineffective`, **Reason** required, Occurrence log unchanged, **Last reviewed** as hold.
+   Apply decisions and **Last reviewed** (today’s date, or the latest **Occurrence log** date reviewed in this session, whichever is **later**):
+   - **Hold** (any group): update Last reviewed only; no Status change. A **hold** in **A** or **B** sets Last reviewed so a **later** recurrence (new log after that date) lists the lesson in **B**, not **A**.
+   - **Reject (A/B):** Status `rejected`, **Reason** required, **Target unchanged**, Last reviewed as above (later recurrence → **B** if still `rejected` or back to `candidate` only if you changed status — normally **B** for `rejected` with new log).
+   - **Adopt (A/B):** Status `trial`, confirm **Target**, Last reviewed as above; print `/sdd-init` or sdd-orc-skill text when Target requires it (same Impact shape as `/sdd-init`).
+   - **Effective (C):** Status `effective`, empty Reason, Last reviewed as above.
+   - **Ineffective (D):** Status `ineffective`, **Reason** required, Occurrence log unchanged, Last reviewed as above.
 
 4. Write only changed lesson pages under `__SDD_KNOWLEDGE_DIR__/lessons/`. Regenerate the index: `__SDD_RUNTIME__ __SDD_SCRIPT__ index`.
 
-5. Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope knowledge`. Fix any validation errors before commit.
+5. Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope knowledge`. Fix validation errors before commit.
 
-6. Commit on the current branch as `docs: <description>` in `__SDD_LANG__` (for example “review lessons for November”).
+6. Commit on the current branch as `docs: <description>` in `__SDD_LANG__`.
 
-Do not delete lesson pages. Work skills continue to read **steering** only, not individual lesson pages (`/sdd-init` may read `lessons/index.md` only per its skill).
+Do not delete lesson pages.
 
 ### Example review output
 
-Use this shape; write the real text in `__SDD_LANG__` (below is ja). `dev-port` is group **A** only; `empty-hint` is group **B** only (priority B over A).
+Use this shape in `__SDD_LANG__` (ja below). `dev-port`: **A** (candidate, empty Last reviewed). `held-hint`: **B** (candidate, Last reviewed set, new log). `empty-hint`: **D** (trial, empty Last reviewed — recurrence for D).
 
 ```markdown
 ## A 未判断の候補
 
 | No. | 教訓 | 状態 | Target | 回数 | 最後に起きた日 | 方針 | 判断の材料 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 開発ポート競合 `dev-port` | candidate | steering | 1 | 2026-11-01 | steering に正規ポートを書く | 未採用の候補 |
+| 1 | 開発ポート競合 `dev-port` | candidate | steering | 1 | 2026-11-01 | steering に正規ポートを書く | 未判断（Last reviewed 空） |
 
 ## B 前回の見直し以降に再発
 
 | No. | 教訓 | 状態 | Target | 回数 | 最後に起きた日 | 方針 | 判断の材料 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 2 | 空一覧の案内不足 `empty-hint` | trial | steering | 2 | 2026-11-02 | 空一覧時は案内文を必ず出す | Last reviewed 2026-11-01 より新しい log |
+| 2 | 保留後に再発 `held-hint` | candidate | steering | 2 | 2026-11-05 | 空状態の案内を必ず出す | Last reviewed 2026-11-01 より新しい log |
 
-**おすすめ:** 1 → 採用 / 2 → 保留
+## D 「効かなかった」の候補
 
-**返答例:** `1 採用, 2 保留`（書いていない番号は保留）
+| No. | 教訓 | 状態 | Target | 回数 | 最後に起きた日 | 方針 | 判断の材料 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 3 | 空一覧の案内不足 `empty-hint` | trial | steering | 2 | 2026-11-02 | 空一覧時は案内文を必ず出す | trial・Last reviewed 空・再発（steering/tech.md に同じ方針あり） |
+
+**おすすめ:** 1 → 採用 / 2 → 採用 / 3 → 効かなかった: 案内は既に steering にある
+
+**返答例:** `1 採用, 2 保留, 3 効かなかった: steering に同方針があるのに再発`（書いていない番号は保留）
 ```
