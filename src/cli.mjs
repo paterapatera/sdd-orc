@@ -23,7 +23,7 @@ const COPY = {
     decisionTitle: "決定",
     decisionDescription: "アーキテクチャ決定記録。",
     lessonsTitle: "Lessons",
-    lessonsDescription: "過去の作業で起きた問題と、再発を防ぐ方針。",
+    lessonsDescription: "What went wrong in past work and which policy prevents a repeat.",
   },
 };
 

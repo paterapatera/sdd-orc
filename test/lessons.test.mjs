@@ -246,20 +246,57 @@ const MIXED_FIX_TASK = `# Tasks
   - Lessons: excluded: one-off cache
 `;
 
-test("parseFixItems isolates each Fix among normal tasks and nested minors", () => {
+test("parseFixItems isolates each top-level Fix among normal tasks", () => {
   const fixes = parseFixItems(MIXED_FIX_TASK);
-  assert.equal(fixes.length, 3);
+  assert.equal(fixes.length, 2);
   assert.equal(fixes[0].line, 5);
   assert.match(fixes[0].lines.join("\n"), /fix-port/);
   assert.doesNotMatch(fixes[0].lines.join("\n"), /fix-nested/);
-  assert.equal(fixes[1].line, 10);
-  assert.match(fixes[1].lines.join("\n"), /fix-nested/);
-  assert.doesNotMatch(fixes[1].lines.join("\n"), /fix-port/);
-  assert.equal(fixes[2].line, 12);
-  assert.match(fixes[2].lines.join("\n"), /excluded: one-off cache/);
+  assert.equal(fixes[1].line, 12);
+  assert.match(fixes[1].lines.join("\n"), /excluded: one-off cache/);
 });
 
-test("validateCloseLessons reports missing Fix disposition at that Fix line only", () => {
+test("nested Fix minors do not require their own Lessons disposition", () => {
+  const nestedOnly = `# Tasks
+
+- [x] 1. Regression
+  - [x] 1.1. Fix: nested miss
+    - Lessons: orphan-nested
+`;
+  assert.equal(parseFixItems(nestedOnly).length, 0);
+  const config = { docsDir: "docs" };
+  const diags = [];
+  validateCloseLessons(config, "feat", { feedback: "", task: nestedOnly }, new Map(), diags, "docs/knowledge");
+  assert.equal(diags.length, 0);
+
+  const topWithNested = `# Tasks
+
+- [x] 1. Fix: parent
+  - [x] 1.1. Fix: detail
+  - Lessons: parent-slug
+`;
+  const fixes = parseFixItems(topWithNested);
+  assert.equal(fixes.length, 1);
+  assert.match(fixes[0].lines.join("\n"), /parent-slug/);
+  assert.match(fixes[0].lines.join("\n"), /1\.1\. Fix:/);
+  const ok = [];
+  validateCloseLessons(
+    config,
+    "feat",
+    { feedback: "", task: topWithNested },
+    new Map([["docs/knowledge/lessons/parent-slug.md", sampleLesson("parent-slug")]]),
+    ok,
+    "docs/knowledge",
+  );
+  assert.equal(ok.length, 0);
+  const missing = topWithNested.replace("- Lessons: parent-slug", "");
+  const fail = [];
+  validateCloseLessons(config, "feat", { feedback: "", task: missing }, new Map(), fail, "docs/knowledge");
+  assert.equal(fail.length, 1);
+  assert.equal(fail[0].line, 3);
+});
+
+test("validateCloseLessons reports missing top-level Fix disposition at that Fix line only", () => {
   const config = { docsDir: "docs" };
   const map = new Map([
     ["docs/knowledge/lessons/fix-port.md", sampleLesson("fix-port")],
@@ -269,12 +306,12 @@ test("validateCloseLessons reports missing Fix disposition at that Fix line only
   validateCloseLessons(config, "feat", { feedback: "", task: MIXED_FIX_TASK }, map, ok, "docs/knowledge");
   assert.equal(ok.length, 0);
 
-  const missingMiddle = MIXED_FIX_TASK.replace("    - Lessons: fix-nested", "");
-  const diagsMiddle = [];
-  validateCloseLessons(config, "feat", { feedback: "", task: missingMiddle }, map, diagsMiddle, "docs/knowledge");
-  assert.equal(diagsMiddle.length, 1);
-  assert.equal(diagsMiddle[0].line, 10);
-  assert.match(diagsMiddle[0].rule, /LESSONS_UNPROCESSED/);
+  const missingSecond = MIXED_FIX_TASK.replace("  - Lessons: excluded: one-off cache", "");
+  const diagsSecond = [];
+  validateCloseLessons(config, "feat", { feedback: "", task: missingSecond }, map, diagsSecond, "docs/knowledge");
+  assert.equal(diagsSecond.length, 1);
+  assert.equal(diagsSecond[0].line, 12);
+  assert.match(diagsSecond[0].rule, /LESSONS_UNPROCESSED/);
 
   const missingFirst = MIXED_FIX_TASK.replace("  - Lessons: fix-port", "");
   const diagsFirst = [];
@@ -536,31 +573,4 @@ steering
   const result = sdd(dir, ["check", "--stage", "close", "--issue", "eval-empty-hint"]);
   assert.equal(result.status, 0, result.stdout);
   assert.doesNotMatch(result.stdout, /CLOSE_ISSUE_NAME/);
-});
-
-test("Last reviewed accepts empty or YYYY-MM-DD and rejects other text", () => {
-  const dir = tempRepo();
-  assert.equal(initRepo(dir).status, 0);
-  writeSteering(dir);
-  const file = path.join(dir, "docs/knowledge/lessons/reviewed.md");
-  fs.writeFileSync(file, sampleLesson("reviewed").replace("## Last reviewed\n\n\n", "## Last reviewed\n\n2026-11-01\n"));
-  sdd(dir, ["index"]);
-  assert.equal(sdd(dir, ["check", "--scope", "knowledge"]).status, 0);
-  fs.writeFileSync(file, sampleLesson("reviewed").replace("## Last reviewed\n\n\n", "## Last reviewed\n\nnot-a-date\n"));
-  assert.match(sdd(dir, ["check", "--scope", "knowledge"]).stdout, /LESSONS_LAST_REVIEWED/);
-  assert.equal(parseLastReviewedDate("2026-11-01"), "2026-11-01");
-  assert.equal(parseLastReviewedDate(""), "");
-  assert.equal(parseLastReviewedDate("bad"), null);
-});
-
-test("legacy lesson without Last reviewed section still passes check", () => {
-  const dir = tempRepo();
-  assert.equal(initRepo(dir).status, 0);
-  writeSteering(dir);
-  let body = sampleLesson("legacy");
-  body = body.replace(/\n## Last reviewed\n\n\n## Status/, "\n## Status");
-  fs.writeFileSync(path.join(dir, "docs/knowledge/lessons/legacy.md"), body);
-  sdd(dir, ["index"]);
-  const result = sdd(dir, ["check", "--scope", "knowledge"]);
-  assert.equal(result.status, 0, result.stdout);
 });

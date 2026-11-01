@@ -21,11 +21,13 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
 2. **Present the review** in `__SDD_LANG__` using the fixed structure below (translate headings and column labels; keep column order and group order).
 
-   **Group rules (same as before):**
+   **Group definitions:**
    - **A** — Status `candidate`.
    - **B** — any **Occurrence log** line dated **after** **Last reviewed** (`## Last reviewed`: one `YYYY-MM-DD` or empty). If Last reviewed is empty or the section is missing, every log line counts.
    - **C** — Status `trial` and **Review closes** has at least **3** dates **after** the latest **Occurrence log** date.
-   - **D** — Status `trial` or `effective`, and (group B applies while Policy is already in steering or agreed config/code is in place) or Policy clearly matches steering text.
+   - **D** — Status `trial` or `effective`, and (B would apply while Policy is already in steering or agreed config/code is in place) or Policy clearly matches steering text.
+
+   **One group per lesson:** assign each slug to **exactly one** group using this **priority** (first match wins): **B** recurrence since last review → **D** ineffective candidate → **A** undecided candidate → **C** ready for effective. A never-reviewed `candidate` with new log activity goes to **B**, not **A**. Display headings still appear in order **A → B → C → D**, but put each lesson only under its assigned group (omit empty headings).
 
    **Output rules:**
    - One `##` heading per **non-empty** group, in this order only:
@@ -93,7 +95,7 @@ Do not delete lesson pages. Work skills continue to read **steering** only, not 
 
 ### Example review output
 
-Use this shape; write the real text in `__SDD_LANG__` (below is ja).
+Use this shape; write the real text in `__SDD_LANG__` (below is ja). `dev-port` is group **A** only; `empty-hint` is group **B** only (priority B over A).
 
 ```markdown
 ## A 未判断の候補

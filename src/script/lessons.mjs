@@ -163,15 +163,15 @@ export function parseFixItems(taskText) {
   const fixes = [];
   if (!taskText) return fixes;
   const lines = taskText.replace(/\r\n/g, "\n").split("\n");
-  const fixLine = /^\s*-\s+\[[ xX]\]\s+\d+(?:\.\d+)?\.\s+Fix:/;
+  const topLevelFix = /^\s*-\s+\[[ xX]\]\s+\d+\.\s+Fix:/;
   const taskLine = /^\s*-\s+\[[ xX]\]\s+\d+(?:\.\d+)?\.\s+/;
   for (let index = 0; index < lines.length; index += 1) {
-    if (!fixLine.test(lines[index])) continue;
+    if (!topLevelFix.test(lines[index])) continue;
     const block = [lines[index]];
     const baseIndent = lines[index].match(/^(\s*)/)[1].length;
     for (let j = index + 1; j < lines.length; j += 1) {
       const line = lines[j];
-      if (fixLine.test(line) && j !== index) break;
+      if (topLevelFix.test(line) && j !== index) break;
       if (!line.trim()) {
         block.push(line);
         continue;
@@ -218,7 +218,7 @@ export function validateCloseLessons(config, issue, files, map, diags, docsDir) 
   for (const fix of fixes) {
     const disposition = fixDisposition(fix);
     if (!disposition) {
-      diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, fix.line, "LESSONS_UNPROCESSED", "Each Fix: item needs - Lessons: <slug> or - Lessons: excluded: <reason> after approval"));
+      diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, fix.line, "LESSONS_UNPROCESSED", "Each top-level Fix: major needs - Lessons: <slug> or - Lessons: excluded: <reason> after confirmation"));
       continue;
     }
     if (disposition.type === "slug") {
@@ -335,5 +335,5 @@ Append-only log for this issue. Add one \`##\` entry per event (short, plain lan
 
 Entry heading format: \`## YYYY-MM-DD <skill> — <kind>\`
 
-After the person confirms lesson records at close, add \`- Lessons: <kebab-slug>\` or \`- Lessons: excluded: <reason>\` to each entry (and under each Fix: item in task.md when used).
+After the person confirms lesson records at close, add \`- Lessons: <kebab-slug>\` or \`- Lessons: excluded: <reason>\` to each feedback entry and to each **top-level** \`N. Fix:\` major in task.md (not to nested \`N.M. Fix:\` minors).
 `;

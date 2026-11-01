@@ -17,6 +17,18 @@ function prepare(dir) {
   commitAll(dir, "chore: skeleton");
 }
 
+test("init with ja lang keeps English Lessons text in knowledge indexes", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir, ["--lang", "ja"]).status, 0);
+  writeSteering(dir);
+  assert.equal(sdd(dir, ["index"]).status, 0);
+  assert.match(read(dir, "docs/knowledge/lessons/index.md"), /What went wrong in past work/);
+  const rootBefore = read(dir, "docs/knowledge/index.md");
+  assert.match(rootBefore, /What went wrong in past work/);
+  assert.equal(sdd(dir, ["check", "--scope", "setup"]).status, 0);
+  assert.equal(read(dir, "docs/knowledge/index.md"), rootBefore);
+});
+
 test("init, update, and migrate install one shared script", () => {
   const dir = tempRepo();
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);

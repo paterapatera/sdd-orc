@@ -9,6 +9,10 @@
 - **`/sdd-lessons`** uses fixed group headings, a numbered review table, and one-line batch replies from the lead.
 - `feedback.md` に `##` 見出しが複数ある場合、各エントリの `- Lessons:` 行を close 検査が正しく読めるように `parseFeedbackEntries` を修正しました（最後のエントリだけが処理され、`LESSONS_UNPROCESSED` になる不具合を直します）。
 - リポジトリ向けに [CONTRIBUTING.md](CONTRIBUTING.md)（評価・テスト方針）と [AGENTS.md](AGENTS.md) を追加しました（npm パッケージには同梱しません）。
+- `/sdd-close` の手順を並べ替え、教訓の記録と `- Lessons:` 記入のあとに `check --stage close` を実行するようにスキル本文を修正しました。
+- close 検査では **トップレベル** の `N. Fix:` だけに `- Lessons:` を要求し、ネストした `N.M. Fix:` には要求しないようにしました（`parseFixItems` を合わせて修正）。
+- `docs/knowledge/index.md` の Lessons 説明が init と check で英語に揃うようにしました。
+- `/sdd-lessons` で各教訓を **1 つのグループだけ** に割り当てる優先順位（B → D → A → C）をスキルに明記しました。
 
 ## 1.0.0
 
