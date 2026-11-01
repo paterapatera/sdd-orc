@@ -31,9 +31,9 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
 3. For each listed item (or batch), ask the lead to choose **adopt**, **reject**, or **hold**.
 
-   - **Hold:** set **Last reviewed** to today’s date (`YYYY-MM-DD`) so the lesson leaves group B until a newer Occurrence log line appears. No other change unless the lead asks.
-   - **Reject:** set Status `rejected`, require **Reason**, set **Last reviewed** to today’s date.
-   - **Adopt:** set Status `trial`, confirm **Target** (`steering`, `config-or-code`, or `sdd-orc-skill`), set **Last reviewed** to today’s date. Then print ready-to-send output (do not edit steering):
+   - **Hold:** set **Last reviewed** to today’s date (`YYYY-MM-DD`), or to the latest **Occurrence log** date when that line was part of this review, whichever is **later**, so group B stays empty until a newer log line appears.
+   - **Reject:** set Status `rejected`, require **Reason**, set **Last reviewed** the same way as hold.
+   - **Adopt:** set Status `trial`, confirm **Target** (`steering`, `config-or-code`, or `sdd-orc-skill`), set **Last reviewed** the same way as hold. Then print ready-to-send output (do not edit steering):
 
      **Target `steering` or `config-or-code`:** one agent chat line plus the Impact block shape from `/sdd-init`:
 
@@ -55,9 +55,9 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
      **Target `sdd-orc-skill`:** print an improvement request for the `@paterapatera/sdd-orc` package (bundled skill change), not a project-local skill edit — project skill dirs are overwritten by `npx @paterapatera/sdd-orc update`.
 
-   - **Trial → effective:** when the lead confirms group C items, set Status `effective` (Reason empty) and **Last reviewed** to today’s date.
+   - **Trial → effective:** when the lead confirms group C items, set Status `effective` (Reason empty) and **Last reviewed** the same way as hold.
 
-   - **Ineffective:** when the lead confirms group D items, set Status `ineffective`, require **Reason**, keep Occurrence log as recorded by close, set **Last reviewed** to today’s date.
+   - **Ineffective:** when the lead confirms group D items, set Status `ineffective`, require **Reason**, keep Occurrence log as recorded by close, set **Last reviewed** the same way as hold.
 
 4. Write only changed lesson pages under `__SDD_KNOWLEDGE_DIR__/lessons/`. Regenerate the index: `__SDD_RUNTIME__ __SDD_SCRIPT__ index`.
 
