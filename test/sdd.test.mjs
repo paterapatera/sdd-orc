@@ -22,7 +22,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "1.0.0");
+  assert.equal(config.version, "1.1.0");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -35,6 +35,10 @@ test("init, update, and migrate install one shared script", () => {
   assert.match(skill, /bun \.agents\/skills\/sdd-scripts\/sdd\.mjs check --scope setup/);
   assert.doesNotMatch(skill, /__SDD_/);
   assert.match(read(dir, ".claude/skills/sdd-close/SKILL.md"), /bun \.agents\/skills\/sdd-scripts\/sdd\.mjs/);
+  assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-lessons/SKILL.md")), true);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Record these lesson entries/i);
+  assert.doesNotMatch(read(dir, ".agents/skills/sdd-close/SKILL.md"), /ready-to-send agent chat line/i);
+  assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /\/sdd-lessons/);
   assert.match(read(dir, ".agents/skills/sdd-scripts/sdd.mjs"), /^#!\/usr\/bin\/env node/);
   assert.doesNotMatch(read(dir, ".agents/skills/sdd-scripts/sdd.mjs"), /from "\.\/|from '\.\//);
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-brownfield")), false);
@@ -870,7 +874,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "1.0.0");
+  assert.equal(config.version, "1.1.0");
   assert.match(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });

@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.0
+
+- Split lesson **recording** from **adoption**: `/sdd-close` only records occurrences, review closes, and new `candidate` lessons; it does not change lesson status or print `/sdd-init`.
+- Add bundled skill **`/sdd-lessons`** for leads to adopt, reject, hold, or promote lessons and to print `/sdd-init` follow-ups when steering or config changes are needed.
+
 ## 1.0.0
 
 - Add project knowledge wiki under `knowledge/lessons/` with issue `feedback.md` capture and `/sdd-close` lesson promotion workflow.
