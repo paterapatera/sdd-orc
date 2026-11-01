@@ -20,15 +20,15 @@ function sampleLesson(slug, status = "candidate") {
 
 ## What happened
 
-Tests failed because the default port was already in use locally.
+A task minor shipped without Requirements traceability.
 
 ## Why
 
-Two services assumed the same implicit port.
+The minor was treated as obvious and skipped EARS linkage.
 
 ## Policy
 
-Document the canonical dev port in steering; do not rely on ad hoc ports.
+Every non-manual task minor must list Requirements ids in task.md.
 
 ## Occurrences
 
@@ -36,7 +36,7 @@ Document the canonical dev port in steering; do not rely on ad hoc ports.
 
 ## Occurrence log
 
-- 2026-01-15: Local dev port clash during tests.
+- 2026-01-15: Task minor missing Requirements in review.
 
 ## Review closes
 
@@ -350,7 +350,7 @@ test("multiple Occurrence log and Review closes lines validate independently", (
   writeSteering(dir);
   let body = sampleLesson("multi-log");
   body = body.replace(
-    "## Occurrence log\n\n- 2026-01-15: Local dev port clash during tests.",
+    "## Occurrence log\n\n- 2026-01-15: Task minor missing Requirements in review.",
     "## Occurrence log\n\n- 2026-01-01: First event.\n- 2026-01-10: Second event.\n- 2026-01-15: Third event.",
   );
   body = body.replace("## Occurrences\n\n1", "## Occurrences\n\n3");
@@ -414,23 +414,14 @@ test("close check fails on unprocessed feedback then passes with disposition", (
   writeInvoiceIssue(dir);
   fs.writeFileSync(
     path.join(dir, "docs/issues/invoice-reissue/feedback.md"),
-    `# Feedback\n\n## 2026-01-01 sdd-impl — port\n\nDev port was taken.\n`,
+    `# Feedback\n\n## 2026-01-01 sdd-impl — traceability\n\nTask minor had no Requirements ids.\n`,
   );
   commitAll(dir, "docs: proposal");
   assert.equal(sdd(dir, ["apply"]).status, 0);
   const blocked = sdd(dir, ["check", "--stage", "close"]);
   assert.match(blocked.stdout, /LESSONS_UNPROCESSED/);
   const lessonPath = path.join(dir, "docs/knowledge/lessons/trace-gap.md");
-  fs.writeFileSync(lessonPath, sampleLesson("trace-gap").replace(
-    "Document the canonical dev port in steering; do not rely on ad hoc ports.",
-    "Every non-manual task minor must list Requirements ids in task.md.",
-  ).replace(
-    "Tests failed because the default port was already in use locally.",
-    "A task minor shipped without Requirements traceability.",
-  ).replace(
-    "- 2026-01-15: Local dev port clash during tests.",
-    "- 2026-01-15: Task minor missing Requirements in review.",
-  ));
+  fs.writeFileSync(lessonPath, sampleLesson("trace-gap"));
   fs.appendFileSync(
     path.join(dir, "docs/issues/invoice-reissue/feedback.md"),
     "\n- Lessons: trace-gap\n",
@@ -509,7 +500,7 @@ test("Occurrences must cover occurrence log entry count", () => {
   writeSteering(dir);
   let body = sampleLesson("occ");
   body = body.replace(
-    "## Occurrence log\n\n- 2026-01-15: Local dev port clash during tests.",
+    "## Occurrence log\n\n- 2026-01-15: Task minor missing Requirements in review.",
     "## Occurrence log\n\n- 2026-01-01: a\n- 2026-01-02: b\n- 2026-01-03: c",
   );
   fs.writeFileSync(path.join(dir, "docs/knowledge/lessons/occ.md"), body);

@@ -21,14 +21,14 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
 2. **Present the review** in `__SDD_LANG__` using the fixed structure below (translate headings and column labels; keep column order and group order).
 
-   **Shared term:** **Recurred since last review** means at least one **Occurrence log** date is **after** the **Last reviewed** date (`## Last reviewed`: one `YYYY-MM-DD`). When Last reviewed is **empty** or the section is missing, that phrase does not apply (except for group **D** below, which defines its own rule for `trial` / `effective`).
+   **Shared term:** **Recurred since last review** means at least one **Occurrence log** date is **after** the **Last reviewed** date (`## Last reviewed`: one `YYYY-MM-DD`). When Last reviewed is **empty** or the section is missing, that phrase does not apply (except for group **D** below, which defines its own rule for `trial` / `effective`). **After** compares calendar dates only and means **strictly later** (`YYYY-MM-DD`): a **Review closes** line on the **same day** as Last reviewed does not count toward **C**; after a hold in **C** on that day, the lesson lists in **C** again once close adds a **Review closes** date on a **later** day (when the count rule still holds).
 
    **Groups (mutually exclusive — each lesson matches at most one, or none):**
 
    - **A** — Status `candidate` and Last reviewed is **empty** (never judged in a prior `/sdd-lessons` round). Choices: adopt / reject (Reason required on reject) / hold.
    - **B** — Status `candidate` or `rejected`, Last reviewed is **non-empty**, and **recurred since last review**. Choices: adopt / reject (Reason required on reject) / hold.
-   - **C** — Status `trial`, **Review closes** has at least **3** dates **after** the latest **Occurrence log** date, **and** at least one of those **Review closes** dates is **after** Last reviewed (or Last reviewed is **empty**). Choices: effective / hold. **Tie:** if a lesson meets both **C** and **D**, list it in **D** only.
-   - **D** — Status `trial` or `effective`, and it **recurred since last review**. For `trial` or `effective` with **empty** Last reviewed, treat **every** Occurrence log line as recurrence (the lesson is in **D**). Choices: ineffective (Reason required) / hold.
+   - **C** — Status `trial`, **Review closes** has at least **3** dates **after** the latest **Occurrence log** date, **and** at least one of those **Review closes** dates is **after** Last reviewed. Choices: effective / hold. **Tie:** if a lesson meets both **C** and **D**, list it in **D** only.
+   - **D** — Status `trial` or `effective`, and it **recurred since last review**. For `trial` or `effective` with **empty** Last reviewed, treat **every** Occurrence log line as recurrence (the lesson is in **D**). Choices: ineffective (Reason required) / hold. A `trial` with empty Last reviewed (only if hand-edited) and **any** Occurrence log line is in **D**, not **C**.
 
    **Not listed** (omit from all tables): for example `candidate` or `rejected` with Last reviewed set but **no** log after that date (held or rejected with nothing new); `ineffective`; `effective` with Last reviewed set and **no** log after it; `trial` with enough **Review closes** after the latest log but **none** after Last reviewed (held in **C** earlier — wait for close to add a new **Review closes** line after that review); `trial` that meets neither **C** nor **D**.
 

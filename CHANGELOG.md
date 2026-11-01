@@ -12,7 +12,7 @@
 - `/sdd-close` の手順を並べ替え、教訓の記録と `- Lessons:` 記入のあとに `check --stage close` を実行するようにスキル本文を修正しました。
 - close 検査では **トップレベル** の `N. Fix:` だけに `- Lessons:` を要求し、ネストした `N.M. Fix:` には要求しないようにしました（`parseFixItems` を合わせて修正）。
 - `docs/knowledge/index.md` の Lessons 説明が init と check で英語に揃うようにしました。
-- `/sdd-lessons` で各教訓を **1 つのグループだけ** に割り当てるルールを修正しました（A 未判断候補、B 保留・却下後の再発、C trial→effective ※Review closes が Last reviewed より後にあること、D 再発した trial/effective。C と D が両方当てはまるときは D のみ）。
+- `/sdd-lessons` で各教訓を **1 つのグループだけ** に割り当てるルールを修正しました（A 未判断候補、B 保留・却下後の再発、C trial→effective ※ログ以降の Review closes が 3 件以上かつ Last reviewed **より後の日付**の close が 1 件以上（同日は不可）、D 再発した trial/effective。C と D が両方当てはまるときは D のみ）。
 
 ## 1.0.0
 
