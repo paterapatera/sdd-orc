@@ -420,11 +420,20 @@ test("close check fails on unprocessed feedback then passes with disposition", (
   assert.equal(sdd(dir, ["apply"]).status, 0);
   const blocked = sdd(dir, ["check", "--stage", "close"]);
   assert.match(blocked.stdout, /LESSONS_UNPROCESSED/);
-  const lessonPath = path.join(dir, "docs/knowledge/lessons/dev-port.md");
-  fs.writeFileSync(lessonPath, sampleLesson("dev-port"));
+  const lessonPath = path.join(dir, "docs/knowledge/lessons/trace-gap.md");
+  fs.writeFileSync(lessonPath, sampleLesson("trace-gap").replace(
+    "Document the canonical dev port in steering; do not rely on ad hoc ports.",
+    "Every non-manual task minor must list Requirements ids in task.md.",
+  ).replace(
+    "Tests failed because the default port was already in use locally.",
+    "A task minor shipped without Requirements traceability.",
+  ).replace(
+    "- 2026-01-15: Local dev port clash during tests.",
+    "- 2026-01-15: Task minor missing Requirements in review.",
+  ));
   fs.appendFileSync(
     path.join(dir, "docs/issues/invoice-reissue/feedback.md"),
-    "\n- Lessons: dev-port\n",
+    "\n- Lessons: trace-gap\n",
   );
   sdd(dir, ["index"]);
   const ok = sdd(dir, ["check", "--stage", "close"]);

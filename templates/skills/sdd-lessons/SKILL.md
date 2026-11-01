@@ -27,10 +27,10 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
    - **A** — Status `candidate` and Last reviewed is **empty** (never judged in a prior `/sdd-lessons` round). Choices: adopt / reject (Reason required on reject) / hold.
    - **B** — Status `candidate` or `rejected`, Last reviewed is **non-empty**, and **recurred since last review**. Choices: adopt / reject (Reason required on reject) / hold.
-   - **C** — Status `trial` and **Review closes** has at least **3** dates **after** the latest **Occurrence log** date. Choices: effective / hold. **Tie:** if a lesson meets both **C** and **D**, list it in **D** only.
+   - **C** — Status `trial`, **Review closes** has at least **3** dates **after** the latest **Occurrence log** date, **and** at least one of those **Review closes** dates is **after** Last reviewed (or Last reviewed is **empty**). Choices: effective / hold. **Tie:** if a lesson meets both **C** and **D**, list it in **D** only.
    - **D** — Status `trial` or `effective`, and it **recurred since last review**. For `trial` or `effective` with **empty** Last reviewed, treat **every** Occurrence log line as recurrence (the lesson is in **D**). Choices: ineffective (Reason required) / hold.
 
-   **Not listed** (omit from all tables): for example `candidate` or `rejected` with Last reviewed set but **no** log after that date (held or rejected with nothing new); `ineffective`; `effective` with Last reviewed set and **no** log after it; `trial` that meets neither **C** nor **D**.
+   **Not listed** (omit from all tables): for example `candidate` or `rejected` with Last reviewed set but **no** log after that date (held or rejected with nothing new); `ineffective`; `effective` with Last reviewed set and **no** log after it; `trial` with enough **Review closes** after the latest log but **none** after Last reviewed (held in **C** earlier — wait for close to add a new **Review closes** line after that review); `trial` that meets neither **C** nor **D**.
 
    Display headings in order **A → B → C → D**; skip empty groups. If every group is empty, say there is nothing to review (one short sentence) and **stop**.
 
@@ -53,7 +53,7 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 3. **After the lead’s reply**, show a **short summary** (before writing files): Status, Reason, Last reviewed, and every **`/sdd-init`** line you will print. Proceed when clear.
 
    Apply decisions and **Last reviewed** (today’s date, or the latest **Occurrence log** date reviewed in this session, whichever is **later**):
-   - **Hold** (any group): update Last reviewed only; no Status change. A **hold** in **A** or **B** sets Last reviewed so a **later** recurrence (new log after that date) lists the lesson in **B**, not **A**.
+   - **Hold** (any group): update Last reviewed only; no Status change. A **hold** in **A** or **B** sets Last reviewed so a **later** recurrence (new log after that date) lists the lesson in **B**, not **A**. A **hold** in **C** sets Last reviewed so the lesson stays off the list until close adds a **Review closes** date **after** that Last reviewed (then **C** can apply again if the count rule is still met).
    - **Reject (A/B):** Status `rejected`, **Reason** required, **Target unchanged**, Last reviewed as above (later recurrence → **B** if still `rejected` or back to `candidate` only if you changed status — normally **B** for `rejected` with new log).
    - **Adopt (A/B):** Status `trial`, confirm **Target**, Last reviewed as above; print `/sdd-init` or sdd-orc-skill text when Target requires it (same Impact shape as `/sdd-init`).
    - **Effective (C):** Status `effective`, empty Reason, Last reviewed as above.
@@ -69,14 +69,14 @@ Do not delete lesson pages.
 
 ### Example review output
 
-Use this shape in `__SDD_LANG__` (ja below). `dev-port`: **A** (candidate, empty Last reviewed). `held-hint`: **B** (candidate, Last reviewed set, new log). `empty-hint`: **D** (trial, empty Last reviewed — recurrence for D).
+Use this shape in `__SDD_LANG__` (ja below). `trace-gap`: **A** (candidate, empty Last reviewed). `held-hint`: **B** (candidate, Last reviewed set, new log). `empty-hint`: **D** (trial, empty Last reviewed — recurrence for D).
 
 ```markdown
 ## A 未判断の候補
 
 | No. | 教訓 | 状態 | Target | 回数 | 最後に起きた日 | 方針 | 判断の材料 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| 1 | 開発ポート競合 `dev-port` | candidate | steering | 1 | 2026-11-01 | steering に正規ポートを書く | 未判断（Last reviewed 空） |
+| 1 | タスクの Requirements 漏れ `trace-gap` | candidate | steering | 1 | 2026-11-01 | 非手動の minor には Requirements を書く | 未判断（Last reviewed 空） |
 
 ## B 前回の見直し以降に再発
 
