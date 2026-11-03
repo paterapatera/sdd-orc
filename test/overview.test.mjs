@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { parseDeltaMarkdown } from "../src/script/delta.mjs";
@@ -10,6 +12,7 @@ import {
   MARKER_GENERATED_BEGIN,
   MARKER_GENERATED_END,
   buildOverviewHtml,
+  collectAgentPartIds,
   extractBlock,
   validateOverview,
 } from "../src/script/overview.mjs";
@@ -44,6 +47,17 @@ function issueDiags(dir, issue, mutate = null) {
 
 function expectCode(result, code) {
   assert.match(result.stdout, new RegExp(code), `expected ${code} in ${result.stdout}`);
+}
+
+function expectOverviewBodyExtra(dir, issue, mutate) {
+  const overviewPath = path.join(dir, "docs/issues", issue, "overview.html");
+  const before = fs.readFileSync(overviewPath, "utf8");
+  const tampered = mutate(before);
+  fs.writeFileSync(overviewPath, tampered);
+  const result = sdd(dir, ["overview", issue]);
+  assert.notEqual(result.status, 0);
+  expectCode(result, "OVERVIEW_BODY_EXTRA");
+  assert.equal(fs.readFileSync(overviewPath, "utf8"), tampered);
 }
 
 const VALID_AGENT = `${MARKER_AGENT_BEGIN}
@@ -360,14 +374,50 @@ test("overview refuses body content outside marker blocks without writing", () =
   prepare(dir);
   git(["checkout", "-b", "invoice-reissue"], dir);
   writeInvoiceIssue(dir);
+  expectOverviewBodyExtra(dir, "invoice-reissue", (html) => html.replace("<body>", "<body>\n<p>extra</p>\n"));
+});
+
+test("overview refuses shell tampering outside marker blocks (first, middle, last)", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
   const overviewPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
-  const tampered = read(dir, "docs/issues/invoice-reissue/overview.html").replace("<body>", "<body>\n<p>extra</p>\n");
-  fs.writeFileSync(overviewPath, tampered);
-  const before = fs.readFileSync(overviewPath, "utf8");
-  const result = sdd(dir, ["overview", "invoice-reissue"]);
-  assert.notEqual(result.status, 0);
-  expectCode(result, "OVERVIEW_BODY_EXTRA");
-  assert.equal(fs.readFileSync(overviewPath, "utf8"), before);
+  const clean = fs.readFileSync(overviewPath, "utf8");
+  const cases = [
+    {
+      label: "head meta",
+      mutate: (html) => html.replace("<head><meta charset", '<head><meta name="extra" content="x"><meta charset'),
+    },
+    {
+      label: "after html",
+      mutate: (html) => `${html}\ntrailing text\n`,
+    },
+    {
+      label: "body comment",
+      mutate: (html) => html.replace("<body>", "<body>\n<!-- stray -->\n"),
+    },
+    {
+      label: "before doctype",
+      mutate: (html) => `preamble\n${html}`,
+    },
+    {
+      label: "between html and head",
+      mutate: (html) => html.replace("<html ", "<html \n<!-- between -->\n"),
+    },
+    {
+      label: "missing body tag with stray text",
+      mutate: (html) => html.replace(/<body>\s*/, "stray-before-markers\n"),
+    },
+  ];
+  for (const { mutate } of cases) {
+    fs.writeFileSync(overviewPath, mutate(clean));
+    const tampered = fs.readFileSync(overviewPath, "utf8");
+    const result = sdd(dir, ["overview", "invoice-reissue"]);
+    assert.notEqual(result.status, 0);
+    expectCode(result, "OVERVIEW_BODY_EXTRA");
+    assert.equal(fs.readFileSync(overviewPath, "utf8"), tampered);
+  }
 });
 
 test("check fails when html lang drifts from config", () => {
@@ -455,9 +505,132 @@ ${MARKER_AGENT_END}
   assert.match(html, /Policy \/ Processing: .*undecided/);
 });
 
-test("double-encoded entities decode in multiple passes without stray & fragments", () => {
-  assert.equal(decodeHtmlEntities("&amp;#82;"), "R");
-  assert.equal(decodeHtmlEntities("&amp;amp;lt;"), "<");
+test("generated undecided list ignores td header rows and honors colspan", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const agent = `${MARKER_AGENT_BEGIN}
+<section data-sdd-part="agent">
+<table>
+<tr><th colspan="2">Wide column</th></tr>
+<tr><td>Not a header</td><td>Open question Q3 — undecided</td></tr>
+<tr><th>Policy</th><td>Another UNDECIDED item</td></tr>
+</table>
+</section>
+${MARKER_AGENT_END}
+`;
+  refreshIssueOverview(dir, "invoice-reissue", agent);
+  const html = read(dir, "docs/issues/invoice-reissue/overview.html");
+  assert.doesNotMatch(html, /Not a header \/ Wide column:/);
+  assert.match(html, /Policy \/ Wide column: .*UNDECIDED/);
+});
+
+test("decodeHtmlEntities single pass blocks chained numeric expansion after &amp;", () => {
+  assert.equal(decodeHtmlEntities("&amp;#82;"), "&amp;#82;");
+  assert.equal(decodeHtmlEntities("&lt;"), "<");
+  const agent = `${MARKER_AGENT_BEGIN}\n<section><p>&amp;#82;EQ-ZZZ-NEW-9 in prose</p></section>\n${MARKER_AGENT_END}`;
+  assert.equal(collectAgentPartIds(agent).has("REQ-ZZZ-NEW-9"), false);
+});
+
+test("removed id list keeps display name from base spec when delta title has no name", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const reqPath = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
+  const req = read(dir, "docs/issues/invoice-reissue/requirements.md");
+  fs.writeFileSync(reqPath, `${req.replace("# Delta", "#### REQ-INV-2: Reprint copy\nWhen a clerk reprints, the system SHALL reprint.\n\n# Delta")}`);
+  const design = read(dir, "docs/issues/invoice-reissue/design.md");
+  const reqDelta = parseDeltaMarkdown(read(dir, "docs/issues/invoice-reissue/requirements.md"), "requirements");
+  const designDelta = parseDeltaMarkdown(design, "design");
+  reqDelta.files[0].removed.push({ title: "REQ-INV-2", line: 99 });
+  const config = JSON.parse(read(dir, "sdd.config.json"));
+  const html = buildOverviewHtml(dir, config, "invoice-reissue", read(dir, "docs/issues/invoice-reissue/requirements.md"), design, reqDelta, designDelta, VALID_AGENT);
+  assert.match(html, /data-sdd-id="REQ-INV-2" data-sdd-name="Reprint copy"/);
+});
+
+test("ADR ids in prose do not become known unless decision heading or research delta", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const steering = path.join(dir, "docs/knowledge/steering/product.md");
+  fs.writeFileSync(steering, `${read(dir, "docs/knowledge/steering/product.md")}\n\nSee ADR-999 in legacy notes.\n`);
+  const decisionDir = path.join(dir, "docs/knowledge/decision");
+  fs.mkdirSync(decisionDir, { recursive: true });
+  fs.writeFileSync(
+    path.join(decisionDir, "1-invoice-store.md"),
+    `---
+type: Decision
+title: Invoice persistence
+description: Store invoices in a database
+tags: [billing]
+---
+# ADR-1: Invoice persistence
+
+## Status
+Accepted
+
+## Context and Problem Statement
+Store invoices.
+
+## Decision Drivers
+- Durability
+
+## Considered Options
+- Database
+
+## Decision Outcome
+Use a database.
+
+## Related
+- none
+`,
+  );
+  refreshIssueOverview(dir, "invoice-reissue", VALID_AGENT.replace("confirmation.", "confirmation per ADR-999."));
+  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_UNKNOWN_ID");
+  refreshIssueOverview(dir, "invoice-reissue", VALID_AGENT.replace("confirmation.", "confirmation per ADR-1."));
+  const ok = issueDiags(dir, "invoice-reissue");
+  assert.equal(ok.status, 0, ok.stdout);
+  assert.doesNotMatch(ok.stdout, /OVERVIEW_UNKNOWN_ID/);
+});
+
+test("highlight script at end of body adds undecided classes in headless Chrome", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const agent = `${MARKER_AGENT_BEGIN}
+<section data-sdd-part="agent">
+<table><tr><th>R</th><th>C</th></tr><tr><th>row</th><td>still UNDECIDED</td></tr></table>
+</section>
+${MARKER_AGENT_END}
+`;
+  refreshIssueOverview(dir, "invoice-reissue", agent);
+  const html = read(dir, "docs/issues/invoice-reissue/overview.html");
+  const scriptPos = html.indexOf("data-sdd-overview-highlight");
+  const bodyEnd = html.lastIndexOf("</body>");
+  assert.ok(scriptPos > 0 && scriptPos < bodyEnd);
+  assert.doesNotMatch(html.slice(0, html.indexOf("</head>")), /data-sdd-overview-highlight/);
+  const tmp = path.join(os.tmpdir(), `sdd-overview-highlight-${process.pid}.html`);
+  fs.writeFileSync(tmp, html);
+  const chrome = spawnSync(
+    "google-chrome",
+    [
+      "--headless=new",
+      "--disable-gpu",
+      "--no-sandbox",
+      "--disable-dev-shm-usage",
+      "--virtual-time-budget=1000",
+      "--dump-dom",
+      `file://${tmp}`,
+    ],
+    { encoding: "utf8", timeout: 15000 },
+  );
+  fs.unlinkSync(tmp);
+  assert.equal(chrome.status, 0, chrome.stderr);
+  assert.match(chrome.stdout, /sdd-auto-undecided/);
 });
 
 test("overview rejects issue names with path separators", () => {

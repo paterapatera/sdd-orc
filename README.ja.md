@@ -70,7 +70,7 @@ npx @paterapatera/sdd-orc migrate
 1. `node .agents/skills/sdd-scripts/sdd.mjs overview --issue <name>` … ファイルとエージェント部分のたたき台を作る
 2. マーカーのあいだに、要約と表を書く（`/sdd-req` の skill を見る）
 3. もう一度 `node .agents/skills/sdd-scripts/sdd.mjs overview --issue <name>` … 自動で書かれる部分を最新にする
-4. `check --issue <name>`
+4. `node .agents/skills/sdd-scripts/sdd.mjs check --issue <name>`
 
 `check` が overview で見るのは、(1) ファイルがあるか、中身が最新の再生成結果と一致するか、マーカーが正しいか、(2) エージェント部分に、仕様や issue に無い id が書かれていないか、の二つだけです。表の数や bullet の数は止めません。
 
@@ -229,6 +229,8 @@ Quick は質問しません。`/sdd-task` も質問しません。
 | `OVERVIEW_MARKER_DUPLICATE` | 各 overview マーカーは 1 つだけにする |
 | `OVERVIEW_MARKER_ORDER` | エージェントブロックを生成ブロックより前に；各 begin/end の順序も正しく |
 | `OVERVIEW_UNKNOWN_ID` | 仕様ツリー、requirements の変更一覧、research の ADR にある id だけ使う |
+| `OVERVIEW_BODY_EXTRA` | エージェント／生成マーカーの外側の HTML を削除してから `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` を実行 |
+| `ISSUE_INVALID` | issue 名に `/`、`\`、`..` を含めない |
 
 ## プルリクエスト CI（推奨）
 

@@ -205,6 +205,8 @@ Write plain HTML in the agent section. Undecided and impossible cells are highli
 | `OVERVIEW_MARKER_DUPLICATE` | Keep exactly one of each overview marker |
 | `OVERVIEW_MARKER_ORDER` | Put the agent block before the generated block; begin before end for each pair |
 | `OVERVIEW_UNKNOWN_ID` | Use ids from specs, the requirements delta, or research ADRs only |
+| `OVERVIEW_BODY_EXTRA` | Remove HTML outside the agent and generated marker blocks, then run `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` |
+| `ISSUE_INVALID` | Use a single issue folder name with no `/`, `\`, or `..` |
 
 ## Pull request CI (recommended)
 

@@ -1336,6 +1336,27 @@ function proposalType(proposal) {
   return /^-\s+Type:\s*(\S+)/m.exec(proposal)?.[1] || "";
 }
 
+function collectOverviewAdrIds(map, docsDir, researchDelta) {
+  const ids = new Set();
+  for (const rel of map.keys()) {
+    if (typeof map.get(rel) !== "string") continue;
+    const inner = rel.startsWith(`${docsDir}/`) ? rel.slice(docsDir.length + 1) : rel;
+    if (!/^decision\/\d+-[a-z0-9-]+\.md$/.test(inner)) continue;
+    const heading = /^# (ADR-\d+):/m.exec(map.get(rel));
+    if (heading) ids.add(heading[1]);
+  }
+  if (researchDelta) {
+    for (const adr of researchDelta.adrs) ids.add(adr.id);
+    for (const item of researchDelta.superseded) {
+      ids.add(item.from);
+      ids.add(item.to);
+    }
+    for (const item of researchDelta.deprecated) ids.add(item.id);
+    for (const item of researchDelta.amended) ids.add(item.id);
+  }
+  return ids;
+}
+
 function staticIssueDiags(root, config, issue, stage, { validateOverviewFile = true } = {}) {
   const files = readIssue(root, config, issue);
   if (!fs.existsSync(files.dir)) return [diag(`${config.docsDir}/issues/${issue}`, 1, "ISSUE_NOT_FOUND", "Create the issue directory before running this command")];
@@ -1362,12 +1383,10 @@ function staticIssueDiags(root, config, issue, stage, { validateOverviewFile = t
   if (files.research) validateResearch(files.research, delta, diags, config, issue);
   const reqDelta = deltas.find((part) => part.source === "requirements") || null;
   const designDelta = deltas.find((part) => part.source === "design") || null;
-  const overviewIds = knownIdSet(loadTree(root, kdir(config)), kdir(config));
   const tree = loadTree(root, kdir(config));
-  for (const value of tree.values()) {
-    if (typeof value !== "string") continue;
-    for (const match of value.matchAll(/\b(ADR-(?:NEW-\d+|\d+))\b/g)) overviewIds.add(match[1]);
-  }
+  const overviewIds = knownIdSet(tree, kdir(config));
+  const researchDelta = deltas.find((part) => part.source === "research") || null;
+  for (const adrId of collectOverviewAdrIds(tree, kdir(config), researchDelta)) overviewIds.add(adrId);
   if (reqDelta) {
     for (const bucket of ["added", "modified", "removed"]) {
       for (const file of reqDelta.files) {
@@ -1377,16 +1396,6 @@ function staticIssueDiags(root, config, issue, stage, { validateOverviewFile = t
         }
       }
     }
-  }
-  const researchDelta = deltas.find((part) => part.source === "research") || null;
-  if (researchDelta) {
-    for (const adr of researchDelta.adrs) overviewIds.add(adr.id);
-    for (const item of researchDelta.superseded) {
-      overviewIds.add(item.from);
-      overviewIds.add(item.to);
-    }
-    for (const item of researchDelta.deprecated) overviewIds.add(item.id);
-    for (const item of researchDelta.amended) overviewIds.add(item.id);
   }
   if (validateOverviewFile && !quick) validateOverview(root, config, issue, files, reqDelta, designDelta, overviewIds, diags);
   if (stage === "close") validateClose(root, config, issue, files, docsOnly, quick, diags);
