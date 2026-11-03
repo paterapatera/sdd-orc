@@ -42,4 +42,14 @@ Define every token as a CSS custom property with **exactly** these names:
 - **Semantic pairs** (light fill + dark text/border): chicago/alto, casal/jagged-ice, azure/hawkes-blue, plum/classic-rose, royal-purple/snuff, oregon/almond.
 - **Suggested mapping**: ADDED = casal/jagged-ice; MODIFIED / links / primary = azure/hawkes-blue; REMOVED = oregon/almond; undecided (未決定) / open questions = plum/classic-rose; steering changes = royal-purple/snuff.
 
-Every text/background pair must meet **WCAG AA 4.5:1** for body-sized text; record contrast ratios when changing the mapping.
+Every text/background pair must meet **WCAG AA 4.5:1** for body-sized text. Verified ratios for the default mapping:
+
+| Use | Foreground | Background | Contrast |
+|---|---|---|---|
+| Body text | `--chicago` | `--white` | 6.39:1 |
+| Added ids | `--casal` | `--jagged-ice` | 4.63:1 |
+| Modified / links | `--azure` | `--hawkes-blue` | 4.79:1 |
+| Removed ids | `--oregon` | `--almond` | 4.90:1 |
+| Open questions / undecided | `--plum` | `--classic-rose` | 4.95:1 |
+| Steering changes | `--royal-purple` | `--snuff` | 4.95:1 |
+| Strong headings | `--black` | `--white` | 21.0:1 |

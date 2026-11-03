@@ -6,8 +6,11 @@
 - Add `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` to regenerate the generated section (deterministic hash of requirements + design, id lists, questions, steering delta, anchors).
 - `/sdd-req` and `/sdd-design` write readable HTML in the agent section between documented markers. `check` validates overview **freshness** (whole file vs regeneration, stale hash, marker layout) and **unknown ids** (requirements, specs, research ADRs) in the agent section only; quick issues skip overview. Run `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` twice around agent edits (skeleton, then refresh).
 - README and README.ja document overview patterns, writing guidance, markers, and remaining `OVERVIEW_*` codes with one-line fixes.
+- Regenerated `overview.html` uses offline shadcn-like cards, the 14-color palette in `templates/skills/sdd-req/overview-visual-design.md`, and preserves extra head markup when you rerun `overview` (body content outside markers still fails `check` and blocks `overview`).
 
+- README と README.ja に overview のパターン、書き方、マーカー、残る `OVERVIEW_*` コードの一行修正を追記しました。
 - issue の読みやすさを `overview.html` に移し、`requirements.md` / `design.md` は 1.1.0 の形のままにしました。`apply` は `overview.html` を読みません。
+- `overview.html` の再生成はオフラインの shadcn 風カードと 14 色パレット（`overview-visual-design.md`）を使います。`overview` の再実行時は head の追記分を残します（マーカー外の body 内容は従来どおり `check` エラーで `overview` も拒否）。
 - `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` で生成部分（requirements+design のハッシュ、id 一覧、質問、steering デルタ）を更新します。
 - `/sdd-req` と `/sdd-design` がマーカー内に読みやすい HTML を書きます。`check` の overview 検査は**鮮度**（欠落・ハッシュ・生成部分・マーカー）とエージェント部分の**未知 id** のみです。表や bullet の形はスキル側の指針です。
 

@@ -213,7 +213,7 @@ Quick は質問しません。`/sdd-task` も質問しません。
 | 外部連携 | 相手の応答 × こちらの処理 |
 | 同時実行 | 重なりうる状況 × 挙動 |
 
-形の参考: 同梱の `example-overview.html`（`/sdd-req` の横）。
+形の参考: 同梱の `example-overview.html` と色・カードのルール `overview-visual-design.md`（`/sdd-req` の横）。
 
 **1.2.0 から:** quick 以外の issue は `check` の前に有効な `overview.html` が必要です。
 

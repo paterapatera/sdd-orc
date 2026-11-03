@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { parseDeltaMarkdown } from "./delta.mjs";
-import { attr, childElements, decodeHtmlEntities, findElements, firstElement, parseHtmlFragment, tableBodyCells, textContent } from "./overview-html.mjs";
+import { attr, childElements, columnIndexInRow, decodeHtmlEntities, findElements, firstElement, headerLabelAtColumn, parseHtmlFragment, tableBodyCells, textContent } from "./overview-html.mjs";
 import { diag, formatDiagnostics, normalizeForHash } from "./util.mjs";
 
 /** Marker format (see README): generated and agent regions are preserved across `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>`. */
@@ -16,16 +16,144 @@ export const ID_PATTERN = /\b((?:REQ|IF|DATA|NFR)-(?:[A-Z]{2,6}-\d+|[A-Z]{2,6}-N
 
 const OVERVIEW_CMD = "node .agents/skills/sdd-scripts/sdd.mjs overview <issue>";
 
+export const OVERVIEW_VERSION = "2";
+
 const OVERVIEW_CSS = `<style data-sdd-overview-css="1">
-body { font-family: system-ui, sans-serif; line-height: 1.4; max-width: 52rem; margin: 1rem; }
-table { border-collapse: collapse; width: 100%; margin: 0.5rem 0 1rem; }
-th, td { border: 1px solid #bbb; padding: 0.35rem 0.5rem; vertical-align: top; }
-th { background: #f4f4f4; }
-td.sdd-auto-undecided, td.sdd-auto-impossible, td.undecided, td.impossible, td[data-sdd-cell="undecided"], td[data-sdd-cell="impossible"] { background: #fff3cd; }
-td.none, td[data-sdd-cell="none"] { background: #f0f0f0; font-style: italic; }
-.sdd-highlight-undecided, .sdd-highlight-impossible { background: #fff3cd; font-weight: 600; }
-section[data-sdd-part="agent"] ul { margin: 0.5rem 0 1rem; }
-section[data-sdd-part="generated"] { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; }
+:root {
+  --white: #fff;
+  --black: #000;
+  --alto: #dedede;
+  --chicago: #5f5f5f;
+  --casal: #2c6b6a;
+  --azure: #3a5aad;
+  --plum: #8f3a7b;
+  --royal-purple: #6f48a0;
+  --oregon: #9b4100;
+  --jagged-ice: #c1e7e6;
+  --hawkes-blue: #cfdeff;
+  --classic-rose: #ffccef;
+  --snuff: #e3d8f5;
+  --almond: #f5d7c7;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body.sdd-overview {
+  margin: 0;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  color: var(--chicago);
+  background: var(--white);
+}
+.sdd-main {
+  max-width: 52rem;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+.sdd-page-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: var(--black);
+  letter-spacing: -0.02em;
+}
+.sdd-card {
+  background: var(--white);
+  border: 1px solid var(--alto);
+  border-radius: 8px;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--black) 6%, transparent);
+  padding: 1.25rem 1.35rem;
+}
+.sdd-kicker {
+  margin: 0 0 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--chicago);
+}
+.sdd-section-title {
+  margin: 1.15rem 0 0.5rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--black);
+}
+.sdd-section-title:first-child { margin-top: 0; }
+.sdd-summary {
+  margin: 0 0 0.75rem;
+  padding-left: 1.15rem;
+}
+.sdd-summary li { margin: 0.35rem 0; }
+.sdd-table-wrap { overflow-x: auto; margin: 0.35rem 0 0.75rem; }
+table.sdd-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 0.92rem;
+}
+table.sdd-table th,
+table.sdd-table td {
+  padding: 0.45rem 0.65rem;
+  vertical-align: top;
+  border-bottom: 1px solid var(--alto);
+  text-align: left;
+}
+table.sdd-table tr:last-child th,
+table.sdd-table tr:last-child td { border-bottom: 0; }
+table.sdd-table thead th,
+table.sdd-table tr:first-child th {
+  background: color-mix(in srgb, var(--alto) 40%, var(--white));
+  font-weight: 600;
+  color: var(--chicago);
+  font-size: 0.78rem;
+}
+table.sdd-table tbody th { font-weight: 600; color: var(--chicago); }
+.sdd-badge {
+  display: inline-block;
+  margin: 0.2rem 0.35rem 0.2rem 0;
+  padding: 0.12rem 0.55rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+.sdd-id-list { list-style: none; margin: 0 0 0.75rem; padding: 0; }
+.sdd-id-list li { margin: 0.35rem 0; }
+.sdd-badge-added { background: var(--jagged-ice); color: var(--casal); border-color: var(--casal); }
+.sdd-badge-modified { background: var(--hawkes-blue); color: var(--azure); border-color: var(--azure); }
+.sdd-badge-removed { background: var(--almond); color: var(--oregon); border-color: var(--oregon); }
+.sdd-badge-steering { background: var(--snuff); color: var(--royal-purple); border-color: var(--royal-purple); }
+.sdd-badge-open { background: var(--classic-rose); color: var(--plum); border-color: var(--plum); }
+.sdd-id-list a { color: var(--azure); text-decoration: none; font-weight: 600; }
+.sdd-id-list a:hover { text-decoration: underline; }
+.sdd-callout {
+  margin: 0.35rem 0;
+  padding: 0.55rem 0.75rem;
+  border-radius: 6px;
+  border: 1px solid var(--alto);
+  font-size: 0.9rem;
+}
+.sdd-callout-plum { background: var(--classic-rose); border-color: var(--plum); color: var(--plum); }
+.sdd-callout-purple { background: var(--snuff); border-color: var(--royal-purple); color: var(--royal-purple); }
+.sdd-muted { color: var(--chicago); font-size: 0.88rem; }
+td.sdd-auto-undecided, td.sdd-auto-impossible, td.undecided, td.impossible,
+td[data-sdd-cell="undecided"], td[data-sdd-cell="impossible"] {
+  background: var(--classic-rose);
+  color: var(--plum);
+}
+td.sdd-auto-impossible, td.impossible, td[data-sdd-cell="impossible"] {
+  background: var(--almond);
+  color: var(--oregon);
+}
+td.none, td[data-sdd-cell="none"] {
+  background: color-mix(in srgb, var(--alto) 35%, var(--white));
+  color: var(--chicago);
+  font-style: italic;
+}
+.sdd-highlight-undecided { background: var(--classic-rose); color: var(--plum); font-weight: 600; }
+.sdd-highlight-impossible { background: var(--almond); color: var(--oregon); font-weight: 600; }
+section[data-sdd-part="generated"] .sdd-section-title { margin-top: 1rem; }
+section[data-sdd-part="generated"] .sdd-kicker:first-child { margin-bottom: 0.85rem; }
 </style>`;
 
 const HIGHLIGHT_SCRIPT = `<script data-sdd-overview-highlight="1">(function(){var s=document.querySelector('section[data-sdd-part="agent"]');if(!s)return;s.querySelectorAll("td").forEach(function(td){var t=(td.textContent||"").trim();if(/\\bundecided\\b|未決定/.test(t))td.classList.add("sdd-auto-undecided");if(/\\bimpossible\\s*:/i.test(t))td.classList.add("sdd-auto-impossible");});})();</script>`;
@@ -231,14 +359,15 @@ function steeringFromDesignDelta(designDelta) {
 }
 
 function idListHtml(kind, items) {
-  if (!items.length) return `  <ul data-sdd-list="${kind}"></ul>\n`;
+  const badgeClass = kind === "added" ? "sdd-badge-added" : kind === "modified" ? "sdd-badge-modified" : "sdd-badge-removed";
+  if (!items.length) return `  <ul data-sdd-list="${kind}" class="sdd-id-list"></ul>\n`;
   const lines = items.map((item) => {
     const anchor = `sdd-id-${item.id}`;
     const displayName = item.name || "";
     const label = displayName ? ` ${escapeHtml(displayName)}` : "";
-    return `    <li data-sdd-id="${escapeHtml(item.id)}" data-sdd-name="${escapeHtml(displayName)}"><a href="#${anchor}">${escapeHtml(item.id)}</a>${label}</li>`;
+    return `    <li class="sdd-badge ${badgeClass}" data-sdd-id="${escapeHtml(item.id)}" data-sdd-name="${escapeHtml(displayName)}"><a href="#${anchor}">${escapeHtml(item.id)}</a>${label}</li>`;
   });
-  return `  <ul data-sdd-list="${kind}">\n${lines.join("\n")}\n  </ul>\n`;
+  return `  <ul data-sdd-list="${kind}" class="sdd-id-list">\n${lines.join("\n")}\n  </ul>\n`;
 }
 
 function findParentTable(root, td) {
@@ -272,18 +401,22 @@ function cellAxisPrefix(root, table, td) {
   }
   if (!tr) return "";
   const rowCells = childElements(tr);
-  const colIndex = rowCells.indexOf(td);
+  const colIndex = columnIndexInRow(rowCells, td);
   let rowHead = "";
   for (const cell of rowCells) {
     if (cell === td) break;
     if (cell.name === "th") rowHead = decodeHtmlEntities(textContent(cell)).trim();
   }
-  if (!rowHead && rowCells[0]?.name === "th") rowHead = decodeHtmlEntities(textContent(rowCells[0])).trim();
-  let colHead = "";
-  const headCells = rows.length ? childElements(rows[0]) : [];
-  if (colIndex >= 0 && colIndex < headCells.length) {
-    colHead = decodeHtmlEntities(textContent(headCells[colIndex])).trim();
+  if (!rowHead) {
+    for (const cell of rowCells) {
+      if (cell.name === "th") {
+        rowHead = decodeHtmlEntities(textContent(cell)).trim();
+        break;
+      }
+    }
   }
+  const headerRow = rows[0] || null;
+  const colHead = colIndex >= 0 ? headerLabelAtColumn(headerRow, colIndex) : "";
   const parts = [rowHead, colHead].filter(Boolean);
   return parts.length ? `${parts.join(" / ")}: ` : "";
 }
@@ -332,30 +465,31 @@ export function buildGeneratedSection(root, docsDir, requirementsText, designTex
     .map((item) => `  <span id="sdd-id-${escapeHtml(item.id)}"></span>`)
     .join("\n");
   const steeringLines = steering.length
-    ? steering.map((row) => `    <li data-sdd-steering-path="${escapeHtml(row.path)}" data-sdd-steering-kind="${row.kind}">${escapeHtml(row.path)} (${row.kind})</li>`).join("\n")
+    ? steering.map((row) => `    <li class="sdd-badge sdd-badge-steering" data-sdd-steering-path="${escapeHtml(row.path)}" data-sdd-steering-kind="${row.kind}">${escapeHtml(row.path)} (${row.kind})</li>`).join("\n")
     : "";
   const steeringBlock = steering.length
-    ? `  <h2 data-sdd-heading="steering">${escapeHtml(labels.steering)}</h2>\n  <ul data-sdd-list="steering">\n${steeringLines}\n  </ul>\n`
-    : `  <h2 data-sdd-heading="steering">${escapeHtml(labels.steering)}</h2>\n  <ul data-sdd-list="steering"></ul>\n`;
+    ? `  <h2 class="sdd-section-title" data-sdd-heading="steering">${escapeHtml(labels.steering)}</h2>\n  <ul data-sdd-list="steering" class="sdd-id-list">\n${steeringLines}\n  </ul>\n`
+    : `  <h2 class="sdd-section-title" data-sdd-heading="steering">${escapeHtml(labels.steering)}</h2>\n  <ul data-sdd-list="steering" class="sdd-id-list"></ul>\n`;
   const undecidedLines = undecidedAgent
-    .map((label) => `    <li class="sdd-highlight-undecided" data-sdd-undecided-label="${escapeHtml(label)}">${escapeHtml(label)}</li>`)
+    .map((label) => `    <li class="sdd-callout sdd-callout-plum sdd-highlight-undecided" data-sdd-undecided-label="${escapeHtml(label)}">${escapeHtml(label)}</li>`)
     .join("\n");
   return `${MARKER_GENERATED_BEGIN}
-<section data-sdd-part="generated" data-sdd-content-hash="${hash}">
+<section data-sdd-part="generated" class="sdd-card" data-sdd-content-hash="${hash}">
+  <p class="sdd-kicker">${lang === "ja" ? "自動生成" : "Generated"}</p>
 ${anchors}
-  <h2 data-sdd-heading="ids-added">${escapeHtml(labels.idsAdded)}</h2>
-${idListHtml("added", ids.added)}  <h2 data-sdd-heading="ids-modified">${escapeHtml(labels.idsModified)}</h2>
-${idListHtml("modified", ids.modified)}  <h2 data-sdd-heading="ids-removed">${escapeHtml(labels.idsRemoved)}</h2>
-${idListHtml("removed", ids.removed)}  <h2 data-sdd-heading="open-questions">${escapeHtml(labels.openQuestions)}</h2>
-  <p data-sdd-open-count="${questions.open.length}" data-sdd-answered-count="${questions.answered.length}"></p>
-  <ul data-sdd-list="open-questions-unanswered">
-${questions.open.map((q) => `    <li data-sdd-question="open">${escapeHtml(q)}</li>`).join("\n") || ""}
+  <h2 class="sdd-section-title" data-sdd-heading="ids-added">${escapeHtml(labels.idsAdded)}</h2>
+${idListHtml("added", ids.added)}  <h2 class="sdd-section-title" data-sdd-heading="ids-modified">${escapeHtml(labels.idsModified)}</h2>
+${idListHtml("modified", ids.modified)}  <h2 class="sdd-section-title" data-sdd-heading="ids-removed">${escapeHtml(labels.idsRemoved)}</h2>
+${idListHtml("removed", ids.removed)}  <h2 class="sdd-section-title" data-sdd-heading="open-questions">${escapeHtml(labels.openQuestions)}</h2>
+  <p class="sdd-muted" data-sdd-open-count="${questions.open.length}" data-sdd-answered-count="${questions.answered.length}"></p>
+  <ul data-sdd-list="open-questions-unanswered" class="sdd-id-list">
+${questions.open.map((q) => `    <li class="sdd-callout sdd-callout-plum" data-sdd-question="open">${escapeHtml(q)}</li>`).join("\n") || ""}
   </ul>
-  <ul data-sdd-list="open-questions-answered">
-${questions.answered.map((q) => `    <li data-sdd-question="answered">${escapeHtml(q)}</li>`).join("\n") || ""}
+  <ul data-sdd-list="open-questions-answered" class="sdd-id-list">
+${questions.answered.map((q) => `    <li class="sdd-callout sdd-callout-plum sdd-muted" data-sdd-question="answered">${escapeHtml(q)}</li>`).join("\n") || ""}
   </ul>
-  <h2 data-sdd-heading="undecided">${escapeHtml(labels.undecided)}</h2>
-  <ul data-sdd-list="undecided-agent">
+  <h2 class="sdd-section-title" data-sdd-heading="undecided">${escapeHtml(labels.undecided)}</h2>
+  <ul data-sdd-list="undecided-agent" class="sdd-id-list">
 ${undecidedLines || ""}
   </ul>
 ${steeringBlock}</section>
@@ -401,10 +535,23 @@ export function validateMarkerLayout(html, { requireAll = true } = {}) {
   return errors;
 }
 
+function stripAllowedBodyShell(body) {
+  let stripped = body;
+  stripped = stripped.replace(/^\s*<main[^>]*\bclass="[^"]*\bsdd-main\b[^"]*"[^>]*>\s*/i, "");
+  stripped = stripped.replace(/\s*<\/main>\s*$/i, "");
+  stripped = stripped.replace(/^\s*<h1[^>]*\bclass="[^"]*\bsdd-page-title\b[^"]*"[^>]*>[\s\S]*?<\/h1>\s*/i, "");
+  return stripped;
+}
+
 export function bodyExtraOutsideMarkerBlocks(html) {
-  const bodyMatch = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html);
-  if (!bodyMatch) return false;
-  let body = bodyMatch[1];
+  const open = html.indexOf("<body");
+  if (open < 0) return false;
+  const openEnd = html.indexOf(">", open);
+  if (openEnd < 0) return false;
+  const close = html.indexOf("</body>", openEnd);
+  if (close < 0) return false;
+  let body = html.slice(openEnd + 1, close);
+  body = stripAllowedBodyShell(body);
   const removeBlock = (begin, end) => {
     const start = body.indexOf(begin);
     const stop = body.indexOf(end);
@@ -414,6 +561,61 @@ export function bodyExtraOutsideMarkerBlocks(html) {
   removeBlock(MARKER_AGENT_BEGIN, MARKER_AGENT_END);
   removeBlock(MARKER_GENERATED_BEGIN, MARKER_GENERATED_END);
   return body.replace(/<!--[\s\S]*?-->/g, "").replace(/\s+/g, "").length > 0;
+}
+
+export function replaceMarkerBlock(html, begin, end, replacement) {
+  const start = html.indexOf(begin);
+  const stop = html.indexOf(end, start < 0 ? 0 : start);
+  if (start < 0 || stop < 0 || stop < start) return null;
+  let endPos = stop + end.length;
+  if (html[endPos] === "\n") endPos += 1;
+  return `${html.slice(0, start)}${replacement}${html.slice(endPos)}`;
+}
+
+function refreshManagedHeadAssets(html, lang, issue) {
+  const htmlLang = lang === "ja" ? "ja" : "en";
+  const labels = lang === "ja" ? HEADINGS.ja : HEADINGS.en;
+  const title = issue ? `${escapeHtml(issue)} — ${labels.titleSuffix}` : "Issue overview";
+  let out = html;
+  if (/<style data-sdd-overview-css="1">[\s\S]*?<\/style>/.test(out)) {
+    out = out.replace(/<style data-sdd-overview-css="1">[\s\S]*?<\/style>/, OVERVIEW_CSS);
+  } else {
+    out = out.replace("</head>", `${OVERVIEW_CSS}\n</head>`);
+  }
+  if (/<script data-sdd-overview-highlight="1">[\s\S]*?<\/script>/.test(out)) {
+    out = out.replace(/<script data-sdd-overview-highlight="1">[\s\S]*?<\/script>/, HIGHLIGHT_SCRIPT);
+  } else {
+    out = out.replace("</head>", `${HIGHLIGHT_SCRIPT}\n</head>`);
+  }
+  const bodyOpen = out.indexOf("<body");
+  if (bodyOpen >= 0) {
+    const headPart = out.slice(0, bodyOpen);
+    let bodyPart = out.slice(bodyOpen);
+    bodyPart = bodyPart.replace(/\n?<script data-sdd-overview-highlight="1">[\s\S]*?<\/script>/, "");
+    out = headPart + bodyPart;
+  }
+  out = out.replace(/<title>[\s\S]*?<\/title>/, `<title>${title}</title>`);
+  if (/<html[^>]*\slang="/i.test(out)) {
+    out = out.replace(/(<html[^>]*)\slang="[^"]*"/i, `$1 lang="${htmlLang}"`);
+  } else {
+    out = out.replace("<html", `<html lang="${htmlLang}"`);
+  }
+  if (/data-sdd-overview-version="/i.test(out)) {
+    out = out.replace(/data-sdd-overview-version="[^"]*"/i, `data-sdd-overview-version="${OVERVIEW_VERSION}"`);
+  }
+  return out;
+}
+
+export function mergeOverviewHtml(existingHtml, agent, generated, lang = "en", issue = "") {
+  if (!existingHtml.trim()) return assembleOverview(generated, agent, lang, issue);
+  if (!existingHtml.includes(MARKER_AGENT_BEGIN) || !existingHtml.includes(MARKER_GENERATED_BEGIN)) {
+    return assembleOverview(generated, agent, lang, issue);
+  }
+  let html = existingHtml;
+  html = replaceMarkerBlock(html, MARKER_AGENT_BEGIN, MARKER_AGENT_END, agent) ?? html;
+  html = replaceMarkerBlock(html, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END, generated) ?? html;
+  html = refreshManagedHeadAssets(html, lang, issue);
+  return html;
 }
 
 export function extractBlock(html, begin, end) {
@@ -427,9 +629,9 @@ export function extractBlock(html, begin, end) {
 
 export function defaultAgentSection() {
   return `${MARKER_AGENT_BEGIN}
-<section data-sdd-part="agent">
-  <h2>Summary</h2>
-  <ul>
+<section data-sdd-part="agent" class="sdd-card">
+  <p class="sdd-kicker">Summary</p>
+  <ul class="sdd-summary">
     <li>Write 3–5 bullets with requirement ids where decided.</li>
     <li>Second bullet.</li>
     <li>Third bullet.</li>
@@ -443,15 +645,26 @@ export function assembleOverview(generated, agent, lang = "en", issue = "") {
   const htmlLang = lang === "ja" ? "ja" : "en";
   const labels = lang === "ja" ? HEADINGS.ja : HEADINGS.en;
   const title = issue ? `${escapeHtml(issue)} — ${labels.titleSuffix}` : "Issue overview";
+  const pageTitle = issue ? `<h1 class="sdd-page-title">${escapeHtml(issue)}</h1>\n` : "";
   return `<!DOCTYPE html>
-<html lang="${htmlLang}" data-sdd-overview-version="1">
-<head><meta charset="utf-8"><title>${title}</title>${OVERVIEW_CSS}${HIGHLIGHT_SCRIPT}</head>
-<body>
-${agent}
+<html lang="${htmlLang}" data-sdd-overview-version="${OVERVIEW_VERSION}">
+<head><meta charset="utf-8"><title>${title}</title>${OVERVIEW_CSS}
+${HIGHLIGHT_SCRIPT}
+</head>
+<body class="sdd-overview">
+<main class="sdd-main">
+${pageTitle}${agent}
 ${generated}
+</main>
 </body>
 </html>
 `;
+}
+
+function canonicalOverviewHtml(html) {
+  return html
+    .replace(/<\/script>\s*<\/head>/g, "</script>\n</head>")
+    .replace(/<\/head>\s*<body/g, "</head>\n<body");
 }
 
 export function buildOverviewHtml(root, config, issue, requirementsText, designText, reqDelta, designDelta, existingHtml = "") {
@@ -461,7 +674,8 @@ export function buildOverviewHtml(root, config, issue, requirementsText, designT
   const pseudoHtml = `<!DOCTYPE html><html><body>\n${agent}\n</body></html>\n`;
   const contextHtml = existingHtml || pseudoHtml;
   const generated = buildGeneratedSection(root, config.docsDir, requirementsText, designText, reqDelta, designDelta, contextHtml, lang);
-  return normalizeOverviewNewlines(assembleOverview(generated, agent, lang, issue));
+  const merged = mergeOverviewHtml(existingHtml, agent, generated, lang, issue);
+  return normalizeOverviewNewlines(canonicalOverviewHtml(merged));
 }
 
 export function writeOverviewFile(root, docsDir, issueDir, issue, requirementsText, designText, reqDelta, designDelta, existingHtml = "", lang = "en") {
@@ -550,5 +764,10 @@ export function validateOverview(root, config, issue, files, reqDelta, designDel
         diags.push(diag(rel, 1, "OVERVIEW_UNKNOWN_ID", `${id} is not in specs or the delta`));
       }
     }
+  }
+  if (bodyExtraOutsideMarkerBlocks(html)) {
+    diags.push(
+      diag(rel, 1, "OVERVIEW_BODY_EXTRA", `Remove content outside the generated and agent marker blocks before running ${OVERVIEW_CMD}`),
+    );
   }
 }

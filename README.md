@@ -189,7 +189,7 @@ Path: `docs/issues/<name>/overview.html` (same `<name>` as the branch).
 
 Run `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` once to create the file and agent skeleton, write the agent section (summary and tables), run `overview` again, then `check`. The tool fills the generated block (id lists with names, open questions, steering changes from the design delta, undecided labels from your tables, and a hash of `requirements.md` + `design.md`). **`check` only enforces freshness** (missing file, stale hash, file not matching a fresh regeneration, broken markers) **and unknown ids** (including ADR ids) in the agent section. Table layout is guidance in skills, not check errors.
 
-Write plain HTML in the agent section. Undecided and impossible cells are highlighted automatically when the text contains `undecided`, 未決定, or `impossible:`. Typical table patterns (from `/sdd-req`): screens (role × screen), permissions (role × data/actions), API (caller × endpoint), batch (situation × step), state transitions, data migration, external integration, concurrency. See `example-overview.html` next to `/sdd-req`.
+Write plain HTML in the agent section using the card/table classes in `overview-visual-design.md` next to `/sdd-req` (see `example-overview.html`). Undecided and impossible cells are highlighted automatically when the text contains `undecided`, 未決定, or `impossible:`. Typical table patterns (from `/sdd-req`): screens (role × screen), permissions (role × data/actions), API (caller × endpoint), batch (situation × step), state transitions, data migration, external integration, concurrency.
 
 **Quick issues** (`task.md` only) skip overview checks. **Migration (1.2.0):** other issues need a valid `overview.html` before `check` passes.
 

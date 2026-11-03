@@ -110,15 +110,43 @@ export function decodeHtmlEntities(text) {
   let value = String(text || "");
   for (let pass = 0; pass < 8; pass += 1) {
     const next = value
+      .replace(/&amp;/g, "&")
       .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
       .replace(/&lt;/g, "<")
       .replace(/&gt;/g, ">")
       .replace(/&quot;/g, '"')
       .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-      .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
-      .replace(/&amp;/g, "&");
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
     if (next === value) break;
     value = next;
   }
   return value;
+}
+
+export function cellColspan(node) {
+  const raw = attr(node, "colspan");
+  const n = Number.parseInt(raw, 10);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
+/** Logical column index of a cell within its row (sums colspan). */
+export function columnIndexInRow(rowCells, target) {
+  let col = 0;
+  for (const cell of rowCells) {
+    if (cell === target) return col;
+    col += cellColspan(cell);
+  }
+  return -1;
+}
+
+/** Header label at a logical column index in the header row. */
+export function headerLabelAtColumn(headerRow, targetCol) {
+  if (!headerRow) return "";
+  let col = 0;
+  for (const cell of childElements(headerRow)) {
+    const span = cellColspan(cell);
+    if (targetCol >= col && targetCol < col + span) return decodeHtmlEntities(textContent(cell)).trim();
+    col += span;
+  }
+  return "";
 }

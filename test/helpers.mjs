@@ -193,17 +193,17 @@ function invoiceOverviewAgent(includeReprint) {
       <li data-sdd-ids="REQ-INV-NEW-1">Billing capability adds invoice records only.</li>`;
   const tableIds = includeReprint ? "REQ-INV-NEW-1,REQ-INV-NEW-2" : "REQ-INV-NEW-1";
   return `${MARKER_AGENT_BEGIN}
-<section data-sdd-part="agent" data-sdd-undecided-count="0">
-  <div data-sdd-summary>
-    <ul data-sdd-bullets>
+<section data-sdd-part="agent" class="sdd-card">
+  <p class="sdd-kicker">Summary</p>
+  <ul class="sdd-summary">
 ${bullets}
-    </ul>
-  </div>
-  <div data-sdd-table="1" data-sdd-table-kind="permissions">
-    <table>
+  </ul>
+  <p class="sdd-kicker">Permissions</p>
+  <div class="sdd-table-wrap">
+    <table class="sdd-table">
       <tr><th>Role</th><th>Invoice data</th></tr>
-      <tr><th>Customer</th><td data-sdd-cell="decided" data-sdd-ids="${tableIds}">view issued invoice</td></tr>
-      <tr><th>System</th><td data-sdd-cell="decided" data-sdd-ids="REQ-INV-NEW-1">create on confirmation</td></tr>
+      <tr><th>Customer</th><td>view issued invoice (${tableIds})</td></tr>
+      <tr><th>System</th><td>create on confirmation (REQ-INV-NEW-1)</td></tr>
     </table>
   </div>
 </section>
@@ -236,18 +236,20 @@ export function refreshInvoiceReprintOverview(dir) {
 }
 
 export const DOCS_ONLY_OVERVIEW_AGENT = `${MARKER_AGENT_BEGIN}
-<section data-sdd-part="agent">
-  <h2>Summary</h2>
-  <ul>
+<section data-sdd-part="agent" class="sdd-card">
+  <p class="sdd-kicker">Summary</p>
+  <ul class="sdd-summary">
     <li>Decision-only change with no requirement ids in the delta.</li>
     <li>Steering and ADR updates are described in design and research.</li>
     <li>check requires overview.html; apply does not read overview.html.</li>
   </ul>
-  <h2>Requirements ids</h2>
-  <table>
-    <tr><th>Axis</th><th>Notes</th></tr>
-    <tr><th>Spec delta</th><td class="none">none: coverage none; no spec requirement delta</td></tr>
-  </table>
+  <p class="sdd-kicker">Requirements ids</p>
+  <div class="sdd-table-wrap">
+    <table class="sdd-table">
+      <tr><th>Axis</th><th>Notes</th></tr>
+      <tr><th>Spec delta</th><td class="none">none: coverage none; no spec requirement delta</td></tr>
+    </table>
+  </div>
 </section>
 ${MARKER_AGENT_END}
 `;

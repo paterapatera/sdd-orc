@@ -48,18 +48,20 @@ function expectCode(result, code) {
 }
 
 const VALID_AGENT = `${MARKER_AGENT_BEGIN}
-<section data-sdd-part="agent">
-  <h2>Summary</h2>
-  <ul>
+<section data-sdd-part="agent" class="sdd-card">
+  <p class="sdd-kicker">Summary</p>
+  <ul class="sdd-summary">
     <li>Issue REQ-INV-NEW-1 on confirmation.</li>
     <li>Integration test covers the flow.</li>
     <li>Billing stores one invoice per order.</li>
   </ul>
-  <h2>Permissions</h2>
-  <table>
-    <tr><th>Role</th><th>Data</th></tr>
-    <tr><th>Clerk</th><td>create on confirm (REQ-INV-NEW-1)</td></tr>
-  </table>
+  <p class="sdd-kicker">Permissions</p>
+  <div class="sdd-table-wrap">
+    <table class="sdd-table">
+      <tr><th>Role</th><th>Data</th></tr>
+      <tr><th>Clerk</th><td>create on confirm (REQ-INV-NEW-1)</td></tr>
+    </table>
+  </div>
 </section>
 ${MARKER_AGENT_END}
 `;
@@ -362,13 +364,34 @@ test("overview refuses body content outside marker blocks without writing", () =
   git(["checkout", "-b", "invoice-reissue"], dir);
   writeInvoiceIssue(dir);
   const overviewPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
-  const tampered = read(dir, "docs/issues/invoice-reissue/overview.html").replace("<body>", "<body>\n<p>extra</p>\n");
+  const tampered = read(dir, "docs/issues/invoice-reissue/overview.html").replace(
+    '<body class="sdd-overview">',
+    '<body class="sdd-overview">\n<p>extra</p>\n',
+  );
   fs.writeFileSync(overviewPath, tampered);
   const before = fs.readFileSync(overviewPath, "utf8");
   const result = sdd(dir, ["overview", "invoice-reissue"]);
   assert.notEqual(result.status, 0);
   expectCode(result, "OVERVIEW_BODY_EXTRA");
   assert.equal(fs.readFileSync(overviewPath, "utf8"), before);
+});
+
+test("overview regen preserves extra head markup and trailing content", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const overviewPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  const html = read(dir, "docs/issues/invoice-reissue/overview.html");
+  const withExtras = html
+    .replace('<meta charset="utf-8">', '<meta charset="utf-8">\n<meta name="viewport" content="width=device-width">')
+    .replace("</html>\n", "</html>\n<!-- keep me -->\n");
+  fs.writeFileSync(overviewPath, withExtras);
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  const after = read(dir, "docs/issues/invoice-reissue/overview.html");
+  assert.match(after, /name="viewport"/);
+  assert.match(after, /<!-- keep me -->/);
+  assert.match(after, /data-sdd-overview-css="1"/);
 });
 
 test("check fails when html lang drifts from config", () => {
@@ -443,17 +466,19 @@ test("generated undecided list includes English undecided with row and column he
   git(["checkout", "-b", "invoice-reissue"], dir);
   writeInvoiceIssue(dir);
   const agent = `${MARKER_AGENT_BEGIN}
-<section data-sdd-part="agent">
-<table>
-<tr><th>Partner</th><th>Processing</th></tr>
-<tr><th>Policy</th><td>Open question Q3 — undecided</td></tr>
+<section data-sdd-part="agent" class="sdd-card">
+<div class="sdd-table-wrap">
+<table class="sdd-table">
+<tr><th colspan="2">Partner</th><th>Processing</th></tr>
+<tr><th>Policy</th><th>Latency</th><td>Open question Q3 — undecided</td></tr>
 </table>
+</div>
 </section>
 ${MARKER_AGENT_END}
 `;
   refreshIssueOverview(dir, "invoice-reissue", agent);
   const html = read(dir, "docs/issues/invoice-reissue/overview.html");
-  assert.match(html, /Policy \/ Processing: .*undecided/);
+  assert.match(html, /Latency \/ Processing: .*undecided/);
 });
 
 test("removed id keeps Reprint invoice through overview, apply, and overview via CLI", () => {
