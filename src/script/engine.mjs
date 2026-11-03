@@ -4,7 +4,7 @@ import path from "node:path";
 import { regenerateLessonsIndex, validateLessons, validateCloseLessons } from "./lessons.mjs";
 import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, sameAfterApply, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
-import { runOverviewCommand, validateOverview } from "./overview.mjs";
+import { runOverviewCommand, validateIssuePathSegment, validateOverview } from "./overview.mjs";
 
 const SPEC_FILES = ["spec.md", "interfaces.md", "data.md", "quality.md"];
 const AUTO_TEST_LEVELS = TEST_LEVELS.filter((level) => level !== "Manual");
@@ -1363,8 +1363,13 @@ function staticIssueDiags(root, config, issue, stage, { validateOverviewFile = t
   const reqDelta = deltas.find((part) => part.source === "requirements") || null;
   const designDelta = deltas.find((part) => part.source === "design") || null;
   const overviewIds = knownIdSet(loadTree(root, kdir(config)), kdir(config));
+  const tree = loadTree(root, kdir(config));
+  for (const value of tree.values()) {
+    if (typeof value !== "string") continue;
+    for (const match of value.matchAll(/\b(ADR-(?:NEW-\d+|\d+))\b/g)) overviewIds.add(match[1]);
+  }
   if (reqDelta) {
-    for (const bucket of ["added", "modified"]) {
+    for (const bucket of ["added", "modified", "removed"]) {
       for (const file of reqDelta.files) {
         for (const item of file[bucket]) {
           const id = item.title.split(":")[0].trim();
@@ -1373,7 +1378,17 @@ function staticIssueDiags(root, config, issue, stage, { validateOverviewFile = t
       }
     }
   }
-  if (validateOverviewFile) validateOverview(root, config, issue, files, reqDelta, designDelta, overviewIds, diags);
+  const researchDelta = deltas.find((part) => part.source === "research") || null;
+  if (researchDelta) {
+    for (const adr of researchDelta.adrs) overviewIds.add(adr.id);
+    for (const item of researchDelta.superseded) {
+      overviewIds.add(item.from);
+      overviewIds.add(item.to);
+    }
+    for (const item of researchDelta.deprecated) overviewIds.add(item.id);
+    for (const item of researchDelta.amended) overviewIds.add(item.id);
+  }
+  if (validateOverviewFile && !quick) validateOverview(root, config, issue, files, reqDelta, designDelta, overviewIds, diags);
   if (stage === "close") validateClose(root, config, issue, files, docsOnly, quick, diags);
   if (stage === "impl") validateImpl(root, config, issue, files, diags);
   return { diags, deltas, docsOnly, quick };
@@ -1781,8 +1796,11 @@ export function runCommand(start, argv) {
   if (command === "stamp") return runStamp(root, config, opts);
   if (command === "overview") {
     const issueArg = opts.issue || opts._[1] || "";
+    if (issueArg && !validateIssuePathSegment(issueArg)) {
+      return { code: 2, stdout: `${formatDiagnostics([diag("issues", 1, "ISSUE_INVALID", "Issue name must not contain /, \\, or ..")])}\n`, stderr: "" };
+    }
     const issue = resolveIssue(root, config, issueArg);
-    if (!issue) {
+    if (!issue || !validateIssuePathSegment(issue)) {
       return { code: 2, stdout: `${formatDiagnostics([diag("issues", 1, "ISSUE_NOT_FOUND", "Pass --issue or run overview on the issue branch")])}\n`, stderr: "" };
     }
     return runOverviewCommand(root, config, issue);

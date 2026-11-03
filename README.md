@@ -184,27 +184,27 @@ Path: `docs/issues/<name>/overview.html` (same `<name>` as the branch).
 
 | Marker | Role |
 |---|---|
-| `<!-- sdd-orc:overview:generated:begin -->` … `<!-- sdd-orc:overview:generated:end -->` | Written by `sdd overview <issue>`; do not edit by hand |
+| `<!-- sdd-orc:overview:generated:begin -->` … `<!-- sdd-orc:overview:generated:end -->` | Written by `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>`; do not edit by hand |
 | `<!-- sdd-orc:overview:agent:begin -->` … `<!-- sdd-orc:overview:agent:end -->` | Written by `/sdd-req` and `/sdd-design`; preserved when you rerun `overview` |
 
-The generated `<section data-sdd-part="generated">` includes `data-sdd-content-hash` (hash of `requirements.md` + `design.md`), lists of ADDED/MODIFIED/REMOVED ids (with names from specs when available), open and answered questions, steering changes from the design delta, undecided labels copied from your tables, and anchor spans `id="sdd-id-<ID>"`. **`check` only enforces freshness** (missing file, stale hash, generated block out of date, broken markers) **and unknown ids** in the agent section. Layout rules below are writing guidance for skills, not check errors.
+Run `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` once to create the file and agent skeleton, write the agent section (summary and tables), run `overview` again, then `check`. The tool fills the generated block (id lists with names, open questions, steering changes from the design delta, undecided labels from your tables, and a hash of `requirements.md` + `design.md`). **`check` only enforces freshness** (missing file, stale hash, file not matching a fresh regeneration, broken markers) **and unknown ids** (including ADR ids) in the agent section. Table layout is guidance in skills, not check errors.
 
-Write the agent section as plain readable HTML: a short summary (`<ul>` of 3–5 bullets is typical), then one or two decision tables. Put requirement ids in the text where they apply. Mark undecided cells with class `undecided` or the word 未決定 / `undecided`; mark impossible outcomes in the cell text (for example `impossible: …`). Use `<span class="sdd-highlight-undecided">` or `<span class="sdd-highlight-impossible">` when you want emphasis. List each id separately (no `11〜13` ranges). Pick table patterns from the `/sdd-req` skill (screens, permissions, API, batch, state, migration, external, concurrency); field-value edge cases stay in the review checklist, not tables. See `example-overview.html` next to `/sdd-req` for a small passing shape.
+Write plain HTML in the agent section. Undecided and impossible cells are highlighted automatically when the text contains `undecided`, 未決定, or `impossible:`. Typical table patterns (from `/sdd-req`): screens (role × screen), permissions (role × data/actions), API (caller × endpoint), batch (situation × step), state transitions, data migration, external integration, concurrency. See `example-overview.html` next to `/sdd-req`.
 
-**Migration (1.2.0):** Every issue needs `overview.html` before `check` passes. Run `sdd overview <issue>`, then fill the agent section between the agent markers.
+**Quick issues** (`task.md` only) skip overview checks. **Migration (1.2.0):** other issues need a valid `overview.html` before `check` passes.
 
 ### Overview check codes
 
 | Code | One-line fix |
 |---|---|
-| `OVERVIEW_MISSING` | Run `sdd overview <issue>` and write the agent section between the agent markers |
-| `OVERVIEW_GENERATED_MISMATCH` | Run `sdd overview <issue>` to refresh the generated section |
-| `OVERVIEW_STALE_HASH` | `requirements.md` or `design.md` changed; run `sdd overview <issue>` |
+| `OVERVIEW_MISSING` | Run `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` and write the agent section between the agent markers |
+| `OVERVIEW_GENERATED_MISMATCH` | Run `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` to refresh overview.html |
+| `OVERVIEW_STALE_HASH` | `requirements.md` or `design.md` changed; run `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` |
 | `OVERVIEW_AGENT_MISSING` | Keep the agent section between `<!-- sdd-orc:overview:agent:begin/end -->` |
 | `OVERVIEW_MARKER_MISSING` | Restore the missing `<!-- sdd-orc:overview:… -->` marker |
 | `OVERVIEW_MARKER_DUPLICATE` | Keep exactly one of each overview marker |
 | `OVERVIEW_MARKER_ORDER` | Put the agent block before the generated block; begin before end for each pair |
-| `OVERVIEW_UNKNOWN_ID` | Use ids from specs or this issue’s requirements delta only |
+| `OVERVIEW_UNKNOWN_ID` | Use ids from specs, the requirements delta, or research ADRs only |
 
 ## Pull request CI (recommended)
 

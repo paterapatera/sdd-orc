@@ -9,7 +9,7 @@ Docs directory: `__SDD_DOCS_DIR__`. Write bodies in `__SDD_LANG__`. Issue direct
 
 Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first; it prints `ok: setup` when it passes. List the issue directory to see which files exist. Stop when `requirements.md` has an open `- [ ] Q` item, and tell the user to finish `/sdd-req`.
 
-`example-research.md`, `example-design.md`, and the `/sdd-req` `example-overview.html` next to those files pass `check` together with the `/sdd-req` example. Copy their headings, field names, and table shapes. Write the bodies in `__SDD_LANG__`, and keep only the parts the issue needs. Write both files first, then run `__SDD_RUNTIME__ __SDD_SCRIPT__ stamp --issue <feature>`, `__SDD_RUNTIME__ __SDD_SCRIPT__ overview --issue <feature>`, ensure `overview.html` agent tables match the design (update agent markers after design edits), and `__SDD_RUNTIME__ __SDD_SCRIPT__ check --issue <feature>`. **`check` validates overview freshness and unknown ids only** (not bullet count or cell attributes). A first check with reports is expected. Do not open `__SDD_SCRIPT__` before that check, and afterwards open it only for a report this skill and the examples do not explain.
+`example-research.md`, `example-design.md`, and the `/sdd-req` `example-overview.html` next to those files pass `check` together with the `/sdd-req` example. Copy their headings, field names, and table shapes. Write the bodies in `__SDD_LANG__`, and keep only the parts the issue needs. Write both files first, then run `__SDD_RUNTIME__ __SDD_SCRIPT__ stamp --issue <feature>`, `__SDD_RUNTIME__ __SDD_SCRIPT__ overview --issue <feature>`, update the agent section in `overview.html` when traceability or error handling changes, run `overview --issue` again, and `__SDD_RUNTIME__ __SDD_SCRIPT__ check --issue <feature>`. **`check` validates overview freshness and unknown ids only** (not bullet count or cell attributes). A first check with reports is expected. Do not open `__SDD_SCRIPT__` before that check, and afterwards open it only for a report this skill and the examples do not explain.
 
 ## research.md
 
@@ -39,7 +39,7 @@ Before Finish or handing off to `/sdd-task`, reread both files against this list
 
 ## Finish
 
-Run stamp and check again after every edit. Update `overview.html` agent tables when traceability or error handling changes. Commit `research.md`, `design.md`, and `overview.html` together as one `docs` commit. Stage only this issue directory.
+Run stamp, `overview --issue`, update the agent section in `overview.html` when traceability or error handling changes, run `overview --issue` again, then check. Commit `research.md`, `design.md`, and `overview.html` together as one `docs` commit. Stage only this issue directory.
 
 ## Issue feedback (`feedback.md`)
 

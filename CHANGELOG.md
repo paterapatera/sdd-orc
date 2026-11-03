@@ -4,7 +4,7 @@
 
 - Issue readability moves to `docs/issues/<branch>/overview.html`. `requirements.md` and `design.md` keep the 1.1.0 shape; `apply` does not read `overview.html`.
 - Add `sdd overview <issue>` to regenerate the generated section (deterministic hash of requirements + design, id lists, questions, steering delta, anchors).
-- `/sdd-req` and `/sdd-design` write readable HTML in the agent section between documented markers. `check` validates overview **freshness** (missing file, stale hash, generated mismatch, marker layout) and **unknown ids** in the agent section only; table and bullet shape rules live in skills, not check.
+- `/sdd-req` and `/sdd-design` write readable HTML in the agent section between documented markers. `check` validates overview **freshness** (whole file vs regeneration, stale hash, marker layout) and **unknown ids** (requirements, specs, research ADRs) in the agent section only; quick issues skip overview. Run `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` twice around agent edits (skeleton, then refresh).
 - README and README.ja document overview patterns, writing guidance, markers, and remaining `OVERVIEW_*` codes with one-line fixes.
 
 - issue の読みやすさを `overview.html` に移し、`requirements.md` / `design.md` は 1.1.0 の形のままにしました。`apply` は `overview.html` を読みません。

@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import { parseDeltaMarkdown } from "./delta.mjs";
-import { attr, childElements, decodeHtmlEntities, directLiElements, findElements, firstElement, hasAttr, parseHtmlFragment, tableBodyCells, textContent } from "./overview-html.mjs";
+import { attr, childElements, decodeHtmlEntities, findElements, firstElement, parseHtmlFragment, tableBodyCells, textContent } from "./overview-html.mjs";
 import { diag, formatDiagnostics, normalizeForHash } from "./util.mjs";
 
 /** Marker format (see README): generated and agent regions are preserved across `sdd overview`. */
@@ -11,28 +11,55 @@ export const MARKER_GENERATED_END = "<!-- sdd-orc:overview:generated:end -->";
 export const MARKER_AGENT_BEGIN = "<!-- sdd-orc:overview:agent:begin -->";
 export const MARKER_AGENT_END = "<!-- sdd-orc:overview:agent:end -->";
 
-export const VALID_CELL_KINDS = new Set(["decided", "undecided", "impossible", "none"]);
-/** Second table must use one of these (data or time axis). */
-export const SECOND_TABLE_AXIS_KINDS = new Set(["batch", "migration", "external", "concurrency", "state"]);
-export const PLACEHOLDER_BULLET_RE = /Replace with 3-5 summary bullets|^Second bullet$|^Third bullet$/i;
+export const ID_PATTERN = /\b((?:REQ|IF|DATA|NFR)-(?:[A-Z]{2,6}-\d+|[A-Z]{2,6}-NEW-\d+)|ADR-(?:NEW-\d+|\d+))\b/g;
 
-export const ID_PATTERN = /\b((?:REQ|IF|DATA|NFR)-(?:[A-Z]{2,6}-\d+|[A-Z]{2,6}-NEW-\d+))\b/g;
-const STRIP_CELL = /[、，・〜～~/\(\)（）「」『』\[\]`'":;,.+\-*\\|_&\s]+/g;
+const OVERVIEW_CMD = "node .agents/skills/sdd-scripts/sdd.mjs overview <issue>";
 
 const OVERVIEW_CSS = `<style data-sdd-overview-css="1">
 body { font-family: system-ui, sans-serif; line-height: 1.4; max-width: 52rem; margin: 1rem; }
 table { border-collapse: collapse; width: 100%; margin: 0.5rem 0 1rem; }
 th, td { border: 1px solid #bbb; padding: 0.35rem 0.5rem; vertical-align: top; }
 th { background: #f4f4f4; }
-td.undecided, td.impossible, td[data-sdd-cell="undecided"], td[data-sdd-cell="impossible"] { background: #fff3cd; }
+td.sdd-auto-undecided, td.sdd-auto-impossible, td.undecided, td.impossible, td[data-sdd-cell="undecided"], td[data-sdd-cell="impossible"] { background: #fff3cd; }
 td.none, td[data-sdd-cell="none"] { background: #f0f0f0; font-style: italic; }
 .sdd-highlight-undecided, .sdd-highlight-impossible { background: #fff3cd; font-weight: 600; }
 section[data-sdd-part="agent"] ul { margin: 0.5rem 0 1rem; }
 section[data-sdd-part="generated"] { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; }
 </style>`;
 
+const HIGHLIGHT_SCRIPT = `<script data-sdd-overview-highlight="1">(function(){var s=document.querySelector('section[data-sdd-part="agent"]');if(!s)return;s.querySelectorAll("td").forEach(function(td){var t=(td.textContent||"").trim();if(/\\bundecided\\b|未決定/.test(t))td.classList.add("sdd-auto-undecided");if(/\\bimpossible\\s*:/i.test(t))td.classList.add("sdd-auto-impossible");});})();</script>`;
+
+const HEADINGS = {
+  en: {
+    idsAdded: "Added ids",
+    idsModified: "Modified ids",
+    idsRemoved: "Removed ids",
+    openQuestions: "Open questions",
+    undecided: "Undecided (from agent tables)",
+    steering: "Steering changes (design delta)",
+    titleSuffix: "overview",
+  },
+  ja: {
+    idsAdded: "追加した id",
+    idsModified: "変更した id",
+    idsRemoved: "削除した id",
+    openQuestions: "未決定の質問",
+    undecided: "表で未決定の項目",
+    steering: "設計デルタの steering 変更",
+    titleSuffix: "概要",
+  },
+};
+
 function escapeHtml(text) {
   return String(text).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+export function normalizeOverviewNewlines(text) {
+  return String(text || "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+}
+
+export function validateIssuePathSegment(issue) {
+  return Boolean(issue) && !/[\\/]/.test(issue) && !issue.includes("..");
 }
 
 export function compareSpecIds(a, b) {
@@ -150,21 +177,78 @@ function idListHtml(kind, items) {
   return `  <ul data-sdd-list="${kind}">\n${lines.join("\n")}\n  </ul>\n`;
 }
 
+function findParentTable(root, td) {
+  let current = td;
+  while (current) {
+    if (current.name === "table") return current;
+    current = current.parent;
+  }
+  for (const table of findElements(root, (n) => n.name === "table")) {
+    if (findElements(table, (n) => n === td).length) return table;
+  }
+  return null;
+}
+
+function attachParentLinks(root) {
+  const walk = (node, parent = null) => {
+    node.parent = parent;
+    for (const child of node.children || []) walk(child, node);
+  };
+  walk(root);
+}
+
+function cellAxisPrefix(root, table, td) {
+  const rows = findElements(table, (n) => n.name === "tr");
+  let tr = null;
+  for (const row of rows) {
+    if (findElements(row, (n) => n === td).length) {
+      tr = row;
+      break;
+    }
+  }
+  if (!tr) return "";
+  const rowCells = childElements(tr);
+  const colIndex = rowCells.indexOf(td);
+  let rowHead = "";
+  for (const cell of rowCells) {
+    if (cell === td) break;
+    if (cell.name === "th") rowHead = decodeHtmlEntities(textContent(cell)).trim();
+  }
+  if (!rowHead && rowCells[0]?.name === "th") rowHead = decodeHtmlEntities(textContent(rowCells[0])).trim();
+  let colHead = "";
+  const headCells = rows.length ? childElements(rows[0]) : [];
+  if (colIndex >= 0 && colIndex < headCells.length) {
+    colHead = decodeHtmlEntities(textContent(headCells[colIndex])).trim();
+  }
+  const parts = [rowHead, colHead].filter(Boolean);
+  return parts.length ? `${parts.join(" / ")}: ` : "";
+}
+
+function isUndecidedCellText(text) {
+  return /\bundecided\b/i.test(text) || /未決定/.test(text);
+}
+
 function parseAgentUndecidedLabels(agentHtml) {
   if (!agentHtml) return [];
   const root = parseHtmlFragment(agentHtml);
+  attachParentLinks(root);
   const labels = [];
   for (const td of findElements(root, (n) => n.name === "td")) {
     const kind = attr(td, "data-sdd-cell");
     const cls = attr(td, "class") || "";
     const text = decodeHtmlEntities(textContent(td)).trim();
     if (!text) continue;
-    if (kind === "undecided" || /\bundecided\b/i.test(cls) || /未決定/.test(text)) labels.push(text);
+    if (kind === "undecided" || /\bundecided\b/i.test(cls) || isUndecidedCellText(text)) {
+      const table = findParentTable(root, td);
+      const prefix = table ? cellAxisPrefix(root, table, td) : "";
+      labels.push(`${prefix}${text}`);
+    }
   }
   return labels;
 }
 
-export function buildGeneratedSection(root, docsDir, requirementsText, designText, reqDelta, designDelta, existingHtml = "") {
+export function buildGeneratedSection(root, docsDir, requirementsText, designText, reqDelta, designDelta, existingHtml = "", lang = "en") {
+  const labels = lang === "ja" ? HEADINGS.ja : HEADINGS.en;
   const hash = overviewContentHash(requirementsText, designText);
   const specNames = loadSpecIdNames(root, docsDir);
   const raw = collectOverviewDeltaIds(reqDelta);
@@ -183,16 +267,18 @@ export function buildGeneratedSection(root, docsDir, requirementsText, designTex
     ? steering.map((row) => `    <li data-sdd-steering-path="${escapeHtml(row.path)}" data-sdd-steering-kind="${row.kind}">${escapeHtml(row.path)} (${row.kind})</li>`).join("\n")
     : "";
   const steeringBlock = steering.length
-    ? `  <h2 data-sdd-heading="steering">Steering changes (design delta)</h2>\n  <ul data-sdd-list="steering">\n${steeringLines}\n  </ul>\n`
-    : `  <h2 data-sdd-heading="steering">Steering changes (design delta)</h2>\n  <ul data-sdd-list="steering"></ul>\n`;
-  const undecidedLines = undecidedAgent.map((label) => `    <li data-sdd-undecided-label="${escapeHtml(label)}">${escapeHtml(label)}</li>`).join("\n");
+    ? `  <h2 data-sdd-heading="steering">${escapeHtml(labels.steering)}</h2>\n  <ul data-sdd-list="steering">\n${steeringLines}\n  </ul>\n`
+    : `  <h2 data-sdd-heading="steering">${escapeHtml(labels.steering)}</h2>\n  <ul data-sdd-list="steering"></ul>\n`;
+  const undecidedLines = undecidedAgent
+    .map((label) => `    <li class="sdd-highlight-undecided" data-sdd-undecided-label="${escapeHtml(label)}">${escapeHtml(label)}</li>`)
+    .join("\n");
   return `${MARKER_GENERATED_BEGIN}
 <section data-sdd-part="generated" data-sdd-content-hash="${hash}">
 ${anchors}
-  <h2 data-sdd-heading="ids-added">Added ids</h2>
-${idListHtml("added", ids.added)}  <h2 data-sdd-heading="ids-modified">Modified ids</h2>
-${idListHtml("modified", ids.modified)}  <h2 data-sdd-heading="ids-removed">Removed ids</h2>
-${idListHtml("removed", ids.removed)}  <h2 data-sdd-heading="open-questions">Open questions</h2>
+  <h2 data-sdd-heading="ids-added">${escapeHtml(labels.idsAdded)}</h2>
+${idListHtml("added", ids.added)}  <h2 data-sdd-heading="ids-modified">${escapeHtml(labels.idsModified)}</h2>
+${idListHtml("modified", ids.modified)}  <h2 data-sdd-heading="ids-removed">${escapeHtml(labels.idsRemoved)}</h2>
+${idListHtml("removed", ids.removed)}  <h2 data-sdd-heading="open-questions">${escapeHtml(labels.openQuestions)}</h2>
   <p data-sdd-open-count="${questions.open.length}" data-sdd-answered-count="${questions.answered.length}"></p>
   <ul data-sdd-list="open-questions-unanswered">
 ${questions.open.map((q) => `    <li data-sdd-question="open">${escapeHtml(q)}</li>`).join("\n") || ""}
@@ -200,7 +286,7 @@ ${questions.open.map((q) => `    <li data-sdd-question="open">${escapeHtml(q)}</
   <ul data-sdd-list="open-questions-answered">
 ${questions.answered.map((q) => `    <li data-sdd-question="answered">${escapeHtml(q)}</li>`).join("\n") || ""}
   </ul>
-  <h2 data-sdd-heading="undecided">Undecided (from agent tables)</h2>
+  <h2 data-sdd-heading="undecided">${escapeHtml(labels.undecided)}</h2>
   <ul data-sdd-list="undecided-agent">
 ${undecidedLines || ""}
   </ul>
@@ -247,6 +333,21 @@ export function validateMarkerLayout(html, { requireAll = true } = {}) {
   return errors;
 }
 
+export function bodyExtraOutsideMarkerBlocks(html) {
+  const bodyMatch = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html);
+  if (!bodyMatch) return false;
+  let body = bodyMatch[1];
+  const removeBlock = (begin, end) => {
+    const start = body.indexOf(begin);
+    const stop = body.indexOf(end);
+    if (start < 0 || stop < 0) return;
+    body = `${body.slice(0, start)}${body.slice(stop + end.length)}`;
+  };
+  removeBlock(MARKER_AGENT_BEGIN, MARKER_AGENT_END);
+  removeBlock(MARKER_GENERATED_BEGIN, MARKER_GENERATED_END);
+  return body.replace(/<!--[\s\S]*?-->/g, "").replace(/\s+/g, "").length > 0;
+}
+
 export function extractBlock(html, begin, end) {
   const start = html.indexOf(begin);
   const stop = html.indexOf(end);
@@ -270,11 +371,13 @@ ${MARKER_AGENT_END}
 `;
 }
 
-export function assembleOverview(generated, agent, lang = "en") {
+export function assembleOverview(generated, agent, lang = "en", issue = "") {
   const htmlLang = lang === "ja" ? "ja" : "en";
+  const labels = lang === "ja" ? HEADINGS.ja : HEADINGS.en;
+  const title = issue ? `${escapeHtml(issue)} — ${labels.titleSuffix}` : "Issue overview";
   return `<!DOCTYPE html>
 <html lang="${htmlLang}" data-sdd-overview-version="1">
-<head><meta charset="utf-8"><title>Issue overview</title>${OVERVIEW_CSS}</head>
+<head><meta charset="utf-8"><title>${title}</title>${OVERVIEW_CSS}${HIGHLIGHT_SCRIPT}</head>
 <body>
 ${agent}
 ${generated}
@@ -283,73 +386,58 @@ ${generated}
 `;
 }
 
-export function writeOverviewFile(root, docsDir, issueDir, requirementsText, designText, reqDelta, designDelta, existingHtml = "", lang = "en") {
+export function buildOverviewHtml(root, config, issue, requirementsText, designText, reqDelta, designDelta, existingHtml = "") {
+  const lang = config.lang || "en";
   let agent = extractBlock(existingHtml, MARKER_AGENT_BEGIN, MARKER_AGENT_END);
   if (!agent) agent = defaultAgentSection();
   const pseudoHtml = `<!DOCTYPE html><html><body>\n${agent}\n</body></html>\n`;
-  const generated = buildGeneratedSection(root, docsDir, requirementsText, designText, reqDelta, designDelta, pseudoHtml);
-  const html = assembleOverview(generated, agent, lang);
+  const generated = buildGeneratedSection(root, config.docsDir, requirementsText, designText, reqDelta, designDelta, pseudoHtml, lang);
+  return normalizeOverviewNewlines(assembleOverview(generated, agent, lang, issue));
+}
+
+export function writeOverviewFile(root, docsDir, issueDir, issue, requirementsText, designText, reqDelta, designDelta, existingHtml = "", lang = "en") {
+  const config = { docsDir, lang };
+  const html = buildOverviewHtml(root, config, issue, requirementsText, designText, reqDelta, designDelta, existingHtml);
   fs.writeFileSync(path.join(issueDir, "overview.html"), html);
   return html;
 }
 
 export function runOverviewCommand(root, config, issue) {
+  if (!validateIssuePathSegment(issue)) {
+    return {
+      code: 2,
+      stdout: `${formatDiagnostics([diag(`${config.docsDir}/issues/${issue}`, 1, "ISSUE_INVALID", "Issue name must not contain /, \\, or ..")])}\n`,
+      stderr: "",
+    };
+  }
   const dir = path.join(root, config.docsDir, "issues", issue);
   if (!fs.existsSync(dir)) {
     return { code: 2, stdout: `${formatDiagnostics([diag(`${config.docsDir}/issues/${issue}`, 1, "ISSUE_NOT_FOUND", "The issue directory does not exist")])}\n`, stderr: "" };
   }
   const overviewPath = path.join(dir, "overview.html");
-  const existing = fs.existsSync(overviewPath) ? fs.readFileSync(overviewPath, "utf8") : "";
+  const existing = fs.existsSync(overviewPath) ? normalizeOverviewNewlines(fs.readFileSync(overviewPath, "utf8")) : "";
   if (existing) {
-    const layoutErrors = validateMarkerLayout(existing, { requireAll: true });
-    if (layoutErrors.length) {
-      const diags = layoutErrors.map((item) => diag(`${config.docsDir}/issues/${issue}/overview.html`, 1, item.code, item.message));
+    for (const err of validateMarkerLayout(existing, { requireAll: true })) {
+      const diags = [diag(`${config.docsDir}/issues/${issue}/overview.html`, 1, err.code, err.message)];
       return { code: 2, stdout: `${formatDiagnostics(diags)}\n`, stderr: "" };
+    }
+    if (bodyExtraOutsideMarkerBlocks(existing)) {
+      return {
+        code: 2,
+        stdout: `${formatDiagnostics([diag(`${config.docsDir}/issues/${issue}/overview.html`, 1, "OVERVIEW_BODY_EXTRA", "Remove content outside the generated and agent marker blocks before running overview")])}\n`,
+        stderr: "",
+      };
     }
   }
   const requirementsText = fs.existsSync(path.join(dir, "requirements.md")) ? fs.readFileSync(path.join(dir, "requirements.md"), "utf8") : "";
   const designText = fs.existsSync(path.join(dir, "design.md")) ? fs.readFileSync(path.join(dir, "design.md"), "utf8") : "";
   const reqDelta = requirementsText ? parseDeltaMarkdown(requirementsText, "requirements") : null;
   const designDelta = designText ? parseDeltaMarkdown(designText, "design") : null;
-  writeOverviewFile(root, config.docsDir, dir, requirementsText, designText, reqDelta, designDelta, existing, config.lang || "en");
+  writeOverviewFile(root, config.docsDir, dir, issue, requirementsText, designText, reqDelta, designDelta, existing, config.lang || "en");
   return { code: 0, stdout: `ok: overview ${issue}\n`, stderr: "" };
 }
 
-export function parseAgent(html) {
-  const block = extractBlock(html, MARKER_AGENT_BEGIN, MARKER_AGENT_END);
-  const root = parseHtmlFragment(block);
-  const section = firstElement(root, (n) => attr(n, "data-sdd-part") === "agent");
-  const undecidedDeclared = section ? Number(attr(section, "data-sdd-undecided-count") || "0") : 0;
-  const summary = firstElement(root, (n) => hasAttr(n, "data-sdd-bullets"));
-  const bullets = summary ? directLiElements(summary).map((li) => ({
-    ids: attr(li, "data-sdd-ids"),
-    text: decodeHtmlEntities(textContent(li)).trim(),
-  })) : [];
-  const tables = findElements(root, (n) => hasAttr(n, "data-sdd-table"))
-    .sort((a, b) => Number(attr(a, "data-sdd-table")) - Number(attr(b, "data-sdd-table")))
-    .map((wrap) => ({
-      index: attr(wrap, "data-sdd-table"),
-      kind: attr(wrap, "data-sdd-table-kind"),
-      wrap,
-    }));
-  const cells = [];
-  for (const table of tables) {
-    const tableEl = firstElement(table.wrap, (n) => n.name === "table");
-    if (!tableEl) continue;
-    for (const td of tableBodyCells(tableEl)) {
-      cells.push({
-        kind: attr(td, "data-sdd-cell"),
-        text: decodeHtmlEntities(textContent(td)).trim(),
-        ids: attr(td, "data-sdd-ids"),
-        reason: attr(td, "data-sdd-reason"),
-        table: table.index,
-      });
-    }
-  }
-  return { block, bullets, tableCount: tables.length, tables, undecidedDeclared, cells };
-}
-
-/** Collect requirement ids mentioned anywhere in the agent marker block (decoded HTML text). */
+/** Collect ids mentioned anywhere in the agent marker block (decoded HTML text). */
 export function collectAgentPartIds(agentBlock) {
   if (!agentBlock) return new Set();
   const decoded = decodeHtmlEntities(agentBlock);
@@ -362,10 +450,10 @@ export function validateOverview(root, config, issue, files, reqDelta, designDel
   const rel = `${config.docsDir}/issues/${issue}/overview.html`;
   const issueDir = path.join(root, config.docsDir, "issues", issue);
   if (!fs.existsSync(path.join(issueDir, "overview.html"))) {
-    diags.push(diag(rel, 1, "OVERVIEW_MISSING", "Run sdd overview <issue> and write the agent section in overview.html"));
+    diags.push(diag(rel, 1, "OVERVIEW_MISSING", `Run ${OVERVIEW_CMD} and write the agent section between the agent markers`));
     return;
   }
-  const html = fs.readFileSync(path.join(issueDir, "overview.html"), "utf8");
+  const html = normalizeOverviewNewlines(fs.readFileSync(path.join(issueDir, "overview.html"), "utf8"));
   for (const err of validateMarkerLayout(html, { requireAll: true })) {
     diags.push(diag(rel, 1, err.code, err.message));
   }
@@ -375,18 +463,17 @@ export function validateOverview(root, config, issue, files, reqDelta, designDel
   if (!agentBlock) {
     diags.push(diag(rel, 1, "OVERVIEW_AGENT_MISSING", "Keep the agent section between overview agent markers"));
   }
-  const pseudoHtml = agentBlock ? `<!DOCTYPE html><html><body>\n${agentBlock}\n</body></html>\n` : html;
-  const expectedGenerated = buildGeneratedSection(root, config.docsDir, requirementsText, designText, reqDelta, designDelta, pseudoHtml);
-  const actualGenerated = extractBlock(html, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END);
-  if (actualGenerated !== expectedGenerated) {
-    diags.push(diag(rel, 1, "OVERVIEW_GENERATED_MISMATCH", "Run sdd overview <issue> to refresh the generated section"));
+  const expectedHtml = buildOverviewHtml(root, config, issue, requirementsText, designText, reqDelta, designDelta, html);
+  if (html !== expectedHtml) {
+    diags.push(diag(rel, 1, "OVERVIEW_GENERATED_MISMATCH", `Run ${OVERVIEW_CMD} to refresh overview.html`));
   }
   const hash = overviewContentHash(requirementsText, designText);
+  const actualGenerated = extractBlock(html, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END);
   const rootGen = parseHtmlFragment(actualGenerated);
   const genSection = firstElement(rootGen, (n) => attr(n, "data-sdd-part") === "generated");
   const hashAttr = genSection ? attr(genSection, "data-sdd-content-hash") : "";
   if (hashAttr && hashAttr !== hash) {
-    diags.push(diag(rel, 1, "OVERVIEW_STALE_HASH", "requirements.md or design.md changed; run sdd overview <issue>"));
+    diags.push(diag(rel, 1, "OVERVIEW_STALE_HASH", `requirements.md or design.md changed; run ${OVERVIEW_CMD}`));
   }
   if (agentBlock) {
     for (const id of collectAgentPartIds(agentBlock)) {

@@ -3,7 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { assembleOverview, buildGeneratedSection, extractBlock, MARKER_AGENT_BEGIN, MARKER_AGENT_END, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END } from "../src/script/overview.mjs";
+import { assembleOverview, buildGeneratedSection, buildOverviewHtml, extractBlock, MARKER_AGENT_BEGIN, MARKER_AGENT_END, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END } from "../src/script/overview.mjs";
 import { parseDeltaMarkdown } from "../src/script/delta.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
@@ -227,8 +227,8 @@ export function refreshIssueOverview(dir, issue, agentBlock = null) {
   const reqDelta = requirementsText ? parseDeltaMarkdown(requirementsText, "requirements") : null;
   const designDelta = designText ? parseDeltaMarkdown(designText, "design") : null;
   const pseudoExisting = `<!DOCTYPE html><html><body>\n${agent}\n</body></html>\n`;
-  const generated = buildGeneratedSection(dir, config.docsDir, requirementsText, designText, reqDelta, designDelta, pseudoExisting);
-  fs.writeFileSync(path.join(issueDir, "overview.html"), assembleOverview(generated, agent, lang));
+  const html = buildOverviewHtml(dir, config, issue, requirementsText, designText, reqDelta, designDelta, pseudoExisting);
+  fs.writeFileSync(path.join(issueDir, "overview.html"), html);
 }
 
 export function refreshInvoiceReprintOverview(dir) {

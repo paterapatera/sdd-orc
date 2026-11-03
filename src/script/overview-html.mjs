@@ -96,14 +96,6 @@ export function childElements(node) {
   return (node.children || []).filter((child) => child.type === "element");
 }
 
-export function directLiElements(ul) {
-  const items = [];
-  for (const child of ul.children || []) {
-    if (child.type === "element" && child.name === "li") items.push(child);
-  }
-  return items;
-}
-
 export function tableBodyCells(tableEl) {
   const cells = [];
   for (const tr of findElements(tableEl, (n) => n.name === "tr")) {
@@ -115,12 +107,18 @@ export function tableBodyCells(tableEl) {
 }
 
 export function decodeHtmlEntities(text) {
-  return String(text || "")
-    .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
-    .replace(/&amp;/g, "&")
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&quot;/g, '"')
-    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-    .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+  let value = String(text || "");
+  for (let pass = 0; pass < 8; pass += 1) {
+    const next = value
+      .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/&amp;/g, "&");
+    if (next === value) break;
+    value = next;
+  }
+  return value;
 }

@@ -63,7 +63,18 @@ npx @paterapatera/sdd-orc migrate
 
 `check` や `stamp`、`apply`、`renumber`、`index`、`overview` などは、通常の作業では各スキルが自動で実行します。人が手で叩く必要はありません。
 
-各 issue には `overview.html` があります。読みやすさ用の HTML で、`requirements.md` や `design.md` の形は 1.1.0 のままです。`node .agents/skills/sdd-scripts/sdd.mjs overview --issue <name>` で**生成部分**（id 一覧、未回答の質問、設計デルタの steering、requirements+design のハッシュ）を更新します。**エージェント部分**（要約箇条書きと決定表）は `/sdd-req` と `/sdd-design` がマーカーで囲んだ範囲に書きます。`apply` は `overview.html` を読まないので、ファイルの有無で apply 結果は変わりません。
+各 issue には `overview.html` があります。人が読むための HTML です。`requirements.md` と `design.md` の形は 1.1.0 のままです。`apply` はこのファイルを読みません。
+
+更新するときは、次の順番が基本です。
+
+1. `node .agents/skills/sdd-scripts/sdd.mjs overview --issue <name>` … ファイルとエージェント部分のたたき台を作る
+2. マーカーのあいだに、要約と表を書く（`/sdd-req` の skill を見る）
+3. もう一度 `node .agents/skills/sdd-scripts/sdd.mjs overview --issue <name>` … 自動で書かれる部分を最新にする
+4. `check --issue <name>`
+
+`check` が overview で見るのは、(1) ファイルがあるか、中身が最新の再生成結果と一致するか、マーカーが正しいか、(2) エージェント部分に、仕様や issue に無い id が書かれていないか、の二つだけです。表の数や bullet の数は止めません。
+
+**quick**（`task.md` だけの issue）では overview の check はしません。
 
 今のフェーズと、次に使うスキルを確認したいときだけ、次を実行します。
 
@@ -184,27 +195,40 @@ Quick は質問しません。`/sdd-task` も質問しません。
 
 | マーカー | 役割 |
 |---|---|
-| `<!-- sdd-orc:overview:generated:begin -->` … `<!-- sdd-orc:overview:generated:end -->` | `sdd overview <issue>` が書く。手で直さない |
+| `<!-- sdd-orc:overview:generated:begin -->` … `<!-- sdd-orc:overview:generated:end -->` | `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` が書く。手で直さない |
 | `<!-- sdd-orc:overview:agent:begin -->` … `<!-- sdd-orc:overview:agent:end -->` | `/sdd-req` と `/sdd-design` が書く。`overview` を再実行しても残る |
 
-生成側 `<section data-sdd-part="generated">` には `data-sdd-content-hash`、`data-sdd-list="added|modified|removed"`（仕様ツリーから名前を補完）、未回答・回答済みの質問、設計デルタの steering 変更、表から拾った未決定ラベル、`id="sdd-id-<ID>"` のアンカーがあります。**`check` が overview で見るのは鮮度（ファイル欠落・ハッシュ不一致・生成部分の不一致・マーカー異常）と、エージェント部分の未知 id だけ**です。以下のレイアウトはスキル向けの書き方の目安で、表の数や bullet 数などは check では止めません。
+エージェント部分は普通の HTML で書きます。要約（`<ul>` で 3〜5 行が目安）のあと、判断表を 1〜2 個。セルに `undecided`・「未決定」・`impossible:` と書けば、ページを開いたとき背景色が付きます（class は必須ではありません）。id は 1 つずつ書きます。
 
-エージェント部分は普通の HTML で書きます。要約（`<ul>` で 3〜5 行が目安）のあと、判断表を 1〜2 個。決まった要件 id は文中に書きます。未決定は class `undecided` や「未決定」、`undecided` の語で示し、不可能はセル内で `impossible: …` のように書きます。強調したいときは `<span class="sdd-highlight-undecided">` などを使えます。id は 1 つずつ（`11〜13` のような範囲表記は避ける）。表の型は `/sdd-req` スキルから選び、空値・長さなどの細かい値はレビューチェックリストに残します。形の参考は `/sdd-req` の `example-overview.html` です。
+**表の型（8 種類）** — `/sdd-req` skill と同じ考え方です。
 
-**1.2.0 からの移行:** 1.1.0 で始めた issue も、`check` を通すには `overview.html` が必要です。`sdd overview <issue>` のあと、エージェント部分をマーカー内に書いてください。
+| 種類 | 行 × 列 |
+|---|---|
+| 画面 | 役割 × 画面 |
+| 権限 | 役割 × データや操作（参照・作成・更新・削除） |
+| API | 呼び出し元 × エンドポイント |
+| バッチ | 状況 × 処理の段階 |
+| 状態遷移 | 状態 × 操作 |
+| データ移行 | データの種類 × 処理（移行・ロールバック・参照） |
+| 外部連携 | 相手の応答 × こちらの処理 |
+| 同時実行 | 重なりうる状況 × 挙動 |
+
+形の参考: 同梱の `example-overview.html`（`/sdd-req` の横）。
+
+**1.2.0 から:** quick 以外の issue は `check` の前に有効な `overview.html` が必要です。
 
 ### overview 検査コード
 
 | コード | 直し方（1 行） |
 |---|---|
-| `OVERVIEW_MISSING` | `sdd overview <issue>` を実行し、エージェント部分をマーカー内に書く |
-| `OVERVIEW_GENERATED_MISMATCH` | `sdd overview <issue>` で生成部分を更新する |
-| `OVERVIEW_STALE_HASH` | requirements または design を変えた → `sdd overview <issue>` |
+| `OVERVIEW_MISSING` | `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` を実行し、エージェント部分をマーカー内に書く |
+| `OVERVIEW_GENERATED_MISMATCH` | `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>` でファイル全体を更新する |
+| `OVERVIEW_STALE_HASH` | requirements または design を変えた → 上と同じ overview を実行 |
 | `OVERVIEW_AGENT_MISSING` | `<!-- sdd-orc:overview:agent:begin/end -->` の間にエージェント部分を置く |
 | `OVERVIEW_MARKER_MISSING` | 欠けている `<!-- sdd-orc:overview:… -->` マーカーを戻す |
 | `OVERVIEW_MARKER_DUPLICATE` | 各 overview マーカーは 1 つだけにする |
 | `OVERVIEW_MARKER_ORDER` | エージェントブロックを生成ブロックより前に；各 begin/end の順序も正しく |
-| `OVERVIEW_UNKNOWN_ID` | 仕様ツリーかこの issue の requirements デルタにある id だけ使う |
+| `OVERVIEW_UNKNOWN_ID` | 仕様ツリー、requirements の変更一覧、research の ADR にある id だけ使う |
 
 ## プルリクエスト CI（推奨）
 

@@ -3,13 +3,13 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { parseDeltaMarkdown } from "../src/script/delta.mjs";
+import { decodeHtmlEntities } from "../src/script/overview-html.mjs";
 import {
   MARKER_AGENT_BEGIN,
   MARKER_AGENT_END,
   MARKER_GENERATED_BEGIN,
   MARKER_GENERATED_END,
-  assembleOverview,
-  buildGeneratedSection,
+  buildOverviewHtml,
   extractBlock,
   validateOverview,
 } from "../src/script/overview.mjs";
@@ -294,10 +294,9 @@ test("OVERVIEW_UNKNOWN_ID across summary and tables (first, middle, last)", () =
   const designDelta = parseDeltaMarkdown(design, "design");
   const config = JSON.parse(read(dir, "sdd.config.json"));
   const known = new Set(["REQ-INV-NEW-1"]);
-  const baseGen = buildGeneratedSection(dir, config.docsDir, req, design, reqDelta, designDelta, "");
   function runAgent(agentInner) {
     const agentBlock = `${MARKER_AGENT_BEGIN}\n${agentInner}\n${MARKER_AGENT_END}\n`;
-    const html = assembleOverview(baseGen, agentBlock, config.lang || "en");
+    const html = buildOverviewHtml(dir, config, "invoice-reissue", req, design, reqDelta, designDelta, agentBlock);
     fs.writeFileSync(path.join(issueDir, "overview.html"), html);
     const diags = [];
     validateOverview(dir, config, "invoice-reissue", { requirements: req, design }, reqDelta, designDelta, known, diags);
@@ -354,4 +353,139 @@ test("overview command writes file under issue directory", () => {
   fs.unlinkSync(path.join(dir, "docs/issues/invoice-reissue/overview.html"));
   assert.equal(sdd(dir, ["overview", "--issue", "invoice-reissue"]).status, 0);
   assert.match(read(dir, "docs/issues/invoice-reissue/overview.html"), /data-sdd-part="generated"/);
+});
+
+test("overview refuses body content outside marker blocks without writing", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const overviewPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  const tampered = read(dir, "docs/issues/invoice-reissue/overview.html").replace("<body>", "<body>\n<p>extra</p>\n");
+  fs.writeFileSync(overviewPath, tampered);
+  const before = fs.readFileSync(overviewPath, "utf8");
+  const result = sdd(dir, ["overview", "invoice-reissue"]);
+  assert.notEqual(result.status, 0);
+  expectCode(result, "OVERVIEW_BODY_EXTRA");
+  assert.equal(fs.readFileSync(overviewPath, "utf8"), before);
+});
+
+test("check fails when html lang drifts from config", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const overviewPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  fs.writeFileSync(overviewPath, read(dir, "docs/issues/invoice-reissue/overview.html").replace('<html lang="en"', '<html lang="ja"'));
+  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_GENERATED_MISMATCH");
+});
+
+test("req finish order: overview, agent, overview again, then clean check", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  fs.unlinkSync(path.join(dir, "docs/issues/invoice-reissue/overview.html"));
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  refreshIssueOverview(dir, "invoice-reissue", VALID_AGENT);
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  const result = issueDiags(dir, "invoice-reissue");
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /OVERVIEW_/);
+});
+
+test("quick issue passes check without overview.html", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "quick-task"], dir);
+  const issue = path.join(dir, "docs/issues/quick-task");
+  fs.mkdirSync(issue, { recursive: true });
+  fs.writeFileSync(
+    path.join(issue, "proposal.md"),
+    `# Quick fix\n\n## Why\nx\n\n## What Changes\n- Fix typo\n\n## Impact\n- Type: fix\n- Capabilities: none\n- Steering: none\n- Decisions: none\n- Code: src/app.js\n\n## Out of Scope\nn\n`,
+  );
+  fs.writeFileSync(path.join(issue, "task.md"), "# Tasks\n\n- [ ] 1. Fix typo (P)\n  - 1.1 Edit file\n");
+  assert.equal(sdd(dir, ["check", "--issue", "quick-task"]).status, 0);
+  assert.equal(fs.existsSync(path.join(issue, "overview.html")), false);
+});
+
+test("removed delta ids stay known for overview agent references", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const req = read(dir, "docs/issues/invoice-reissue/requirements.md");
+  const design = read(dir, "docs/issues/invoice-reissue/design.md");
+  const reqDelta = parseDeltaMarkdown(req, "requirements");
+  const designDelta = parseDeltaMarkdown(design, "design");
+  const config = JSON.parse(read(dir, "sdd.config.json"));
+  const known = new Set(["REQ-INV-NEW-1"]);
+  for (const file of reqDelta.files) {
+    for (const item of file.removed) {
+      const id = item.title.split(":")[0].trim();
+      if (/^(REQ|IF|DATA|NFR)-/.test(id)) known.add(id);
+    }
+  }
+  const agentInner = `<section data-sdd-part="agent"><p>Retired REQ-INV-OLD-1 noted in summary.</p></section>`;
+  reqDelta.files[0].removed.push({ title: "REQ-INV-OLD-1: Retired rule", line: 1 });
+  const agentBlock = `${MARKER_AGENT_BEGIN}\n${agentInner}\n${MARKER_AGENT_END}\n`;
+  const html = buildOverviewHtml(dir, config, "invoice-reissue", req, design, reqDelta, designDelta, agentBlock);
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/overview.html"), html);
+  const diags = [];
+  validateOverview(dir, config, "invoice-reissue", { requirements: req, design }, reqDelta, designDelta, known, diags);
+  assert.deepEqual(diags.filter((item) => item.rule === "OVERVIEW_UNKNOWN_ID"), []);
+});
+
+test("generated undecided list includes English undecided with row and column headers", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const agent = `${MARKER_AGENT_BEGIN}
+<section data-sdd-part="agent">
+<table>
+<tr><th>Partner</th><th>Processing</th></tr>
+<tr><th>Policy</th><td>Open question Q3 — undecided</td></tr>
+</table>
+</section>
+${MARKER_AGENT_END}
+`;
+  refreshIssueOverview(dir, "invoice-reissue", agent);
+  const html = read(dir, "docs/issues/invoice-reissue/overview.html");
+  assert.match(html, /Policy \/ Processing: .*undecided/);
+});
+
+test("double-encoded entities decode in multiple passes without stray & fragments", () => {
+  assert.equal(decodeHtmlEntities("&amp;#82;"), "R");
+  assert.equal(decodeHtmlEntities("&amp;amp;lt;"), "<");
+});
+
+test("overview rejects issue names with path separators", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  const bad = sdd(dir, ["overview", "--issue", "../escape"]);
+  assert.notEqual(bad.status, 0);
+  expectCode(bad, "ISSUE_INVALID");
+});
+
+test("overview normalizes CRLF on write", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const overviewPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  fs.writeFileSync(overviewPath, read(dir, "docs/issues/invoice-reissue/overview.html").replace(/\n/g, "\r\n"));
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  assert.doesNotMatch(fs.readFileSync(overviewPath, "utf8"), /\r\n/);
+  assert.equal(issueDiags(dir, "invoice-reissue").status, 0);
+});
+
+test("OVERVIEW_UNKNOWN_ID rejects unknown ADR ids in agent section", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const bad = VALID_AGENT.replace("REQ-INV-NEW-1 on confirmation", "ADR-NEW-99 drives the flow");
+  refreshIssueOverview(dir, "invoice-reissue", bad);
+  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_UNKNOWN_ID");
 });
