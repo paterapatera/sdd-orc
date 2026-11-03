@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.1.0. Node.js 18 or later.
+**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.2.0. Node.js 18 or later.
 
 Registering tracker issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -61,7 +61,9 @@ npx @paterapatera/sdd-orc migrate
 
 ## Script and status
 
-Skills run the bundled checker (`check`, `stamp`, `apply`, `renumber`, `index`, and related steps) during each phase. You do not need to run those commands yourself in normal work.
+Skills run the bundled checker (`check`, `stamp`, `apply`, `renumber`, `index`, `overview`, and related steps) during each phase. You do not need to run those commands yourself in normal work.
+
+Each issue directory also has `overview.html`: a human-readable summary that **does not** change `requirements.md` or `design.md`. Run `node .agents/skills/sdd-scripts/sdd.mjs overview --issue <name>` to refresh the **generated** section (id lists, open questions, steering delta, content hash). The `/sdd-req` and `/sdd-design` skills write the **agent** section (summary bullets and decision tables) between HTML markers. `apply` never reads `overview.html`; output stays the same with or without that file.
 
 To see the current phase and the next skill for your branch, run:
 
@@ -173,6 +175,41 @@ flowchart LR
 | `/sdd-lessons` | **Lead:** adopt, reject, hold, or promote lessons; copy `/sdd-init` follow-ups (does not edit steering) |
 
 Quick path asks no questions. `/sdd-task` asks no questions.
+
+## Issue overview (`overview.html`)
+
+Path: `docs/issues/<name>/overview.html` (same `<name>` as the branch).
+
+**Markers (do not rename):**
+
+| Marker | Role |
+|---|---|
+| `<!-- sdd-orc:overview:generated:begin -->` … `<!-- sdd-orc:overview:generated:end -->` | Written by `sdd overview <issue>`; do not edit by hand |
+| `<!-- sdd-orc:overview:agent:begin -->` … `<!-- sdd-orc:overview:agent:end -->` | Written by `/sdd-req` and `/sdd-design`; preserved when you rerun `overview` |
+
+The generated `<section data-sdd-part="generated">` includes `data-sdd-content-hash` (hash of `requirements.md` + `design.md`), lists of ADDED/MODIFIED/REMOVED ids, open and answered questions, steering changes from the design delta, and anchor spans `id="sdd-id-<ID>"`. The agent `<section data-sdd-part="agent">` sets `data-sdd-undecided-count` to the number of table cells with `data-sdd-cell="undecided"`. Summary bullets are `<li data-sdd-ids="REQ-…,IF-…">` (comma-separated, no ranges). Tables use `<div data-sdd-table="1" data-sdd-table-kind="…">` with at most **two** tables. Cell kinds: `decided` (short text + ids), `undecided`, `impossible` (needs `data-sdd-reason`), `none` (needs `data-sdd-reason`). Pick table patterns from the `/sdd-req` skill (screens, permissions, API, batch, state, migration, external, concurrency); field-value edge cases stay in the review checklist, not tables.
+
+**Migration (1.2.0):** Every issue, including ones started on 1.1.0, must have a valid `overview.html` before `check` passes. Run `sdd overview <issue>`, then fill the agent section using `example-overview.html` next to the `/sdd-req` skill as a shape reference.
+
+### Overview check codes
+
+| Code | One-line fix |
+|---|---|
+| `OVERVIEW_MISSING` | Run `sdd overview <issue>` and write the agent section between the agent markers |
+| `OVERVIEW_GENERATED_MISMATCH` | Run `sdd overview <issue>` to refresh the generated section |
+| `OVERVIEW_STALE_HASH` | `requirements.md` or `design.md` changed; run `sdd overview <issue>` |
+| `OVERVIEW_AGENT_MISSING` | Keep the agent section between `<!-- sdd-orc:overview:agent:begin/end -->` |
+| `OVERVIEW_SUMMARY_BULLETS` | Use 3–5 `<li>` elements in `ul[data-sdd-bullets]` |
+| `OVERVIEW_TABLE_COUNT` | At most two `div[data-sdd-table]` blocks |
+| `OVERVIEW_UNKNOWN_ID` | Use ids from specs or this issue’s requirements delta only |
+| `OVERVIEW_SUMMARY_NO_ID` | Put at least one id in summary `data-sdd-ids` or bullet text (when the delta has requirement ids) |
+| `OVERVIEW_TABLE_NO_ID` | At least one `data-sdd-cell="decided"` cell must include ids (when the delta has requirement ids) |
+| `OVERVIEW_UNDECIDED_COUNT` | Set `data-sdd-undecided-count` on the agent section to match undecided cells |
+| `OVERVIEW_ID_RANGE` | List each id separately; do not use `〜`, `-`, `・`, or `/` between ids |
+| `OVERVIEW_CELL_REASON` | Add `data-sdd-reason` on `impossible` and `none` cells |
+| `OVERVIEW_BARE_ID_CELL` | Add words beside ids in decided cells (not ids alone) |
+| `OVERVIEW_CELL_NO_ID` | Decided cells need at least one id in text or `data-sdd-ids` |
+| `OVERVIEW_CELL_MIXED` | Split decided and undecided content into separate cells |
 
 ## Pull request CI (recommended)
 

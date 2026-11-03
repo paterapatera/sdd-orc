@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
-import { cliPath, initRepo, run, sdd, tempRepo, writeInvoiceIssue, writeSteering, commitAll, git } from "./helpers.mjs";
+import { cliPath, initRepo, run, sdd, tempRepo, writeInvoiceIssue, writeSteering, commitAll, git, refreshIssueOverview, DOCS_ONLY_OVERVIEW_AGENT } from "./helpers.mjs";
 import {
   parseFixItems,
   parseFeedbackEntries,
@@ -212,6 +212,7 @@ test("close check passes with multi-section feedback dispositions", () => {
   fs.writeFileSync(path.join(issue, "task.md"), "# Tasks\n\n- [x] 1. Done\n");
   fs.writeFileSync(path.join(issue, "feedback.md"), MULTI_FEEDBACK);
   fs.writeFileSync(path.join(dir, "docs/knowledge/lessons/bound-the-unit.md"), sampleLesson("bound-the-unit"));
+  refreshIssueOverview(dir, "multi-feedback", DOCS_ONLY_OVERVIEW_AGENT);
   commitAll(dir, "docs: multi feedback");
   assert.equal(sdd(dir, ["apply", "--issue", "multi-feedback"]).status, 0);
   sdd(dir, ["index"]);
@@ -384,6 +385,7 @@ test("close check with three feedback entries requires each disposition", () => 
   fs.writeFileSync(path.join(issue, "task.md"), "# Tasks\n\n- [x] 1. Done\n");
   fs.writeFileSync(path.join(issue, "feedback.md"), TRIPLE_FEEDBACK);
   fs.writeFileSync(path.join(dir, "docs/knowledge/lessons/slug-three.md"), sampleLesson("slug-three"));
+  refreshIssueOverview(dir, "triple-feedback", DOCS_ONLY_OVERVIEW_AGENT);
   commitAll(dir, "docs: triple feedback");
   assert.equal(sdd(dir, ["apply", "--issue", "triple-feedback"]).status, 0);
   sdd(dir, ["index"]);
@@ -470,6 +472,7 @@ test("close creates lessons index when directory was missing", () => {
   );
   fs.writeFileSync(path.join(issue, "task.md"), "# Tasks\n\n- [x] 1. Do it\n");
   fs.rmSync(path.join(dir, "docs/knowledge/lessons"), { recursive: true, force: true });
+  refreshIssueOverview(dir, "quick-fix", DOCS_ONLY_OVERVIEW_AGENT);
   commitAll(dir, "docs: quick");
   const closed = sdd(dir, ["check", "--stage", "close", "--issue", "quick-fix"]);
   assert.equal(closed.status, 0, closed.stdout);
@@ -569,6 +572,7 @@ trial
 steering
 `,
   );
+  refreshIssueOverview(dir, "eval-empty-hint", DOCS_ONLY_OVERVIEW_AGENT);
   commitAll(dir, "docs: eval empty hint");
   const result = sdd(dir, ["check", "--stage", "close", "--issue", "eval-empty-hint"]);
   assert.equal(result.status, 0, result.stdout);

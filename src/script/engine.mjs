@@ -4,6 +4,7 @@ import path from "node:path";
 import { regenerateLessonsIndex, validateLessons, validateCloseLessons } from "./lessons.mjs";
 import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, sameAfterApply, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
+import { runOverviewCommand, validateOverview } from "./overview.mjs";
 
 const SPEC_FILES = ["spec.md", "interfaces.md", "data.md", "quality.md"];
 const AUTO_TEST_LEVELS = TEST_LEVELS.filter((level) => level !== "Manual");
@@ -1335,7 +1336,7 @@ function proposalType(proposal) {
   return /^-\s+Type:\s*(\S+)/m.exec(proposal)?.[1] || "";
 }
 
-function staticIssueDiags(root, config, issue, stage) {
+function staticIssueDiags(root, config, issue, stage, { validateOverviewFile = true } = {}) {
   const files = readIssue(root, config, issue);
   if (!fs.existsSync(files.dir)) return [diag(`${config.docsDir}/issues/${issue}`, 1, "ISSUE_NOT_FOUND", "Create the issue directory before running this command")];
   const diags = [];
@@ -1359,6 +1360,20 @@ function staticIssueDiags(root, config, issue, stage) {
   if (files.design) validateDesignMechanical(files, config, issue, diags);
   if (files.task && files.design) validateTasks(files, config, issue, diags);
   if (files.research) validateResearch(files.research, delta, diags, config, issue);
+  const reqDelta = deltas.find((part) => part.source === "requirements") || null;
+  const designDelta = deltas.find((part) => part.source === "design") || null;
+  const overviewIds = knownIdSet(loadTree(root, kdir(config)), kdir(config));
+  if (reqDelta) {
+    for (const bucket of ["added", "modified"]) {
+      for (const file of reqDelta.files) {
+        for (const item of file[bucket]) {
+          const id = item.title.split(":")[0].trim();
+          if (/^(REQ|IF|DATA|NFR)-/.test(id)) overviewIds.add(id);
+        }
+      }
+    }
+  }
+  if (validateOverviewFile) validateOverview(root, config, issue, files, reqDelta, designDelta, overviewIds, diags);
   if (stage === "close") validateClose(root, config, issue, files, docsOnly, quick, diags);
   if (stage === "impl") validateImpl(root, config, issue, files, diags);
   return { diags, deltas, docsOnly, quick };
@@ -1743,8 +1758,8 @@ export function runCommand(start, argv) {
   }
   const opts = parseScriptArgs(argv);
   const command = opts._[0] || "";
-  if (!command || opts.unknown || !["check", "stamp", "apply", "renumber", "index", "status"].includes(command)) {
-    return { code: 2, stdout: "Usage: sdd.mjs check|stamp|apply|renumber|index|status [options]\n", stderr: "" };
+  if (!command || opts.unknown || !["check", "stamp", "apply", "renumber", "index", "status", "overview"].includes(command)) {
+    return { code: 2, stdout: "Usage: sdd.mjs check|stamp|apply|renumber|index|status|overview [options]\n", stderr: "" };
   }
   const root = findRoot(start);
   if (!root) return { code: 2, stdout: "", stderr: "sdd.config.json:1: USAGE Run this command inside a repository.\n" };
@@ -1764,6 +1779,13 @@ export function runCommand(start, argv) {
   if (command === "status") return runStatus(root, config, opts);
   if (command === "check") return runCheck(root, config, opts);
   if (command === "stamp") return runStamp(root, config, opts);
+  if (command === "overview") {
+    const issue = resolveIssue(root, config, opts.issue);
+    if (!issue) {
+      return { code: 2, stdout: `${formatDiagnostics([diag("issues", 1, "ISSUE_NOT_FOUND", "Pass --issue or run overview on the issue branch")])}\n`, stderr: "" };
+    }
+    return runOverviewCommand(root, config, issue);
+  }
   if (command === "apply") return runApply(root, config, opts);
   return runRenumber(root, config, opts);
 }
@@ -2011,7 +2033,7 @@ function runApply(root, config, opts) {
   if (!issue || !fs.existsSync(issueDir(root, config, issue))) {
     return { code: 2, stdout: output([diag("issues", 1, "ISSUE_NOT_FOUND", "Pass --issue or run apply on the issue branch")], opts.format), stderr: "" };
   }
-  const issueResult = staticIssueDiags(root, config, issue, "");
+  const issueResult = staticIssueDiags(root, config, issue, "", { validateOverviewFile: false });
   const tree = loadTree(root, kdir(config));
   const before = cloneTree(tree);
   const simulated = simulate(tree, kdir(config), issueResult.deltas, issue, { lang: config.lang || "en", root });

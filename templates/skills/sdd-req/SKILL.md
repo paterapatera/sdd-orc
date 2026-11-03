@@ -13,6 +13,8 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first and stop on failu
 
 Ask first about points that leave an acceptance result undecided, then about points the proposal marks for this phase. Look for gaps the proposal does not mention: each way a user reaches the behavior (a link, a direct URL, a retry), who creates the accounts or records the behavior needs, how the system knows an actor's role or permission and where that is stored, failure and empty states, and who may see or change what. Ask at most 5 questions at a time, and ask the next 5 after the answers arrive; rounds have no limit. Each question decides one thing, and each option states only the result that differs. Put background in one or two chat sentences before the questions, not in them. Keep a question near 30 characters and an option near 15 in ja, or near 12 and 6 words otherwise, not counting its score. Prefix each option with a score from 1 to 5, as in `[5] ...`, where 5 is best. The score weighs safety most, then closeness to the ideal form, then low implementation effort. List options from the highest score. The score is the recommendation, so add no separate recommended label. Leave unanswered questions under Open Questions as `- [ ] Qn: ...`, with every option you showed on its own indented line as `- [n] ...`, so a reviewer can see the alternatives. When answered, check the box, add ` (chosen)` to the chosen option or an indented `- Other: ... (chosen)` line for a free answer, and add `Answer:` plus where the answer landed: a delta id, a section such as `Definitions` in a named spec, or `no delta` when the answer is to require nothing.
 
+- issue: `__SDD_DOCS_DIR__/issues/<current-branch>/overview.html` — human-readable summary; does not change requirements or design. After `requirements.md` is stable, run `__SDD_RUNTIME__ __SDD_SCRIPT__ overview --issue <feature>`, then write the agent block (3–5 bullets, 1–2 tables) between `<!-- sdd-orc:overview:agent:begin/end -->`. Copy table patterns and cell rules from this skill; use `example-overview.html` next to this file as a passing shape for the credit-note example ids.
+
 ## requirements.md
 
 `example.md` next to this file is a complete file that passes `check`. Copy its headings, field names, and table shapes. Write `requirements.md` first, then stamp and check. A first check with reports is expected. Do not open `__SDD_SCRIPT__` before that check, and afterwards open it only for a report this skill and the example do not explain. Write the bodies in `__SDD_LANG__`, and keep only the parts the issue needs. Inside a SECTIONS item, write sub-headings two levels deeper than in the permanent file, as `#####` for `###`; apply moves them back.
@@ -39,6 +41,23 @@ One requirement, one sentence, one obligation, one scenario or more. Include an 
 
 Choose the pattern from the trigger: Event-driven for an action or arrival, State-driven for a condition that holds, Unwanted behavior for errors and refusals. A scenario's When is an action or event, never a state. Its Then is a result a test can observe. A requirement that refuses or hides something states what is observed: the record stays unchanged, a message is shown, or no control is offered. Requirements with the same entry use the same trigger words, and a behavior with several entries covers each of them.
 
+## overview.html decision tables
+
+After `overview --issue`, write 1–2 tables inside the agent markers (default 1; add a second only when it adds a data or time axis). Pick the row/column pattern by issue kind:
+
+| Kind | Rows × columns |
+|---|---|
+| Screens | role × screen (omit roles with no access; prefer this over Permissions unless records have create/update/delete) |
+| Permissions | role × data or feature with view/create/update/delete |
+| API | caller (logged-in, admin, external, unauthenticated) × endpoint; cell = success / no permission / invalid input |
+| Batch | situation (normal, 0 targets, fails midway, runs twice) × step; include notifications the batch sends |
+| State transitions | state × operation (only when this issue owns record states) |
+| Data change / migration | data kind (new, old format, missing, duplicate) × process (migrate, rollback, read) |
+| External integration | partner response (success, timeout, error, duplicate, out of order) plus row `our own save fails` × our processing |
+| Concurrency / overlap | overlapping situations (same action twice, batch with webhook, etc.) × behavior |
+
+Cell content is exactly one of: short description + ids; `undecided` / 未決定 (+ optional note); `impossible: <reason>`; `none: <reason>` when the table pattern does not apply. Never mix decided and undecided in one cell. List each id; no ranges (`11〜13`, `14・15`). Field-value cases (empty, too long, case, markup) stay in the Review checklist below, not in tables.
+
 | Pattern | en | ja |
 |---|---|---|
 | Ubiquitous | `The <system> SHALL <response>.` | `<システム>は<応答>しなければならない。` |
@@ -64,7 +83,7 @@ Before Finish, reread the whole file against this list. Fix each failure. Ask an
 
 ## Finish
 
-Delete `base:` lines you rewrote, then run `__SDD_RUNTIME__ __SDD_SCRIPT__ stamp --issue <feature>` and `__SDD_RUNTIME__ __SDD_SCRIPT__ check --issue <feature>`. Commit only this issue directory, including `proposal.md` when it is still uncommitted, as `docs: ...` in `__SDD_LANG__`. Stage named paths. Do not use `git add -A` or `git add .`. A tracker key prefix becomes the commit scope.
+Delete `base:` lines you rewrote, then run `__SDD_RUNTIME__ __SDD_SCRIPT__ stamp --issue <feature>`, `__SDD_RUNTIME__ __SDD_SCRIPT__ overview --issue <feature>`, fill `overview.html` agent markers (see `example-overview.html`), and `__SDD_RUNTIME__ __SDD_SCRIPT__ check --issue <feature>`. Commit only this issue directory, including `proposal.md` when it is still uncommitted, as `docs: ...` in `__SDD_LANG__`. Stage named paths. Do not use `git add -A` or `git add .`. A tracker key prefix becomes the commit scope.
 
 ## Issue feedback (`feedback.md`)
 

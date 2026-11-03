@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.2.0
+
+- Issue readability moves to `docs/issues/<branch>/overview.html`. `requirements.md` and `design.md` keep the 1.1.0 shape; `apply` does not read `overview.html`.
+- Add `sdd overview <issue>` to regenerate the generated section (deterministic hash of requirements + design, id lists, questions, steering delta, anchors).
+- `/sdd-req` and `/sdd-design` write the agent section (3–5 summary bullets, 1–2 decision tables) between documented HTML markers; `check` validates overview for **all** issues (including in-progress 1.1.0 work).
+- README and README.ja document overview patterns, cell rules, markers, and `OVERVIEW_*` diagnostic codes with one-line fixes.
+
 ## 1.1.0
 
 - Split lesson **recording** from **adoption**: `/sdd-close` only records occurrences, review closes, and new `candidate` lessons; it does not change lesson status or print `/sdd-init`.

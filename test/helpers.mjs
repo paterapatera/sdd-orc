@@ -3,6 +3,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { assembleOverview, extractBlock, MARKER_AGENT_BEGIN, MARKER_AGENT_END, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END } from "../src/script/overview.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const cliPath = path.join(repoRoot, "src/cli.mjs");
@@ -176,4 +177,71 @@ none
 `);
   fs.mkdirSync(path.join(dir, "src"), { recursive: true });
   fs.writeFileSync(path.join(dir, "src/invoice.js"), "// covers REQ-INV-NEW-1\nexport const ready = true;\n");
+  refreshIssueOverview(dir, "invoice-reissue", invoiceOverviewAgent(false));
 }
+
+const INVOICE_OVERVIEW_AGENT_REPRINT = invoiceOverviewAgent(true);
+
+function invoiceOverviewAgent(includeReprint) {
+  const bullets = includeReprint
+    ? `      <li data-sdd-ids="REQ-INV-NEW-1,REQ-INV-NEW-2">REQ-INV-NEW-1 on confirmation; REQ-INV-NEW-2 for clerk reprints.</li>
+      <li data-sdd-ids="REQ-INV-NEW-1">Integration coverage targets invoice issue flow.</li>
+      <li data-sdd-ids="REQ-INV-NEW-2">Reprint leaves one logical invoice with a copy.</li>`
+    : `      <li data-sdd-ids="REQ-INV-NEW-1">REQ-INV-NEW-1 issues an invoice when an order is confirmed.</li>
+      <li data-sdd-ids="REQ-INV-NEW-1">One obligation per requirement with an integration scenario.</li>
+      <li data-sdd-ids="REQ-INV-NEW-1">Billing capability adds invoice records only.</li>`;
+  const tableIds = includeReprint ? "REQ-INV-NEW-1,REQ-INV-NEW-2" : "REQ-INV-NEW-1";
+  return `${MARKER_AGENT_BEGIN}
+<section data-sdd-part="agent" data-sdd-undecided-count="0">
+  <div data-sdd-summary>
+    <ul data-sdd-bullets>
+${bullets}
+    </ul>
+  </div>
+  <div data-sdd-table="1" data-sdd-table-kind="permissions">
+    <table>
+      <tr><th>Role</th><th>Invoice data</th></tr>
+      <tr><th>Customer</th><td data-sdd-cell="decided" data-sdd-ids="${tableIds}">view issued invoice</td></tr>
+      <tr><th>System</th><td data-sdd-cell="decided" data-sdd-ids="REQ-INV-NEW-1">create on confirmation</td></tr>
+    </table>
+  </div>
+</section>
+${MARKER_AGENT_END}
+`;
+}
+
+/** Run \`sdd overview\` and optionally replace the agent block (markers included). */
+export function refreshIssueOverview(dir, issue, agentBlock = null) {
+  const run = sdd(dir, ["overview", "--issue", issue]);
+  if (run.status !== 0) throw new Error(run.stdout + run.stderr);
+  if (!agentBlock) return;
+  const config = JSON.parse(fs.readFileSync(path.join(dir, "sdd.config.json"), "utf8"));
+  const overviewPath = path.join(dir, config.docsDir, "issues", issue, "overview.html");
+  const html = fs.readFileSync(overviewPath, "utf8");
+  const generated = extractBlock(html, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END);
+  const agent = agentBlock.includes(MARKER_AGENT_BEGIN) ? agentBlock : `${MARKER_AGENT_BEGIN}\n${agentBlock}\n${MARKER_AGENT_END}\n`;
+  fs.writeFileSync(overviewPath, assembleOverview(generated, agent));
+}
+
+export function refreshInvoiceReprintOverview(dir) {
+  refreshIssueOverview(dir, "invoice-reissue", INVOICE_OVERVIEW_AGENT_REPRINT);
+}
+
+export const DOCS_ONLY_OVERVIEW_AGENT = `${MARKER_AGENT_BEGIN}
+<section data-sdd-part="agent" data-sdd-undecided-count="0">
+  <div data-sdd-summary>
+    <ul data-sdd-bullets>
+      <li data-sdd-ids="">Decision-only change with no requirement ids in the delta.</li>
+      <li data-sdd-ids="">Steering and ADR updates are described in design and research.</li>
+      <li data-sdd-ids="">Apply still requires overview.html for check and apply gates.</li>
+    </ul>
+  </div>
+  <div data-sdd-table="1" data-sdd-table-kind="none">
+    <table>
+      <tr><th>Axis</th><th>Notes</th></tr>
+      <tr><th>Requirements ids</th><td data-sdd-cell="none" data-sdd-reason="Coverage none; no spec requirement delta">none</td></tr>
+    </table>
+  </div>
+</section>
+${MARKER_AGENT_END}
+`;

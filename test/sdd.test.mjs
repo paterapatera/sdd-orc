@@ -3,8 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { shallProblem } from "../src/script/delta.mjs";
+import { MARKER_AGENT_BEGIN, MARKER_AGENT_END } from "../src/script/overview.mjs";
 import { CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, KINDS, VERIFICATIONS } from "../src/script/util.mjs";
-import { cliPath, commitAll, git, initRepo, run, sdd, tempRepo, writeInvoiceIssue, writeSteering } from "./helpers.mjs";
+import { cliPath, commitAll, git, initRepo, refreshInvoiceReprintOverview, refreshIssueOverview, run, sdd, tempRepo, writeInvoiceIssue, writeSteering, DOCS_ONLY_OVERVIEW_AGENT } from "./helpers.mjs";
 
 function read(dir, rel) {
   return fs.readFileSync(path.join(dir, rel), "utf8");
@@ -34,8 +35,8 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "1.1.0");
-  assert.equal(config.formatVersion, 1);
+  assert.equal(config.version, "1.2.0");
+  assert.equal(JSON.parse(read(dir, "sdd.config.json")).formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-scripts/sdd.mjs")), true);
@@ -212,6 +213,23 @@ When an invoice is paid, the system SHALL send a receipt.
     "Requirements: REQ-INV-NEW-1",
     "Requirements: REQ-INV-NEW-1, IF-INV-NEW-1, IF-RCPT-NEW-1, REQ-RCPT-NEW-1",
   ));
+  refreshIssueOverview(dir, "invoice-reissue", `${MARKER_AGENT_BEGIN}
+<section data-sdd-part="agent" data-sdd-undecided-count="0">
+  <div data-sdd-summary>
+    <ul data-sdd-bullets>
+      <li data-sdd-ids="REQ-INV-NEW-1,IF-INV-NEW-1">Invoice UI IF-INV-NEW-1 shows REQ-INV-NEW-1.</li>
+      <li data-sdd-ids="IF-RCPT-NEW-1,REQ-RCPT-NEW-1">Receipt consumes IF-INV-NEW-1 via IF-RCPT-NEW-1.</li>
+      <li data-sdd-ids="REQ-RCPT-NEW-1">REQ-RCPT-NEW-1 sends receipt when paid.</li>
+    </ul>
+  </div>
+  <div data-sdd-table="1" data-sdd-table-kind="api">
+    <table><tr><th>Caller</th><th>IF-INV-NEW-1</th></tr>
+    <tr><th>Clerk</th><td data-sdd-cell="decided" data-sdd-ids="IF-INV-NEW-1">success shows invoice</td></tr>
+    </table>
+  </div>
+</section>
+${MARKER_AGENT_END}
+`);
   commitAll(dir, "docs: proposal");
   const checked = sdd(dir, ["check", "--issue", "invoice-reissue"]);
   assert.equal(checked.status, 0, checked.stdout);
@@ -389,6 +407,7 @@ When a clerk voids an invoice, the system SHALL mark that invoice void.
   fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/design.md"), design.replace("| REQ-INV-NEW-1 | InvoiceService | Integration |", "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| REQ-INV-NEW-2 | InvoiceService | Unit |"));
   const task = read(dir, "docs/issues/invoice-reissue/task.md");
   fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), `${task}\n    - Requirements: REQ-INV-NEW-2\n`);
+  refreshInvoiceReprintOverview(dir);
   commitAll(dir, "docs: proposal");
   const first = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
   assert.equal(first.status, 0, first.stdout);
@@ -444,6 +463,7 @@ Adjustments group voids.
 - In: voids
 - Out: refunds
 `);
+  refreshIssueOverview(dir, "invoice-reissue", DOCS_ONLY_OVERVIEW_AGENT);
   fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/design.md"), `# Design
 
 ## Overview
@@ -611,6 +631,7 @@ none
   - 1.2 Run the full existing test suite
 `);
   commitAll(dir, "docs: mail");
+  refreshIssueOverview(dir, "choose-mail", DOCS_ONLY_OVERVIEW_AGENT);
   const applied = sdd(dir, ["apply", "--issue", "choose-mail"]);
   assert.equal(applied.status, 0, applied.stdout);
   const adr = fs.readdirSync(path.join(dir, "docs/knowledge/decision")).find((name) => name.startsWith("1-"));
@@ -766,6 +787,7 @@ When a clerk reprints an invoice, the system SHALL issue a copy.
   fs.writeFileSync(task, read(dir, "docs/issues/invoice-reissue/task.md").replaceAll("Requirements: REQ-INV-NEW-1", "Requirements: REQ-INV-NEW-1, REQ-INV-NEW-2"));
   const applied = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
   assert.equal(applied.status, 0, applied.stdout + applied.stderr);
+  refreshInvoiceReprintOverview(dir);
   commitAll(dir, "docs: invoice");
 }
 
@@ -809,6 +831,7 @@ test("the req, design, and task examples pass check and apply together", () => {
   fs.writeFileSync(path.join(issue, "task.md"), `${task}\n`);
   const stamped = sdd(dir, ["stamp", "--issue", "credit-note"]);
   assert.equal(stamped.status, 0, stamped.stdout + stamped.stderr);
+  refreshIssueOverview(dir, "credit-note", installedSkill(dir, "sdd-req", "example-overview.html"));
   assert.equal((read(dir, "docs/issues/credit-note/requirements.md").match(/^- base: /gm) || []).length, 3);
   assert.equal((read(dir, "docs/issues/credit-note/design.md").match(/^- base: /gm) || []).length, 1);
   const checked = sdd(dir, ["check", "--issue", "credit-note"]);
@@ -888,7 +911,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "1.1.0");
+  assert.equal(config.version, "1.2.0");
   assert.match(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });
