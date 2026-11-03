@@ -1,26 +1,23 @@
 <!-- sdd-orc:overview:agent:begin -->
-<section data-sdd-part="agent" data-sdd-undecided-count="1">
-  <div data-sdd-summary>
-    <ul data-sdd-bullets>
-      <li data-sdd-ids="REQ-CRN-NEW-1,REQ-CRN-NEW-2">Whole-invoice credit per REQ-CRN-NEW-1; second issue refused per REQ-CRN-NEW-2.</li>
-      <li data-sdd-ids="DATA-CRN-NEW-1">One persisted record per invoice in DATA-CRN-NEW-1.</li>
-      <li data-sdd-ids="IF-CRN-NEW-1,NFR-CRN-NEW-1">Accounting event IF-CRN-NEW-1; clerk response time NFR-CRN-NEW-1.</li>
-      <li data-sdd-ids="REQ-INV-1">Invoice shows due date via modified REQ-INV-1; reprint capability removed.</li>
-    </ul>
-  </div>
-  <div data-sdd-table="1" data-sdd-table-kind="permissions">
-    <table>
-      <tr><th>Role</th><th>Credit note data</th><th>Invoice data</th></tr>
-      <tr><th>Billing clerk</th><td data-sdd-cell="decided" data-sdd-ids="REQ-CRN-NEW-1,REQ-CRN-NEW-2">create, view</td><td data-sdd-cell="decided" data-sdd-ids="REQ-INV-1">view due date</td></tr>
-      <tr><th>Accounting system</th><td data-sdd-cell="decided" data-sdd-ids="IF-CRN-NEW-1">receive event</td><td data-sdd-cell="none" data-sdd-reason="No invoice contract change">none</td></tr>
-    </table>
-  </div>
-  <div data-sdd-table="2" data-sdd-table-kind="external">
-    <table>
-      <tr><th>Partner response</th><th>Our processing</th></tr>
-      <tr><th>Success</th><td data-sdd-cell="decided" data-sdd-ids="IF-CRN-NEW-1">Mark sent in DATA-CRN-NEW-1</td></tr>
-      <tr><th>Expiry policy</th><td data-sdd-cell="undecided">Open question Q3 in requirements</td></tr>
-    </table>
-  </div>
+<section data-sdd-part="agent">
+  <h2>Summary</h2>
+  <ul>
+    <li>Whole-invoice credit per REQ-CRN-NEW-1; second issue refused per REQ-CRN-NEW-2.</li>
+    <li>One persisted record per invoice in DATA-CRN-NEW-1.</li>
+    <li>Accounting event IF-CRN-NEW-1; clerk response time NFR-CRN-NEW-1.</li>
+    <li>Invoice shows due date via modified REQ-INV-1; reprint capability removed.</li>
+  </ul>
+  <h2>Permissions</h2>
+  <table>
+    <tr><th>Role</th><th>Credit note data</th><th>Invoice data</th></tr>
+    <tr><th>Billing clerk</th><td>create, view (REQ-CRN-NEW-1, REQ-CRN-NEW-2)</td><td>view due date (REQ-INV-1)</td></tr>
+    <tr><th>Accounting system</th><td>receive event (IF-CRN-NEW-1)</td><td class="none">none: no invoice contract change</td></tr>
+  </table>
+  <h2>External integration</h2>
+  <table>
+    <tr><th>Partner response</th><th>Our processing</th></tr>
+    <tr><th>Success</th><td>Mark sent in DATA-CRN-NEW-1 (IF-CRN-NEW-1)</td></tr>
+    <tr><th>Expiry policy</th><td class="undecided">Open question Q3 in requirements</td></tr>
+  </table>
 </section>
 <!-- sdd-orc:overview:agent:end -->

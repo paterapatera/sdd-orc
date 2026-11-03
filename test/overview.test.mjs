@@ -3,7 +3,6 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { parseDeltaMarkdown } from "../src/script/delta.mjs";
-import { runCliResult } from "../src/script/engine.mjs";
 import {
   MARKER_AGENT_BEGIN,
   MARKER_AGENT_END,
@@ -13,12 +12,9 @@ import {
   buildGeneratedSection,
   extractBlock,
   validateOverview,
-  writeOverviewFile,
 } from "../src/script/overview.mjs";
-import { diag, formatDiagnostics } from "../src/script/util.mjs";
 import {
   DOCS_ONLY_OVERVIEW_AGENT,
-  cliPath,
   commitAll,
   git,
   initRepo,
@@ -51,19 +47,18 @@ function expectCode(result, code) {
 }
 
 const VALID_AGENT = `${MARKER_AGENT_BEGIN}
-<section data-sdd-part="agent" data-sdd-undecided-count="0">
-  <div data-sdd-summary>
-    <ul data-sdd-bullets>
-      <li data-sdd-ids="REQ-INV-NEW-1">Issue REQ-INV-NEW-1 on confirmation.</li>
-      <li data-sdd-ids="REQ-INV-NEW-1">Integration test covers the flow.</li>
-      <li data-sdd-ids="REQ-INV-NEW-1">Billing stores one invoice per order.</li>
-    </ul>
-  </div>
-  <div data-sdd-table="1" data-sdd-table-kind="permissions">
-    <table><tr><th>Role</th><th>Data</th></tr>
-    <tr><th>Clerk</th><td data-sdd-cell="decided" data-sdd-ids="REQ-INV-NEW-1">create on confirm</td></tr>
-    </table>
-  </div>
+<section data-sdd-part="agent">
+  <h2>Summary</h2>
+  <ul>
+    <li>Issue REQ-INV-NEW-1 on confirmation.</li>
+    <li>Integration test covers the flow.</li>
+    <li>Billing stores one invoice per order.</li>
+  </ul>
+  <h2>Permissions</h2>
+  <table>
+    <tr><th>Role</th><th>Data</th></tr>
+    <tr><th>Clerk</th><td>create on confirm (REQ-INV-NEW-1)</td></tr>
+  </table>
 </section>
 ${MARKER_AGENT_END}
 `;
@@ -77,6 +72,46 @@ test("overview generator is byte-identical on rerun", () => {
   assert.equal(sdd(dir, ["overview", "--issue", "invoice-reissue"]).status, 0);
   const second = read(dir, "docs/issues/invoice-reissue/overview.html");
   assert.equal(first, second);
+});
+
+test("overview accepts positional issue argument", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  fs.unlinkSync(path.join(dir, "docs/issues/invoice-reissue/overview.html"));
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  assert.match(read(dir, "docs/issues/invoice-reissue/overview.html"), /data-sdd-part="generated"/);
+});
+
+test("overview preserves agent block on regeneration", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const marker = "<!-- agent-keep-me -->";
+  const custom = VALID_AGENT.replace("</section>", `${marker}</section>`);
+  refreshIssueOverview(dir, "invoice-reissue", custom);
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  assert.match(read(dir, "docs/issues/invoice-reissue/overview.html"), /agent-keep-me/);
+});
+
+test("overview exits non-zero and does not write when markers are broken", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const overviewPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  const broken = read(dir, "docs/issues/invoice-reissue/overview.html").replace(
+    MARKER_GENERATED_BEGIN,
+    `${MARKER_GENERATED_BEGIN}\n${MARKER_GENERATED_BEGIN}`,
+  );
+  fs.writeFileSync(overviewPath, broken);
+  const before = fs.readFileSync(overviewPath, "utf8");
+  const result = sdd(dir, ["overview", "invoice-reissue"]);
+  assert.notEqual(result.status, 0);
+  expectCode(result, "OVERVIEW_MARKER");
+  assert.equal(fs.readFileSync(overviewPath, "utf8"), before);
 });
 
 test("legacy issue without overview.html fails OVERVIEW_MISSING", () => {
@@ -113,6 +148,18 @@ test("stale hash after editing requirements", () => {
   expectCode(result, "OVERVIEW_GENERATED_MISMATCH");
 });
 
+test("stale hash after editing design", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const design = path.join(dir, "docs/issues/invoice-reissue/design.md");
+  fs.writeFileSync(design, `${read(dir, "docs/issues/invoice-reissue/design.md")}\n## Notes\nExtra.\n`);
+  const result = issueDiags(dir, "invoice-reissue");
+  assert.equal(result.status, 1);
+  expectCode(result, "OVERVIEW_STALE_HASH");
+});
+
 test("apply output is identical with and without overview.html", () => {
   const dir = tempRepo();
   prepare(dir);
@@ -127,14 +174,16 @@ test("apply output is identical with and without overview.html", () => {
       const abs = path.join(root, rel);
       if (!fs.existsSync(abs)) return;
       for (const name of fs.readdirSync(abs)) {
+        if (name === ".git") continue;
         const next = path.join(rel, name);
+        if (/^docs\/issues\/[^/]+\/overview\.html$/.test(next)) continue;
         const full = path.join(root, next);
         if (fs.statSync(full).isDirectory()) walk(next);
-        else if (next.startsWith("docs/knowledge/") || next.startsWith("src/")) files.push(next);
+        else files.push(next);
       }
     }
     walk(".");
-    return Object.fromEntries(files.sort().map((rel) => [rel, read(dir, rel)]));
+    return Object.fromEntries(files.sort().map((rel) => [rel, read(root, rel)]));
   };
   const afterWith = snapshot(dir);
   const dir2 = tempRepo();
@@ -169,34 +218,58 @@ test("OVERVIEW_AGENT_MISSING when agent markers are removed", () => {
   expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_AGENT_MISSING");
 });
 
-test("OVERVIEW_SUMMARY_BULLETS rejects 2 and 6 bullets", () => {
+test("OVERVIEW_MARKER_MISSING when a marker is deleted", () => {
   const dir = tempRepo();
   prepare(dir);
   git(["checkout", "-b", "invoice-reissue"], dir);
   writeInvoiceIssue(dir);
-  const two = VALID_AGENT.replace(/<li data-sdd-ids="REQ-INV-NEW-1">Integration test covers the flow.<\/li>\n/, "");
-  refreshIssueOverview(dir, "invoice-reissue", two);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_SUMMARY_BULLETS");
-  const six = VALID_AGENT.replace(
-    "</ul>",
-    `<li data-sdd-ids="REQ-INV-NEW-1">extra</li><li data-sdd-ids="REQ-INV-NEW-1">extra</li><li data-sdd-ids="REQ-INV-NEW-1">extra</li></ul>`,
-  );
-  refreshIssueOverview(dir, "invoice-reissue", six);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_SUMMARY_BULLETS");
+  const overview = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  fs.writeFileSync(overview, read(dir, "docs/issues/invoice-reissue/overview.html").replace(MARKER_AGENT_END, ""));
+  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_MARKER_MISSING");
 });
 
-test("OVERVIEW_TABLE_COUNT rejects three tables", () => {
+test("OVERVIEW_MARKER_DUPLICATE when a marker appears twice", () => {
   const dir = tempRepo();
   prepare(dir);
   git(["checkout", "-b", "invoice-reissue"], dir);
   writeInvoiceIssue(dir);
-  const extra = VALID_AGENT.replace(
-    "</section>",
-    `<div data-sdd-table="2" data-sdd-table-kind="batch"><table><tr><th>a</th><td data-sdd-cell="decided" data-sdd-ids="REQ-INV-NEW-1">x</td></tr></table></div>
-<div data-sdd-table="3" data-sdd-table-kind="batch"><table><tr><th>b</th><td data-sdd-cell="decided" data-sdd-ids="REQ-INV-NEW-1">y</td></tr></table></div></section>`,
-  );
-  refreshIssueOverview(dir, "invoice-reissue", extra);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_TABLE_COUNT");
+  const overview = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  fs.writeFileSync(overview, read(dir, "docs/issues/invoice-reissue/overview.html").replace(MARKER_AGENT_BEGIN, `${MARKER_AGENT_BEGIN}\n${MARKER_AGENT_BEGIN}`));
+  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_MARKER_DUPLICATE");
+});
+
+test("OVERVIEW_MARKER_ORDER when generated section precedes agent section", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const html = read(dir, "docs/issues/invoice-reissue/overview.html");
+  const gen = extractBlock(html, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END);
+  const agent = extractBlock(html, MARKER_AGENT_BEGIN, MARKER_AGENT_END);
+  const bodyMatch = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html);
+  const swapped = html.replace(bodyMatch[1], `\n${gen}\n${agent}\n`);
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/overview.html"), swapped);
+  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_MARKER_ORDER");
+});
+
+test("removed formatting rules no longer fail check", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const loose = `${MARKER_AGENT_BEGIN}
+<section data-sdd-part="agent">
+  <ul>
+    <li>one</li><li>two</li><li>three</li><li>four</li><li>five</li><li>six</li>
+  </ul>
+  <table><tr><th>R</th><td>REQ-INV-NEW-1</td></tr></table>
+</section>
+${MARKER_AGENT_END}
+`;
+  refreshIssueOverview(dir, "invoice-reissue", loose);
+  const result = issueDiags(dir, "invoice-reissue");
+  assert.equal(result.status, 0, result.stdout);
+  assert.doesNotMatch(result.stdout, /OVERVIEW_(SUMMARY|TABLE|BARE|CELL|UNDECIDED|ID_RANGE|PLACEHOLDER|BODY)/);
 });
 
 test("OVERVIEW_UNKNOWN_ID rejects ids not in specs or delta", () => {
@@ -209,115 +282,7 @@ test("OVERVIEW_UNKNOWN_ID rejects ids not in specs or delta", () => {
   expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_UNKNOWN_ID");
 });
 
-test("OVERVIEW_SUMMARY_NO_ID when delta ids exist but summary has none", () => {
-  const dir = tempRepo();
-  prepare(dir);
-  git(["checkout", "-b", "invoice-reissue"], dir);
-  writeInvoiceIssue(dir);
-  const noSummaryIds = `${MARKER_AGENT_BEGIN}
-<section data-sdd-part="agent" data-sdd-undecided-count="0">
-  <div data-sdd-summary>
-    <ul data-sdd-bullets>
-      <li data-sdd-ids="">Scope covers invoice issue on confirmation.</li>
-      <li data-sdd-ids="">Integration tests exercise the happy path.</li>
-      <li data-sdd-ids="">No steering change in this issue.</li>
-    </ul>
-  </div>
-  <div data-sdd-table="1" data-sdd-table-kind="permissions">
-    <table><tr><th>Role</th><th>Data</th></tr>
-    <tr><th>Clerk</th><td data-sdd-cell="decided" data-sdd-ids="REQ-INV-NEW-1">create on confirm</td></tr>
-    </table>
-  </div>
-</section>
-${MARKER_AGENT_END}
-`;
-  refreshIssueOverview(dir, "invoice-reissue", noSummaryIds);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_SUMMARY_NO_ID");
-});
-
-test("OVERVIEW_TABLE_NO_ID when table lacks decided ids", () => {
-  const dir = tempRepo();
-  prepare(dir);
-  git(["checkout", "-b", "invoice-reissue"], dir);
-  writeInvoiceIssue(dir);
-  const bare = VALID_AGENT.replace(
-    'data-sdd-cell="decided" data-sdd-ids="REQ-INV-NEW-1">create on confirm',
-    'data-sdd-cell="decided">create on confirm',
-  );
-  refreshIssueOverview(dir, "invoice-reissue", bare);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_TABLE_NO_ID");
-});
-
-test("OVERVIEW_UNDECIDED_COUNT when declared count differs", () => {
-  const dir = tempRepo();
-  prepare(dir);
-  git(["checkout", "-b", "invoice-reissue"], dir);
-  writeInvoiceIssue(dir);
-  const wrong = VALID_AGENT.replace('data-sdd-undecided-count="0"', 'data-sdd-undecided-count="2"');
-  refreshIssueOverview(dir, "invoice-reissue", wrong);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_UNDECIDED_COUNT");
-});
-
-test("OVERVIEW_ID_RANGE rejects ranges in summary and cells", () => {
-  const dir = tempRepo();
-  prepare(dir);
-  git(["checkout", "-b", "invoice-reissue"], dir);
-  writeInvoiceIssue(dir);
-  const rangeSummary = VALID_AGENT.replace(
-    "Issue REQ-INV-NEW-1 on confirmation.",
-    "Issue REQ-INV-NEW-1〜REQ-INV-NEW-2 on confirmation.",
-  );
-  refreshIssueOverview(dir, "invoice-reissue", rangeSummary);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_ID_RANGE");
-});
-
-test("OVERVIEW_CELL_REASON requires reason on impossible and none", () => {
-  const dir = tempRepo();
-  prepare(dir);
-  git(["checkout", "-b", "invoice-reissue"], dir);
-  writeInvoiceIssue(dir);
-  const none = VALID_AGENT.replace(
-    'data-sdd-cell="decided" data-sdd-ids="REQ-INV-NEW-1">create on confirm',
-    'data-sdd-cell="none">create on confirm',
-  );
-  refreshIssueOverview(dir, "invoice-reissue", none);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_CELL_REASON");
-});
-
-test("OVERVIEW_BARE_ID_CELL rejects id-only decided cells", () => {
-  const dir = tempRepo();
-  prepare(dir);
-  git(["checkout", "-b", "invoice-reissue"], dir);
-  writeInvoiceIssue(dir);
-  const bare = VALID_AGENT.replace("create on confirm", "REQ-INV-NEW-1");
-  refreshIssueOverview(dir, "invoice-reissue", bare);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_BARE_ID_CELL");
-});
-
-test("OVERVIEW_CELL_NO_ID rejects decided text without ids", () => {
-  const dir = tempRepo();
-  prepare(dir);
-  git(["checkout", "-b", "invoice-reissue"], dir);
-  writeInvoiceIssue(dir);
-  const text = VALID_AGENT.replace(' data-sdd-ids="REQ-INV-NEW-1">create on confirm', ">create on confirm");
-  refreshIssueOverview(dir, "invoice-reissue", text);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_CELL_NO_ID");
-});
-
-test("OVERVIEW_CELL_MIXED rejects decided text that also says undecided", () => {
-  const dir = tempRepo();
-  prepare(dir);
-  git(["checkout", "-b", "invoice-reissue"], dir);
-  writeInvoiceIssue(dir);
-  const mixed = VALID_AGENT.replace(
-    "create on confirm",
-    "undecided but REQ-INV-NEW-1 applies",
-  );
-  refreshIssueOverview(dir, "invoice-reissue", mixed);
-  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_CELL_MIXED");
-});
-
-test("validateOverview unit: 0/1/many table cells with bad item first middle last", () => {
+test("OVERVIEW_UNKNOWN_ID across summary and tables (first, middle, last)", () => {
   const dir = tempRepo();
   prepare(dir);
   git(["checkout", "-b", "invoice-reissue"], dir);
@@ -329,27 +294,37 @@ test("validateOverview unit: 0/1/many table cells with bad item first middle las
   const designDelta = parseDeltaMarkdown(design, "design");
   const config = JSON.parse(read(dir, "sdd.config.json"));
   const known = new Set(["REQ-INV-NEW-1"]);
-  const baseGen = buildGeneratedSection(req, design, reqDelta, designDelta);
+  const baseGen = buildGeneratedSection(dir, config.docsDir, req, design, reqDelta, designDelta, "");
   function runAgent(agentInner) {
-    const html = assembleOverview(baseGen, `${MARKER_AGENT_BEGIN}\n${agentInner}\n${MARKER_AGENT_END}\n`);
+    const agentBlock = `${MARKER_AGENT_BEGIN}\n${agentInner}\n${MARKER_AGENT_END}\n`;
+    const html = assembleOverview(baseGen, agentBlock, config.lang || "en");
     fs.writeFileSync(path.join(issueDir, "overview.html"), html);
     const diags = [];
     validateOverview(dir, config, "invoice-reissue", { requirements: req, design }, reqDelta, designDelta, known, diags);
     return diags.map((item) => item.rule);
   }
-  const good = `<section data-sdd-part="agent" data-sdd-undecided-count="0"><div data-sdd-summary><ul data-sdd-bullets>
-<li data-sdd-ids="REQ-INV-NEW-1">a</li><li data-sdd-ids="REQ-INV-NEW-1">b</li><li data-sdd-ids="REQ-INV-NEW-1">c</li>
-</ul></div><div data-sdd-table="1" data-sdd-table-kind="permissions"><table>
-<tr><th>R</th><th>C1</th><th>C2</th></tr>
-<tr><th>row</th><td data-sdd-cell="decided" data-sdd-ids="REQ-INV-NEW-1">ok</td><td data-sdd-cell="decided" data-sdd-ids="REQ-INV-NEW-1">ok2</td></tr>
-</table></div></section>`;
+  const good = `<section data-sdd-part="agent"><ul>
+<li>REQ-INV-NEW-1 first</li><li>REQ-INV-NEW-1 mid</li><li>REQ-INV-NEW-1 last</li>
+</ul><table><tr><th>R</th><th>C1</th><th>C2</th></tr>
+<tr><th>row</th><td>REQ-INV-NEW-1</td><td>REQ-INV-NEW-1</td></tr></table></section>`;
   assert.deepEqual(runAgent(good), []);
-  const badFirst = good.replace('data-sdd-ids="REQ-INV-NEW-1">ok', '">ok');
-  assert.ok(runAgent(badFirst).includes("OVERVIEW_CELL_NO_ID"));
-  const badMiddle = good.replace('data-sdd-ids="REQ-INV-NEW-1">ok2', '">ok2');
-  assert.ok(runAgent(badMiddle).includes("OVERVIEW_CELL_NO_ID"));
-  const badLast = good.replace(/ data-sdd-ids="REQ-INV-NEW-1"/g, ' data-sdd-ids=""');
-  assert.ok(runAgent(badLast).includes("OVERVIEW_SUMMARY_NO_ID"));
+  assert.ok(runAgent(good.replace("first", "REQ-BAD-NEW-1 first")).includes("OVERVIEW_UNKNOWN_ID"));
+  assert.ok(runAgent(good.replace("mid", "REQ-BAD-NEW-2 mid")).includes("OVERVIEW_UNKNOWN_ID"));
+  assert.ok(runAgent(good.replace("last", "REQ-BAD-NEW-3 last")).includes("OVERVIEW_UNKNOWN_ID"));
+  assert.ok(runAgent(good.replace("<td>REQ-INV-NEW-1</td>", "<td>REQ-BAD-NEW-4</td>", 1)).includes("OVERVIEW_UNKNOWN_ID"));
+});
+
+test("OVERVIEW_UNKNOWN_ID reads ids in attributes and entities", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const withEntity = VALID_AGENT.replace(
+    "Issue REQ-INV-NEW-1 on confirmation.",
+    'Issue <span title="REQ-BAD-NEW-9">REQ&#45;BAD&#45;NEW&#45;9</span> on confirmation.',
+  );
+  refreshIssueOverview(dir, "invoice-reissue", withEntity);
+  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_UNKNOWN_ID");
 });
 
 test("docs-only issue passes with none table and no requirement ids", () => {

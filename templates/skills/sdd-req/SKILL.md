@@ -43,7 +43,7 @@ Choose the pattern from the trigger: Event-driven for an action or arrival, Stat
 
 ## overview.html decision tables
 
-After `overview --issue`, write 1–2 tables inside the agent markers (default 1; add a second only when it adds a data or time axis). Pick the row/column pattern by issue kind:
+After `overview --issue`, write readable HTML inside the agent markers: a short summary and 1–2 decision tables (default 1; add a second only when it adds a data or time axis). **`check` does not enforce bullet count, table count, or cell attributes**—only freshness and unknown ids. Follow the patterns below so humans can scan the issue quickly.
 
 | Kind | Rows × columns |
 |---|---|

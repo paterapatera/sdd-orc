@@ -3,7 +3,8 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { assembleOverview, extractBlock, MARKER_AGENT_BEGIN, MARKER_AGENT_END, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END } from "../src/script/overview.mjs";
+import { assembleOverview, buildGeneratedSection, extractBlock, MARKER_AGENT_BEGIN, MARKER_AGENT_END, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END } from "../src/script/overview.mjs";
+import { parseDeltaMarkdown } from "../src/script/delta.mjs";
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 export const cliPath = path.join(repoRoot, "src/cli.mjs");
@@ -212,15 +213,22 @@ ${MARKER_AGENT_END}
 
 /** Run \`sdd overview\` and optionally replace the agent block (markers included). */
 export function refreshIssueOverview(dir, issue, agentBlock = null) {
-  const run = sdd(dir, ["overview", "--issue", issue]);
-  if (run.status !== 0) throw new Error(run.stdout + run.stderr);
-  if (!agentBlock) return;
   const config = JSON.parse(fs.readFileSync(path.join(dir, "sdd.config.json"), "utf8"));
-  const overviewPath = path.join(dir, config.docsDir, "issues", issue, "overview.html");
-  const html = fs.readFileSync(overviewPath, "utf8");
-  const generated = extractBlock(html, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END);
+  const issueDir = path.join(dir, config.docsDir, "issues", issue);
+  const lang = config.lang || "en";
+  if (!agentBlock) {
+    const run = sdd(dir, ["overview", "--issue", issue]);
+    if (run.status !== 0) throw new Error(run.stdout + run.stderr);
+    return;
+  }
   const agent = agentBlock.includes(MARKER_AGENT_BEGIN) ? agentBlock : `${MARKER_AGENT_BEGIN}\n${agentBlock}\n${MARKER_AGENT_END}\n`;
-  fs.writeFileSync(overviewPath, assembleOverview(generated, agent));
+  const requirementsText = fs.existsSync(path.join(issueDir, "requirements.md")) ? fs.readFileSync(path.join(issueDir, "requirements.md"), "utf8") : "";
+  const designText = fs.existsSync(path.join(issueDir, "design.md")) ? fs.readFileSync(path.join(issueDir, "design.md"), "utf8") : "";
+  const reqDelta = requirementsText ? parseDeltaMarkdown(requirementsText, "requirements") : null;
+  const designDelta = designText ? parseDeltaMarkdown(designText, "design") : null;
+  const pseudoExisting = `<!DOCTYPE html><html><body>\n${agent}\n</body></html>\n`;
+  const generated = buildGeneratedSection(dir, config.docsDir, requirementsText, designText, reqDelta, designDelta, pseudoExisting);
+  fs.writeFileSync(path.join(issueDir, "overview.html"), assembleOverview(generated, agent, lang));
 }
 
 export function refreshInvoiceReprintOverview(dir) {
@@ -228,20 +236,18 @@ export function refreshInvoiceReprintOverview(dir) {
 }
 
 export const DOCS_ONLY_OVERVIEW_AGENT = `${MARKER_AGENT_BEGIN}
-<section data-sdd-part="agent" data-sdd-undecided-count="0">
-  <div data-sdd-summary>
-    <ul data-sdd-bullets>
-      <li data-sdd-ids="">Decision-only change with no requirement ids in the delta.</li>
-      <li data-sdd-ids="">Steering and ADR updates are described in design and research.</li>
-      <li data-sdd-ids="">Apply still requires overview.html for check and apply gates.</li>
-    </ul>
-  </div>
-  <div data-sdd-table="1" data-sdd-table-kind="none">
-    <table>
-      <tr><th>Axis</th><th>Notes</th></tr>
-      <tr><th>Requirements ids</th><td data-sdd-cell="none" data-sdd-reason="Coverage none; no spec requirement delta">none</td></tr>
-    </table>
-  </div>
+<section data-sdd-part="agent">
+  <h2>Summary</h2>
+  <ul>
+    <li>Decision-only change with no requirement ids in the delta.</li>
+    <li>Steering and ADR updates are described in design and research.</li>
+    <li>check requires overview.html; apply does not read overview.html.</li>
+  </ul>
+  <h2>Requirements ids</h2>
+  <table>
+    <tr><th>Axis</th><th>Notes</th></tr>
+    <tr><th>Spec delta</th><td class="none">none: coverage none; no spec requirement delta</td></tr>
+  </table>
 </section>
 ${MARKER_AGENT_END}
 `;

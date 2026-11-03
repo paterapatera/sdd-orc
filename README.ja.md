@@ -187,9 +187,11 @@ Quick は質問しません。`/sdd-task` も質問しません。
 | `<!-- sdd-orc:overview:generated:begin -->` … `<!-- sdd-orc:overview:generated:end -->` | `sdd overview <issue>` が書く。手で直さない |
 | `<!-- sdd-orc:overview:agent:begin -->` … `<!-- sdd-orc:overview:agent:end -->` | `/sdd-req` と `/sdd-design` が書く。`overview` を再実行しても残る |
 
-生成側 `<section data-sdd-part="generated">` には `data-sdd-content-hash`、`data-sdd-list="added|modified|removed"`、未回答・回答済みの質問、設計デルタの steering 変更、`id="sdd-id-<ID>"` のアンカーがあります。エージェント側 `<section data-sdd-part="agent">` の `data-sdd-undecided-count` は、`data-sdd-cell="undecided"` のセル数と一致させます。要約は `<li data-sdd-ids="REQ-…,IF-…">`（カンマ区切り。`11〜13` や `14・15` のような範囲表記は不可）。表は `<div data-sdd-table="1" data-sdd-table-kind="…">` で**最大 2 つ**。セル種別: `decided`（短い説明 + id）、`undecided`、`impossible`（`data-sdd-reason` 必須）、`none`（`data-sdd-reason` 必須）。表の型は `/sdd-req` スキル（画面、権限、API、バッチ、状態遷移、移行、外部連携、同時実行など）から選び、空値・長さ・ケースなどの細かい値は従来のレビューチェックリストに残します。
+生成側 `<section data-sdd-part="generated">` には `data-sdd-content-hash`、`data-sdd-list="added|modified|removed"`（仕様ツリーから名前を補完）、未回答・回答済みの質問、設計デルタの steering 変更、表から拾った未決定ラベル、`id="sdd-id-<ID>"` のアンカーがあります。**`check` が overview で見るのは鮮度（ファイル欠落・ハッシュ不一致・生成部分の不一致・マーカー異常）と、エージェント部分の未知 id だけ**です。以下のレイアウトはスキル向けの書き方の目安で、表の数や bullet 数などは check では止めません。
 
-**1.2.0 からの移行:** 1.1.0 で始めた issue も、`check` を通すには有効な `overview.html` が必要です。`sdd overview <issue>` のあと、同梱の `example-overview.html` を形の参考にエージェント部分を書いてください。
+エージェント部分は普通の HTML で書きます。要約（`<ul>` で 3〜5 行が目安）のあと、判断表を 1〜2 個。決まった要件 id は文中に書きます。未決定は class `undecided` や「未決定」、`undecided` の語で示し、不可能はセル内で `impossible: …` のように書きます。強調したいときは `<span class="sdd-highlight-undecided">` などを使えます。id は 1 つずつ（`11〜13` のような範囲表記は避ける）。表の型は `/sdd-req` スキルから選び、空値・長さなどの細かい値はレビューチェックリストに残します。形の参考は `/sdd-req` の `example-overview.html` です。
+
+**1.2.0 からの移行:** 1.1.0 で始めた issue も、`check` を通すには `overview.html` が必要です。`sdd overview <issue>` のあと、エージェント部分をマーカー内に書いてください。
 
 ### overview 検査コード
 
@@ -199,17 +201,10 @@ Quick は質問しません。`/sdd-task` も質問しません。
 | `OVERVIEW_GENERATED_MISMATCH` | `sdd overview <issue>` で生成部分を更新する |
 | `OVERVIEW_STALE_HASH` | requirements または design を変えた → `sdd overview <issue>` |
 | `OVERVIEW_AGENT_MISSING` | `<!-- sdd-orc:overview:agent:begin/end -->` の間にエージェント部分を置く |
-| `OVERVIEW_SUMMARY_BULLETS` | `ul[data-sdd-bullets]` の `<li>` を 3〜5 個にする |
-| `OVERVIEW_TABLE_COUNT` | `div[data-sdd-table]` は 2 つまで |
+| `OVERVIEW_MARKER_MISSING` | 欠けている `<!-- sdd-orc:overview:… -->` マーカーを戻す |
+| `OVERVIEW_MARKER_DUPLICATE` | 各 overview マーカーは 1 つだけにする |
+| `OVERVIEW_MARKER_ORDER` | エージェントブロックを生成ブロックより前に；各 begin/end の順序も正しく |
 | `OVERVIEW_UNKNOWN_ID` | 仕様ツリーかこの issue の requirements デルタにある id だけ使う |
-| `OVERVIEW_SUMMARY_NO_ID` | デルタに要件 id があるとき、要約に id を 1 つ以上入れる |
-| `OVERVIEW_TABLE_NO_ID` | デルタに要件 id があるとき、表の decided セルに id を 1 つ以上入れる |
-| `OVERVIEW_UNDECIDED_COUNT` | `data-sdd-undecided-count` を undecided セル数と揃える |
-| `OVERVIEW_ID_RANGE` | id を 1 つずつ列挙する（`〜` `・` `/` でまとめない） |
-| `OVERVIEW_CELL_REASON` | `impossible` と `none` に `data-sdd-reason` を付ける |
-| `OVERVIEW_BARE_ID_CELL` | decided セルは id だけにしない（説明を添える） |
-| `OVERVIEW_CELL_NO_ID` | decided セルに id が無い → テキストか `data-sdd-ids` で id を付ける |
-| `OVERVIEW_CELL_MIXED` | 決まった内容と未決定を別セルに分ける |
 
 ## プルリクエスト CI（推奨）
 

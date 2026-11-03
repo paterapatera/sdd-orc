@@ -187,9 +187,11 @@ Path: `docs/issues/<name>/overview.html` (same `<name>` as the branch).
 | `<!-- sdd-orc:overview:generated:begin -->` … `<!-- sdd-orc:overview:generated:end -->` | Written by `sdd overview <issue>`; do not edit by hand |
 | `<!-- sdd-orc:overview:agent:begin -->` … `<!-- sdd-orc:overview:agent:end -->` | Written by `/sdd-req` and `/sdd-design`; preserved when you rerun `overview` |
 
-The generated `<section data-sdd-part="generated">` includes `data-sdd-content-hash` (hash of `requirements.md` + `design.md`), lists of ADDED/MODIFIED/REMOVED ids, open and answered questions, steering changes from the design delta, and anchor spans `id="sdd-id-<ID>"`. The agent `<section data-sdd-part="agent">` sets `data-sdd-undecided-count` to the number of table cells with `data-sdd-cell="undecided"`. Summary bullets are `<li data-sdd-ids="REQ-…,IF-…">` (comma-separated, no ranges). Tables use `<div data-sdd-table="1" data-sdd-table-kind="…">` with at most **two** tables. Cell kinds: `decided` (short text + ids), `undecided`, `impossible` (needs `data-sdd-reason`), `none` (needs `data-sdd-reason`). Pick table patterns from the `/sdd-req` skill (screens, permissions, API, batch, state, migration, external, concurrency); field-value edge cases stay in the review checklist, not tables.
+The generated `<section data-sdd-part="generated">` includes `data-sdd-content-hash` (hash of `requirements.md` + `design.md`), lists of ADDED/MODIFIED/REMOVED ids (with names from specs when available), open and answered questions, steering changes from the design delta, undecided labels copied from your tables, and anchor spans `id="sdd-id-<ID>"`. **`check` only enforces freshness** (missing file, stale hash, generated block out of date, broken markers) **and unknown ids** in the agent section. Layout rules below are writing guidance for skills, not check errors.
 
-**Migration (1.2.0):** Every issue, including ones started on 1.1.0, must have a valid `overview.html` before `check` passes. Run `sdd overview <issue>`, then fill the agent section using `example-overview.html` next to the `/sdd-req` skill as a shape reference.
+Write the agent section as plain readable HTML: a short summary (`<ul>` of 3–5 bullets is typical), then one or two decision tables. Put requirement ids in the text where they apply. Mark undecided cells with class `undecided` or the word 未決定 / `undecided`; mark impossible outcomes in the cell text (for example `impossible: …`). Use `<span class="sdd-highlight-undecided">` or `<span class="sdd-highlight-impossible">` when you want emphasis. List each id separately (no `11〜13` ranges). Pick table patterns from the `/sdd-req` skill (screens, permissions, API, batch, state, migration, external, concurrency); field-value edge cases stay in the review checklist, not tables. See `example-overview.html` next to `/sdd-req` for a small passing shape.
+
+**Migration (1.2.0):** Every issue needs `overview.html` before `check` passes. Run `sdd overview <issue>`, then fill the agent section between the agent markers.
 
 ### Overview check codes
 
@@ -199,17 +201,10 @@ The generated `<section data-sdd-part="generated">` includes `data-sdd-content-h
 | `OVERVIEW_GENERATED_MISMATCH` | Run `sdd overview <issue>` to refresh the generated section |
 | `OVERVIEW_STALE_HASH` | `requirements.md` or `design.md` changed; run `sdd overview <issue>` |
 | `OVERVIEW_AGENT_MISSING` | Keep the agent section between `<!-- sdd-orc:overview:agent:begin/end -->` |
-| `OVERVIEW_SUMMARY_BULLETS` | Use 3–5 `<li>` elements in `ul[data-sdd-bullets]` |
-| `OVERVIEW_TABLE_COUNT` | At most two `div[data-sdd-table]` blocks |
+| `OVERVIEW_MARKER_MISSING` | Restore the missing `<!-- sdd-orc:overview:… -->` marker |
+| `OVERVIEW_MARKER_DUPLICATE` | Keep exactly one of each overview marker |
+| `OVERVIEW_MARKER_ORDER` | Put the agent block before the generated block; begin before end for each pair |
 | `OVERVIEW_UNKNOWN_ID` | Use ids from specs or this issue’s requirements delta only |
-| `OVERVIEW_SUMMARY_NO_ID` | Put at least one id in summary `data-sdd-ids` or bullet text (when the delta has requirement ids) |
-| `OVERVIEW_TABLE_NO_ID` | At least one `data-sdd-cell="decided"` cell must include ids (when the delta has requirement ids) |
-| `OVERVIEW_UNDECIDED_COUNT` | Set `data-sdd-undecided-count` on the agent section to match undecided cells |
-| `OVERVIEW_ID_RANGE` | List each id separately; do not use `〜`, `-`, `・`, or `/` between ids |
-| `OVERVIEW_CELL_REASON` | Add `data-sdd-reason` on `impossible` and `none` cells |
-| `OVERVIEW_BARE_ID_CELL` | Add words beside ids in decided cells (not ids alone) |
-| `OVERVIEW_CELL_NO_ID` | Decided cells need at least one id in text or `data-sdd-ids` |
-| `OVERVIEW_CELL_MIXED` | Split decided and undecided content into separate cells |
 
 ## Pull request CI (recommended)
 

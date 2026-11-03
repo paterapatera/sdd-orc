@@ -1780,7 +1780,8 @@ export function runCommand(start, argv) {
   if (command === "check") return runCheck(root, config, opts);
   if (command === "stamp") return runStamp(root, config, opts);
   if (command === "overview") {
-    const issue = resolveIssue(root, config, opts.issue);
+    const issueArg = opts.issue || opts._[1] || "";
+    const issue = resolveIssue(root, config, issueArg);
     if (!issue) {
       return { code: 2, stdout: `${formatDiagnostics([diag("issues", 1, "ISSUE_NOT_FOUND", "Pass --issue or run overview on the issue branch")])}\n`, stderr: "" };
     }

@@ -832,6 +832,7 @@ test("the req, design, and task examples pass check and apply together", () => {
   const stamped = sdd(dir, ["stamp", "--issue", "credit-note"]);
   assert.equal(stamped.status, 0, stamped.stdout + stamped.stderr);
   refreshIssueOverview(dir, "credit-note", installedSkill(dir, "sdd-req", "example-overview.html"));
+  assert.equal(sdd(dir, ["overview", "--issue", "credit-note"]).status, 0, sdd(dir, ["overview", "--issue", "credit-note"]).stdout);
   assert.equal((read(dir, "docs/issues/credit-note/requirements.md").match(/^- base: /gm) || []).length, 3);
   assert.equal((read(dir, "docs/issues/credit-note/design.md").match(/^- base: /gm) || []).length, 1);
   const checked = sdd(dir, ["check", "--issue", "credit-note"]);
@@ -868,6 +869,7 @@ test("the req, design, and task examples pass check and apply together", () => {
   assert.match(read(dir, "docs/knowledge/specs/returns/credit-note/data.md"), /DATA-CRN-1 is the record/);
   const after = sdd(dir, ["check"]);
   assert.equal(after.status, 0, after.stdout + after.stderr);
+  assert.equal(sdd(dir, ["overview", "--issue", "credit-note"]).status, 0);
   const reapplied = sdd(dir, ["check", "--issue", "credit-note"]);
   assert.equal(reapplied.stdout, "ok: issue credit-note\n");
   commitAll(dir, "docs: apply credit note");
