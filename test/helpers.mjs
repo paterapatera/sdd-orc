@@ -185,13 +185,15 @@ const INVOICE_OVERVIEW_AGENT_REPRINT = invoiceOverviewAgent(true);
 
 function invoiceOverviewAgent(includeReprint) {
   const bullets = includeReprint
-    ? `      <li data-sdd-ids="REQ-INV-NEW-1,REQ-INV-NEW-2">REQ-INV-NEW-1 on confirmation; REQ-INV-NEW-2 for clerk reprints.</li>
-      <li data-sdd-ids="REQ-INV-NEW-1">Integration coverage targets invoice issue flow.</li>
-      <li data-sdd-ids="REQ-INV-NEW-2">Reprint leaves one logical invoice with a copy.</li>`
-    : `      <li data-sdd-ids="REQ-INV-NEW-1">REQ-INV-NEW-1 issues an invoice when an order is confirmed.</li>
-      <li data-sdd-ids="REQ-INV-NEW-1">One obligation per requirement with an integration scenario.</li>
-      <li data-sdd-ids="REQ-INV-NEW-1">Billing capability adds invoice records only.</li>`;
-  const tableIds = includeReprint ? "REQ-INV-NEW-1,REQ-INV-NEW-2" : "REQ-INV-NEW-1";
+    ? `      <li>On confirm</li>
+      <li>Reprint too</li>
+      <li>One invoice</li>`
+    : `      <li>On confirm</li>
+      <li>One invoice</li>
+      <li>Test flow</li>`;
+  const customerCell = includeReprint
+    ? "view issued <span class=\"sdd-nowrap-id\">REQ-INV-NEW-1</span> <span class=\"sdd-nowrap-id\">REQ-INV-NEW-2</span>"
+    : "view issued <span class=\"sdd-nowrap-id\">REQ-INV-NEW-1</span>";
   return `${MARKER_AGENT_BEGIN}
 <section data-sdd-part="agent" class="sdd-card">
   <p class="sdd-kicker">Summary</p>
@@ -202,8 +204,8 @@ ${bullets}
   <div class="sdd-table-wrap">
     <table class="sdd-table">
       <tr><th>Role</th><th>Invoice data</th></tr>
-      <tr><th>Customer</th><td>view issued invoice (${tableIds})</td></tr>
-      <tr><th>System</th><td>create on confirmation (REQ-INV-NEW-1)</td></tr>
+      <tr><th>Customer</th><td>${customerCell}</td></tr>
+      <tr><th>System</th><td>create confirm <span class="sdd-nowrap-id">REQ-INV-NEW-1</span></td></tr>
     </table>
   </div>
 </section>

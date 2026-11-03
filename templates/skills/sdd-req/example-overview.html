@@ -2,25 +2,25 @@
 <section data-sdd-part="agent" class="sdd-card">
   <p class="sdd-kicker">Summary</p>
   <ul class="sdd-summary">
-    <li>Whole-invoice credit per REQ-CRN-NEW-1; second issue refused per REQ-CRN-NEW-2.</li>
-    <li>One persisted record per invoice in DATA-CRN-NEW-1.</li>
-    <li>Accounting event IF-CRN-NEW-1; clerk response time NFR-CRN-NEW-1.</li>
-    <li>Invoice shows due date via modified REQ-INV-1; reprint capability removed.</li>
+    <li>Full credit</li>
+    <li>One record</li>
+    <li>Event + SLA</li>
+    <li>Due date ok</li>
   </ul>
   <p class="sdd-kicker">Permissions</p>
   <div class="sdd-table-wrap">
     <table class="sdd-table">
-      <tr><th>Role</th><th>Credit note data</th><th>Invoice data</th></tr>
-      <tr><th>Billing clerk</th><td>create, view (REQ-CRN-NEW-1, REQ-CRN-NEW-2)</td><td>view due date (REQ-INV-1)</td></tr>
-      <tr><th>Accounting system</th><td>receive event (IF-CRN-NEW-1)</td><td class="none">none: no invoice contract change</td></tr>
+      <tr><th>Role</th><th>Credit note</th><th>Invoice</th></tr>
+      <tr><th>Billing clerk</th><td>create, view <span class="sdd-nowrap-id">REQ-CRN-NEW-1</span> <span class="sdd-nowrap-id">REQ-CRN-NEW-2</span></td><td>view due <span class="sdd-nowrap-id">REQ-INV-1</span></td></tr>
+      <tr><th>Accounting</th><td>receive <span class="sdd-nowrap-id">IF-CRN-NEW-1</span></td><td class="none">none: no change</td></tr>
     </table>
   </div>
   <p class="sdd-kicker">External integration</p>
   <div class="sdd-table-wrap">
     <table class="sdd-table">
-      <tr><th>Partner response</th><th>Our processing</th></tr>
-      <tr><th>Success</th><td>Mark sent in DATA-CRN-NEW-1 (IF-CRN-NEW-1)</td></tr>
-      <tr><th>Expiry policy</th><td class="undecided">Open question Q3 in requirements</td></tr>
+      <tr><th>Partner</th><th>Processing</th></tr>
+      <tr><th>Success</th><td>Mark sent <span class="sdd-nowrap-id">IF-CRN-NEW-1</span></td></tr>
+      <tr><th>Expiry</th><td class="undecided">undecided Q3</td></tr>
     </table>
   </div>
 </section>

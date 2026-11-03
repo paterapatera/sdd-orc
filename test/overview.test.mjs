@@ -1,14 +1,16 @@
 import assert from "node:assert/strict";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
 import { parseDeltaMarkdown } from "../src/script/delta.mjs";
-import { decodeHtmlEntities } from "../src/script/overview-html.mjs";
+import { decodeHtmlEntities, decodeHtmlEntitiesOnePass } from "../src/script/overview-html.mjs";
 import {
   MARKER_AGENT_BEGIN,
   MARKER_AGENT_END,
   MARKER_GENERATED_BEGIN,
   MARKER_GENERATED_END,
+  bodyExtraOutsideMarkerBlocks,
   buildOverviewHtml,
   extractBlock,
   validateOverview,
@@ -51,15 +53,15 @@ const VALID_AGENT = `${MARKER_AGENT_BEGIN}
 <section data-sdd-part="agent" class="sdd-card">
   <p class="sdd-kicker">Summary</p>
   <ul class="sdd-summary">
-    <li>Issue REQ-INV-NEW-1 on confirmation.</li>
-    <li>Integration test covers the flow.</li>
-    <li>Billing stores one invoice per order.</li>
+    <li>On confirm</li>
+    <li>Test flow</li>
+    <li>One invoice</li>
   </ul>
   <p class="sdd-kicker">Permissions</p>
   <div class="sdd-table-wrap">
     <table class="sdd-table">
       <tr><th>Role</th><th>Data</th></tr>
-      <tr><th>Clerk</th><td>create on confirm (REQ-INV-NEW-1)</td></tr>
+      <tr><th>Clerk</th><td>create confirm <span class="sdd-nowrap-id">REQ-INV-NEW-1</span></td></tr>
     </table>
   </div>
 </section>
@@ -322,8 +324,8 @@ test("OVERVIEW_UNKNOWN_ID reads ids in attributes and entities", () => {
   git(["checkout", "-b", "invoice-reissue"], dir);
   writeInvoiceIssue(dir);
   const withEntity = VALID_AGENT.replace(
-    "Issue REQ-INV-NEW-1 on confirmation.",
-    'Issue <span title="REQ-BAD-NEW-9">REQ&#45;BAD&#45;NEW&#45;9</span> on confirmation.',
+    "create confirm <span class=\"sdd-nowrap-id\">REQ-INV-NEW-1</span>",
+    'create confirm <span title="REQ-BAD-NEW-9">REQ&#45;BAD&#45;NEW&#45;9</span>',
   );
   refreshIssueOverview(dir, "invoice-reissue", withEntity);
   expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_UNKNOWN_ID");
@@ -597,17 +599,143 @@ Use a database.
 - none
 `,
   );
-  refreshIssueOverview(dir, "invoice-reissue", VALID_AGENT.replace("confirmation.", "confirmation per ADR-999."));
+  refreshIssueOverview(dir, "invoice-reissue", VALID_AGENT.replace("REQ-INV-NEW-1", "ADR-999"));
   expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_UNKNOWN_ID");
-  refreshIssueOverview(dir, "invoice-reissue", VALID_AGENT.replace("confirmation.", "confirmation per ADR-1."));
+  refreshIssueOverview(dir, "invoice-reissue", VALID_AGENT.replace("REQ-INV-NEW-1", "ADR-1"));
   const ok = issueDiags(dir, "invoice-reissue");
   assert.equal(ok.status, 0, ok.stdout);
   assert.doesNotMatch(ok.stdout, /OVERVIEW_UNKNOWN_ID/);
 });
 
+test("comments adjacent to main shell do not block overview regen", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const overviewPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  const html = read(dir, "docs/issues/invoice-reissue/overview.html");
+  fs.writeFileSync(
+    overviewPath,
+    html.replace("<main class=\"sdd-main\">", "<main class=\"sdd-main\">\n<!-- beside main -->\n").replace("</main>", "<!-- after main -->\n</main>"),
+  );
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  assert.equal(issueDiags(dir, "invoice-reissue").status, 0);
+});
+
+test("OVERVIEW_BODY_EXTRA flags text outside the html shell and uppercase body stray markup", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const overviewPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  const base = read(dir, "docs/issues/invoice-reissue/overview.html");
+  fs.writeFileSync(overviewPath, `${base}leak after html`);
+  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_BODY_EXTRA");
+  const between = base.replace("</body>", "oops</body>");
+  fs.writeFileSync(overviewPath, between);
+  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_BODY_EXTRA");
+  const upper = base.replace("<body class=\"sdd-overview\">", "<BODY class=\"sdd-overview\">\n<p>extra</p>\n");
+  fs.writeFileSync(overviewPath, upper);
+  const result = sdd(dir, ["overview", "invoice-reissue"]);
+  assert.notEqual(result.status, 0);
+  expectCode(result, "OVERVIEW_BODY_EXTRA");
+});
+
+test("managed page title h1 must match issue name", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const overviewPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  fs.writeFileSync(
+    overviewPath,
+    read(dir, "docs/issues/invoice-reissue/overview.html").replace(
+      '<h1 class="sdd-page-title">invoice-reissue</h1>',
+      "<h1 class=\"sdd-page-title\">other-issue</h1>",
+    ),
+  );
+  expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_GENERATED_MISMATCH");
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  assert.match(read(dir, "docs/issues/invoice-reissue/overview.html"), /<h1 class="sdd-page-title">invoice-reissue<\/h1>/);
+});
+
+test("generated open and answered questions use separate counted headings", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const reqPath = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
+  fs.writeFileSync(
+    reqPath,
+    read(dir, "docs/issues/invoice-reissue/requirements.md").replace(
+      "## Open Questions\n\n# Delta",
+      "## Open Questions\n- [ ] Q9: Pending?\n- [x] Q8: Resolved.\n\n# Delta",
+    ),
+  );
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  const html = read(dir, "docs/issues/invoice-reissue/overview.html");
+  assert.match(html, /Open questions \(1\)/);
+  assert.match(html, /Answered \(1\)/);
+  assert.match(html, /sdd-callout-neutral/);
+  assert.match(html, /data-sdd-question="answered"/);
+  assert.doesNotMatch(html, /data-sdd-open-count=/);
+});
+
 test("double-encoded entities decode in multiple passes without stray & fragments", () => {
-  assert.equal(decodeHtmlEntities("&amp;#82;"), "R");
+  assert.equal(decodeHtmlEntitiesOnePass("&amp;#45;"), "&#45;");
+  assert.equal(decodeHtmlEntitiesOnePass("&amp;#82;"), "&#82;");
   assert.equal(decodeHtmlEntities("&amp;amp;lt;"), "<");
+});
+
+test("amp-numeric entity sequences in agent text do not invent unknown ids", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const agent = VALID_AGENT.replace(
+    "REQ-INV-NEW-1",
+    "REQ&amp;#45;INV-NEW-1",
+  );
+  refreshIssueOverview(dir, "invoice-reissue", agent);
+  const ok = issueDiags(dir, "invoice-reissue");
+  assert.equal(ok.status, 0, ok.stdout);
+  assert.doesNotMatch(ok.stdout, /OVERVIEW_UNKNOWN_ID/);
+});
+
+test("highlight script waits for DOMContentLoaded and case-insensitive undecided", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const agent = `${MARKER_AGENT_BEGIN}
+<section data-sdd-part="agent" class="sdd-card">
+<table class="sdd-table"><tr><th>Field</th><td>UNDECIDED value</td></tr></table>
+</section>
+${MARKER_AGENT_END}
+`;
+  refreshIssueOverview(dir, "invoice-reissue", agent);
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  const htmlPath = path.join(dir, "docs/issues/invoice-reissue/overview.html");
+  const html = read(dir, "docs/issues/invoice-reissue/overview.html");
+  assert.match(html, /DOMContentLoaded/);
+  assert.match(html, /undecided\\b\|未決定/i);
+  const probe = spawnSync(
+    "google-chrome",
+    ["--headless=new", "--disable-gpu", "--dump-dom", "--virtual-time-budget=8000", "--run-all-compositor-stages-before-draw", `file://${htmlPath}`],
+    { encoding: "utf8", maxBuffer: 10 * 1024 * 1024, timeout: 20000 },
+  );
+  if (probe.status === 0) {
+    assert.match(probe.stdout, /sdd-auto-undecided/);
+  }
+});
+
+test("removed id badges use nowrap spans for hyphenated ids", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  const html = read(dir, "docs/issues/invoice-reissue/overview.html");
+  assert.match(html, /sdd-nowrap-id"><a href="#sdd-id-REQ-INV-NEW-1">REQ-INV-NEW-1<\/a><\/span>/);
 });
 
 test("overview rejects issue names with path separators", () => {
@@ -635,7 +763,7 @@ test("OVERVIEW_UNKNOWN_ID rejects unknown ADR ids in agent section", () => {
   prepare(dir);
   git(["checkout", "-b", "invoice-reissue"], dir);
   writeInvoiceIssue(dir);
-  const bad = VALID_AGENT.replace("REQ-INV-NEW-1 on confirmation", "ADR-NEW-99 drives the flow");
+  const bad = VALID_AGENT.replace("REQ-INV-NEW-1", "ADR-NEW-99");
   refreshIssueOverview(dir, "invoice-reissue", bad);
   expectCode(issueDiags(dir, "invoice-reissue"), "OVERVIEW_UNKNOWN_ID");
 });

@@ -4,14 +4,15 @@ Human-readable styling for issue `overview.html` (generated CSS plus optional ag
 
 ## Layout (shadcn-like, static HTML)
 
-- System sans-serif stack, generous whitespace, readable max width (~52rem).
-- Cards: 1px border, ~8px radius, very subtle shadow, `--white` background.
-- Small muted section labels; compact pill badges; tables with muted header row and thin row dividers (no heavy grid).
+- System sans-serif stack, generous whitespace; main column **max-width 75rem (~1200px)**, full width with side padding (not a narrow card).
+- Cards: 1px border, ~8px radius, solid `--alto` border (no shadows), `--white` background.
+- Summary list: **3–5 bullets**, prose **≤12 characters** per bullet (see `/sdd-req` skill); one line (`white-space: nowrap`); ids belong in the generated section, not in bullet prose.
+- Tables: **width 100%**, `.sdd-table-wrap` horizontal scroll on small viewports; column **min-width ~7rem**; cell copy = short phrase + nowrap ids, **≤2 lines at 1280px**.
 - File must work offline: no React, Tailwind build, external fonts, or CDN.
 
 ## Color rule (14 colors only)
 
-Use **exactly these 14 hex values**. Do not introduce any other hex, rgb, hsl, or named color. For shadows and overlays, use alpha via `color-mix(in srgb, …)` or `rgb(from var(--…) r g b / α)` on a palette token (including `--black`).
+Use **exactly these 14 hex values**. Do not introduce any other hex, rgb, hsl, named color, `color-mix`, or alpha blends.
 
 Define every token as a CSS custom property with **exactly** these names:
 
@@ -37,10 +38,10 @@ Define every token as a CSS custom property with **exactly** these names:
 ### Usage
 
 - **`--white` (`#fff`)**: page background and card surfaces.
-- **`--black` (`#000`)**: strongest headings and shadows where a near-black reads better than `--chicago`; prefer palette alpha (e.g. `color-mix(in srgb, var(--black) 6%, transparent)`) over raw third-party grays.
-- **Neutrals**: body text and borders — `--chicago` on `--white`, borders/dividers — `--alto`.
+- **`--black` (`#000`)**: strongest headings where `--chicago` is not enough contrast on a light fill.
+- **Neutrals**: body text — `--chicago` on `--white`; borders/dividers and muted fills — `--alto` with `--chicago` text (answered questions, table headers, `none` cells).
 - **Semantic pairs** (light fill + dark text/border): chicago/alto, casal/jagged-ice, azure/hawkes-blue, plum/classic-rose, royal-purple/snuff, oregon/almond.
-- **Suggested mapping**: ADDED = casal/jagged-ice; MODIFIED / links / primary = azure/hawkes-blue; REMOVED = oregon/almond; undecided (未決定) / open questions = plum/classic-rose; steering changes = royal-purple/snuff.
+- **Suggested mapping**: ADDED = casal/jagged-ice; MODIFIED / links / primary = azure/hawkes-blue; REMOVED = oregon/almond; open questions / undecided (未決定) = plum/classic-rose; **answered** questions = chicago/alto (`sdd-callout-neutral`); steering changes = royal-purple/snuff.
 
 Every text/background pair must meet **WCAG AA 4.5:1** for body-sized text. Verified ratios for the default mapping:
 
@@ -51,5 +52,6 @@ Every text/background pair must meet **WCAG AA 4.5:1** for body-sized text. Veri
 | Modified / links | `--azure` | `--hawkes-blue` | 4.79:1 |
 | Removed ids | `--oregon` | `--almond` | 4.90:1 |
 | Open questions / undecided | `--plum` | `--classic-rose` | 4.95:1 |
+| Answered questions | `--chicago` | `--alto` | 4.75:1 |
 | Steering changes | `--royal-purple` | `--snuff` | 4.95:1 |
 | Strong headings | `--black` | `--white` | 21.0:1 |

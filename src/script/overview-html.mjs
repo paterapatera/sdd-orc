@@ -106,17 +106,74 @@ export function tableBodyCells(tableEl) {
   return cells;
 }
 
+/** One left-to-right pass: &amp;#45; becomes literal &#45; (no numeric decode in the same pass). */
+export function decodeHtmlEntitiesOnePass(text) {
+  const s = String(text || "");
+  let out = "";
+  let i = 0;
+  while (i < s.length) {
+    if (s[i] !== "&") {
+      out += s[i];
+      i += 1;
+      continue;
+    }
+    if (s.startsWith("&amp;", i)) {
+      out += "&";
+      i += 5;
+      continue;
+    }
+    if (s.startsWith("&nbsp;", i)) {
+      out += " ";
+      i += 6;
+      continue;
+    }
+    if (s.startsWith("&#160;", i)) {
+      out += " ";
+      i += 7;
+      continue;
+    }
+    if (/^&#xA0;/i.test(s.slice(i))) {
+      out += " ";
+      i += 7;
+      continue;
+    }
+    if (s.startsWith("&lt;", i)) {
+      out += "<";
+      i += 4;
+      continue;
+    }
+    if (s.startsWith("&gt;", i)) {
+      out += ">";
+      i += 4;
+      continue;
+    }
+    if (s.startsWith("&quot;", i)) {
+      out += '"';
+      i += 6;
+      continue;
+    }
+    const dec = /^&#(\d+);/.exec(s.slice(i));
+    if (dec) {
+      out += String.fromCharCode(Number(dec[1]));
+      i += dec[0].length;
+      continue;
+    }
+    const hex = /^&#x([0-9a-f]+);/i.exec(s.slice(i));
+    if (hex) {
+      out += String.fromCharCode(parseInt(hex[1], 16));
+      i += hex[0].length;
+      continue;
+    }
+    out += s[i];
+    i += 1;
+  }
+  return out;
+}
+
 export function decodeHtmlEntities(text) {
   let value = String(text || "");
   for (let pass = 0; pass < 8; pass += 1) {
-    const next = value
-      .replace(/&amp;/g, "&")
-      .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
-      .replace(/&lt;/g, "<")
-      .replace(/&gt;/g, ">")
-      .replace(/&quot;/g, '"')
-      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
-      .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    const next = decodeHtmlEntitiesOnePass(value);
     if (next === value) break;
     value = next;
   }

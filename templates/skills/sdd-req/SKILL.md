@@ -45,6 +45,10 @@ Choose the pattern from the trigger: Event-driven for an action or arrival, Stat
 
 After `overview --issue`, write readable HTML inside the agent markers: a short summary and 1–2 decision tables (default 1; add a second only when it adds a data or time axis). **`check` does not enforce bullet count, table count, or cell attributes**—only freshness and unknown ids. Follow the patterns below so humans can scan the issue quickly.
 
+**Summary bullets (guidance only):** Write **3–5** items in `<ul class="sdd-summary">`. Each bullet’s **prose is at most 12 characters** (Japanese: count full-width characters; English: count letters/spaces in a very short phrase). **One line, no wrapping** — the generated CSS uses `white-space: nowrap` on summary lines. **Do not put requirement ids in the bullet text**; the generated section lists ids with names. If you need ids beside a bullet, skip them (preferred) rather than lengthening the line.
+
+**Tables and width:** The page uses a **~1200px** main column (`75rem`) so tables can use full width. Keep **cell text to a short phrase plus ids** (ids in `<span class="sdd-nowrap-id">…</span>` or badge links) so that at **1280px viewport** cells stay within **two lines**. On narrow viewports, `.sdd-table-wrap` scrolls horizontally instead of stacking many wrapped lines in a cell.
+
 Visual layout and colors (14-token palette including `--white` / `--black`) are in `overview-visual-design.md` next to this file. Use only those CSS custom properties in agent markup; `check` does not police styling.
 
 | Kind | Rows × columns |
@@ -58,7 +62,7 @@ Visual layout and colors (14-token palette including `--white` / `--black`) are 
 | External integration | partner response (success, timeout, error, duplicate, out of order) plus row `our own save fails` × our processing |
 | Concurrency / overlap | overlapping situations (same action twice, batch with webhook, etc.) × behavior |
 
-Cell content is exactly one of: short description + ids; `undecided` / 未決定 (+ optional note); `impossible: <reason>`; `none: <reason>` when the table pattern does not apply. Never mix decided and undecided in one cell. List each id; no ranges (`11〜13`, `14・15`). Field-value cases (empty, too long, case, markup) stay in the Review checklist below, not in tables.
+Cell content is exactly one of: **a short phrase (fits ~2 lines at 1280px) plus ids** (nowrap spans or badge links); `undecided` / 未決定 (+ optional note); `impossible: <reason>`; `none: <reason>` when the table pattern does not apply. Never mix decided and undecided in one cell. List each id; no ranges (`11〜13`, `14・15`). Field-value cases (empty, too long, case, markup) stay in the Review checklist below, not in tables.
 
 | Pattern | en | ja |
 |---|---|---|

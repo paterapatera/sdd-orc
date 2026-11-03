@@ -213,7 +213,7 @@ Quick は質問しません。`/sdd-task` も質問しません。
 | 外部連携 | 相手の応答 × こちらの処理 |
 | 同時実行 | 重なりうる状況 × 挙動 |
 
-形の参考: 同梱の `example-overview.html` と色・カードのルール `overview-visual-design.md`（`/sdd-req` の横）。
+形の参考: 同梱の `example-overview.html` と色・カードのルール `overview-visual-design.md`（`/sdd-req` の横）。ページ幅はおおよそ 1200px。表のセルは短い語句と id（1280px で 2 行以内）。Summary の bullet は 3〜5 個、**本文 12 文字以内**、id は bullet に書かず（自動生成部分に一覧あり）。
 
 **1.2.0 から:** quick 以外の issue は `check` の前に有効な `overview.html` が必要です。
 

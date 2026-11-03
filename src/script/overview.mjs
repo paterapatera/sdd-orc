@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { parseDeltaMarkdown } from "./delta.mjs";
-import { attr, childElements, columnIndexInRow, decodeHtmlEntities, findElements, firstElement, headerLabelAtColumn, parseHtmlFragment, tableBodyCells, textContent } from "./overview-html.mjs";
+import { attr, childElements, columnIndexInRow, decodeHtmlEntities, decodeHtmlEntitiesOnePass, findElements, firstElement, headerLabelAtColumn, parseHtmlFragment, tableBodyCells, textContent } from "./overview-html.mjs";
 import { diag, formatDiagnostics, normalizeForHash } from "./util.mjs";
 
 /** Marker format (see README): generated and agent regions are preserved across `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>`. */
@@ -44,9 +44,10 @@ body.sdd-overview {
   background: var(--white);
 }
 .sdd-main {
-  max-width: 52rem;
+  max-width: 75rem;
+  width: 100%;
   margin: 0 auto;
-  padding: 1.5rem 1rem 2.5rem;
+  padding: 1.5rem clamp(1rem, 3vw, 2.5rem) 2.5rem;
   display: flex;
   flex-direction: column;
   gap: 1.25rem;
@@ -62,7 +63,6 @@ body.sdd-overview {
   background: var(--white);
   border: 1px solid var(--alto);
   border-radius: 8px;
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--black) 6%, transparent);
   padding: 1.25rem 1.35rem;
 }
 .sdd-kicker {
@@ -84,11 +84,20 @@ body.sdd-overview {
   margin: 0 0 0.75rem;
   padding-left: 1.15rem;
 }
-.sdd-summary li { margin: 0.35rem 0; }
-.sdd-table-wrap { overflow-x: auto; margin: 0.35rem 0 0.75rem; }
+.sdd-summary li {
+  margin: 0.35rem 0;
+  white-space: nowrap;
+}
+.sdd-table-wrap {
+  overflow-x: auto;
+  max-width: 100%;
+  margin: 0.35rem 0 0.75rem;
+  -webkit-overflow-scrolling: touch;
+}
 table.sdd-table {
   border-collapse: collapse;
   width: 100%;
+  min-width: 36rem;
   font-size: 0.92rem;
 }
 table.sdd-table th,
@@ -97,12 +106,14 @@ table.sdd-table td {
   vertical-align: top;
   border-bottom: 1px solid var(--alto);
   text-align: left;
+  min-width: 7rem;
+  line-height: 1.45;
 }
 table.sdd-table tr:last-child th,
 table.sdd-table tr:last-child td { border-bottom: 0; }
 table.sdd-table thead th,
 table.sdd-table tr:first-child th {
-  background: color-mix(in srgb, var(--alto) 40%, var(--white));
+  background: var(--alto);
   font-weight: 600;
   color: var(--chicago);
   font-size: 0.78rem;
@@ -134,7 +145,9 @@ table.sdd-table tbody th { font-weight: 600; color: var(--chicago); }
   font-size: 0.9rem;
 }
 .sdd-callout-plum { background: var(--classic-rose); border-color: var(--plum); color: var(--plum); }
+.sdd-callout-neutral { background: var(--alto); border-color: var(--chicago); color: var(--chicago); }
 .sdd-callout-purple { background: var(--snuff); border-color: var(--royal-purple); color: var(--royal-purple); }
+.sdd-nowrap-id { white-space: nowrap; }
 .sdd-muted { color: var(--chicago); font-size: 0.88rem; }
 td.sdd-auto-undecided, td.sdd-auto-impossible, td.undecided, td.impossible,
 td[data-sdd-cell="undecided"], td[data-sdd-cell="impossible"] {
@@ -146,7 +159,7 @@ td.sdd-auto-impossible, td.impossible, td[data-sdd-cell="impossible"] {
   color: var(--oregon);
 }
 td.none, td[data-sdd-cell="none"] {
-  background: color-mix(in srgb, var(--alto) 35%, var(--white));
+  background: var(--alto);
   color: var(--chicago);
   font-style: italic;
 }
@@ -156,7 +169,7 @@ section[data-sdd-part="generated"] .sdd-section-title { margin-top: 1rem; }
 section[data-sdd-part="generated"] .sdd-kicker:first-child { margin-bottom: 0.85rem; }
 </style>`;
 
-const HIGHLIGHT_SCRIPT = `<script data-sdd-overview-highlight="1">(function(){var s=document.querySelector('section[data-sdd-part="agent"]');if(!s)return;s.querySelectorAll("td").forEach(function(td){var t=(td.textContent||"").trim();if(/\\bundecided\\b|未決定/.test(t))td.classList.add("sdd-auto-undecided");if(/\\bimpossible\\s*:/i.test(t))td.classList.add("sdd-auto-impossible");});})();</script>`;
+const HIGHLIGHT_SCRIPT = `<script data-sdd-overview-highlight="1">(function(){var ID=/\\b((?:REQ|IF|DATA|NFR)-(?:[A-Z]{2,6}-\\d+|[A-Z]{2,6}-NEW-\\d+)|ADR-(?:NEW-\\d+|\\d+))\\b/g;function wrapIds(el){if(el.querySelector("span.sdd-nowrap-id"))return;var h=el.innerHTML;if(!ID.test(h))return;ID.lastIndex=0;el.innerHTML=h.replace(ID,'<span class="sdd-nowrap-id">$&</span>');}function run(){var s=document.querySelector('section[data-sdd-part="agent"]');if(!s)return;s.querySelectorAll("td").forEach(function(td){var t=(td.textContent||"").trim();if(/\\bundecided\\b|未決定/i.test(t))td.classList.add("sdd-auto-undecided");if(/\\bimpossible\\s*:/i.test(t))td.classList.add("sdd-auto-impossible");wrapIds(td);});s.querySelectorAll(".sdd-summary li").forEach(wrapIds);}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",run);else run();})();</script>`;
 
 const HEADINGS = {
   en: {
@@ -164,6 +177,7 @@ const HEADINGS = {
     idsModified: "Modified ids",
     idsRemoved: "Removed ids",
     openQuestions: "Open questions",
+    questionsAnswered: "Answered",
     undecided: "Undecided (from agent tables)",
     steering: "Steering changes (design delta)",
     titleSuffix: "overview",
@@ -173,6 +187,7 @@ const HEADINGS = {
     idsModified: "変更した id",
     idsRemoved: "削除した id",
     openQuestions: "未決定の質問",
+    questionsAnswered: "回答済み",
     undecided: "表で未決定の項目",
     steering: "設計デルタの steering 変更",
     titleSuffix: "概要",
@@ -276,19 +291,31 @@ function gitCommand(root, args) {
   return spawnSync("git", args, { cwd: root, encoding: "utf8" });
 }
 
-/** Requirement titles from the last committed spec tree (before uncommitted apply edits). */
-function loadSpecIdNamesFromGitHead(root, docsDir) {
+/** Requirement titles from a committed spec tree at `ref`. */
+function loadSpecIdNamesFromGitRef(root, docsDir, ref) {
   const names = new Map();
   const prefix = `${docsDir}/knowledge/specs/`;
-  const listed = gitCommand(root, ["ls-tree", "-r", "--name-only", "HEAD", "--", prefix]);
+  const listed = gitCommand(root, ["ls-tree", "-r", "--name-only", ref, "--", prefix]);
   if (listed.status !== 0) return names;
   for (const rel of listed.stdout.split("\n")) {
     if (!rel.endsWith(".md")) continue;
-    const shown = gitCommand(root, ["show", `HEAD:${rel}`]);
+    const shown = gitCommand(root, ["show", `${ref}:${rel}`]);
     if (shown.status !== 0) continue;
     for (const [id, name] of loadSpecIdNamesFromMarkdown(shown.stdout)) names.set(id, name);
   }
   return names;
+}
+
+/** Requirement titles from the last committed spec tree (before uncommitted apply edits). */
+function loadSpecIdNamesFromGitHead(root, docsDir) {
+  return loadSpecIdNamesFromGitRef(root, docsDir, "HEAD");
+}
+
+/** Titles from specs at merge-base(HEAD, main) for removed ids no longer on HEAD. */
+function loadSpecIdNamesFromMergeBase(root, docsDir) {
+  const base = gitCommand(root, ["merge-base", "HEAD", "main"]);
+  if (base.status !== 0 || !base.stdout.trim()) return new Map();
+  return loadSpecIdNamesFromGitRef(root, docsDir, base.stdout.trim());
 }
 
 function loadSpecIdNamesFromRequirementsText(requirementsText) {
@@ -321,10 +348,11 @@ function loadNamesFromExistingGenerated(existingHtml) {
   return names;
 }
 
-function resolveDisplayName(row, gitHeadSpecNames, preservedNames, specNames, deltaNames, reqTextNames) {
+function resolveDisplayName(row, gitHeadSpecNames, mergeBaseSpecNames, preservedNames, specNames, deltaNames, reqTextNames) {
   if (row.name) return row.name;
   if (deltaNames.has(row.id)) return deltaNames.get(row.id);
   if (gitHeadSpecNames.has(row.id)) return gitHeadSpecNames.get(row.id);
+  if (mergeBaseSpecNames.has(row.id)) return mergeBaseSpecNames.get(row.id);
   if (preservedNames.has(row.id)) return preservedNames.get(row.id);
   if (specNames.has(row.id)) return specNames.get(row.id);
   if (reqTextNames.has(row.id)) return reqTextNames.get(row.id);
@@ -334,7 +362,7 @@ function resolveDisplayName(row, gitHeadSpecNames, preservedNames, specNames, de
 function parseOpenQuestions(text) {
   const open = [];
   const answered = [];
-  const section = /^# Open Questions\b/m.exec(text || "");
+  const section = /^#{1,2} Open Questions\b/m.exec(text || "");
   if (!section) return { open, answered };
   const delta = /^# Delta\b/m.exec(text || "");
   const body = text.slice(section.index, delta ? delta.index : text.length);
@@ -365,7 +393,7 @@ function idListHtml(kind, items) {
     const anchor = `sdd-id-${item.id}`;
     const displayName = item.name || "";
     const label = displayName ? ` ${escapeHtml(displayName)}` : "";
-    return `    <li class="sdd-badge ${badgeClass}" data-sdd-id="${escapeHtml(item.id)}" data-sdd-name="${escapeHtml(displayName)}"><a href="#${anchor}">${escapeHtml(item.id)}</a>${label}</li>`;
+    return `    <li class="sdd-badge ${badgeClass}" data-sdd-id="${escapeHtml(item.id)}" data-sdd-name="${escapeHtml(displayName)}"><span class="sdd-nowrap-id"><a href="#${anchor}">${escapeHtml(item.id)}</a></span>${label}</li>`;
   });
   return `  <ul data-sdd-list="${kind}" class="sdd-id-list">\n${lines.join("\n")}\n  </ul>\n`;
 }
@@ -449,14 +477,15 @@ export function buildGeneratedSection(root, docsDir, requirementsText, designTex
   const hash = overviewContentHash(requirementsText, designText);
   const specNames = loadSpecIdNames(root, docsDir);
   const gitHeadSpecNames = loadSpecIdNamesFromGitHead(root, docsDir);
+  const mergeBaseSpecNames = loadSpecIdNamesFromMergeBase(root, docsDir);
   const deltaNames = loadDeltaIdNames(reqDelta);
   const reqTextNames = loadSpecIdNamesFromRequirementsText(requirementsText);
   const preservedNames = loadNamesFromExistingGenerated(existingHtml);
   const raw = collectOverviewDeltaIds(reqDelta);
   const ids = {
-    added: raw.added.map((row) => ({ ...row, name: resolveDisplayName(row, gitHeadSpecNames, preservedNames, specNames, deltaNames, reqTextNames) })),
-    modified: raw.modified.map((row) => ({ ...row, name: resolveDisplayName(row, gitHeadSpecNames, preservedNames, specNames, deltaNames, reqTextNames) })),
-    removed: raw.removed.map((row) => ({ ...row, name: resolveDisplayName(row, gitHeadSpecNames, preservedNames, specNames, deltaNames, reqTextNames) })),
+    added: raw.added.map((row) => ({ ...row, name: resolveDisplayName(row, gitHeadSpecNames, mergeBaseSpecNames, preservedNames, specNames, deltaNames, reqTextNames) })),
+    modified: raw.modified.map((row) => ({ ...row, name: resolveDisplayName(row, gitHeadSpecNames, mergeBaseSpecNames, preservedNames, specNames, deltaNames, reqTextNames) })),
+    removed: raw.removed.map((row) => ({ ...row, name: resolveDisplayName(row, gitHeadSpecNames, mergeBaseSpecNames, preservedNames, specNames, deltaNames, reqTextNames) })),
   };
   const questions = parseOpenQuestions(requirementsText);
   const steering = steeringFromDesignDelta(designDelta);
@@ -480,13 +509,13 @@ ${anchors}
   <h2 class="sdd-section-title" data-sdd-heading="ids-added">${escapeHtml(labels.idsAdded)}</h2>
 ${idListHtml("added", ids.added)}  <h2 class="sdd-section-title" data-sdd-heading="ids-modified">${escapeHtml(labels.idsModified)}</h2>
 ${idListHtml("modified", ids.modified)}  <h2 class="sdd-section-title" data-sdd-heading="ids-removed">${escapeHtml(labels.idsRemoved)}</h2>
-${idListHtml("removed", ids.removed)}  <h2 class="sdd-section-title" data-sdd-heading="open-questions">${escapeHtml(labels.openQuestions)}</h2>
-  <p class="sdd-muted" data-sdd-open-count="${questions.open.length}" data-sdd-answered-count="${questions.answered.length}"></p>
+${idListHtml("removed", ids.removed)}  <h2 class="sdd-section-title" data-sdd-heading="open-questions">${escapeHtml(labels.openQuestions)} (${questions.open.length})</h2>
   <ul data-sdd-list="open-questions-unanswered" class="sdd-id-list">
 ${questions.open.map((q) => `    <li class="sdd-callout sdd-callout-plum" data-sdd-question="open">${escapeHtml(q)}</li>`).join("\n") || ""}
   </ul>
+  <h2 class="sdd-section-title" data-sdd-heading="questions-answered">${escapeHtml(labels.questionsAnswered)} (${questions.answered.length})</h2>
   <ul data-sdd-list="open-questions-answered" class="sdd-id-list">
-${questions.answered.map((q) => `    <li class="sdd-callout sdd-callout-plum sdd-muted" data-sdd-question="answered">${escapeHtml(q)}</li>`).join("\n") || ""}
+${questions.answered.map((q) => `    <li class="sdd-callout sdd-callout-neutral" data-sdd-question="answered">${escapeHtml(q)}</li>`).join("\n") || ""}
   </ul>
   <h2 class="sdd-section-title" data-sdd-heading="undecided">${escapeHtml(labels.undecided)}</h2>
   <ul data-sdd-list="undecided-agent" class="sdd-id-list">
@@ -535,20 +564,85 @@ export function validateMarkerLayout(html, { requireAll = true } = {}) {
   return errors;
 }
 
+function stripHtmlComments(html) {
+  return String(html || "").replace(/<!--[\s\S]*?-->/g, "");
+}
+
+function visibleTextChars(html) {
+  return stripHtmlComments(html)
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\s+/g, "");
+}
+
+function findTagOpen(html, tag, from = 0) {
+  const re = new RegExp(`<${tag}\\b`, "i");
+  const slice = html.slice(from);
+  const match = re.exec(slice);
+  if (!match) return -1;
+  return from + match.index;
+}
+
+function findTagClose(html, tag, from = 0) {
+  const re = new RegExp(`</${tag}\\s*>`, "i");
+  const slice = html.slice(from);
+  const match = re.exec(slice);
+  if (!match) return -1;
+  return from + match.index;
+}
+
+function closeTagEnd(html, closeIndex) {
+  const match = /^<\/[^>\s]+[^>]*>/i.exec(html.slice(closeIndex));
+  return closeIndex + (match ? match[0].length : 0);
+}
+
+function htmlDocumentShellExtra(html) {
+  const doctype = html.search(/<!DOCTYPE/i);
+  const htmlOpen = findTagOpen(html, "html");
+  if (doctype > 0 && visibleTextChars(html.slice(0, doctype)).length > 0) return true;
+  if (htmlOpen > 0 && visibleTextChars(html.slice(0, htmlOpen)).length > 0) return true;
+  if (htmlOpen >= 0) {
+    const htmlOpenEnd = html.indexOf(">", htmlOpen);
+    const headOpen = findTagOpen(html, "head", htmlOpenEnd + 1);
+    if (htmlOpenEnd >= 0 && headOpen > htmlOpenEnd && visibleTextChars(html.slice(htmlOpenEnd + 1, headOpen)).length > 0) {
+      return true;
+    }
+  }
+  const headClose = findTagClose(html, "head");
+  const bodyOpen = findTagOpen(html, "body");
+  if (headClose >= 0 && bodyOpen > headClose) {
+    const afterHead = closeTagEnd(html, headClose);
+    if (visibleTextChars(html.slice(afterHead, bodyOpen)).length > 0) return true;
+  }
+  const bodyClose = findTagClose(html, "body");
+  const htmlClose = findTagClose(html, "html");
+  if (bodyClose >= 0 && htmlClose > bodyClose) {
+    const afterBody = closeTagEnd(html, bodyClose);
+    if (visibleTextChars(html.slice(afterBody, htmlClose)).length > 0) return true;
+  }
+  if (htmlClose >= 0) {
+    const afterHtml = closeTagEnd(html, htmlClose);
+    if (visibleTextChars(html.slice(afterHtml)).length > 0) return true;
+  }
+  return false;
+}
+
 function stripAllowedBodyShell(body) {
   let stripped = body;
-  stripped = stripped.replace(/^\s*<main[^>]*\bclass="[^"]*\bsdd-main\b[^"]*"[^>]*>\s*/i, "");
-  stripped = stripped.replace(/\s*<\/main>\s*$/i, "");
+  stripped = stripped.replace(/^\s*<main[^>]*\bclass="[^"]*\bsdd-main\b[^"]*"[^>]*>\s*(?:<!--[\s\S]*?-->\s*)*/i, "");
+  stripped = stripped.replace(/(?:\s*<!--[\s\S]*?-->\s*)*\s*<\/main>\s*$/i, "");
   stripped = stripped.replace(/^\s*<h1[^>]*\bclass="[^"]*\bsdd-page-title\b[^"]*"[^>]*>[\s\S]*?<\/h1>\s*/i, "");
   return stripped;
 }
 
 export function bodyExtraOutsideMarkerBlocks(html) {
-  const open = html.indexOf("<body");
+  if (htmlDocumentShellExtra(html)) return true;
+  const open = findTagOpen(html, "body");
   if (open < 0) return false;
   const openEnd = html.indexOf(">", open);
   if (openEnd < 0) return false;
-  const close = html.indexOf("</body>", openEnd);
+  const close = findTagClose(html, "body", openEnd);
   if (close < 0) return false;
   let body = html.slice(openEnd + 1, close);
   body = stripAllowedBodyShell(body);
@@ -560,7 +654,7 @@ export function bodyExtraOutsideMarkerBlocks(html) {
   };
   removeBlock(MARKER_AGENT_BEGIN, MARKER_AGENT_END);
   removeBlock(MARKER_GENERATED_BEGIN, MARKER_GENERATED_END);
-  return body.replace(/<!--[\s\S]*?-->/g, "").replace(/\s+/g, "").length > 0;
+  return visibleTextChars(stripHtmlComments(body)).length > 0;
 }
 
 export function replaceMarkerBlock(html, begin, end, replacement) {
@@ -583,7 +677,7 @@ function refreshManagedHeadAssets(html, lang, issue) {
     out = out.replace("</head>", `${OVERVIEW_CSS}\n</head>`);
   }
   if (/<script data-sdd-overview-highlight="1">[\s\S]*?<\/script>/.test(out)) {
-    out = out.replace(/<script data-sdd-overview-highlight="1">[\s\S]*?<\/script>/, HIGHLIGHT_SCRIPT);
+    out = out.replace(/<script data-sdd-overview-highlight="1">[\s\S]*?<\/script>/, () => HIGHLIGHT_SCRIPT);
   } else {
     out = out.replace("</head>", `${HIGHLIGHT_SCRIPT}\n</head>`);
   }
@@ -606,6 +700,19 @@ function refreshManagedHeadAssets(html, lang, issue) {
   return out;
 }
 
+function refreshManagedPageTitle(html, issue) {
+  if (!issue) return html;
+  const expected = `<h1 class="sdd-page-title">${escapeHtml(issue)}</h1>`;
+  if (/<h1[^>]*\bsdd-page-title\b/i.test(html)) {
+    return html.replace(/<h1[^>]*\bclass="[^"]*\bsdd-page-title\b[^"]*"[^>]*>[\s\S]*?<\/h1>/i, expected);
+  }
+  const mainOpen = html.match(/<main[^>]*\bsdd-main\b[^>]*>/i);
+  if (mainOpen) {
+    return html.replace(mainOpen[0], `${mainOpen[0]}\n${expected}\n`);
+  }
+  return html;
+}
+
 export function mergeOverviewHtml(existingHtml, agent, generated, lang = "en", issue = "") {
   if (!existingHtml.trim()) return assembleOverview(generated, agent, lang, issue);
   if (!existingHtml.includes(MARKER_AGENT_BEGIN) || !existingHtml.includes(MARKER_GENERATED_BEGIN)) {
@@ -615,6 +722,7 @@ export function mergeOverviewHtml(existingHtml, agent, generated, lang = "en", i
   html = replaceMarkerBlock(html, MARKER_AGENT_BEGIN, MARKER_AGENT_END, agent) ?? html;
   html = replaceMarkerBlock(html, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END, generated) ?? html;
   html = refreshManagedHeadAssets(html, lang, issue);
+  html = refreshManagedPageTitle(html, issue);
   return html;
 }
 
@@ -632,9 +740,9 @@ export function defaultAgentSection() {
 <section data-sdd-part="agent" class="sdd-card">
   <p class="sdd-kicker">Summary</p>
   <ul class="sdd-summary">
-    <li>Write 3–5 bullets with requirement ids where decided.</li>
-    <li>Second bullet.</li>
-    <li>Third bullet.</li>
+    <li>Scope here</li>
+    <li>One table</li>
+    <li>Check ids</li>
   </ul>
 </section>
 ${MARKER_AGENT_END}
@@ -723,7 +831,7 @@ export function runOverviewCommand(root, config, issue) {
 /** Collect ids mentioned anywhere in the agent marker block (decoded HTML text). */
 export function collectAgentPartIds(agentBlock) {
   if (!agentBlock) return new Set();
-  const decoded = decodeHtmlEntities(agentBlock);
+  const decoded = decodeHtmlEntitiesOnePass(agentBlock);
   const found = new Set();
   for (const match of decoded.matchAll(ID_PATTERN)) found.add(match[1]);
   return found;
