@@ -17,9 +17,17 @@ Ask first about points that leave an acceptance result undecided, then about poi
 
 `example.md` next to this file is a complete file that passes `check`. Copy its headings, field names, and table shapes. Write `requirements.md` first, then stamp and check. A first check with reports is expected. Do not open `__SDD_SCRIPT__` before that check, and afterwards open it only for a report this skill and the example do not explain. Write the bodies in `__SDD_LANG__`, and keep only the parts the issue needs. Inside a SECTIONS item, write sub-headings two levels deeper than in the permanent file, as `#####` for `###`; apply moves them back.
 
-Headings stay in English. Use Context, Open Questions, and `# Delta`. Context has Actors, Current behavior (existing ids, or `path:line` when specs do not exist yet), Proposal Coverage, and Assumptions. Do not repeat Why.
+Headings stay in English. Start with `# Summary` (3–5 bullets: who can do what, what changes including capabilities and steering touched, and out of scope), then a count line (`Open questions: none` or `Open questions: <n>` in en; `未回答の質問: なし` or `未回答の質問: <n>` in ja). Optionally append `; Undecided: <n>` / `; 未決定: <n>` when the role map has `undecided` / `未決定` cells. Put `## Role and screen map` under Summary: rows are key screens or operations the delta adds or changes; columns are Context actors. Every cell is a short description plus the REQ/DATA (and related) ids that decide it, or `undecided` / `未決定`, or `impossible: <reason>` / `不可: <reason>`. Omit the table with `none: <reason>` when there are no actor-facing screens. **After** means a strictly later calendar date (`YYYY-MM-DD`); same-day dates do not count. Summary and the map index decisions by id; they do not restate delta text (the Review checklist rule “each decision appears once” still applies to narrative elsewhere).
 
-Proposal Coverage lists each What Changes item of `proposal.md` once, as `- <item>: <delta ids>`, `- <item>: out of scope: <reason>`, or `- <item>: design: <mechanism left to design>`. Design decides only mechanisms. What a user or caller can observe, such as the result of success, failure, refusal, or redirect, stays a requirement even when the proposal leaves the method to design.
+Then `# Context` with Actors, Current behavior, Proposal Coverage, and Assumptions. Proposal Coverage lists each What Changes item once; prefer nested lines with a short name after each id (for example `  - REQ-CRN-NEW-1 Issue credit note`). The old one-line `- item: id, id` form still passes `check`.
+
+Keep unanswered Open Questions before `# Delta`. Move answered questions after `# Delta` inside a `<details>` block. Never put `- [ ]` questions inside `<details>`. Machine-only sections (for example Coverage rows that are all `no change:`) may sit in `<details>` with a one-line summary above; keep delta lines where `check` requires them.
+
+Before Finish (chat only, not saved in the file), build a fuller actor × screen table in your head for transitions (after login, direct URL, after failure, reload, double submit) and shared controls for screens in scope and capabilities linked via Related/Uses/Definitions; turn each undecided cell into a question or Open Question. This complements the Review checklist below.
+
+Proposal Coverage lists each What Changes item of `proposal.md` once, as nested id lines with a short name, `- <item>: <delta ids>`, `- <item>: out of scope: <reason>`, or `- <item>: design: <mechanism left to design>`. Design decides only mechanisms. What a user or caller can observe, such as the result of success, failure, refusal, or redirect, stays a requirement even when the proposal leaves the method to design.
+
+`check` keeps Summary, the role map, and Proposal Coverage aligned with the delta (unknown ids, missing new ids, open-question count, undecided count). It does not judge the quality of cell prose.
 
 Assumptions list only premises nobody was asked about. An answered question is recorded by its `Answer:` and its delta, not again in Assumptions, Constraints, or Purpose.
 
@@ -60,7 +68,7 @@ Before Finish, reread the whole file against this list. Fix each failure. Ask an
 - No two requirements conflict, and no obligation appears in two capabilities.
 - Every entry, actor, failure, and empty state the delta touches has a requirement or an Open Question.
 - Who may see and change each record, whether stored text shown to users is displayed as plain text, and how one record is selected are each decided, asked, or listed under Proposal Coverage as design.
-- Each decision appears once, apart from the `Answer:` pointer.
+- Each decision appears once in the delta narrative, apart from the `Answer:` pointer; Summary and the role map may repeat ids as an index only.
 
 ## Finish
 

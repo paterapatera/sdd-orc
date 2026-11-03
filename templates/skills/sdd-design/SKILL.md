@@ -19,7 +19,7 @@ An added ADR is readable without `research.md`. Use MADR headings two levels dee
 
 ## design.md
 
-Write Overview, Requirements Traceability, Components and Interfaces, Data Model, Error Handling, Testing Strategy, Migration, and `# Delta`. Trace every ADDED, MODIFIED, and REMOVED id of the requirements delta, and no other id, to components and a test level: Unit, Integration, Contract, E2E, Performance, Security, or Manual. Use `none` for traceability when specs do not change, and then say that Testing Strategy runs the full existing test suite. Data Model, Error Handling, and Migration are `none` when unused.
+Write Overview, Requirements Traceability, Components and Interfaces, Data Model, Error Handling, Testing Strategy, Migration, `## Steering changes at a glance`, and `# Delta`. **Steering changes at a glance** sits immediately before `# Delta`: one bullet per steering file the design delta touches (`- /steering/tech.md: …`), or `- none` when steering does not change. Trace every ADDED, MODIFIED, and REMOVED id of the requirements delta, and no other id, to components and a test level: Unit, Integration, Contract, E2E, Performance, Security, or Manual. Prefer a **Name** column in Requirements Traceability (`| ID | Name | Components | Test Level |`); the three-column table still passes `check`. Use `none` for traceability when specs do not change, and then say that Testing Strategy runs the full existing test suite. Data Model, Error Handling, and Migration are `none` when unused.
 
 Stop and return to `/sdd-req` when the design needs an interface or data change that is not in the requirements delta. Steering deltas here are only `architecture.md`, `tech.md`, `structure.md`, and topic files. Follow steering. When the design departs from it, change steering in the delta. Stamp adds `base:` to each replaced section.
 
@@ -35,7 +35,7 @@ Before Finish or handing off to `/sdd-task`, reread both files against this list
 - No two traced ids share the same obligation in conflicting ways; MODIFIED text matches the requirements delta.
 - Testing Strategy includes a table with Test Level and Runs on when traceability is not `none`.
 - Components and Interfaces match the traceability components and are testable at the chosen levels.
-- Steering deltas follow the rationale rules above.
+- Every steering file in the design delta has a matching bullet in Steering changes at a glance, and every glance bullet (except `none`) has a delta section.
 
 ## Finish
 

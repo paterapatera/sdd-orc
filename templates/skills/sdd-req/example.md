@@ -1,3 +1,19 @@
+# Summary
+
+- Billing clerks issue whole-invoice credit notes for returned orders (REQ-CRN-NEW-1, DATA-CRN-NEW-1); accounting receives events (IF-CRN-NEW-1).
+- Invoices show a due date on confirmation; reprint is removed (REQ-INV-1, REQ-INV-2).
+- Credit note UI response time is bounded (NFR-CRN-NEW-1).
+- Out of scope: partial refunds.
+Open questions: 1; Undecided: 1
+
+## Role and screen map
+
+| Screen / operation | Billing clerk | Accounting system |
+|---|---|---|
+| Issue credit note for a returned invoice | Record a whole-invoice credit note REQ-CRN-NEW-1, DATA-CRN-NEW-1 | Receive credit-note-issued event IF-CRN-NEW-1 |
+| Confirm order / view invoice | See due date on issued invoice REQ-INV-1 | impossible: accounting has no invoice UI |
+| Credit note list after issue | See issued credit note within 2 s NFR-CRN-NEW-1 | undecided |
+
 # Context
 
 ## Actors
@@ -12,11 +28,18 @@
 
 ## Proposal Coverage
 
-- Credit notes for returned orders: REQ-CRN-NEW-1, REQ-CRN-NEW-2, DATA-CRN-NEW-1
-- Send credit notes to accounting: IF-CRN-NEW-1
-- Quick credit note screen: NFR-CRN-NEW-1
-- Show the due date on invoices: REQ-INV-1
-- Stop reprinting invoices: REQ-INV-2
+- Credit notes for returned orders:
+  - REQ-CRN-NEW-1 Issue credit note for whole invoice
+  - REQ-CRN-NEW-2 Refuse a second credit note
+  - DATA-CRN-NEW-1 Credit note record
+- Send credit notes to accounting:
+  - IF-CRN-NEW-1 Credit note issued event
+- Quick credit note screen:
+  - NFR-CRN-NEW-1 Credit note response time
+- Show the due date on invoices:
+  - REQ-INV-1 Issue invoice on confirmation
+- Stop reprinting invoices:
+  - REQ-INV-2 Reprint invoice
 - Credit note numbering: design: number format and sequence storage
 - Partial refunds: out of scope: the proposal defers them
 
@@ -26,15 +49,6 @@
 
 # Open Questions
 
-- [x] Q1: Second credit note for one invoice?
-  - [5] Refuse it (chosen)
-  - [3] Replace the first one
-  - [2] Allow both
-  Answer: REQ-CRN-NEW-2
-- [x] Q2: Does the customer see credit notes?
-  - [4] No (chosen)
-  - [3] Yes, on the invoice page
-  Answer: no delta
 - [ ] Q3: Does a credit note expire?
   - [4] Never
   - [3] After one year
@@ -208,3 +222,18 @@ If a clerk issues a credit note for an invoice that already has one, then the sy
 #### Issued invoice
 
 An invoice the system has sent to the customer.
+
+<details>
+<summary>Answered open questions</summary>
+
+- [x] Q1: Second credit note for one invoice?
+  - [5] Refuse it (chosen)
+  - [3] Replace the first one
+  - [2] Allow both
+  Answer: REQ-CRN-NEW-2
+- [x] Q2: Does the customer see credit notes?
+  - [4] No (chosen)
+  - [3] Yes, on the invoice page
+  Answer: no delta
+
+</details>

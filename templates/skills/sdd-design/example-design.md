@@ -6,15 +6,15 @@ Credit notes live in a new `returns` module. Issuing one stores it and publishes
 
 ## Requirements Traceability
 
-| ID | Components | Test Level |
-|---|---|---|
-| REQ-INV-1 | InvoiceService | Integration |
-| REQ-INV-2 | InvoiceController | Integration |
-| REQ-CRN-NEW-1 | CreditNoteService | Integration |
-| REQ-CRN-NEW-2 | CreditNoteService | Unit |
-| DATA-CRN-NEW-1 | CreditNoteRepository | Integration |
-| IF-CRN-NEW-1 | CreditNotePublisher | Contract |
-| NFR-CRN-NEW-1 | CreditNoteController | Performance |
+| ID | Name | Components | Test Level |
+|---|---|---|---|
+| REQ-INV-1 | Issue invoice on confirmation | InvoiceService | Integration |
+| REQ-INV-2 | Reprint invoice | InvoiceController | Integration |
+| REQ-CRN-NEW-1 | Issue credit note | CreditNoteService | Integration |
+| REQ-CRN-NEW-2 | Refuse a second credit note | CreditNoteService | Unit |
+| DATA-CRN-NEW-1 | Credit note record | CreditNoteRepository | Integration |
+| IF-CRN-NEW-1 | Credit note issued event | CreditNotePublisher | Contract |
+| NFR-CRN-NEW-1 | Credit note response time | CreditNoteController | Performance |
 
 ## Components and Interfaces
 
@@ -59,6 +59,11 @@ The credit note table stores the fields of DATA-CRN-NEW-1, with a unique key on 
 ## Migration
 
 Create the credit note table before deploying the service.
+
+## Steering changes at a glance
+
+- /steering/messaging.md: New broker rules for credit-note events (ADR-NEW-1).
+- /steering/tech.md: Stack section notes messaging on the broker.
 
 # Delta
 

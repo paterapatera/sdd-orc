@@ -4,6 +4,7 @@ import path from "node:path";
 import { regenerateLessonsIndex, validateLessons, validateCloseLessons } from "./lessons.mjs";
 import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, sameAfterApply, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
+import { deltaRequirementIds, parseTraceabilityRows, validateDesignReadability, validateRequirementsReadability } from "./readability.mjs";
 
 const SPEC_FILES = ["spec.md", "interfaces.md", "data.md", "quality.md"];
 const AUTO_TEST_LEVELS = TEST_LEVELS.filter((level) => level !== "Manual");
@@ -1355,8 +1356,15 @@ function staticIssueDiags(root, config, issue, stage) {
   validateOwnership(delta, diags);
   validateDeltaEars(delta, config.lang || "en", diags);
   validateDeltaIds(root, config, delta, diags);
+  if (files.requirements) {
+    const reqDelta = deltas.find((part) => part.source === "requirements");
+    const readabilityIds = knownIdSet(loadTree(root, kdir(config)), kdir(config));
+    for (const id of deltaRequirementIds(reqDelta)) readabilityIds.add(id);
+    validateRequirementsReadability(root, config, issue, files.requirements, reqDelta, readabilityIds, diags);
+  }
   if (files.design) validateTraceability(files, delta, config, issue, diags);
   if (files.design) validateDesignMechanical(files, config, issue, diags);
+  if (files.design) validateDesignReadability(files, deltas.find((part) => part.source === "design"), config, issue, diags);
   if (files.task && files.design) validateTasks(files, config, issue, diags);
   if (files.research) validateResearch(files.research, delta, diags, config, issue);
   if (stage === "close") validateClose(root, config, issue, files, docsOnly, quick, diags);
@@ -1486,7 +1494,7 @@ function validateTraceability(files, delta, config, issue, diags) {
     if (files.task && !files.task.includes(ears.suite)) diags.push(diag(`${config.docsDir}/issues/${issue}/task.md`, 1, "TRACEABILITY", `task.md must include ${ears.suite}`));
     return;
   }
-  const rows = markdownTable(section);
+  const rows = parseTraceabilityRows(section);
   const rowIds = new Set(rows.map((row) => row[0]));
   for (const id of ids) if (!rowIds.has(id)) diags.push(diag(`${config.docsDir}/issues/${issue}/design.md`, 1, "TRACEABILITY", `${id} is missing from Requirements Traceability`));
   for (const row of rows) {

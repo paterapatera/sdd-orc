@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.1.0. Node.js 18 or later.
+**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.2.0. Node.js 18 or later.
 
 Registering tracker issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -19,7 +19,7 @@ Default docs root is `docs` (override with `npx @paterapatera/sdd-orc init --doc
 ```text
 docs/
   knowledge/          ← permanent specs, decision/, steering/, lessons/
-  issues/<name>/      ← change summary, requirements, design, task, feedback (while on branch <name>)
+  issues/<name>/      ← change summary, requirements (Summary + role map from 1.2.0), design, task, feedback (while on branch <name>)
 ```
 
 Skill text is **English**. Branch name must match the issue folder name (for example branch and folder `invoice-fix`, or `PROJ-12-invoice-fix` with a tracker prefix).

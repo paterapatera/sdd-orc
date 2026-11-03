@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.2.0
+
+- **`/sdd-req` readability:** `# Summary` with open-question (and optional undecided) count, `## Role and screen map`, named Proposal Coverage lines, answered Open Questions in `<details>` after `# Delta`, and `check` rules to keep ids aligned (`REQ_READABILITY_*`, `ROLE_MAP_*`, `SUMMARY_*`, `OPEN_QUESTIONS_IN_DETAILS`). Issues without `# Summary` keep the previous shape.
+- **`/sdd-design` readability:** `## Steering changes at a glance` before `# Delta`, optional Name column in Requirements Traceability, and `STEERING_GLANCE*` checks on the design delta only.
+- `apply` still reads only `# Delta`; Summary, maps, and `<details>` never land in permanent specs or steering.
+
+## 1.2.0（日本語）
+
+- **`/sdd-req`:** 冒頭に `# Summary`（未回答件数・任意で未決定件数）と `## Role and screen map`、Proposal Coverage の id＋短い名称、回答済み Open Questions は `# Delta` 以降の `<details>` へ。`check` で Summary／マップ／Coverage と delta の id ずれを検出（セル文言の良し悪しは見ません）。`# Summary` がない issue は従来どおり。
+- **`/sdd-design`:** `# Delta` 直前に `## Steering changes at a glance`、Requirements Traceability に Name 列（任意）。steering 変更は design delta と glance の対応を `check`。
+- **`apply`:** 恒久 docs へ書き込むのは従来どおり delta のみ（Summary 等は混入しません）。
+
 ## 1.1.0
 
 - Split lesson **recording** from **adoption**: `/sdd-close` only records occurrences, review closes, and new `candidate` lessons; it does not change lesson status or print `/sdd-init`.
