@@ -19,6 +19,7 @@ import {
   git,
   initRepo,
   refreshIssueOverview,
+  refreshInvoiceReprintOverview,
   sdd,
   tempRepo,
   writeInvoiceIssue,
@@ -455,21 +456,82 @@ ${MARKER_AGENT_END}
   assert.match(html, /Policy \/ Processing: .*undecided/);
 });
 
-test("removed id list keeps display name from requirements text when delta title has no name", () => {
+test("removed id keeps Reprint invoice through overview, apply, and overview via CLI", () => {
   const dir = tempRepo();
   prepare(dir);
   git(["checkout", "-b", "invoice-reissue"], dir);
   writeInvoiceIssue(dir);
-  const reqPath = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
-  const req = read(dir, "docs/issues/invoice-reissue/requirements.md");
-  fs.writeFileSync(reqPath, `${req.replace("# Delta", "#### REQ-INV-2: Reprint copy\nWhen a clerk reprints, the system SHALL reprint.\n\n# Delta")}`);
-  const design = read(dir, "docs/issues/invoice-reissue/design.md");
-  const reqDelta = parseDeltaMarkdown(read(dir, "docs/issues/invoice-reissue/requirements.md"), "requirements");
-  const designDelta = parseDeltaMarkdown(design, "design");
-  reqDelta.files[0].removed.push({ title: "REQ-INV-2", line: 99 });
-  const config = JSON.parse(read(dir, "sdd.config.json"));
-  const html = buildOverviewHtml(dir, config, "invoice-reissue", read(dir, "docs/issues/invoice-reissue/requirements.md"), design, reqDelta, designDelta, VALID_AGENT);
-  assert.match(html, /data-sdd-id="REQ-INV-2" data-sdd-name="Reprint copy"/);
+  const requirements = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
+  fs.appendFileSync(
+    requirements,
+    `
+#### REQ-INV-NEW-2: Reprint invoice
+When a clerk reprints an invoice, the system SHALL issue a copy.
+
+##### Scenario: Reprint
+- **Given** an issued invoice
+- **When** the clerk reprints it
+- **Then** a copy is issued
+`,
+  );
+  const designPath = path.join(dir, "docs/issues/invoice-reissue/design.md");
+  fs.writeFileSync(
+    designPath,
+    read(dir, "docs/issues/invoice-reissue/design.md").replace(
+      "| REQ-INV-NEW-1 | InvoiceService | Integration |",
+      "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| REQ-INV-NEW-2 | InvoiceService | Integration |",
+    ),
+  );
+  const taskPath = path.join(dir, "docs/issues/invoice-reissue/task.md");
+  fs.writeFileSync(taskPath, read(dir, "docs/issues/invoice-reissue/task.md").replaceAll("Requirements: REQ-INV-NEW-1", "Requirements: REQ-INV-NEW-1, REQ-INV-NEW-2"));
+  assert.equal(sdd(dir, ["overview", "--issue", "invoice-reissue"]).status, 0);
+  refreshInvoiceReprintOverview(dir);
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  const firstApply = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
+  assert.equal(firstApply.status, 0, firstApply.stdout + firstApply.stderr);
+  commitAll(dir, "docs: add reprint requirement");
+  fs.writeFileSync(
+    requirements,
+    read(dir, "docs/issues/invoice-reissue/requirements.md").replace(/\n#### REQ-INV-NEW-2: Reprint invoice[\s\S]*$/, "\n"),
+  );
+  fs.writeFileSync(taskPath, read(dir, "docs/issues/invoice-reissue/task.md").replaceAll("REQ-INV-NEW-2", "REQ-INV-2"));
+  fs.writeFileSync(
+    designPath,
+    read(dir, "docs/issues/invoice-reissue/design.md").replaceAll("REQ-INV-NEW-2", "REQ-INV-2"),
+  );
+  fs.appendFileSync(
+    requirements,
+    `
+### REMOVED
+#### REQ-INV-2
+- reason: Clerks download invoices instead of reprinting them.
+`,
+  );
+  assert.equal(sdd(dir, ["stamp", "--issue", "invoice-reissue"]).status, 0);
+  const agentAfterRemoval = `${MARKER_AGENT_BEGIN}
+<section data-sdd-part="agent">
+  <h2>Summary</h2>
+  <ul>
+    <li>REQ-INV-NEW-1 on confirmation; REQ-INV-2 reprint removed from specs.</li>
+  </ul>
+  <h2>Permissions</h2>
+  <table>
+    <tr><th>Role</th><th>Invoice data</th></tr>
+    <tr><th>Customer</th><td>view issued invoice (REQ-INV-NEW-1)</td></tr>
+  </table>
+</section>
+${MARKER_AGENT_END}
+`;
+  refreshIssueOverview(dir, "invoice-reissue", agentAfterRemoval);
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  assert.match(read(dir, "docs/issues/invoice-reissue/overview.html"), /data-sdd-id="REQ-INV-2" data-sdd-name="Reprint invoice"/);
+  const removalApply = sdd(dir, ["apply", "--issue", "invoice-reissue"]);
+  assert.equal(removalApply.status, 0, removalApply.stdout + removalApply.stderr);
+  assert.equal(sdd(dir, ["overview", "invoice-reissue"]).status, 0);
+  const overviewHtml = read(dir, "docs/issues/invoice-reissue/overview.html");
+  assert.match(overviewHtml, /data-sdd-id="REQ-INV-2" data-sdd-name="Reprint invoice"/);
+  const closeCheck = sdd(dir, ["check", "--stage", "close", "--issue", "invoice-reissue"]);
+  assert.equal(closeCheck.status, 0, closeCheck.stdout + closeCheck.stderr);
 });
 
 test("ADR ids in prose do not become known unless decision heading or research delta", () => {

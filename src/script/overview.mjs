@@ -1,11 +1,12 @@
 import { createHash } from "node:crypto";
+import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { parseDeltaMarkdown } from "./delta.mjs";
 import { attr, childElements, decodeHtmlEntities, findElements, firstElement, parseHtmlFragment, tableBodyCells, textContent } from "./overview-html.mjs";
 import { diag, formatDiagnostics, normalizeForHash } from "./util.mjs";
 
-/** Marker format (see README): generated and agent regions are preserved across `sdd overview`. */
+/** Marker format (see README): generated and agent regions are preserved across `node .agents/skills/sdd-scripts/sdd.mjs overview <issue>`. */
 export const MARKER_GENERATED_BEGIN = "<!-- sdd-orc:overview:generated:begin -->";
 export const MARKER_GENERATED_END = "<!-- sdd-orc:overview:generated:end -->";
 export const MARKER_AGENT_BEGIN = "<!-- sdd-orc:overview:agent:begin -->";
@@ -135,13 +136,35 @@ function loadSpecIdNames(root, docsDir) {
   return names;
 }
 
-function loadSpecIdNamesFromRequirementsText(requirementsText) {
+function loadSpecIdNamesFromMarkdown(text) {
   const names = new Map();
-  if (!requirementsText) return names;
-  for (const match of requirementsText.matchAll(/^#{3,4}\s+((?:REQ|IF|DATA|NFR)-[A-Z]{2,6}-(?:NEW-)?\d+):\s*(.+)$/gm)) {
+  for (const match of String(text || "").matchAll(/^#{3,4}\s+((?:REQ|IF|DATA|NFR)-[A-Z]{2,6}-(?:NEW-)?\d+):\s*(.+)$/gm)) {
     names.set(match[1], match[2].trim());
   }
   return names;
+}
+
+function gitCommand(root, args) {
+  return spawnSync("git", args, { cwd: root, encoding: "utf8" });
+}
+
+/** Requirement titles from the last committed spec tree (before uncommitted apply edits). */
+function loadSpecIdNamesFromGitHead(root, docsDir) {
+  const names = new Map();
+  const prefix = `${docsDir}/knowledge/specs/`;
+  const listed = gitCommand(root, ["ls-tree", "-r", "--name-only", "HEAD", "--", prefix]);
+  if (listed.status !== 0) return names;
+  for (const rel of listed.stdout.split("\n")) {
+    if (!rel.endsWith(".md")) continue;
+    const shown = gitCommand(root, ["show", `HEAD:${rel}`]);
+    if (shown.status !== 0) continue;
+    for (const [id, name] of loadSpecIdNamesFromMarkdown(shown.stdout)) names.set(id, name);
+  }
+  return names;
+}
+
+function loadSpecIdNamesFromRequirementsText(requirementsText) {
+  return loadSpecIdNamesFromMarkdown(requirementsText);
 }
 
 function loadDeltaIdNames(reqDelta) {
@@ -170,12 +193,13 @@ function loadNamesFromExistingGenerated(existingHtml) {
   return names;
 }
 
-function resolveDisplayName(row, specNames, deltaNames, reqTextNames, preservedNames) {
+function resolveDisplayName(row, gitHeadSpecNames, preservedNames, specNames, deltaNames, reqTextNames) {
   if (row.name) return row.name;
   if (deltaNames.has(row.id)) return deltaNames.get(row.id);
-  if (reqTextNames.has(row.id)) return reqTextNames.get(row.id);
-  if (specNames.has(row.id)) return specNames.get(row.id);
+  if (gitHeadSpecNames.has(row.id)) return gitHeadSpecNames.get(row.id);
   if (preservedNames.has(row.id)) return preservedNames.get(row.id);
+  if (specNames.has(row.id)) return specNames.get(row.id);
+  if (reqTextNames.has(row.id)) return reqTextNames.get(row.id);
   return "";
 }
 
@@ -291,14 +315,15 @@ export function buildGeneratedSection(root, docsDir, requirementsText, designTex
   const labels = lang === "ja" ? HEADINGS.ja : HEADINGS.en;
   const hash = overviewContentHash(requirementsText, designText);
   const specNames = loadSpecIdNames(root, docsDir);
+  const gitHeadSpecNames = loadSpecIdNamesFromGitHead(root, docsDir);
   const deltaNames = loadDeltaIdNames(reqDelta);
   const reqTextNames = loadSpecIdNamesFromRequirementsText(requirementsText);
   const preservedNames = loadNamesFromExistingGenerated(existingHtml);
   const raw = collectOverviewDeltaIds(reqDelta);
   const ids = {
-    added: raw.added.map((row) => ({ ...row, name: resolveDisplayName(row, specNames, deltaNames, reqTextNames, preservedNames) })),
-    modified: raw.modified.map((row) => ({ ...row, name: resolveDisplayName(row, specNames, deltaNames, reqTextNames, preservedNames) })),
-    removed: raw.removed.map((row) => ({ ...row, name: resolveDisplayName(row, specNames, deltaNames, reqTextNames, preservedNames) })),
+    added: raw.added.map((row) => ({ ...row, name: resolveDisplayName(row, gitHeadSpecNames, preservedNames, specNames, deltaNames, reqTextNames) })),
+    modified: raw.modified.map((row) => ({ ...row, name: resolveDisplayName(row, gitHeadSpecNames, preservedNames, specNames, deltaNames, reqTextNames) })),
+    removed: raw.removed.map((row) => ({ ...row, name: resolveDisplayName(row, gitHeadSpecNames, preservedNames, specNames, deltaNames, reqTextNames) })),
   };
   const questions = parseOpenQuestions(requirementsText);
   const steering = steeringFromDesignDelta(designDelta);
@@ -434,7 +459,8 @@ export function buildOverviewHtml(root, config, issue, requirementsText, designT
   let agent = extractBlock(existingHtml, MARKER_AGENT_BEGIN, MARKER_AGENT_END);
   if (!agent) agent = defaultAgentSection();
   const pseudoHtml = `<!DOCTYPE html><html><body>\n${agent}\n</body></html>\n`;
-  const generated = buildGeneratedSection(root, config.docsDir, requirementsText, designText, reqDelta, designDelta, pseudoHtml, lang);
+  const contextHtml = existingHtml || pseudoHtml;
+  const generated = buildGeneratedSection(root, config.docsDir, requirementsText, designText, reqDelta, designDelta, contextHtml, lang);
   return normalizeOverviewNewlines(assembleOverview(generated, agent, lang, issue));
 }
 
