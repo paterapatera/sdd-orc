@@ -106,56 +106,19 @@ export function tableBodyCells(tableEl) {
   return cells;
 }
 
-const NAMED_ENTITIES = {
-  nbsp: " ",
-  amp: "&",
-  lt: "<",
-  gt: ">",
-  quot: '"',
-  apos: "'",
-};
-
-/** Decode HTML entities in a single left-to-right pass (no chained numeric expansion after &amp;). */
 export function decodeHtmlEntities(text) {
-  let out = "";
-  const s = String(text || "");
-  for (let i = 0; i < s.length; ) {
-    if (s[i] !== "&") {
-      out += s[i];
-      i += 1;
-      continue;
-    }
-    if (s.startsWith("&amp;", i)) {
-      if (s[i + 5] === "#") {
-        out += "&amp;";
-        i += 5;
-        continue;
-      }
-      out += "&";
-      i += 5;
-      continue;
-    }
-    const named = /^&([a-z]+);/i.exec(s.slice(i));
-    if (named && Object.prototype.hasOwnProperty.call(NAMED_ENTITIES, named[1].toLowerCase())) {
-      const key = named[1].toLowerCase();
-      out += key === "nbsp" ? " " : NAMED_ENTITIES[key];
-      i += named[0].length;
-      continue;
-    }
-    const dec = /^&#(\d+);/.exec(s.slice(i));
-    if (dec) {
-      out += String.fromCharCode(Number(dec[1]));
-      i += dec[0].length;
-      continue;
-    }
-    const hex = /^&#x([0-9a-f]+);/i.exec(s.slice(i));
-    if (hex) {
-      out += String.fromCharCode(parseInt(hex[1], 16));
-      i += hex[0].length;
-      continue;
-    }
-    out += s[i];
-    i += 1;
+  let value = String(text || "");
+  for (let pass = 0; pass < 8; pass += 1) {
+    const next = value
+      .replace(/&nbsp;|&#160;|&#xA0;/gi, " ")
+      .replace(/&lt;/g, "<")
+      .replace(/&gt;/g, ">")
+      .replace(/&quot;/g, '"')
+      .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+      .replace(/&#x([0-9a-f]+);/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/&amp;/g, "&");
+    if (next === value) break;
+    value = next;
   }
-  return out;
+  return value;
 }

@@ -27,7 +27,7 @@ section[data-sdd-part="agent"] ul { margin: 0.5rem 0 1rem; }
 section[data-sdd-part="generated"] { margin-top: 2rem; padding-top: 1rem; border-top: 1px solid #ddd; }
 </style>`;
 
-const HIGHLIGHT_SCRIPT = `<script data-sdd-overview-highlight="1">(function(){var s=document.querySelector('section[data-sdd-part="agent"]');if(!s)return;s.querySelectorAll("td").forEach(function(td){var t=(td.textContent||"").trim();if(/\\bundecided\\b|未決定/i.test(t))td.classList.add("sdd-auto-undecided");if(/\\bimpossible\\s*:/i.test(t))td.classList.add("sdd-auto-impossible");});})();</script>`;
+const HIGHLIGHT_SCRIPT = `<script data-sdd-overview-highlight="1">(function(){var s=document.querySelector('section[data-sdd-part="agent"]');if(!s)return;s.querySelectorAll("td").forEach(function(td){var t=(td.textContent||"").trim();if(/\\bundecided\\b|未決定/.test(t))td.classList.add("sdd-auto-undecided");if(/\\bimpossible\\s*:/i.test(t))td.classList.add("sdd-auto-impossible");});})();</script>`;
 
 const HEADINGS = {
   en: {
@@ -237,32 +237,7 @@ function attachParentLinks(root) {
   walk(root);
 }
 
-function tableColumnHeaders(table) {
-  const rows = findElements(table, (n) => n.name === "tr");
-  if (!rows.length) return [];
-  const headers = [];
-  let col = 0;
-  for (const cell of childElements(rows[0])) {
-    if (cell.name !== "th") continue;
-    const span = Math.max(1, Number(attr(cell, "colspan") || "1") || 1);
-    const label = decodeHtmlEntities(textContent(cell)).trim();
-    for (let i = 0; i < span; i += 1) headers[col + i] = label;
-    col += span;
-  }
-  return headers;
-}
-
-function cellColumnIndex(tr, td) {
-  let index = 0;
-  for (const cell of childElements(tr)) {
-    if (cell === td) return index;
-    const span = Math.max(1, Number(attr(cell, "colspan") || "1") || 1);
-    index += span;
-  }
-  return index;
-}
-
-function cellAxisPrefix(table, td) {
+function cellAxisPrefix(root, table, td) {
   const rows = findElements(table, (n) => n.name === "tr");
   let tr = null;
   for (const row of rows) {
@@ -272,14 +247,19 @@ function cellAxisPrefix(table, td) {
     }
   }
   if (!tr) return "";
+  const rowCells = childElements(tr);
+  const colIndex = rowCells.indexOf(td);
   let rowHead = "";
-  for (const cell of childElements(tr)) {
+  for (const cell of rowCells) {
     if (cell === td) break;
     if (cell.name === "th") rowHead = decodeHtmlEntities(textContent(cell)).trim();
   }
-  const headers = tableColumnHeaders(table);
-  const colIndex = cellColumnIndex(tr, td);
-  const colHead = colIndex >= 0 && colIndex < headers.length ? headers[colIndex] : "";
+  if (!rowHead && rowCells[0]?.name === "th") rowHead = decodeHtmlEntities(textContent(rowCells[0])).trim();
+  let colHead = "";
+  const headCells = rows.length ? childElements(rows[0]) : [];
+  if (colIndex >= 0 && colIndex < headCells.length) {
+    colHead = decodeHtmlEntities(textContent(headCells[colIndex])).trim();
+  }
   const parts = [rowHead, colHead].filter(Boolean);
   return parts.length ? `${parts.join(" / ")}: ` : "";
 }
@@ -300,7 +280,7 @@ function parseAgentUndecidedLabels(agentHtml) {
     if (!text) continue;
     if (kind === "undecided" || /\bundecided\b/i.test(cls) || isUndecidedCellText(text)) {
       const table = findParentTable(root, td);
-      const prefix = table ? cellAxisPrefix(table, td) : "";
+      const prefix = table ? cellAxisPrefix(root, table, td) : "";
       labels.push(`${prefix}${text}`);
     }
   }
@@ -396,18 +376,19 @@ export function validateMarkerLayout(html, { requireAll = true } = {}) {
   return errors;
 }
 
-export function overviewShellOutsideBlocks(html) {
-  let shell = normalizeOverviewNewlines(html);
-  const agent = extractBlock(html, MARKER_AGENT_BEGIN, MARKER_AGENT_END);
-  const generated = extractBlock(html, MARKER_GENERATED_BEGIN, MARKER_GENERATED_END);
-  if (agent) shell = shell.replace(agent, `${MARKER_AGENT_BEGIN}\n${MARKER_AGENT_END}\n`);
-  if (generated) shell = shell.replace(generated, `${MARKER_GENERATED_BEGIN}\n${MARKER_GENERATED_END}\n`);
-  shell = shell.replace(/<script data-sdd-overview-highlight="1">[\s\S]*?<\/script>\s*/g, "");
-  return shell;
-}
-
-export function overviewShellMismatch(existing, expected) {
-  return overviewShellOutsideBlocks(existing) !== overviewShellOutsideBlocks(expected);
+export function bodyExtraOutsideMarkerBlocks(html) {
+  const bodyMatch = /<body[^>]*>([\s\S]*)<\/body>/i.exec(html);
+  if (!bodyMatch) return false;
+  let body = bodyMatch[1];
+  const removeBlock = (begin, end) => {
+    const start = body.indexOf(begin);
+    const stop = body.indexOf(end);
+    if (start < 0 || stop < 0) return;
+    body = `${body.slice(0, start)}${body.slice(stop + end.length)}`;
+  };
+  removeBlock(MARKER_AGENT_BEGIN, MARKER_AGENT_END);
+  removeBlock(MARKER_GENERATED_BEGIN, MARKER_GENERATED_END);
+  return body.replace(/<!--[\s\S]*?-->/g, "").replace(/\s+/g, "").length > 0;
 }
 
 export function extractBlock(html, begin, end) {
@@ -439,11 +420,10 @@ export function assembleOverview(generated, agent, lang = "en", issue = "") {
   const title = issue ? `${escapeHtml(issue)} — ${labels.titleSuffix}` : "Issue overview";
   return `<!DOCTYPE html>
 <html lang="${htmlLang}" data-sdd-overview-version="1">
-<head><meta charset="utf-8"><title>${title}</title>${OVERVIEW_CSS}</head>
+<head><meta charset="utf-8"><title>${title}</title>${OVERVIEW_CSS}${HIGHLIGHT_SCRIPT}</head>
 <body>
 ${agent}
 ${generated}
-${HIGHLIGHT_SCRIPT}
 </body>
 </html>
 `;
@@ -484,12 +464,7 @@ export function runOverviewCommand(root, config, issue) {
       const diags = [diag(`${config.docsDir}/issues/${issue}/overview.html`, 1, err.code, err.message)];
       return { code: 2, stdout: `${formatDiagnostics(diags)}\n`, stderr: "" };
     }
-    const requirementsText = fs.existsSync(path.join(dir, "requirements.md")) ? fs.readFileSync(path.join(dir, "requirements.md"), "utf8") : "";
-    const designText = fs.existsSync(path.join(dir, "design.md")) ? fs.readFileSync(path.join(dir, "design.md"), "utf8") : "";
-    const reqDelta = requirementsText ? parseDeltaMarkdown(requirementsText, "requirements") : null;
-    const designDelta = designText ? parseDeltaMarkdown(designText, "design") : null;
-    const expected = buildOverviewHtml(root, config, issue, requirementsText, designText, reqDelta, designDelta, existing);
-    if (overviewShellMismatch(existing, expected)) {
+    if (bodyExtraOutsideMarkerBlocks(existing)) {
       return {
         code: 2,
         stdout: `${formatDiagnostics([diag(`${config.docsDir}/issues/${issue}/overview.html`, 1, "OVERVIEW_BODY_EXTRA", "Remove content outside the generated and agent marker blocks before running overview")])}\n`,
