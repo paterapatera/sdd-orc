@@ -45,6 +45,8 @@ Choose the pattern from the trigger: Event-driven for an action or arrival, Stat
 
 After `overview --issue`, write readable HTML inside the agent markers: a short summary and 1–2 decision tables (default 1; add a second only when it adds a data or time axis). **`check` does not enforce bullet count, table count, or cell attributes**—only freshness and unknown ids. Follow the patterns below so humans can scan the issue quickly.
 
+Visual layout and colors (14-token palette including `--white` / `--black`) are in `overview-visual-design.md` next to this file. Use only those CSS custom properties in agent markup; `check` does not police styling.
+
 | Kind | Rows × columns |
 |---|---|
 | Screens | role × screen (omit roles with no access; prefer this over Permissions unless records have create/update/delete) |
