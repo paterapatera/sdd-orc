@@ -265,9 +265,6 @@ export function formatFpForPullRequest(result, lang = "en") {
         : kind;
     return { kind, label, points: summary.points[kind], counts: summary.itemCounts[kind] };
   }).filter((row) => row.points > 0 || countItems(row.counts) > 0);
-  const note = lang === "ja"
-    ? "NESMA 概算の EI/EO/EQ 重みで、**プロセス**（Process 名）ごとに 1 回だけ数えるカスタム指標です。変更は満点で数えます。IFPUG/NESMA 準拠ではありません。"
-    : "Custom count: one **process** (`Process:` name) at NESMA estimated EI/EO/EQ weights; changes use full weight (not IFPUG/NESMA-compliant).";
   const heading = lang === "ja" ? "## 機能ポイント" : "## Function points";
   const totalLine = lang === "ja" ? `合計 **${summary.total}** FP。` : `Total **${summary.total}** FP.`;
   const tableHead = lang === "ja"
@@ -297,7 +294,7 @@ export function formatFpForPullRequest(result, lang = "en") {
       ? `NFR: ${countCell(summary.itemCounts.NFR)}（0 FP）\n`
       : `NFR: ${countCell(summary.itemCounts.NFR)} (0 FP)\n`)
     : "";
-  return `${heading}\n\n${totalLine} ${note}\n\n${tableHead}\n${tableBody}${metaLine}${unsetLine}${noneLine}${unknownLine}${nfrLine}\n`;
+  return `${heading}\n\n${totalLine}\n\n${tableHead}\n${tableBody}${metaLine}${unsetLine}${noneLine}${unknownLine}${nfrLine}\n`;
 }
 
 export function formatFpReport(issue, result, format) {

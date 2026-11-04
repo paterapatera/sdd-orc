@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.2.2
+
+- **`/sdd-close`:** drop the one-line custom-metric disclaimer from the printed pull request **Function points** section (README still describes NESMA estimated weights and that the count is not IFPUG/NESMA-certified).
+
 ## 1.2.1
 
 - Add **`sync-base`** on the bundled checker: before close merges the base branch, fetch from the remote and fast-forward the **local** `baseBranch` ref (default `main`) without checking it out. Uses an explicit remote-tracking refspec; updates local base via `git fetch .` so git refuses when the base is checked out in any worktree. Stops when fetch fails or when local base is ahead/diverged from the remote; uses the sole remote when there is only one (even if it is not named `origin`); stops and lists remotes when several exist and upstream is unset; skips with a note when no remote exists.
