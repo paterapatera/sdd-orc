@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.2.2. Node.js 18 or later.
+**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.2.3. Node.js 18 or later.
 
 Registering tracker issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -120,13 +120,13 @@ Every **ADDED** or **MODIFIED** `REQ-*` in the issue delta must include `- Proce
 
 Counts come from **ADDED**, **MODIFIED**, and **REMOVED** items in the merged issue delta (`requirements.md`, plus `design.md` and `research.md` when present). Paths under `/steering/` are skipped; other delta file sections in those documents are included. Each **requirement id** is deduped **at most once per capability file** (REMOVED > MODIFIED > ADDED); **processes** are grouped by trimmed `Process:` name and type. **Process bucket** (for the EI/EO/EQ table): **REMOVED** when every REQ in the group is REMOVED; **MODIFIED** when any REQ in that process's group is MODIFIED or REMOVED (but not all REMOVED), or the process name appears on a REQ in **base-branch** specs (`git show` only); otherwise **ADDED**. **MODIFIED** and **REMOVED** processes use the same full EI/EO/EQ weight as **ADDED**. **Quick issues** (no `requirements.md`) are skipped. Results are printed to **stdout** only. For **REMOVED** `REQ-*` without `Process` in the delta, `fp` reads the id from **base-branch** `spec.md` (same order as REMOVED `IF-*`); missing process names appear as **unknown process (0 FP)**. For **REMOVED** `IF-*`, when the delta omits `Direction`, `fp` reads **`interfaces.md` on the base branch**. **MODIFIED** `IF-*` must include `Direction` in the delta or they count as **IF unset** (0 FP).
 
-**Known limits (REMOVED `IF-*` and process lookup):** when lookup fails, output includes **`IF unset (0 FP)`** or **unknown process (0 FP)** (not a silent zero). (1) **Stale or missing local base** — `/sdd-close` runs `sync-base` first so a normal close refreshes local `main` (or your configured `baseBranch`) from the remote before merge, renumber, and `fp`. If you run **`fp` by hand** on a clone with no local base branch (for example `git clone -b <feature>`), REMOVED IF can still score 0 and REMOVED REQ without `Process:` still appears on the **unknown process (0 FP)** line; add `- Process:` in the REMOVED block if you need the name in the report. When the base branch is missing locally, a process whose REQs in this issue are all **ADDED** is labelled **ADDED** rather than **MODIFIED** in the table; the FP total is unchanged. (2) **Same branch, earlier issue added the IF** — a later issue removes it; after apply it is not on the base branch, so REMOVED IF scores 0. (3) **Monorepo subdirectory** — git paths are from the repository root (same as `renumber`); after apply, REMOVED IF may score 0 when the checker runs outside that layout. (4) **Before apply** — `Direction` is taken from working-tree knowledge first; uncommitted edits can change the score until you commit (close normally runs after a passing check, so printed PR totals stay stable).
+**Known limits (REMOVED `IF-*` and process lookup):** when lookup fails, output includes **`IF unset (0 FP)`** or **unknown process (0 FP)** (not a silent zero). (1) **Stale or missing local base** — `/sdd-close` runs `sync-base` first so a normal close refreshes local `main` (or your configured `baseBranch`) from the remote before merge, renumber, and `fp`. If you run **`fp` by hand** on a clone with no local base branch (for example `git clone -b <feature>`), REMOVED IF can still score 0 and REMOVED REQ without `Process:` still appears on the **unknown process (0 FP)** line; add `- Process:` in the REMOVED block if you need the name in the report. When the base branch is missing locally, a process whose REQs in this issue are all **ADDED** is labelled **ADDED** rather than **MODIFIED** in the table; the FP total is unchanged. (2) **Same branch, earlier issue added the IF** — a later issue removes it; after apply it is not on the base branch, so REMOVED IF scores 0. (3) **Monorepo subdirectory** — git paths are from the repository root (same as `renumber`); after apply, REMOVED IF may score 0 when the checker runs outside that layout. (4) **Before apply** — `Direction` is taken from working-tree knowledge first; uncommitted edits can change the score until you commit (close normally runs after a passing check, so PR function-point totals stay stable).
 
-**`/sdd-close`** runs `fp --format json` before it deletes the issue folder and adds a short **Function points** section to the pull request text it prints (total; **DATA**, **EI**, **EO**, **EQ**, and **IF** rows with ADDED/MODIFIED/REMOVED process or item counts; REQ and distinct process counts; optional **Process: none**, **unknown process**, **IF unset**, and **NFR** lines at 0 FP; quick issues get a one-line “not counted” note only).
+Pass **`--base <ref>`** to count against a specific base ref (for example the merge-base before close merged an updated base). **`/sdd-pr`** runs `fp --format json` for the **Function points** section in the pull request body it prints (total; **DATA**, **EI**, **EO**, **EQ**, and **IF** rows with ADDED/MODIFIED/REMOVED counts; REQ and distinct process counts; optional **Process: none**, **unknown process**, **IF unset**, and **NFR** lines at 0 FP; quick issues get a one-line “not counted” note only). **`/sdd-close`** runs **`fp --format compare-close`** before it deletes the issue folder; if labels changed because the base moved during review, it prints a replacement **Function points** section to paste into the existing PR body, otherwise one line that no update is needed.
 
 ## Skills included
 
-`/sdd-init`, `/sdd-req`, `/sdd-design`, `/sdd-task`, `/sdd-impl`, `/sdd-fix`, `/sdd-close`, `/sdd-lessons`, `/sdd-quick`, `/sdd-reverse`, `/sdd-steering`.
+`/sdd-init`, `/sdd-req`, `/sdd-design`, `/sdd-task`, `/sdd-impl`, `/sdd-fix`, `/sdd-pr`, `/sdd-close`, `/sdd-lessons`, `/sdd-quick`, `/sdd-reverse`, `/sdd-steering`.
 
 ## Which path to take
 
@@ -136,9 +136,9 @@ After `/sdd-init` creates the change summary file, it picks the path for you and
 flowchart TD
   init["/sdd-init"] --> branch["git checkout -b name"]
   branch --> route{Kind of change}
-  route -->|Small fix, no spec or steering change| quickPath["/sdd-quick then /sdd-close"]
-  route -->|Write down behavior that already exists| revPath["/sdd-reverse then /sdd-close"]
-  route -->|New feature or spec change| fullPath["/sdd-req through /sdd-close"]
+  route -->|Small fix, no spec or steering change| quickPath["/sdd-quick → /sdd-pr → review → /sdd-close"]
+  route -->|Write down behavior that already exists| revPath["/sdd-reverse → /sdd-pr → review → /sdd-close"]
+  route -->|New feature or spec change| fullPath["/sdd-req … /sdd-pr → review → /sdd-close"]
   quickPath --> noteQuick["Tasks only, no requirements or design docs"]
   revPath --> noteRev["Add requirements to match the code"]
 ```
@@ -155,7 +155,10 @@ flowchart LR
   I --> F{Drift?}
   F -->|yes| X["/sdd-fix"]
   X --> I
-  F -->|no| C["/sdd-close"]
+  F -->|no| P["/sdd-pr"]
+  P --> Rv{Review OK?}
+  Rv -->|fixes| X
+  Rv -->|yes| C["/sdd-close"]
 ```
 
 Steps (**agent chat** unless noted):
@@ -163,11 +166,12 @@ Steps (**agent chat** unless noted):
 1. **Agent chat:** `/sdd-init` on the base branch (creates the change summary; no branch yet).
 2. **Terminal:** `git checkout -b <name>` (same name as the issue folder init chose).
 3. **Agent chat:** `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl`; commit docs as each skill says. If docs or code drift, `/sdd-fix` then continue.
-4. **Agent chat:** `/sdd-close` runs `sync-base`, merges the base branch, updates permanent docs, removes the issue folder, and prints PR title and body (does not open the PR).
+4. **Agent chat:** `/sdd-pr` prints pull request title and body (including function points). **You** open the pull request and get review. Fix review findings with `/sdd-fix` on the same branch while the issue folder still exists.
+5. **Agent chat:** After approval, `/sdd-close` runs `sync-base`, merges the base branch, updates permanent docs, compares function points, removes the issue folder, and commits. **Terminal:** push the close commit to the **same** pull request; a human merges. You do not need a full re-review after close — close only lands the delta in permanent docs, renumbers ids, and deletes the issue directory; CI `check` covers the result. **After close**, further changes are a new issue.
 
 ### Quick (small change)
 
-A small fix that does not change requirements, steering, or decision records. Same steps 1–2 as above, then **agent chat** `/sdd-quick` (task list only) → `/sdd-close`. The skill stops if a spec or steering update is needed.
+A small fix that does not change requirements, steering, or decision records. Same steps 1–2 as above, then **agent chat** `/sdd-quick` (task list only) → `/sdd-pr` → review → `/sdd-close`. The skill stops if a spec or steering update is needed.
 
 ### Reverse (document existing behavior)
 
@@ -183,7 +187,7 @@ Do **not** start with `/sdd-reverse` alone. On the **base branch**, open **agent
 
 The important part is that you are **documenting behavior that already exists**, not shipping new features or fixing bugs. Init may ask up to three short questions; keep your answers on that same goal.
 
-After init finishes, it writes the change summary, classifies the work as **documentation-only** (no code change in the proposal), and tells you the next skill is **`/sdd-reverse`**. Then **terminal** `git checkout -b <name>`, **agent chat** `/sdd-reverse` → `/sdd-close`. Design and task documents are often skipped; close still runs checks.
+After init finishes, it writes the change summary, classifies the work as **documentation-only** (no code change in the proposal), and tells you the next skill is **`/sdd-reverse`**. Then **terminal** `git checkout -b <name>`, **agent chat** `/sdd-reverse` → `/sdd-pr` → review → `/sdd-close`. Design and task documents are often skipped; close still runs checks.
 
 ## Using with GitHub issues
 
@@ -193,7 +197,7 @@ Optional pattern when you track work in GitHub Issues (this package does not cre
 2. Create a GitHub issue for each change (tracker skill or manually).
 3. Use a folder and branch name that starts with the issue number or key (example: `42-invoice-fix`).
 4. **Terminal:** Commit the change summaries on the base branch.
-5. **Terminal:** `git checkout -b <name>` per issue; **agent chat:** run skills through `/sdd-close`. Link the PR to the issue (`Closes #42`) when you open it yourself or via your tracker skill.
+5. **Terminal:** `git checkout -b <name>` per issue; **agent chat:** run skills through `/sdd-pr`, open the pull request, review, `/sdd-close` after approval. Link the PR to the issue (`Closes #42`) when you open it yourself or via your tracker skill.
 
 ## Lessons, close, and review
 
@@ -220,7 +224,8 @@ flowchart LR
 | `/sdd-req`, `/sdd-design`, `/sdd-reverse`, `/sdd-fix` | Up to 5 scored choices per round |
 | `/sdd-steering` Resync | Accept, reject, or defer each reported item |
 | `/sdd-impl` | Complete manual verification tasks in the task list (not auto-checked) |
-| `/sdd-close` | Resolve merge conflicts; confirm renamed spec codes if prompted; **confirm lesson records**; copy PR text |
+| `/sdd-pr` | Copy pull request title and body (after implementation, before close) |
+| `/sdd-close` | Resolve merge conflicts; confirm renamed spec codes if prompted; **confirm lesson records**; paste updated function points when close says so |
 | `/sdd-lessons` | **Lead:** adopt, reject, hold, or promote lessons; copy `/sdd-init` follow-ups (does not edit steering) |
 
 Quick path asks no questions. `/sdd-task` asks no questions.

@@ -34,7 +34,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "1.2.2");
+  assert.equal(config.version, "1.2.3");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -49,10 +49,13 @@ test("init, update, and migrate install one shared script", () => {
   assert.match(read(dir, ".claude/skills/sdd-close/SKILL.md"), /bun \.agents\/skills\/sdd-scripts\/sdd\.mjs/);
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-lessons/SKILL.md")), true);
   assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Record these lesson entries/i);
-  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /fp --issue <feature> --format json/);
-  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Before deleting the issue directory/);
-  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /not counted.*quick issues/i);
-  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /summary\.itemCounts\.NFR/);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /compare-close/);
+  assert.doesNotMatch(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Print only the pull request title/i);
+  assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-pr/SKILL.md")), true);
+  assert.match(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /fp --issue <feature> --format json/);
+  assert.match(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /not counted.*quick issues/i);
+  assert.match(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /summary\.itemCounts\.NFR/);
+  assert.doesNotMatch(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /ready-to-send agent chat line/i);
   assert.doesNotMatch(read(dir, ".agents/skills/sdd-close/SKILL.md"), /ready-to-send agent chat line/i);
   assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /check --scope knowledge/);
   assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /A 未判断の候補/);
@@ -896,7 +899,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "1.2.2");
+  assert.equal(config.version, "1.2.3");
   assert.match(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });
@@ -958,6 +961,10 @@ test("status lists phase and next skill", () => {
   git(["checkout", "-b", "invoice-reissue"], dir);
   const onBranch = sdd(dir, ["status"]);
   assert.match(onBranch.stdout, /invoice-reissue: requirements -> \/sdd-design/);
+  writeInvoiceIssue(dir);
+  fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), fs.readFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), "utf8").replaceAll("- [ ]", "- [x]"));
+  const ready = sdd(dir, ["status"]);
+  assert.match(ready.stdout, /\/sdd-pr/);
   const all = sdd(dir, ["status", "--all", "--format", "json"]);
   const parsed = JSON.parse(all.stdout);
   assert.ok(parsed.issues.some((item) => item.issue === "invoice-reissue"));
