@@ -454,6 +454,7 @@ test("formatFpForPullRequest quick and full breakdown", () => {
   const full = formatFpForPullRequest({ skipped: false, summary: baseSummary }, "en");
   assert.match(full, /Total \*\*20\*\* FP/);
   assert.match(full, /IF Consumed \| 5 \| A1\/M0\/R0/);
+  assert.doesNotMatch(full, /IFPUG|NESMA-compliant|Custom count:/);
   assert.doesNotMatch(full, /^NFR:/m);
 
   const withNfr = formatFpForPullRequest({
