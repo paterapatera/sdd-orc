@@ -85,8 +85,8 @@ legacy
   assert.equal(first.byKind.NFR, 0);
   assert.equal(first.summary.total, first.total);
   assert.equal(first.summary.points.EQ, 8);
-  assert.equal(first.summary.itemCounts.EQ.ADDED, 2);
-  assert.equal(first.summary.itemCounts.EQ.MODIFIED, 0);
+  assert.equal(first.summary.itemCounts.EQ.ADDED, 1);
+  assert.equal(first.summary.itemCounts.EQ.MODIFIED, 1);
   assert.equal(first.summary.itemCounts.NFR.ADDED, 1);
   assert.equal(first.summary.processUnknown.itemCounts.REMOVED, 1);
 });
@@ -133,7 +133,8 @@ When z, the system SHALL do c.
   const delta = parseDeltaMarkdown(markdown, "requirements");
   const result = countDeltaItems(delta);
   assert.equal(result.total, 4 + 7 + 4);
-  assert.equal(result.summary.itemCounts.EQ.ADDED, 2);
+  assert.equal(result.summary.itemCounts.EQ.ADDED, 1);
+  assert.equal(result.summary.itemCounts.EQ.MODIFIED, 1);
   assert.equal(result.items.filter((row) => row.id === "One").length, 1);
   assert.equal(result.items.filter((row) => row.id === "Old one").length, 1);
 });
@@ -788,4 +789,150 @@ When b, the system SHALL b.
   const delta = parseDeltaMarkdown(markdown, "requirements");
   assert.deepEqual(countDeltaItems(delta), countDeltaItems(delta));
   assert.equal(countDeltaItems(delta).summary.processCount, 1);
+});
+
+test("process bucket labels unchanged after apply for a new process", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  writeSteering(dir);
+  assert.equal(sdd(dir, ["index"]).status, 0);
+  commitAll(dir, "chore: skeleton");
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  commitAll(dir, "docs: proposal");
+  assert.equal(sdd(dir, ["stamp", "--issue", "invoice-reissue"]).status, 0);
+  assert.equal(sdd(dir, ["check", "--issue", "invoice-reissue"]).status, 0);
+
+  const before = JSON.parse(sdd(dir, ["fp", "--issue", "invoice-reissue", "--format", "json"]).stdout);
+  assert.equal(before.summary.itemCounts.EO.ADDED, 1);
+  assert.equal(before.summary.itemCounts.EO.MODIFIED, 0);
+
+  assert.equal(sdd(dir, ["apply", "--issue", "invoice-reissue"]).status, 0);
+  commitAll(dir, "docs: apply invoice");
+
+  const after = JSON.parse(sdd(dir, ["fp", "--issue", "invoice-reissue", "--format", "json"]).stdout);
+  assert.deepEqual(after.summary.itemCounts.EO, before.summary.itemCounts.EO);
+  assert.equal(after.summary.itemCounts.EO.ADDED, 1);
+});
+
+test("process bucket labels unchanged after apply when process exists on base branch", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  writeSteering(dir);
+  assert.equal(sdd(dir, ["index"]).status, 0);
+  commitAll(dir, "chore: skeleton");
+  writeInvoiceIssue(dir);
+  commitAll(dir, "docs: proposal");
+  assert.equal(sdd(dir, ["apply", "--issue", "invoice-reissue"]).status, 0);
+  commitAll(dir, "docs: apply on main");
+  git(["checkout", "-b", "invoice-tweak"], dir);
+
+  const issue = path.join(dir, "docs/issues/invoice-tweak");
+  fs.mkdirSync(issue, { recursive: true });
+  fs.writeFileSync(path.join(issue, "proposal.md"), `# Tweak invoice
+
+## Why
+- Background: wording
+- Affected: clerks
+- Outcome: clearer text
+
+## What Changes
+- Wording only
+
+## Impact
+- Type: feat
+- Capabilities:
+  - Changed: /specs/billing/invoice
+- Steering: none
+- Decisions: none
+- Code: src
+
+## Out of Scope
+- none
+`);
+  fs.writeFileSync(path.join(issue, "requirements.md"), `# Requirements
+
+## Context
+- Actors: Clerk
+- Current behavior: REQ-INV-1
+- Assumptions:
+  - none
+
+## Open Questions
+
+# Delta
+
+## Coverage
+| capability | spec.md | interfaces.md | data.md | quality.md |
+|---|---|---|---|---|
+| /specs/billing/invoice | changed | no change: none | no change: none | no change: none |
+
+## /specs/billing/invoice/spec.md
+
+### MODIFIED
+#### REQ-INV-1: Issue invoice on confirmation
+- change: Clearer wording.
+- Process: Issue invoice (EO)
+When an order is confirmed, the system SHALL issue an invoice with clear wording.
+
+##### Scenario: Issue on confirmation
+- **Given** a confirmed order
+- **When** the order is confirmed
+- **Then** an invoice is issued
+`);
+  fs.writeFileSync(path.join(issue, "design.md"), `# Design
+
+## Overview
+Wording.
+
+## Requirements Traceability
+| ID | Components | Test Level |
+|---|---|---|
+| REQ-INV-1 | InvoiceService | Integration |
+
+## Components and Interfaces
+### InvoiceService
+- Location: src/invoice.js (modified)
+- Responsibility: Invoice
+- Depends on: none
+- Provides: none
+
+## Data Model
+none
+
+## Error Handling
+none
+
+## Testing Strategy
+| Test Level | Runs on | Notes |
+|---|---|---|
+| Integration | Local | Wording |
+
+## Migration
+none
+`);
+  fs.writeFileSync(path.join(issue, "task.md"), `# Tasks
+
+- [x] 1. Wording (P)
+  - 1.1 Update spec text
+    - Requirements: REQ-INV-1
+  - 1.2 Update integration test
+    - Requirements: REQ-INV-1
+`);
+  commitAll(dir, "docs: tweak proposal");
+  assert.equal(sdd(dir, ["stamp", "--issue", "invoice-tweak"]).status, 0);
+  const checked = sdd(dir, ["check", "--issue", "invoice-tweak"]);
+  if (checked.status !== 0) {
+    assert.fail(checked.stdout || checked.stderr || "check failed");
+  }
+
+  const before = JSON.parse(sdd(dir, ["fp", "--issue", "invoice-tweak", "--format", "json"]).stdout);
+  assert.equal(before.summary.itemCounts.EO.MODIFIED, 1);
+  assert.equal(before.summary.itemCounts.EO.ADDED, 0);
+
+  assert.equal(sdd(dir, ["apply", "--issue", "invoice-tweak"]).status, 0);
+  commitAll(dir, "docs: apply tweak");
+
+  const after = JSON.parse(sdd(dir, ["fp", "--issue", "invoice-tweak", "--format", "json"]).stdout);
+  assert.deepEqual(after.summary.itemCounts.EO, before.summary.itemCounts.EO);
 });

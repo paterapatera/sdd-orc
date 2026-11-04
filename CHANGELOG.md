@@ -3,7 +3,8 @@
 ## 1.2.0
 
 - Add **`fp`** command on the bundled checker: mechanical **custom function point (FP)** count per issue from the requirements delta (NESMA estimated weights). Output goes to **stdout** only (text or `--format json`); nothing is written into `requirements.md`.
-- Count **elementary processes** (grouped by `- Process:` on issue delta `REQ-*`): **EI** 4, **EO** 5, **EQ** 4 each distinct process; **Process: none** and unknown legacy REMOVED processes **0**. DATA **7**, IF Consumed **5**, IF Provided **4**, NFR and steering **0**. **`check`** requires `Process` on ADDED/MODIFIED `REQ-*`; permanent specs without `Process` stay valid.
+- Count **elementary processes** (grouped by `- Process:` on issue delta `REQ-*`): **EI** 4, **EO** 5, **EQ** 4 each distinct process; **Process: none** and unknown legacy REMOVED processes **0**. DATA **7**, IF Consumed **5**, IF Provided **4**, NFR and steering **0**. **`check`** requires `Process` on ADDED/MODIFIED `REQ-*`; permanent specs without `Process` stay valid. **Upgrading:** add `- Process:` to ADDED/MODIFIED REQs in any in-progress issue before re-running `check`.
+- Fix **`fp`** process buckets: base lookup uses **`git show` only** (not the working tree after apply); MODIFIED when the issue has MODIFIED/REMOVED REQs or the name exists on the base branch.
 - Document the metric in README and README.ja (junior-friendly; Japanese in です/ます style).
 - **`/sdd-close`** runs `fp --format json` before removing the issue directory and adds a short function-points section to the printed pull request body (quick issues: one line that FP is not counted).
 - Fix **`fp`** counting: provisional `-NEW-` ids, **REMOVED** IF direction from base-branch `interfaces.md` (stable after apply), dedupe duplicate rows and one id per file (REMOVED>MODIFIED>ADDED); report **IF unset** when Direction is missing.

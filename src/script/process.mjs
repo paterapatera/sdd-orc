@@ -51,18 +51,14 @@ export function processNamesInSpecText(text) {
   return names;
 }
 
-/** Working-tree knowledge first, then base-branch git (same order as REMOVED IF). */
+/** True when `Process:` name appears on a REQ in base-branch specs only (`readGitAtBase`). */
 export function processNameExistsInBase(name, ctx, specPaths) {
-  if (!ctx?.docsDir) return false;
+  if (!ctx?.readGitAtBase || !ctx?.docsDir) return false;
   const target = normalizeProcessName(name);
   for (const specPath of specPaths) {
     const rel = specKnowledgeRel(ctx.docsDir, specPath);
-    const fromTree = processNamesInSpecText(ctx.knowledgeMap?.get(rel));
-    if (fromTree.has(target)) return true;
-    if (ctx.readGitAtBase) {
-      const fromBase = processNamesInSpecText(ctx.readGitAtBase(rel));
-      if (fromBase.has(target)) return true;
-    }
+    const fromBase = processNamesInSpecText(ctx.readGitAtBase(rel));
+    if (fromBase.has(target)) return true;
   }
   return false;
 }
@@ -96,6 +92,7 @@ export function resolveReqProcess(item, ctx) {
 export function bucketForProcessGroup(entries, ctx, specPaths) {
   if (entries.every((entry) => entry.bucket === "REMOVED")) return "REMOVED";
   const name = entries[0].process.name;
+  if (entries.some((entry) => entry.bucket === "MODIFIED" || entry.bucket === "REMOVED")) return "MODIFIED";
   if (processNameExistsInBase(name, ctx, specPaths)) return "MODIFIED";
   return "ADDED";
 }
