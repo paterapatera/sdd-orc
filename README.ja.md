@@ -94,6 +94,8 @@ node .agents/skills/sdd-scripts/sdd.mjs fp --issue invoice-fix --format json
 
 issue の delta（`requirements.md` と、あれば `design.md` / `research.md` をマージ）の **ADDED / MODIFIED / REMOVED** から数えます。`/steering/` 配下は除外し、それ以外の delta ファイル節は含めます。同一 capability ファイル内では **id ごとに 1 回まで**数え、複数 bucket にまたがる場合は **REMOVED > MODIFIED > ADDED** の優先順位です。**MODIFIED** と **REMOVED** も **ADDED** と同じ固定重み（1 項目あたり満点）にしています。**quick issue**（`requirements.md` がない）は対象外です。結果は **stdout のみ**に出します。**REMOVED** の `IF-*` で delta に `Direction` がないときは、設定した **ベースブランチ**（通常 `main`）上の `interfaces.md` から id を読むため、`/sdd-close` の **apply** で作業ツリーから IF が消えたあとも同じ FP になります。**MODIFIED** の `IF-*` は delta に `Direction` が必要で、なければ **IF unset**（0 FP）です。
 
+**既知の限界（REMOVED `IF-*`）:** 次の場合は **`IF unset (0 FP)`** 行で示します（黙って 0 にはしません）。(1) **ローカルにベースブランチがない** — 例: `git clone -b <機能ブランチ>` や、`origin/main` だけの浅い clone でローカル `main` がない。REMOVED IF は 0 FP です。対処: ベースブランチを fetch／作成するか、`sdd.config.json` の `baseBranch` を `origin/main` にします。(2) **同じブランチで前の issue が追加した IF を、後の issue が削除** — apply 後はベースブランチにその IF がないため 0 FP です。(3) **モノレポのサブディレクトリ** — git パスはリポジトリルート基準です（`renumber` と同じ）。apply 後に REMOVED IF が 0 になることがあります。(4) **apply の前** — 作業ツリーの knowledge を先に読むため、未コミットの編集で FP が変わることがあります（その状態では check が通らないため、close で出す PR 用の値は通常安定します）。
+
 **`/sdd-close`** は issue フォルダを消す**前**に `fp --format json` を実行し、表示する PR 本文に短い **機能ポイント**節を足します（合計、種別ごとの FP、ADDED/MODIFIED/REMOVED の件数。quick issue は「数えない」1 行）。
 
 ## 同梱スキル
