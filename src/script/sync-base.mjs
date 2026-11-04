@@ -32,7 +32,7 @@ export function resolveFetchRemote(root, base, git) {
 
 function ambiguousRemoteMessage(base, remotes) {
   const names = remotes.join(", ");
-  return `sync-base: several remotes (${names}) with no upstream on ${base}; pick one remote and run git fetch <remote> ${base} && git branch --track ${base} <remote>/${base}, or if local ${base} already exists run git branch --set-upstream-to=<remote>/${base} ${base}; then retry\n`;
+  return `sync-base: several remotes (${names}) with no upstream on ${base}; pick one remote and run git remote set-branches --add <remote> ${base} && git fetch <remote> ${base}, then git branch --track ${base} <remote>/${base} if local ${base} is missing, or git branch --set-upstream-to=<remote>/${base} ${base} if it already exists; then retry\n`;
 }
 
 function checkedOutRefusal(text) {
