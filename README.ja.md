@@ -79,9 +79,9 @@ close は設定したベースブランチ（既定 `main`）をマージし、`
 
 **`/sdd-close`** は最初に `sync-base` を実行します。処理の流れは次のとおりです。
 
-1. ベースブランチの upstream からリモート名を決め、なければ `origin`（どちらもなければ 1 行メモを出して成功終了 — リモートのないローカル専用リポジトリ向け）。
-2. `git fetch <remote> <baseBranch>` を実行します。
-3. ローカルに `<baseBranch>` がなければ `<remote>/<baseBranch>` から作成し、遅れていれば fast-forward します（ベースブランチには checkout せず、作業ツリーも触りません）。
+1. ベースブランチの upstream からリモート名を決め、なければ `origin`、リモートが 1 つだけならその名前を使います。**リモートが 0 件**のときだけ 1 行メモを出して成功終了します。upstream がなくリモートが複数あるときは一覧を出して非ゼロで止まります。
+2. `git fetch <remote> +refs/heads/<baseBranch>:refs/remotes/<remote>/<baseBranch>` を実行します。
+3. `git fetch . refs/remotes/<remote>/<baseBranch>:refs/heads/<baseBranch>` でローカル `<baseBranch>` を作成または fast-forward します（ベースブランチには checkout しません。**現在の**ブランチと作業ツリーはそのままです）。`<baseBranch>` がこのリポジトリまたは別 worktree で checkout されていると git が拒否し、`sync-base` も止まります（機能ブランチ側で実行するか、ベースを checkout している worktree で `git pull --ff-only` してください）。
 4. fetch に失敗したとき、またはローカルベースにリモートにないコミットがあるとき（先行・分岐）は非ゼロで止まります。ローカルコミットを reset することはありません。
 
 ```sh

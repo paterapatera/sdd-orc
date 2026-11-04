@@ -79,9 +79,9 @@ Close merges your configured base branch (default `main`) and runs `renumber`, `
 
 **`/sdd-close`** runs `sync-base` first. The command:
 
-1. Picks the remote from the base branch upstream, else `origin` if it exists; with no remote it prints a one-line note and exits successfully (local-only repos).
-2. Runs `git fetch <remote> <baseBranch>`.
-3. Creates local `<baseBranch>` from `<remote>/<baseBranch>` when missing, or fast-forwards it when behind — **without** checking out the base branch or touching your working tree.
+1. Picks the remote from the base branch upstream, else `origin` if it exists, else the only remote when there is just one; with **no** remotes it prints a one-line note and exits successfully. Several remotes with no upstream stops and lists them.
+2. Runs `git fetch <remote> +refs/heads/<baseBranch>:refs/remotes/<remote>/<baseBranch>`.
+3. Creates or fast-forwards local `<baseBranch>` with `git fetch . refs/remotes/<remote>/<baseBranch>:refs/heads/<baseBranch>` — **without** checking out the base branch, so the **current** branch and its working tree stay as they are. If `<baseBranch>` is checked out in this repo or another worktree, git refuses the update and `sync-base` stops (run it from your feature branch, or `git pull --ff-only` where the base is checked out).
 4. Stops with a non-zero exit if fetch fails, or if local base has commits not on the remote (ahead or diverged). It never resets your local commits.
 
 ```sh

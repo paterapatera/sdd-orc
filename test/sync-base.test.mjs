@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { test } from "node:test";
 import { resolveFetchRemote, runSyncBase } from "../src/script/sync-base.mjs";
@@ -164,7 +165,7 @@ test("sync-base uses upstream remote when configured on main", () => {
   const sync = sdd(hub, ["sync-base"]);
   assert.equal(sync.status, 0, sync.stderr + sync.stdout);
   assert.equal(rev(hub, "main"), expectedMain);
-  assert.equal(resolveFetchRemote(hub, "main", (cwd, args) => git(args, cwd)), "upstream");
+  assert.deepEqual(resolveFetchRemote(hub, "main", (cwd, args) => git(args, cwd)), { status: "ok", remote: "upstream" });
 });
 
 test("after sync-base renumber avoids id collision with merged main", () => {
@@ -359,4 +360,135 @@ test("runSyncBase module rejects update when local is ahead", () => {
   const result = runSyncBase(dir, "main", (cwd, args) => git(args, cwd));
   assert.equal(result.code, 1);
   assert.match(result.stderr, /commit\(s\) not on/);
+});
+
+test("sync-base stops when base is checked out in the current worktree", () => {
+  const bare = bareRemote();
+  const hub = tempRepo();
+  prepareRepo(hub);
+  addOrigin(hub, bare);
+  pushOrigin(hub);
+  const mainBefore = rev(hub, "main");
+  const indexBefore = git(["diff", "--cached", "--name-only"], hub).stdout;
+
+  const advance = cloneRepo(bare);
+  fs.writeFileSync(path.join(advance, "new-on-origin.txt"), "from-origin\n");
+  commitAll(advance, "feat: origin advance");
+  pushOrigin(advance);
+
+  const sync = sdd(hub, ["sync-base"]);
+  assert.equal(sync.status, 1, sync.stdout);
+  assert.match(sync.stderr, /worktree|checked out/i);
+  assert.equal(rev(hub, "main"), mainBefore);
+  assert.equal(git(["diff", "--cached", "--name-only"], hub).stdout, indexBefore);
+  assert.equal(fs.existsSync(path.join(hub, "new-on-origin.txt")), false);
+});
+
+test("sync-base stops when base is checked out in another worktree", () => {
+  const bare = bareRemote();
+  const hub = tempRepo();
+  prepareRepo(hub);
+  addOrigin(hub, bare);
+  pushOrigin(hub);
+  git(["checkout", "-b", "feature"], hub);
+  const wtDir = fs.mkdtempSync(path.join(os.tmpdir(), "sdd-wt-"));
+  const added = git(["worktree", "add", wtDir, "main"], hub);
+  assert.equal(added.status, 0, added.stderr);
+  const wtHead = rev(wtDir, "HEAD");
+  fs.writeFileSync(path.join(wtDir, "keep.txt"), "stay\n");
+
+  const advance = cloneRepo(bare);
+  fs.writeFileSync(path.join(advance, "remote-only.txt"), "r\n");
+  commitAll(advance, "feat: remote");
+  pushOrigin(advance);
+
+  const sync = sdd(hub, ["sync-base"]);
+  assert.equal(sync.status, 1);
+  assert.match(sync.stderr, /worktree|checked out/i);
+  assert.equal(rev(wtDir, "HEAD"), wtHead);
+  assert.equal(read(wtDir, "keep.txt"), "stay\n");
+  git(["worktree", "remove", "--force", wtDir], hub);
+});
+
+test("sync-base refreshes stale origin/main on a single-branch clone then fast-forwards local main", () => {
+  const bare = bareRemote();
+  const hub = tempRepo();
+  prepareRepo(hub);
+  addOrigin(hub, bare);
+  pushOrigin(hub);
+  const staleSha = remoteMainSha(bare);
+  git(["checkout", "-b", "feature"], hub);
+  assert.equal(git(["push", "-u", "origin", "feature"], hub).status, 0);
+  const single = cloneRepo(bare, ["--single-branch", "--branch", "feature"]);
+  git(["update-ref", "-d", "refs/heads/main"], single);
+  git(["update-ref", `refs/remotes/origin/main`, staleSha], single);
+
+  git(["checkout", "main"], hub);
+  fs.writeFileSync(path.join(hub, "after-single-clone.txt"), "new\n");
+  commitAll(hub, "feat: advance main");
+  pushOrigin(hub);
+  const expectedMain = remoteMainSha(bare);
+  assert.notEqual(staleSha, expectedMain);
+  assert.equal(rev(single, "origin/main"), staleSha);
+
+  const sync = sdd(single, ["sync-base"]);
+  assert.equal(sync.status, 0, sync.stderr + sync.stdout);
+  assert.equal(rev(single, "origin/main"), expectedMain);
+  assert.equal(rev(single, "main"), expectedMain);
+});
+
+test("sync-base creates local main when origin/main was never fetched (single-branch clone)", () => {
+  const bare = bareRemote();
+  const hub = tempRepo();
+  prepareRepo(hub);
+  addOrigin(hub, bare);
+  pushOrigin(hub);
+  git(["checkout", "-b", "feature"], hub);
+  assert.equal(git(["push", "-u", "origin", "feature"], hub).status, 0);
+  const single = cloneRepo(bare, ["--single-branch", "--branch", "feature"]);
+  git(["update-ref", "-d", "refs/remotes/origin/main"], single);
+  assert.notEqual(git(["rev-parse", "--verify", "refs/remotes/origin/main"], single).status, 0);
+  git(["update-ref", "-d", "refs/heads/main"], single);
+
+  const sync = sdd(single, ["sync-base"]);
+  assert.equal(sync.status, 0, sync.stderr + sync.stdout);
+  assert.match(sync.stdout, /created local main/);
+  assert.equal(rev(single, "main"), rev(hub, "main"));
+});
+
+test("sync-base uses the only remote when it is not named origin", () => {
+  const bare = bareRemote();
+  const hub = tempRepo();
+  prepareRepo(hub);
+  git(["remote", "add", "company", bare], hub);
+  git(["push", "-u", "company", "main"], hub);
+  git(["checkout", "-b", "feature"], hub);
+
+  const advance = cloneRepo(bare);
+  fs.writeFileSync(path.join(advance, "company-remote.txt"), "c\n");
+  commitAll(advance, "feat: advance");
+  pushOrigin(advance);
+
+  const sync = sdd(hub, ["sync-base"]);
+  assert.equal(sync.status, 0, sync.stderr + sync.stdout);
+  assert.deepEqual(resolveFetchRemote(hub, "main", (cwd, args) => git(args, cwd)), { status: "ok", remote: "company" });
+  assert.equal(rev(hub, "main"), remoteMainSha(bare));
+});
+
+test("sync-base stops and lists remotes when several exist and base has no upstream", () => {
+  const bareA = bareRemote();
+  const bareB = bareRemote();
+  const hub = tempRepo();
+  prepareRepo(hub);
+  git(["remote", "add", "upstream", bareA], hub);
+  git(["remote", "add", "company", bareB], hub);
+  git(["push", "upstream", "main"], hub);
+  git(["push", "company", "main"], hub);
+  git(["branch", "--unset-upstream", "main"], hub);
+  git(["checkout", "-b", "feature"], hub);
+  const sync = sdd(hub, ["sync-base"]);
+  assert.equal(sync.status, 1);
+  assert.match(sync.stderr, /several remotes/);
+  assert.match(sync.stderr, /upstream/);
+  assert.match(sync.stderr, /company/);
 });
