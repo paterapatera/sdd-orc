@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、検査は各スキルがスクリプト経由で実行します。パッケージ名は `@paterapatera/sdd-orc` 1.1.0 です。Node.js 18 以降が必要です。
+sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、検査は各スキルがスクリプト経由で実行します。パッケージ名は `@paterapatera/sdd-orc` 1.2.0 です。Node.js 18 以降が必要です。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
@@ -61,7 +61,7 @@ npx @paterapatera/sdd-orc migrate
 
 ## スクリプトと status
 
-`check` や `stamp`、`apply`、`renumber`、`index` などは、通常の作業では各スキルが自動で実行します。人が手で叩く必要はありません。
+`check` や `stamp`、`apply`、`renumber`、`index`、`status`、`fp` などは、通常の作業では各スキルが自動で実行します。人が手で叩く必要はありません。
 
 今のフェーズと、次に使うスキルを確認したいときだけ、次を実行します。
 
@@ -72,6 +72,27 @@ node .agents/skills/sdd-scripts/sdd.mjs status
 特定の issue や、開いている issue すべてを見る場合は `--issue <name>` や `--all` を付けます。
 
 実装の段階でテストを自動実行したい場合だけ、`sdd.config.json` の任意項目 `testCommand` にコマンドを書きます。
+
+## 機能ポイント（`fp`）
+
+チェッカーは、issue ごとに**カスタム機能ポイント（FP）**を機械的に数えます。同じ delta なら常に同じ結果になり、後から工数と比べる材料にできます。**sdd-orc は時間を計測しません**（時間の取り方は開発手法側の判断です）。
+
+機能ブランチ上（ブランチ名 = issue フォルダ名）で実行するか、`--issue` で名前を指定します。
+
+```sh
+node .agents/skills/sdd-scripts/sdd.mjs fp
+node .agents/skills/sdd-scripts/sdd.mjs fp --issue invoice-fix --format json
+```
+
+| 対象 | ポイント |
+|---|---|
+| `data.md` の `DATA-*`（社内データ・低複雑度） | 各 7 |
+| `Direction: Consumed` の `IF-*`（外部参照・低） | 各 5 |
+| `Direction: Provided` の `IF-*` | 各 4 |
+| `REQ-*` | 各 4（EI/EO/EQ には分けません。**IFPUG/NESMA 準拠ではないカスタム指標**です） |
+| `NFR-*`、steering、ADR、構造だけの delta | 0 |
+
+issue の delta（主に `requirements.md`、`design.md` / `research.md` にある steering 部分もマージ）の **ADDED / MODIFIED / REMOVED** から数えます。**MODIFIED** と **REMOVED** も **ADDED** と同じ固定重み（1 項目あたり満点）にしています。NESMA の変更系カウントはデータ要素の変更数など人の判断が必要なため、機械だけで安定させる簡略ルールです。**quick issue**（`requirements.md` がない）は対象外です。結果は **stdout のみ**に出し、`requirements.md` の stamp や base ハッシュを汚しません。
 
 ## 同梱スキル
 

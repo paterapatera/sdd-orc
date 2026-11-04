@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.1.0. Node.js 18 or later.
+**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.2.0. Node.js 18 or later.
 
 Registering tracker issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -61,7 +61,7 @@ npx @paterapatera/sdd-orc migrate
 
 ## Script and status
 
-Skills run the bundled checker (`check`, `stamp`, `apply`, `renumber`, `index`, and related steps) during each phase. You do not need to run those commands yourself in normal work.
+Skills run the bundled checker (`check`, `stamp`, `apply`, `renumber`, `index`, `status`, `fp`, and related steps) during each phase. You do not need to run those commands yourself in normal work.
 
 To see the current phase and the next skill for your branch, run:
 
@@ -72,6 +72,27 @@ node .agents/skills/sdd-scripts/sdd.mjs status
 Add `--issue <name>` or `--all` when you want a specific issue or every open issue.
 
 If `/sdd-impl` should run your test suite automatically, set optional `testCommand` in `sdd.config.json`.
+
+## Function points (`fp`)
+
+The checker can **count custom function points (FP)** for one issue so you can compare issues or relate them to effort later. **sdd-orc does not measure time** — only a stable count from the spec delta.
+
+Run on a feature branch (branch name = issue folder) or pass `--issue`:
+
+```sh
+node .agents/skills/sdd-scripts/sdd.mjs fp
+node .agents/skills/sdd-scripts/sdd.mjs fp --issue invoice-fix --format json
+```
+
+| What | Points |
+|---|---|
+| `DATA-*` in `data.md` (internal data, low) | 7 each |
+| `IF-*` with `Direction: Consumed` (external reference, low) | 5 each |
+| `IF-*` with `Direction: Provided` | 4 each |
+| `REQ-*` | 4 each (fixed — **not** IFPUG/NESMA EI/EO/EQ; this is a **custom** metric) |
+| `NFR-*`, steering, ADRs, structure-only delta | 0 |
+
+Counts come from **ADDED**, **MODIFIED**, and **REMOVED** items under each capability file in the issue delta (`requirements.md`, and steering parts of `design.md` / `research.md` when present). **MODIFIED** and **REMOVED** use the same fixed weight as **ADDED** (full unit per item), because NESMA enhancement rules need human judgment on changed data elements. **Quick issues** (no `requirements.md`) are skipped. Results are printed to **stdout** only so `requirements.md` stamps and base hashes stay untouched.
 
 ## Skills included
 

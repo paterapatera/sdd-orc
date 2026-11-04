@@ -4,6 +4,7 @@ import path from "node:path";
 import { regenerateLessonsIndex, validateLessons, validateCloseLessons } from "./lessons.mjs";
 import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, sameAfterApply, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
+import { countIssueFunctionPoints, formatFpReport } from "./fp.mjs";
 
 const SPEC_FILES = ["spec.md", "interfaces.md", "data.md", "quality.md"];
 const AUTO_TEST_LEVELS = TEST_LEVELS.filter((level) => level !== "Manual");
@@ -1743,17 +1744,18 @@ export function runCommand(start, argv) {
   }
   const opts = parseScriptArgs(argv);
   const command = opts._[0] || "";
-  if (!command || opts.unknown || !["check", "stamp", "apply", "renumber", "index", "status"].includes(command)) {
-    return { code: 2, stdout: "Usage: sdd.mjs check|stamp|apply|renumber|index|status [options]\n", stderr: "" };
+  if (!command || opts.unknown || !["check", "stamp", "apply", "renumber", "index", "status", "fp"].includes(command)) {
+    return { code: 2, stdout: "Usage: sdd.mjs check|stamp|apply|renumber|index|status|fp [options]\n", stderr: "" };
   }
   const root = findRoot(start);
   if (!root) return { code: 2, stdout: "", stderr: "sdd.config.json:1: USAGE Run this command inside a repository.\n" };
   const config = readConfig(root);
-  if (command !== "check") {
+  if (command !== "check" && command !== "fp") {
     const setup = setupDiags(root, config);
     const blocking = setup.filter((item) => item.rule !== "SETUP_STEERING_MISSING");
     if (blocking.length) return { code: exitCode(blocking), stdout: output(blocking, opts.format), stderr: "" };
   }
+  if (command === "fp") return runFp(root, config, opts);
   if (command === "index") {
     const tree = loadTree(root, kdir(config));
     const before = cloneTree(tree);
@@ -1880,6 +1882,22 @@ function listIssues(root, config) {
   const dir = path.join(root, config.docsDir, "issues");
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
+}
+
+function runFp(root, config, opts) {
+  const configDiags = setupDiags(root, config).filter((item) => item.rule !== "SETUP_STEERING_MISSING");
+  if (configDiags.length) return { code: exitCode(configDiags), stdout: output(configDiags, opts.format), stderr: "" };
+  const issue = resolveIssue(root, config, opts.issue);
+  if (!issue) {
+    return { code: 2, stdout: "", stderr: "sdd.mjs fp:1: USAGE Pass --issue <name> or run on a feature branch\n" };
+  }
+  if (!fs.existsSync(issueDir(root, config, issue))) {
+    const diags = [diag(`${config.docsDir}/issues/${issue}`, 1, "ISSUE_NOT_FOUND", "The issue directory does not exist")];
+    return { code: 2, stdout: output(diags, opts.format), stderr: "" };
+  }
+  const files = readIssue(root, config, issue);
+  const result = countIssueFunctionPoints(files);
+  return { code: 0, stdout: formatFpReport(issue, result, opts.format), stderr: "" };
 }
 
 function runStatus(root, config, opts) {

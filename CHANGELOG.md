@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.0
+
+- Add **`fp`** command on the bundled checker: mechanical **custom function point (FP)** count per issue from the requirements delta (NESMA estimated sizes, simplified). Output goes to **stdout** only (text or `--format json`); nothing is written into `requirements.md`.
+- REQ items count **4** FP each (custom rule — not split into EI/EO/EQ). DATA **7**, IF Consumed **5**, IF Provided **4**, NFR and steering **0**. Quick issues (no `requirements.md`) are skipped.
+- Document the metric in README and README.ja (junior-friendly; Japanese in です/ます style).
+
 ## 1.1.0
 
 - Split lesson **recording** from **adoption**: `/sdd-close` only records occurrences, review closes, and new `candidate` lessons; it does not change lesson status or print `/sdd-init`.
