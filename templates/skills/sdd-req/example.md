@@ -66,6 +66,7 @@
 
 #### REQ-INV-1: Issue invoice on confirmation
 - change: The invoice now shows its due date.
+- Process: Issue invoice (EO)
 
 When an order is confirmed, the system SHALL issue an invoice that shows its due date.
 
@@ -176,6 +177,7 @@ Issuing credit notes for whole invoices. Invoices themselves belong to [Invoice]
 ### ADDED
 
 #### REQ-CRN-NEW-1: Issue credit note
+- Process: Issue credit note (EO)
 When a clerk issues a credit note for an issued invoice, the system SHALL record a credit note for the whole invoice amount.
 
 ##### Scenario: Credit a returned order
@@ -184,6 +186,7 @@ When a clerk issues a credit note for an issued invoice, the system SHALL record
 - **Then** a credit note for the whole amount is listed on the invoice
 
 #### REQ-CRN-NEW-2: Refuse a second credit note
+- Process: Issue credit note (EO)
 If a clerk issues a credit note for an invoice that already has one, then the system SHALL leave the existing credit note from REQ-CRN-NEW-1 unchanged and show that the invoice is already credited.
 
 ##### Scenario: Second credit note

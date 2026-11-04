@@ -63,6 +63,12 @@ export function commitAll(dir, message) {
   return git(["commit", "-m", message], dir);
 }
 
+export function attachReqProcess(content, name, type = "EQ") {
+  if (/^-\s+Process:/m.test(content)) return content;
+  const prefix = name === "none" ? "- Process: none\n" : `- Process: ${name} (${type})\n`;
+  return `${prefix}${content}`;
+}
+
 export function writeInvoiceIssue(dir, docsDir = "docs") {
   const issue = path.join(dir, docsDir, "issues/invoice-reissue");
   fs.mkdirSync(issue, { recursive: true });
@@ -128,6 +134,7 @@ The invoice capability records invoices.
 
 ### ADDED
 #### REQ-INV-NEW-1: Issue invoice on confirmation
+- Process: Issue invoice (EO)
 When an order is confirmed, the system SHALL issue an invoice.
 
 ##### Scenario: Issue on confirmation

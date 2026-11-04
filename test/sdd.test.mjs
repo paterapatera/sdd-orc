@@ -34,7 +34,7 @@ test("init, update, and migrate install one shared script", () => {
   const created = initRepo(dir, ["--skills-dir", ".agents", "--skills-dir", ".claude", "--lang", "ja", "--runtime", "bun"]);
   assert.equal(created.status, 0, created.stderr + created.stdout);
   const config = JSON.parse(read(dir, "sdd.config.json"));
-  assert.equal(config.version, "1.1.0");
+  assert.equal(config.version, "1.2.0");
   assert.equal(config.formatVersion, 1);
   assert.equal(config.lang, "ja");
   assert.deepEqual(config.skillsDir, [".agents", ".claude"]);
@@ -49,6 +49,10 @@ test("init, update, and migrate install one shared script", () => {
   assert.match(read(dir, ".claude/skills/sdd-close/SKILL.md"), /bun \.agents\/skills\/sdd-scripts\/sdd\.mjs/);
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-lessons/SKILL.md")), true);
   assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Record these lesson entries/i);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /fp --issue <feature> --format json/);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Before deleting the issue directory/);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /not counted.*quick issues/i);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /summary\.itemCounts\.NFR/);
   assert.doesNotMatch(read(dir, ".agents/skills/sdd-close/SKILL.md"), /ready-to-send agent chat line/i);
   assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /check --scope knowledge/);
   assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /A 未判断の候補/);
@@ -195,6 +199,7 @@ Receipts confirm payment.
 
 ### ADDED
 #### REQ-RCPT-NEW-1: Send receipt
+- Process: Send receipt (EO)
 When an invoice is paid, the system SHALL send a receipt.
 
 ##### Scenario: Paid
@@ -232,6 +237,7 @@ test("stamp records base and apply refuses a stale replacement", () => {
 ### MODIFIED
 #### REQ-INV-1: Issue invoice on confirmation
 - change: Record the invoice number.
+- Process: Issue invoice (EO)
 When an order is confirmed, the system SHALL issue a numbered invoice.
 
 ##### Scenario: Issue on confirmation
@@ -378,6 +384,7 @@ test("structure operations move, split, and record former codes", () => {
   fs.appendFileSync(requirements, `
 ### ADDED
 #### REQ-INV-NEW-2: Void an invoice
+- Process: Void invoice (EI)
 When a clerk voids an invoice, the system SHALL mark that invoice void.
 
 ##### Scenario: Void
@@ -753,6 +760,7 @@ function prepareInvoiceWithReprint(dir) {
   const invoice = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
   fs.appendFileSync(invoice, `
 #### REQ-INV-NEW-2: Reprint invoice
+- Process: Reprint invoice (EQ)
 When a clerk reprints an invoice, the system SHALL issue a copy.
 
 ##### Scenario: Reprint
@@ -888,7 +896,7 @@ test("init through close check ships one package version", () => {
   const config = JSON.parse(read(dir, "sdd.config.json"));
   assert.equal(version.status, 0, version.stderr);
   assert.equal(version.stdout.trim(), config.version);
-  assert.equal(config.version, "1.1.0");
+  assert.equal(config.version, "1.2.0");
   assert.match(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /REQ-INV-1/);
   assert.doesNotMatch(read(dir, "src/invoice.js"), /-NEW-/);
 });
@@ -1022,6 +1030,57 @@ test("task check requires Requirements on each non-manual minor", () => {
   );
   const checked = sdd(dir, ["check", "--issue", "invoice-reissue"]);
   assert.match(checked.stdout, /TASK_MINOR_REQUIREMENTS/);
+});
+
+test("check requires Process on ADDED and MODIFIED requirements", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  writeInvoiceIssue(dir);
+  const requirements = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
+  let text = read(dir, "docs/issues/invoice-reissue/requirements.md");
+  text = text.replace("- Process: Issue invoice (EO)\n", "");
+  fs.writeFileSync(requirements, text);
+  commitAll(dir, "docs: drop process");
+  const failed = sdd(dir, ["check", "--issue", "invoice-reissue"]);
+  assert.equal(failed.status, 1);
+  assert.match(failed.stdout, /REQ_PROCESS/);
+});
+
+test("check rejects conflicting Process types for one name", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  writeInvoiceIssue(dir);
+  const requirements = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
+  fs.appendFileSync(requirements, `
+### ADDED
+#### REQ-INV-NEW-2: Extra rule
+- Process: Issue invoice (EI)
+When x, the system SHALL x.
+
+##### Scenario: S
+- **Given** g
+- **When** w
+- **Then** t
+`);
+  commitAll(dir, "docs: conflict");
+  const failed = sdd(dir, ["check", "--issue", "invoice-reissue"]);
+  assert.equal(failed.status, 1);
+  assert.match(failed.stdout, /REQ_PROCESS/);
+  assert.match(failed.stdout, /cannot be both/);
+});
+
+test("check allows permanent specs without Process lines", () => {
+  const dir = tempRepo();
+  prepare(dir);
+  writeInvoiceIssue(dir);
+  commitAll(dir, "docs: proposal");
+  assert.equal(sdd(dir, ["apply", "--issue", "invoice-reissue"]).status, 0);
+  const specPath = path.join(dir, "docs/knowledge/specs/billing/invoice/spec.md");
+  const withoutProcess = read(dir, "docs/knowledge/specs/billing/invoice/spec.md").replace(/^- Process:.*\n/m, "");
+  fs.writeFileSync(specPath, withoutProcess);
+  commitAll(dir, "docs: legacy spec without Process");
+  assert.doesNotMatch(read(dir, "docs/knowledge/specs/billing/invoice/spec.md"), /^-\s+Process:/m);
+  assert.equal(sdd(dir, ["check", "--scope", "knowledge"]).status, 0);
 });
 
 test("update stops before overwriting when migrate is required and removes obsolete skills", () => {

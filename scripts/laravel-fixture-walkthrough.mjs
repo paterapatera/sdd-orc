@@ -99,6 +99,7 @@ fs.writeFileSync(path.join(issue, "requirements.md"), `# Requirements
 
 ### ADDED
 #### REQ-ANN-NEW-1: Save draft
+- Process: Save draft (EI)
 管理者が下書きを保存するとき、システムは下書きを保存しなければならない。
 
 ##### Scenario: Save

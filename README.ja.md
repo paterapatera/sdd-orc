@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、検査は各スキルがスクリプト経由で実行します。パッケージ名は `@paterapatera/sdd-orc` 1.1.0 です。Node.js 18 以降が必要です。
+sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、検査は各スキルがスクリプト経由で実行します。パッケージ名は `@paterapatera/sdd-orc` 1.2.0 です。Node.js 18 以降が必要です。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
@@ -57,11 +57,11 @@ npx @paterapatera/sdd-orc update
 npx @paterapatera/sdd-orc migrate
 ```
 
-`update` はスキルとスクリプトだけを更新し、`knowledge/` は触りません。`migrate` は将来のフォーマット変更用で、現在のフォーマット版 1 では変換はありません。
+`update` はスキルとスクリプトだけを更新し、`knowledge/` は触りません。**1.2.0 へ上げるとき:** 進行中 issue の delta で **ADDED** / **MODIFIED** の各 `REQ-*` に `- Process:` 行を足してから `check` を通してください。`migrate` は将来のフォーマット変更用で、現在のフォーマット版 1 では変換はありません。
 
 ## スクリプトと status
 
-`check` や `stamp`、`apply`、`renumber`、`index` などは、通常の作業では各スキルが自動で実行します。人が手で叩く必要はありません。
+`check` や `stamp`、`apply`、`renumber`、`index`、`status`、`fp` などは、通常の作業では各スキルが自動で実行します。人が手で叩く必要はありません。
 
 今のフェーズと、次に使うスキルを確認したいときだけ、次を実行します。
 
@@ -72,6 +72,34 @@ node .agents/skills/sdd-scripts/sdd.mjs status
 特定の issue や、開いている issue すべてを見る場合は `--issue <name>` や `--all` を付けます。
 
 実装の段階でテストを自動実行したい場合だけ、`sdd.config.json` の任意項目 `testCommand` にコマンドを書きます。
+
+## 機能ポイント（`fp`）
+
+チェッカーは、issue ごとに**カスタム機能ポイント（FP）**を機械的に数えます。同じ delta なら常に同じ結果になり、後から工数と比べる材料にできます。**sdd-orc は時間を計測しません**（時間の取り方は開発手法側の判断です）。
+
+機能ブランチ上（ブランチ名 = issue フォルダ名）で実行するか、`--issue` で名前を指定します。
+
+```sh
+node .agents/skills/sdd-scripts/sdd.mjs fp
+node .agents/skills/sdd-scripts/sdd.mjs fp --issue invoice-fix --format json
+```
+
+| 対象 | ポイント |
+|---|---|
+| `data.md` の `DATA-*`（社内データ・低複雑度） | 各 7 |
+| `Direction: Consumed` の `IF-*`（外部参照・低） | 各 5 |
+| `Direction: Provided` の `IF-*` | 各 4 |
+| 要素プロセス（issue delta の `REQ-*` に付ける `Process:`） | 同名プロセスごとに **EI** 4、**EO** 5、**EQ** 4（**IFPUG/NESMA 認定ではないカスタム指標**） |
+| `Process: none` の REQ | 0（件数は出力に表示） |
+| `NFR-*`、steering、ADR、構造だけの delta | 0 |
+
+issue delta の **ADDED / MODIFIED** の各 `REQ-*` には `- Process: <名前> (EI|EO|EQ)` または `- Process: none` が必要です（`check` が検査します）。複数の REQ が同じ名前を共有できます。**`fp` はそのプロセスを 1 回だけ数えます。** 例: 3 つの REQ がすべて `- Process: Confirm order (EQ)` なら **EQ 1 件 = 4 FP** であり、12 FP にはなりません。
+
+issue の delta（`requirements.md` と、あれば `design.md` / `research.md` をマージ）の **ADDED / MODIFIED / REMOVED** から数えます。`/steering/` 配下は除外します。REQ **id** は capability ファイルごとに 1 回まで（**REMOVED > MODIFIED > ADDED**）。**プロセス**は `Process:` 名（前後空白は trim、連続空白は 1 つに）と型でグループ化します。**プロセスの bucket**（EI/EO/EQ 表の ADDED/MODIFIED/REMOVED）：グループ内の REQ がすべて **REMOVED** なら **REMOVED**；それ以外で **その処理のグループ内**に **MODIFIED** または **REMOVED** の REQ が 1 件でもあれば **MODIFIED**；さらに **ベースブランチ**の spec に同名プロセスがあれば **MODIFIED**（`git show` のみ。作業ツリーは見ません）；それ以外は **ADDED**。**MODIFIED** / **REMOVED** も **ADDED** と同じ満点の EI/EO/EQ 重みです。**quick issue** は対象外です。結果は **stdout のみ**です。**REMOVED** の `REQ-*` で delta に `Process` がないときは **ベースブランチ**の `spec.md` から読み、見つからなければ **不明プロセス（0 FP）** 行に載せます（REMOVED `IF-*` と同様の参照順）。**REMOVED** の `IF-*` で `Direction` がないときはベースブランチの `interfaces.md` を読みます。**MODIFIED** の `IF-*` は delta に `Direction` が必要で、なければ **IF unset**（0 FP）です。
+
+**既知の限界（REMOVED `IF-*` とプロセス参照）:** 参照に失敗したときは **`IF unset (0 FP)`** や **不明プロセス（0 FP）** の行で示します（黙って 0 にはしません）。(1) **ローカルにベースブランチがない** — 例: `git clone -b <機能ブランチ>` や、`origin/main` だけの浅い clone でローカル `main` がない。REMOVED IF は 0 FP です。`Process:` 行のない **REMOVED** の `REQ-*`（旧 spec でよくあります）は apply 後に解決できず **不明プロセス（0 FP）** 行に載ります。レポートに名前が必要なら REMOVED ブロックに `- Process:` を書いてください。ローカルにベースブランチがないとき、この issue で **ADDED** の REQ だけのプロセスは表では **MODIFIED** ではなく **ADDED** と表示されます。FP 合計は変わりません。(2) **同じブランチで前の issue が追加した IF を、後の issue が削除** — apply 後はベースブランチにその IF がないため 0 FP です。(3) **モノレポのサブディレクトリ** — git パスはリポジトリルート基準です（`renumber` と同じ）。apply 後に REMOVED IF が 0 になることがあります。(4) **apply の前** — 作業ツリーの knowledge を先に読むため、未コミットの編集で FP が変わることがあります（その状態では check が通らないため、close で出す PR 用の値は通常安定します）。
+
+**`/sdd-close`** は issue フォルダを消す**前**に `fp --format json` を実行し、表示する PR 本文に短い **機能ポイント**節を足します（合計、**DATA** / **EI** / **EO** / **EQ** / **IF** の FP と ADDED/MODIFIED/REMOVED、REQ 件数とプロセス件数、必要なら **Process: none**・**不明プロセス**・**IF unset**・**NFR** の 0 FP 行。quick issue は「数えない」1 行のみ）。
 
 ## 同梱スキル
 

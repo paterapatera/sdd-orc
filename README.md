@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.1.0. Node.js 18 or later.
+**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.2.0. Node.js 18 or later.
 
 Registering tracker issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -57,11 +57,11 @@ npx @paterapatera/sdd-orc update
 npx @paterapatera/sdd-orc migrate
 ```
 
-`update` refreshes skills and the script; it does not edit `knowledge/`. `migrate` is for future format changes; format version 1 has nothing to convert.
+`update` refreshes skills and the script; it does not edit `knowledge/`. **Upgrading to 1.2.0:** add `- Process:` lines to every **ADDED** and **MODIFIED** `REQ-*` in open issue deltas before `check` passes again. `migrate` is for future format changes; format version 1 has nothing to convert.
 
 ## Script and status
 
-Skills run the bundled checker (`check`, `stamp`, `apply`, `renumber`, `index`, and related steps) during each phase. You do not need to run those commands yourself in normal work.
+Skills run the bundled checker (`check`, `stamp`, `apply`, `renumber`, `index`, `status`, `fp`, and related steps) during each phase. You do not need to run those commands yourself in normal work.
 
 To see the current phase and the next skill for your branch, run:
 
@@ -72,6 +72,34 @@ node .agents/skills/sdd-scripts/sdd.mjs status
 Add `--issue <name>` or `--all` when you want a specific issue or every open issue.
 
 If `/sdd-impl` should run your test suite automatically, set optional `testCommand` in `sdd.config.json`.
+
+## Function points (`fp`)
+
+The checker can **count custom function points (FP)** for one issue so you can compare issues or relate them to effort later. **sdd-orc does not measure time** — only a stable count from the spec delta.
+
+Run on a feature branch (branch name = issue folder) or pass `--issue`:
+
+```sh
+node .agents/skills/sdd-scripts/sdd.mjs fp
+node .agents/skills/sdd-scripts/sdd.mjs fp --issue invoice-fix --format json
+```
+
+| What | Points |
+|---|---|
+| `DATA-*` in `data.md` (internal data, low) | 7 each |
+| `IF-*` with `Direction: Consumed` (external reference, low) | 5 each |
+| `IF-*` with `Direction: Provided` | 4 each |
+| Elementary **process** (`Process:` on each `REQ-*` in the issue delta) | **EI** 4, **EO** 5, **EQ** 4 per distinct process name (custom — not IFPUG/NESMA-certified) |
+| `Process: none` on a REQ | 0 (REQ still listed in output) |
+| `NFR-*`, steering, ADRs, structure-only delta | 0 |
+
+Every **ADDED** or **MODIFIED** `REQ-*` in the issue delta must include `- Process: <name> (EI|EO|EQ)` or `- Process: none`. Several requirements may share one name; **`fp` counts that process once**. Example: three REQs all tagged `- Process: Confirm order (EQ)` count as **one EQ = 4 FP**, not 12.
+
+Counts come from **ADDED**, **MODIFIED**, and **REMOVED** items in the merged issue delta (`requirements.md`, plus `design.md` and `research.md` when present). Paths under `/steering/` are skipped; other delta file sections in those documents are included. Each **requirement id** is deduped **at most once per capability file** (REMOVED > MODIFIED > ADDED); **processes** are grouped by trimmed `Process:` name and type. **Process bucket** (for the EI/EO/EQ table): **REMOVED** when every REQ in the group is REMOVED; **MODIFIED** when any REQ in that process's group is MODIFIED or REMOVED (but not all REMOVED), or the process name appears on a REQ in **base-branch** specs (`git show` only); otherwise **ADDED**. **MODIFIED** and **REMOVED** processes use the same full EI/EO/EQ weight as **ADDED**. **Quick issues** (no `requirements.md`) are skipped. Results are printed to **stdout** only. For **REMOVED** `REQ-*` without `Process` in the delta, `fp` reads the id from **base-branch** `spec.md` (same order as REMOVED `IF-*`); missing process names appear as **unknown process (0 FP)**. For **REMOVED** `IF-*`, when the delta omits `Direction`, `fp` reads **`interfaces.md` on the base branch**. **MODIFIED** `IF-*` must include `Direction` in the delta or they count as **IF unset** (0 FP).
+
+**Known limits (REMOVED `IF-*` and process lookup):** when lookup fails, output includes **`IF unset (0 FP)`** or **unknown process (0 FP)** (not a silent zero). (1) **No local base branch** — for example `git clone -b <feature>` or a shallow clone with only `origin/main` and no local `main`. REMOVED IF scores 0. A **REMOVED** `REQ-*` with no `Process:` line (common on older specs) cannot be resolved after apply and appears on the **unknown process (0 FP)** line; add `- Process:` in the REMOVED block if you need the name in the report. When the base branch is missing locally, a process whose REQs in this issue are all **ADDED** is labelled **ADDED** rather than **MODIFIED** in the table; the FP total is unchanged. (2) **Same branch, earlier issue added the IF** — a later issue removes it; after apply it is not on the base branch, so REMOVED IF scores 0. (3) **Monorepo subdirectory** — git paths are from the repository root (same as `renumber`); after apply, REMOVED IF may score 0 when the checker runs outside that layout. (4) **Before apply** — `Direction` is taken from working-tree knowledge first; uncommitted edits can change the score until you commit (close normally runs after a passing check, so printed PR totals stay stable).
+
+**`/sdd-close`** runs `fp --format json` before it deletes the issue folder and adds a short **Function points** section to the pull request text it prints (total; **DATA**, **EI**, **EO**, **EQ**, and **IF** rows with ADDED/MODIFIED/REMOVED process or item counts; REQ and distinct process counts; optional **Process: none**, **unknown process**, **IF unset**, and **NFR** lines at 0 FP; quick issues get a one-line “not counted” note only).
 
 ## Skills included
 
