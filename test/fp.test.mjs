@@ -86,6 +86,8 @@ legacy
   assert.equal(first.summary.itemCounts.REQ.ADDED, 1);
   assert.equal(first.summary.itemCounts.REQ.MODIFIED, 1);
   assert.equal(first.summary.itemCounts.REQ.REMOVED, 1);
+  assert.equal(first.summary.itemCounts.NFR.ADDED, 1);
+  assert.equal(first.summary.points.NFR, undefined);
 });
 
 test("provisional NEW ids and duplicate MODIFIED dedupe", () => {
@@ -409,25 +411,89 @@ When a, the system SHALL alpha.
 test("formatFpForPullRequest quick and full breakdown", () => {
   const quick = formatFpForPullRequest({ skipped: true, reason: "quick_issue" }, "en");
   assert.match(quick, /Not counted for quick issues/);
+  assert.doesNotMatch(quick, /NFR:/);
   const jaQuick = formatFpForPullRequest({ skipped: true, reason: "quick_issue" }, "ja");
   assert.match(jaQuick, /数えません/);
+  assert.doesNotMatch(jaQuick, /NFR:/);
 
-  const full = formatFpForPullRequest({
+  const baseSummary = {
+    total: 20,
+    points: { DATA: 7, REQ: 4, IF_CONSUMED: 5, IF_PROVIDED: 4 },
+    itemCounts: {
+      DATA: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+      REQ: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+      IF_CONSUMED: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+      IF_PROVIDED: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+      NFR: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
+    },
+    ifUnset: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
+  };
+
+  const full = formatFpForPullRequest({ skipped: false, summary: baseSummary }, "en");
+  assert.match(full, /Total \*\*20\*\* FP/);
+  assert.match(full, /IF Consumed \| 5 \| A1\/M0\/R0/);
+  assert.doesNotMatch(full, /^NFR:/m);
+
+  const withNfr = formatFpForPullRequest({
     skipped: false,
     summary: {
-      total: 20,
-      points: { DATA: 7, REQ: 4, IF_CONSUMED: 5, IF_PROVIDED: 4 },
+      ...baseSummary,
+      itemCounts: {
+        ...baseSummary.itemCounts,
+        NFR: { ADDED: 1, MODIFIED: 0, REMOVED: 1 },
+      },
+    },
+  }, "en");
+  assert.match(withNfr, /Total \*\*20\*\* FP/);
+  assert.match(withNfr, /NFR: A1\/M0\/R1 \(0 FP\)/);
+
+  const jaNfr = formatFpForPullRequest({
+    skipped: false,
+    summary: {
+      ...baseSummary,
+      total: 11,
+      points: { DATA: 7, REQ: 4, IF_CONSUMED: 0, IF_PROVIDED: 0 },
       itemCounts: {
         DATA: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
         REQ: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
-        IF_CONSUMED: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
-        IF_PROVIDED: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+        IF_CONSUMED: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
+        IF_PROVIDED: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
+        NFR: { ADDED: 2, MODIFIED: 1, REMOVED: 0 },
       },
-      ifUnset: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
     },
-  }, "en");
-  assert.match(full, /Total \*\*20\*\* FP/);
-  assert.match(full, /IF Consumed \| 5 \| A1\/M0\/R0/);
+  }, "ja");
+  assert.match(jaNfr, /合計 \*\*11\*\* FP/);
+  assert.match(jaNfr, /NFR: A2\/M1\/R0（0 FP）/);
+});
+
+test("formatFpForPullRequest NFR counts from delta do not change total", () => {
+  const markdown = `# Requirements
+
+# Delta
+
+## /specs/billing/invoice/spec.md
+
+### ADDED
+#### REQ-INV-NEW-1: One
+When x, the system SHALL do a.
+
+##### Scenario: S
+- **Given** g
+- **When** w
+- **Then** t
+
+## /specs/billing/invoice/quality.md
+
+### ADDED
+#### NFR-INV-NEW-1: Latency
+- Characteristic: Performance efficiency
+`;
+  const { summary, total } = countDeltaItems(parseDeltaMarkdown(markdown, "requirements"));
+  assert.equal(total, 4);
+  assert.equal(summary.itemCounts.NFR.ADDED, 1);
+  const pr = formatFpForPullRequest({ skipped: false, summary }, "en");
+  assert.match(pr, /NFR: A1\/M0\/R0 \(0 FP\)/);
+  assert.match(pr, /Total \*\*4\*\* FP/);
 });
 
 test("formatFpReport skipped text", () => {

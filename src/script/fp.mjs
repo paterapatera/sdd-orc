@@ -151,9 +151,14 @@ export function countDeltaItems(delta, ctx = null) {
 
 export function buildFpSummary(items) {
   const itemCounts = Object.fromEntries(FP_PR_KINDS.map((kind) => [kind, { ADDED: 0, MODIFIED: 0, REMOVED: 0 }]));
+  itemCounts.NFR = { ADDED: 0, MODIFIED: 0, REMOVED: 0 };
   const points = Object.fromEntries(FP_PR_KINDS.map((kind) => [kind, 0]));
   const ifUnset = { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 };
   for (const row of items) {
+    if (row.kind === "NFR") {
+      itemCounts.NFR[row.bucket] += 1;
+      continue;
+    }
     if (row.kind === "IF_UNSET") {
       ifUnset.itemCounts[row.bucket] += 1;
       continue;
@@ -210,6 +215,11 @@ function unsetItems(ifUnset) {
   return ifUnset.itemCounts.ADDED + ifUnset.itemCounts.MODIFIED + ifUnset.itemCounts.REMOVED;
 }
 
+function nfrItems(nfrCounts) {
+  if (!nfrCounts) return 0;
+  return nfrCounts.ADDED + nfrCounts.MODIFIED + nfrCounts.REMOVED;
+}
+
 /** Short markdown for pull request bodies; lang is en or ja. */
 export function formatFpForPullRequest(result, lang = "en") {
   if (result.skipped && result.reason === "quick_issue") {
@@ -241,7 +251,12 @@ export function formatFpForPullRequest(result, lang = "en") {
       ? `\nIF（Direction 不明）: ${countCell(summary.ifUnset.itemCounts)}（0 FP）\n`
       : `\nIF unset (no Direction): ${countCell(summary.ifUnset.itemCounts)} (0 FP)\n`)
     : "";
-  return `${heading}\n\n${totalLine} ${note}\n\n${tableHead}\n${tableBody}${unsetLine}\n`;
+  const nfrLine = nfrItems(summary.itemCounts.NFR)
+    ? (lang === "ja"
+      ? `\nNFR: ${countCell(summary.itemCounts.NFR)}（0 FP）\n`
+      : `\nNFR: ${countCell(summary.itemCounts.NFR)} (0 FP)\n`)
+    : "";
+  return `${heading}\n\n${totalLine} ${note}\n\n${tableHead}\n${tableBody}${unsetLine}${nfrLine}\n`;
 }
 
 export function formatFpReport(issue, result, format) {

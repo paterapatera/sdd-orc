@@ -96,7 +96,7 @@ Counts come from **ADDED**, **MODIFIED**, and **REMOVED** items in the merged is
 
 **Known limits (REMOVED `IF-*`):** when lookup fails, output includes **`IF unset (0 FP)`** (not a silent zero). (1) **No local base branch** — for example `git clone -b <feature>` or a shallow clone with only `origin/main` and no local `main`. REMOVED IF scores 0. (2) **Same branch, earlier issue added the IF** — a later issue removes it; after apply it is not on the base branch, so REMOVED IF scores 0. (3) **Monorepo subdirectory** — git paths are from the repository root (same as `renumber`); after apply, REMOVED IF may score 0 when the checker runs outside that layout. (4) **Before apply** — `Direction` is taken from working-tree knowledge first; uncommitted edits can change the score until you commit (close normally runs after a passing check, so printed PR totals stay stable).
 
-**`/sdd-close`** runs `fp --format json` before it deletes the issue folder and adds a short **Function points** section to the pull request text it prints (total, per-kind FP, and ADDED/MODIFIED/REMOVED counts; quick issues get a one-line “not counted” note).
+**`/sdd-close`** runs `fp --format json` before it deletes the issue folder and adds a short **Function points** section to the pull request text it prints (total, per-kind FP, ADDED/MODIFIED/REMOVED counts, optional **IF unset** and **NFR** lines at 0 FP; quick issues get a one-line “not counted” note only).
 
 ## Skills included
 

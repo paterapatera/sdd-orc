@@ -96,7 +96,7 @@ issue の delta（`requirements.md` と、あれば `design.md` / `research.md` 
 
 **既知の限界（REMOVED `IF-*`）:** 次の場合は **`IF unset (0 FP)`** 行で示します（黙って 0 にはしません）。(1) **ローカルにベースブランチがない** — 例: `git clone -b <機能ブランチ>` や、`origin/main` だけの浅い clone でローカル `main` がない。REMOVED IF は 0 FP です。(2) **同じブランチで前の issue が追加した IF を、後の issue が削除** — apply 後はベースブランチにその IF がないため 0 FP です。(3) **モノレポのサブディレクトリ** — git パスはリポジトリルート基準です（`renumber` と同じ）。apply 後に REMOVED IF が 0 になることがあります。(4) **apply の前** — 作業ツリーの knowledge を先に読むため、未コミットの編集で FP が変わることがあります（その状態では check が通らないため、close で出す PR 用の値は通常安定します）。
 
-**`/sdd-close`** は issue フォルダを消す**前**に `fp --format json` を実行し、表示する PR 本文に短い **機能ポイント**節を足します（合計、種別ごとの FP、ADDED/MODIFIED/REMOVED の件数。quick issue は「数えない」1 行）。
+**`/sdd-close`** は issue フォルダを消す**前**に `fp --format json` を実行し、表示する PR 本文に短い **機能ポイント**節を足します（合計、種別ごとの FP、ADDED/MODIFIED/REMOVED の件数、必要なら **IF unset** と **NFR** の 0 FP 行。quick issue は「数えない」1 行のみ）。
 
 ## 同梱スキル
 
