@@ -36,7 +36,7 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Only this skill 
    - `- Lessons: <kebab-slug>` when the entry became (or updated) that lesson, or
    - `- Lessons: excluded: <short reason>` when nothing durable was recorded.
 
-   Commit `feedback.md` and `task.md` on the branch when you add dispositions. Write or update lesson pages and regenerate `lessons/index.md` with `__SDD_RUNTIME__ __SDD_SCRIPT__ index`; **stage and commit** those lesson files together with the disposition commit (or include them in the final close commit in step 7 if you have not committed them yet).
+   Commit `feedback.md` and `task.md` on the branch when you add dispositions. Write or update lesson pages and regenerate `lessons/index.md` with `__SDD_RUNTIME__ __SDD_SCRIPT__ index`; **stage and commit** those lesson files together with the disposition commit (or include them in the final close commit in step 6 if you have not committed them yet).
 
    **Repeated-check diagnostic:** when the same checker rule code hits the same file path on **two consecutive** `check` runs for this issue, treat it as a recurrence signal for lessons (same kind of failure as before).
 

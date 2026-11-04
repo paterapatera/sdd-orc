@@ -491,4 +491,23 @@ test("sync-base stops and lists remotes when several exist and base has no upstr
   assert.match(sync.stderr, /several remotes/);
   assert.match(sync.stderr, /upstream/);
   assert.match(sync.stderr, /company/);
+  assert.match(sync.stderr, /branch --set-upstream-to=/);
+});
+
+test("sync-base ambiguous remotes message covers missing local base", () => {
+  const bareA = bareRemote();
+  const bareB = bareRemote();
+  const hub = tempRepo();
+  prepareRepo(hub);
+  git(["remote", "add", "upstream", bareA], hub);
+  git(["remote", "add", "company", bareB], hub);
+  git(["push", "upstream", "main"], hub);
+  git(["push", "company", "main"], hub);
+  git(["checkout", "-b", "feature"], hub);
+  git(["update-ref", "-d", "refs/heads/main"], hub);
+  const sync = sdd(hub, ["sync-base"]);
+  assert.equal(sync.status, 1);
+  assert.match(sync.stderr, /several remotes/);
+  assert.match(sync.stderr, /branch --track main/);
+  assert.doesNotMatch(sync.stderr, /set the upstream for main/);
 });

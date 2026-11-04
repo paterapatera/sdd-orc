@@ -30,6 +30,11 @@ export function resolveFetchRemote(root, base, git) {
   return { status: "ambiguous", remotes };
 }
 
+function ambiguousRemoteMessage(base, remotes) {
+  const names = remotes.join(", ");
+  return `sync-base: several remotes (${names}) with no upstream on ${base}; pick one remote and run git fetch <remote> ${base} && git branch --track ${base} <remote>/${base}, or if local ${base} already exists run git branch --set-upstream-to=<remote>/${base} ${base}; then retry\n`;
+}
+
 function checkedOutRefusal(text) {
   return /checked out|cannot lock ref|is checked out at|would be overwritten by/i.test(text);
 }
@@ -46,11 +51,10 @@ export function runSyncBase(root, baseBranch, git) {
     return { code: 0, stdout: "sync-base: no git remote; using local base branch only\n", stderr: "" };
   }
   if (resolved.status === "ambiguous") {
-    const names = resolved.remotes.join(", ");
     return {
       code: 1,
       stdout: "",
-      stderr: `sync-base: several remotes (${names}) and ${base} has no upstream; set the upstream for ${base}, then retry\n`,
+      stderr: ambiguousRemoteMessage(base, resolved.remotes),
     };
   }
 

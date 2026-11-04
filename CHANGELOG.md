@@ -2,7 +2,7 @@
 
 ## 1.2.1
 
-- Fix **`sync-base`**: fetch with an explicit remote-tracking refspec; fast-forward local base via `git fetch .` (not `update-ref`) so a checked-out base branch is not left with a stale index. Resolve a single non-`origin` remote; stop when several remotes exist and upstream is unset.
+- Add **`sync-base`** on the bundled checker: before close merges the base branch, fetch from the remote and fast-forward the **local** `baseBranch` ref (default `main`) without checking it out. Uses an explicit remote-tracking refspec; updates local base via `git fetch .` so git refuses when the base is checked out in any worktree. Stops when fetch fails or when local base is ahead/diverged from the remote; uses the sole remote when there is only one (even if it is not named `origin`); stops and lists remotes when several exist and upstream is unset; skips with a note when no remote exists.
 - **`/sdd-close`** (normal and re-close) runs `sync-base` before merging the base branch so `renumber`, `apply`, and `fp` see an up-to-date local base.
 - README / README.ja document why close syncs base first and update **known limits** case (1): missing or stale local base is handled on `/sdd-close`; manual `fp` without a local base can still show 0 FP lines.
 
