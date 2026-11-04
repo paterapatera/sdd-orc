@@ -94,6 +94,8 @@ node .agents/skills/sdd-scripts/sdd.mjs fp --issue invoice-fix --format json
 
 Counts come from **ADDED**, **MODIFIED**, and **REMOVED** items under each capability file in the issue delta (`requirements.md`, and steering parts of `design.md` / `research.md` when present). **MODIFIED** and **REMOVED** use the same fixed weight as **ADDED** (full unit per item), because NESMA enhancement rules need human judgment on changed data elements. **Quick issues** (no `requirements.md`) are skipped. Results are printed to **stdout** only so `requirements.md` stamps and base hashes stay untouched.
 
+**`/sdd-close`** runs `fp --format json` before it deletes the issue folder and adds a short **Function points** section to the pull request text it prints (total, per-kind FP, and ADDED/MODIFIED/REMOVED counts; quick issues get a one-line “not counted” note).
+
 ## Skills included
 
 `/sdd-init`, `/sdd-req`, `/sdd-design`, `/sdd-task`, `/sdd-impl`, `/sdd-fix`, `/sdd-close`, `/sdd-lessons`, `/sdd-quick`, `/sdd-reverse`, `/sdd-steering`.

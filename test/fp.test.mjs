@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { countDeltaItems, countIssueFunctionPoints, formatFpReport, itemId, pointsForId } from "../src/script/fp.mjs";
+import { countDeltaItems, countIssueFunctionPoints, formatFpForPullRequest, formatFpReport, itemId, pointsForId } from "../src/script/fp.mjs";
 import { parseDeltaMarkdown } from "../src/script/delta.mjs";
 import { commitAll, initRepo, sdd, tempRepo, writeSteering } from "./helpers.mjs";
 
@@ -78,6 +78,11 @@ legacy
   assert.equal(first.byKind.DATA, 7);
   assert.equal(first.byKind.IF, 9);
   assert.equal(first.byKind.NFR, 0);
+  assert.equal(first.summary.total, first.total);
+  assert.equal(first.summary.points.REQ, 12);
+  assert.equal(first.summary.itemCounts.REQ.ADDED, 1);
+  assert.equal(first.summary.itemCounts.REQ.MODIFIED, 1);
+  assert.equal(first.summary.itemCounts.REQ.REMOVED, 1);
 });
 
 test("quick issue and missing requirements are not counted", () => {
@@ -178,6 +183,32 @@ When a, the system SHALL alpha.
   const json = JSON.parse(sdd(dir, ["fp", "--issue", "fp-sample", "--format", "json"]).stdout);
   assert.equal(json.total, 20);
   assert.equal(json.skipped, false);
+  assert.equal(json.summary.total, 20);
+  assert.equal(json.summary.points.REQ, 4);
+  assert.equal(json.summary.itemCounts.IF_CONSUMED.ADDED, 1);
+});
+
+test("formatFpForPullRequest quick and full breakdown", () => {
+  const quick = formatFpForPullRequest({ skipped: true, reason: "quick_issue" }, "en");
+  assert.match(quick, /Not counted for quick issues/);
+  const jaQuick = formatFpForPullRequest({ skipped: true, reason: "quick_issue" }, "ja");
+  assert.match(jaQuick, /数えません/);
+
+  const full = formatFpForPullRequest({
+    skipped: false,
+    summary: {
+      total: 20,
+      points: { DATA: 7, REQ: 4, IF_CONSUMED: 5, IF_PROVIDED: 4 },
+      itemCounts: {
+        DATA: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+        REQ: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+        IF_CONSUMED: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+        IF_PROVIDED: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+      },
+    },
+  }, "en");
+  assert.match(full, /Total \*\*20\*\* FP/);
+  assert.match(full, /IF Consumed \| 5 \| A1\/M0\/R0/);
 });
 
 test("formatFpReport skipped text", () => {

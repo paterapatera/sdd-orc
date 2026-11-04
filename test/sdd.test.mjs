@@ -49,6 +49,9 @@ test("init, update, and migrate install one shared script", () => {
   assert.match(read(dir, ".claude/skills/sdd-close/SKILL.md"), /bun \.agents\/skills\/sdd-scripts\/sdd\.mjs/);
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-lessons/SKILL.md")), true);
   assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Record these lesson entries/i);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /fp --issue <feature> --format json/);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Before deleting the issue directory/);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /not counted.*quick issues/i);
   assert.doesNotMatch(read(dir, ".agents/skills/sdd-close/SKILL.md"), /ready-to-send agent chat line/i);
   assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /check --scope knowledge/);
   assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /A 未判断の候補/);
