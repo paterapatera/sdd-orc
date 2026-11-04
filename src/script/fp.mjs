@@ -1,25 +1,23 @@
 import { headingNodes, parseDeltaMarkdown, mergeDeltas } from "./delta.mjs";
+import { collectProcessGroups, PROCESS_POINTS } from "./process.mjs";
 import { splitFrontmatter } from "./util.mjs";
 
-/** Custom sdd-orc metric inspired by NESMA estimated sizes; not IFPUG/NESMA-certified. */
-export const FP_METRIC_LABEL = "sdd-orc custom (NESMA estimated, simplified)";
+/** Custom metric: NESMA estimated weights per elementary process; not IFPUG/NESMA-certified. */
+export const FP_METRIC_LABEL = "sdd-orc custom (NESMA estimated, per process)";
 
-/** Confirmed (`REQ-INV-1`) and provisional (`REQ-INV-NEW-1`) requirement ids. */
 export const COUNTABLE_ID_RE = /^(REQ|IF|DATA|NFR)-[A-Z]{2,6}-(?:NEW-\d+|\d+)$/;
 
 const POINTS = {
   DATA: 7,
-  REQ: 4,
   IF_CONSUMED: 5,
   IF_PROVIDED: 4,
   NFR: 0,
 };
 
-/** When the same id appears in multiple buckets in one file, keep the highest-precedence bucket. */
 export const FP_BUCKET_PRECEDENCE = { REMOVED: 3, MODIFIED: 2, ADDED: 1 };
 
-/** Kinds shown in pull request text from /sdd-close. */
-export const FP_PR_KINDS = ["DATA", "REQ", "IF_CONSUMED", "IF_PROVIDED"];
+/** Kinds in pull request table (process types replace per-REQ). */
+export const FP_PR_KINDS = ["DATA", "EI", "EO", "EQ", "IF_CONSUMED", "IF_PROVIDED"];
 
 export function itemId(title) {
   return title.split(":")[0].trim();
@@ -63,11 +61,6 @@ function addedDirectionInDelta(delta, interfacesPath, id) {
   return added ? ifDirection(added.content) : "";
 }
 
-/**
- * REMOVED IF items often omit Direction. Resolve from delta body, then knowledge on the
- * base branch (stable after apply), then ADDED in the same issue delta for same-file ids.
- * MODIFIED IF must carry Direction in the delta or counts as unset.
- */
 export function resolveIfDirection(id, content, interfacesPath, bucket, ctx) {
   const fromDelta = ifDirection(content);
   if (fromDelta) return fromDelta;
@@ -84,7 +77,6 @@ export function resolveIfDirection(id, content, interfacesPath, bucket, ctx) {
 
 export function itemKind(id, content, interfacesPath = "", bucket = "", ctx = null) {
   if (id.startsWith("DATA-")) return "DATA";
-  if (id.startsWith("REQ-")) return "REQ";
   if (id.startsWith("NFR-")) return "NFR";
   if (id.startsWith("IF-")) {
     const direction = resolveIfDirection(id, content, interfacesPath, bucket, ctx);
@@ -97,8 +89,8 @@ export function itemKind(id, content, interfacesPath = "", bucket = "", ctx = nu
 
 export function pointsForId(id, content, interfacesPath = "", bucket = "", ctx = null) {
   if (id.startsWith("DATA-")) return POINTS.DATA;
-  if (id.startsWith("REQ-")) return POINTS.REQ;
   if (id.startsWith("NFR-")) return POINTS.NFR;
+  if (id.startsWith("REQ-")) return 0;
   if (id.startsWith("IF-")) {
     const direction = resolveIfDirection(id, content, interfacesPath, bucket, ctx);
     if (direction === "Consumed") return POINTS.IF_CONSUMED;
@@ -108,13 +100,7 @@ export function pointsForId(id, content, interfacesPath = "", bucket = "", ctx =
   return 0;
 }
 
-/**
- * NESMA enhancement FP needs human judgment on changed DET/RET. We count each delta item
- * at the same fixed weight for its kind. Each id is counted at most once per capability file;
- * duplicate rows in the same bucket are ignored; cross-bucket duplicates keep REMOVED >
- * MODIFIED > ADDED.
- */
-export function countDeltaItems(delta, ctx = null) {
+function collectDedupedEntries(delta, filterFn) {
   const seenInBucket = new Set();
   const byFileId = new Map();
   for (const file of delta.files) {
@@ -123,13 +109,11 @@ export function countDeltaItems(delta, ctx = null) {
       const bucketUpper = bucket.toUpperCase();
       for (const entry of file[bucket]) {
         const id = itemId(entry.title);
-        if (!isCountableId(id)) continue;
+        if (!isCountableId(id) || !filterFn(id, file.path)) continue;
         const bucketDup = `${file.path}\0${bucketUpper}\0${id}`;
         if (seenInBucket.has(bucketDup)) continue;
         seenInBucket.add(bucketDup);
-        const kind = itemKind(id, entry.content, file.path, bucketUpper, ctx);
-        const points = pointsForId(id, entry.content, file.path, bucketUpper, ctx);
-        const row = { id, kind, bucket: bucketUpper, file: file.path, points };
+        const row = { id, bucket: bucketUpper, file: file.path, content: entry.content };
         const fileIdKey = `${file.path}\0${id}`;
         const existing = byFileId.get(fileIdKey);
         if (!existing || FP_BUCKET_PRECEDENCE[bucketUpper] > FP_BUCKET_PRECEDENCE[existing.bucket]) {
@@ -138,22 +122,49 @@ export function countDeltaItems(delta, ctx = null) {
       }
     }
   }
-  const items = [...byFileId.values()];
-  items.sort((left, right) => left.file.localeCompare(right.file) || left.bucket.localeCompare(right.bucket) || left.id.localeCompare(right.id));
-  const total = items.reduce((sum, row) => sum + row.points, 0);
-  const byKind = { REQ: 0, DATA: 0, IF: 0, NFR: 0 };
-  for (const row of items) {
-    const kind = row.id.startsWith("DATA-") ? "DATA" : row.id.startsWith("REQ-") ? "REQ" : row.id.startsWith("IF-") ? "IF" : "NFR";
-    byKind[kind] += row.points;
-  }
-  return { total, items, byKind, summary: buildFpSummary(items) };
+  return [...byFileId.values()];
 }
 
-export function buildFpSummary(items) {
+function specPathsFromDelta(delta) {
+  return [...new Set(delta.files.filter((file) => file.path.endsWith("/spec.md")).map((file) => file.path))];
+}
+
+export function countDeltaItems(delta, ctx = null) {
+  const specPaths = specPathsFromDelta(delta);
+  const reqEntries = collectDedupedEntries(delta, (id, filePath) => id.startsWith("REQ-") && filePath.endsWith("/spec.md"));
+  const processCtx = ctx ? { ...ctx, delta } : { delta };
+  const grouped = collectProcessGroups(reqEntries, processCtx, specPaths);
+
+  const processItems = grouped.processes.map((process) => ({
+    id: process.name,
+    kind: process.type,
+    bucket: process.bucket,
+    file: "",
+    points: process.points,
+  }));
+
+  const nonReqItems = [];
+  for (const entry of collectDedupedEntries(delta, (id) => !id.startsWith("REQ-"))) {
+    const kind = itemKind(entry.id, entry.content, entry.file, entry.bucket, ctx);
+    const points = pointsForId(entry.id, entry.content, entry.file, entry.bucket, ctx);
+    nonReqItems.push({ id: entry.id, kind, bucket: entry.bucket, file: entry.file, points });
+  }
+
+  const items = [...processItems, ...nonReqItems];
+  items.sort((left, right) => left.file.localeCompare(right.file) || left.bucket.localeCompare(right.bucket) || left.id.localeCompare(right.id));
+
+  const summary = buildFpSummary(items, grouped);
+  const total = summary.total;
+  const byKind = { DATA: summary.points.DATA, IF: summary.points.IF_CONSUMED + summary.points.IF_PROVIDED, NFR: 0, REQ: 0 };
+  return { total, items, byKind, summary };
+}
+
+export function buildFpSummary(items, grouped = null) {
   const itemCounts = Object.fromEntries(FP_PR_KINDS.map((kind) => [kind, { ADDED: 0, MODIFIED: 0, REMOVED: 0 }]));
   itemCounts.NFR = { ADDED: 0, MODIFIED: 0, REMOVED: 0 };
   const points = Object.fromEntries(FP_PR_KINDS.map((kind) => [kind, 0]));
   const ifUnset = { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 };
+
   for (const row of items) {
     if (row.kind === "NFR") {
       itemCounts.NFR[row.bucket] += 1;
@@ -163,15 +174,29 @@ export function buildFpSummary(items) {
       ifUnset.itemCounts[row.bucket] += 1;
       continue;
     }
+    if (PROCESS_POINTS[row.kind] != null) {
+      itemCounts[row.kind][row.bucket] += 1;
+      points[row.kind] += row.points;
+      continue;
+    }
     if (!FP_PR_KINDS.includes(row.kind)) continue;
     itemCounts[row.kind][row.bucket] += 1;
     points[row.kind] += row.points;
   }
+
+  const emptyCounts = () => ({ ADDED: 0, MODIFIED: 0, REMOVED: 0 });
+  const processNone = { itemCounts: grouped?.noneCounts || emptyCounts(), points: 0 };
+  const processUnknown = { itemCounts: grouped?.unknownCounts || emptyCounts(), points: 0 };
+
   return {
-    total: items.reduce((sum, row) => sum + row.points, 0),
+    total: Object.values(points).reduce((sum, value) => sum + value, 0),
     points,
     itemCounts,
     ifUnset,
+    processNone,
+    processUnknown,
+    reqCount: grouped?.reqCount || 0,
+    processCount: grouped?.processCount || 0,
   };
 }
 
@@ -220,7 +245,10 @@ function nfrItems(nfrCounts) {
   return nfrCounts.ADDED + nfrCounts.MODIFIED + nfrCounts.REMOVED;
 }
 
-/** Short markdown for pull request bodies; lang is en or ja. */
+function countItems(counts) {
+  return counts.ADDED + counts.MODIFIED + counts.REMOVED;
+}
+
 export function formatFpForPullRequest(result, lang = "en") {
   if (result.skipped && result.reason === "quick_issue") {
     return lang === "ja"
@@ -236,27 +264,40 @@ export function formatFpForPullRequest(result, lang = "en") {
       : kind === "IF_PROVIDED" ? (lang === "ja" ? "IF（Provided）" : "IF Provided")
         : kind;
     return { kind, label, points: summary.points[kind], counts: summary.itemCounts[kind] };
-  }).filter((row) => row.points > 0 || row.counts.ADDED + row.counts.MODIFIED + row.counts.REMOVED > 0);
+  }).filter((row) => row.points > 0 || countItems(row.counts) > 0);
   const note = lang === "ja"
-    ? "NESMA 概算を参考にしたカスタム指標です。REQ は 1 件 4 FP 固定で、IFPUG/NESMA 準拠ではありません。"
-    : "Custom count based on NESMA estimated sizes; each REQ is 4 FP (not IFPUG/NESMA-compliant).";
+    ? "NESMA 概算の EI/EO/EQ 重みで、**プロセス**（Process 名）ごとに 1 回だけ数えるカスタム指標です。変更は満点で数えます。IFPUG/NESMA 準拠ではありません。"
+    : "Custom count: one **process** (`Process:` name) at NESMA estimated EI/EO/EQ weights; changes use full weight (not IFPUG/NESMA-compliant).";
   const heading = lang === "ja" ? "## 機能ポイント" : "## Function points";
   const totalLine = lang === "ja" ? `合計 **${summary.total}** FP。` : `Total **${summary.total}** FP.`;
   const tableHead = lang === "ja"
     ? "| 種別 | FP | ADDED/MODIFIED/REMOVED |\n|---|---|---|"
     : "| Kind | FP | ADDED/MODIFIED/REMOVED |\n|---|---|---|";
   const tableBody = rows.map((row) => `| ${row.label} | ${row.points} | ${countCell(row.counts)} |`).join("\n");
+  const metaLine = lang === "ja"
+    ? `\nREQ ${summary.reqCount} 件 / プロセス ${summary.processCount} 件。\n`
+    : `\nREQs: ${summary.reqCount}; distinct processes: ${summary.processCount}.\n`;
   const unsetLine = unsetItems(summary.ifUnset)
     ? (lang === "ja"
-      ? `\nIF（Direction 不明）: ${countCell(summary.ifUnset.itemCounts)}（0 FP）\n`
-      : `\nIF unset (no Direction): ${countCell(summary.ifUnset.itemCounts)} (0 FP)\n`)
+      ? `IF（Direction 不明）: ${countCell(summary.ifUnset.itemCounts)}（0 FP）\n`
+      : `IF unset (no Direction): ${countCell(summary.ifUnset.itemCounts)} (0 FP)\n`)
+    : "";
+  const noneLine = countItems(summary.processNone.itemCounts)
+    ? (lang === "ja"
+      ? `Process: none の REQ: ${countCell(summary.processNone.itemCounts)}（0 FP）\n`
+      : `Process: none REQs: ${countCell(summary.processNone.itemCounts)} (0 FP)\n`)
+    : "";
+  const unknownLine = countItems(summary.processUnknown.itemCounts)
+    ? (lang === "ja"
+      ? `不明プロセス: ${countCell(summary.processUnknown.itemCounts)}（0 FP）\n`
+      : `Unknown process: ${countCell(summary.processUnknown.itemCounts)} (0 FP)\n`)
     : "";
   const nfrLine = nfrItems(summary.itemCounts.NFR)
     ? (lang === "ja"
-      ? `\nNFR: ${countCell(summary.itemCounts.NFR)}（0 FP）\n`
-      : `\nNFR: ${countCell(summary.itemCounts.NFR)} (0 FP)\n`)
+      ? `NFR: ${countCell(summary.itemCounts.NFR)}（0 FP）\n`
+      : `NFR: ${countCell(summary.itemCounts.NFR)} (0 FP)\n`)
     : "";
-  return `${heading}\n\n${totalLine} ${note}\n\n${tableHead}\n${tableBody}${unsetLine}${nfrLine}\n`;
+  return `${heading}\n\n${totalLine} ${note}\n\n${tableHead}\n${tableBody}${metaLine}${unsetLine}${noneLine}${unknownLine}${nfrLine}\n`;
 }
 
 export function formatFpReport(issue, result, format) {
@@ -270,11 +311,18 @@ export function formatFpReport(issue, result, format) {
     `issue: ${issue}`,
     `total: ${result.total}`,
     `metric: ${result.metric}`,
-    "rules: DATA 7; IF Consumed 5; IF Provided 4; REQ 4; NFR and steering 0; one id per file (REMOVED>MODIFIED>ADDED)",
+    "rules: DATA 7; IF Consumed 5; IF Provided 4; EI 4 EO 5 EQ 4 per process; Process none 0; one id per file (REMOVED>MODIFIED>ADDED)",
+    `REQs: ${result.summary.reqCount}; processes: ${result.summary.processCount}`,
     result.laterAddedNote,
   ];
   const unset = unsetItems(result.summary.ifUnset);
   if (unset) lines.push(`IF unset (no Direction): ${countCell(result.summary.ifUnset.itemCounts)} (0 FP)`);
+  if (countItems(result.summary.processNone.itemCounts)) {
+    lines.push(`Process: none REQs: ${countCell(result.summary.processNone.itemCounts)} (0 FP)`);
+  }
+  if (countItems(result.summary.processUnknown.itemCounts)) {
+    lines.push(`Unknown process: ${countCell(result.summary.processUnknown.itemCounts)} (0 FP)`);
+  }
   lines.push("");
   for (const row of result.items) {
     lines.push(`${row.id}\t${row.bucket}\t${row.file}\t${row.points}`);

@@ -5,6 +5,7 @@ import { regenerateLessonsIndex, validateLessons, validateCloseLessons } from ".
 import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, sameAfterApply, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
 import { countIssueFunctionPoints, formatFpReport } from "./fp.mjs";
+import { normalizeProcessName, parseProcessField } from "./process.mjs";
 
 const SPEC_FILES = ["spec.md", "interfaces.md", "data.md", "quality.md"];
 const AUTO_TEST_LEVELS = TEST_LEVELS.filter((level) => level !== "Manual");
@@ -1355,6 +1356,7 @@ function staticIssueDiags(root, config, issue, stage) {
   validateDeltaHeadings(delta, diags);
   validateOwnership(delta, diags);
   validateDeltaEars(delta, config.lang || "en", diags);
+  validateDeltaProcesses(delta, diags);
   validateDeltaIds(root, config, delta, diags);
   if (files.design) validateTraceability(files, delta, config, issue, diags);
   if (files.design) validateDesignMechanical(files, config, issue, diags);
@@ -1440,6 +1442,29 @@ function validateDeltaEars(delta, lang, diags) {
           for (const key of ["given", "when", "then"]) if (!text.includes(ears[key])) diags.push(diag(file.path, item.line, "EARS_SCENARIO", `${item.title} scenario is missing ${ears[key]}`));
         }
       }
+    }
+  }
+}
+
+function validateDeltaProcesses(delta, diags) {
+  const processTypes = new Map();
+  for (const file of delta.files) {
+    if (!file.path.endsWith("/spec.md")) continue;
+    for (const item of [...file.added, ...file.modified]) {
+      if (!item.title.startsWith("REQ-")) continue;
+      const parsed = parseProcessField(item.content);
+      if (!parsed) {
+        diags.push(diag(file.path, item.line, "REQ_PROCESS", `${item.title.split(":")[0].trim()} requires a Process line (- Process: none or - Process: <name> (EI|EO|EQ))`));
+        continue;
+      }
+      if (parsed.none) continue;
+      const name = normalizeProcessName(parsed.name);
+      const existing = processTypes.get(name);
+      if (existing && existing !== parsed.type) {
+        diags.push(diag(file.path, item.line, "REQ_PROCESS", `Process ${name} cannot be both ${existing} and ${parsed.type} in one issue`));
+        continue;
+      }
+      processTypes.set(name, parsed.type);
     }
   }
 }

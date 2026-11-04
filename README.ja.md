@@ -89,14 +89,17 @@ node .agents/skills/sdd-scripts/sdd.mjs fp --issue invoice-fix --format json
 | `data.md` の `DATA-*`（社内データ・低複雑度） | 各 7 |
 | `Direction: Consumed` の `IF-*`（外部参照・低） | 各 5 |
 | `Direction: Provided` の `IF-*` | 各 4 |
-| `REQ-*` | 各 4（EI/EO/EQ には分けません。**IFPUG/NESMA 準拠ではないカスタム指標**です） |
+| 要素プロセス（issue delta の `REQ-*` に付ける `Process:`） | 同名プロセスごとに **EI** 4、**EO** 5、**EQ** 4（**IFPUG/NESMA 認定ではないカスタム指標**） |
+| `Process: none` の REQ | 0（件数は出力に表示） |
 | `NFR-*`、steering、ADR、構造だけの delta | 0 |
 
-issue の delta（`requirements.md` と、あれば `design.md` / `research.md` をマージ）の **ADDED / MODIFIED / REMOVED** から数えます。`/steering/` 配下は除外し、それ以外の delta ファイル節は含めます。同一 capability ファイル内では **id ごとに 1 回まで**数え、複数 bucket にまたがる場合は **REMOVED > MODIFIED > ADDED** の優先順位です。**MODIFIED** と **REMOVED** も **ADDED** と同じ固定重み（1 項目あたり満点）にしています。**quick issue**（`requirements.md` がない）は対象外です。結果は **stdout のみ**に出します。**REMOVED** の `IF-*` で delta に `Direction` がないときは、設定した **ベースブランチ**（通常 `main`）上の `interfaces.md` から id を読むため、`/sdd-close` の **apply** で作業ツリーから IF が消えたあとも同じ FP になります。**MODIFIED** の `IF-*` は delta に `Direction` が必要で、なければ **IF unset**（0 FP）です。
+issue delta の **ADDED / MODIFIED** の各 `REQ-*` には `- Process: <名前> (EI|EO|EQ)` または `- Process: none` が必要です（`check` が検査します）。複数の REQ が同じ名前を共有できます。**`fp` はそのプロセスを 1 回だけ数えます。** 例: 3 つの REQ がすべて `- Process: Confirm order (EQ)` なら **EQ 1 件 = 4 FP** であり、12 FP にはなりません。
+
+issue の delta（`requirements.md` と、あれば `design.md` / `research.md` をマージ）の **ADDED / MODIFIED / REMOVED** から数えます。`/steering/` 配下は除外します。REQ **id** は capability ファイルごとに 1 回まで（**REMOVED > MODIFIED > ADDED**）。**プロセス**は `Process:` 名（前後空白は trim、連続空白は 1 つに）と型でグループ化します。**MODIFIED** / **REMOVED** も **ADDED** と同じ満点の EI/EO/EQ 重みです。**quick issue** は対象外です。結果は **stdout のみ**です。**REMOVED** の `REQ-*` で delta に `Process` がないときは **ベースブランチ**の `spec.md` から読み、見つからなければ **不明プロセス（0 FP）** 行に載せます（REMOVED `IF-*` と同様の参照順）。**REMOVED** の `IF-*` で `Direction` がないときはベースブランチの `interfaces.md` を読みます。**MODIFIED** の `IF-*` は delta に `Direction` が必要で、なければ **IF unset**（0 FP）です。
 
 **既知の限界（REMOVED `IF-*`）:** 次の場合は **`IF unset (0 FP)`** 行で示します（黙って 0 にはしません）。(1) **ローカルにベースブランチがない** — 例: `git clone -b <機能ブランチ>` や、`origin/main` だけの浅い clone でローカル `main` がない。REMOVED IF は 0 FP です。(2) **同じブランチで前の issue が追加した IF を、後の issue が削除** — apply 後はベースブランチにその IF がないため 0 FP です。(3) **モノレポのサブディレクトリ** — git パスはリポジトリルート基準です（`renumber` と同じ）。apply 後に REMOVED IF が 0 になることがあります。(4) **apply の前** — 作業ツリーの knowledge を先に読むため、未コミットの編集で FP が変わることがあります（その状態では check が通らないため、close で出す PR 用の値は通常安定します）。
 
-**`/sdd-close`** は issue フォルダを消す**前**に `fp --format json` を実行し、表示する PR 本文に短い **機能ポイント**節を足します（合計、種別ごとの FP、ADDED/MODIFIED/REMOVED の件数、必要なら **IF unset** と **NFR** の 0 FP 行。quick issue は「数えない」1 行のみ）。
+**`/sdd-close`** は issue フォルダを消す**前**に `fp --format json` を実行し、表示する PR 本文に短い **機能ポイント**節を足します（合計、**DATA** / **EI** / **EO** / **EQ** / **IF** の FP と ADDED/MODIFIED/REMOVED、REQ 件数とプロセス件数、必要なら **Process: none**・**不明プロセス**・**IF unset**・**NFR** の 0 FP 行。quick issue は「数えない」1 行のみ）。
 
 ## 同梱スキル
 

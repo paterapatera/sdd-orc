@@ -4,14 +4,14 @@ import path from "node:path";
 import { test } from "node:test";
 import { countDeltaItems, countIssueFunctionPoints, formatFpForPullRequest, formatFpReport, isCountableId, itemId, pointsForId } from "../src/script/fp.mjs";
 import { parseDeltaMarkdown } from "../src/script/delta.mjs";
-import { commitAll, git, initRepo, sdd, tempRepo, writeInvoiceIssue, writeSteering } from "./helpers.mjs";
+import { commitAll, git, initRepo, sdd, tempRepo, writeInvoiceIssue, writeSteering, attachReqProcess } from "./helpers.mjs";
 
-test("itemId and pointsForId follow custom NESMA-simplified weights", () => {
+test("itemId and pointsForId follow custom NESMA estimated weights", () => {
   assert.equal(itemId("REQ-INV-1: Issue"), "REQ-INV-1");
   assert.equal(isCountableId("REQ-INV-NEW-1"), true);
   assert.equal(isCountableId("REQ-INV-1"), true);
-  assert.equal(pointsForId("REQ-INV-NEW-1", "SHALL"), 4);
-  assert.equal(pointsForId("REQ-INV-1", "SHALL"), 4);
+  assert.equal(pointsForId("REQ-INV-NEW-1", "SHALL"), 0);
+  assert.equal(pointsForId("REQ-INV-1", "SHALL"), 0);
   assert.equal(pointsForId("DATA-CRN-1", "fields"), 7);
   assert.equal(pointsForId("NFR-PERF-1", "text"), 0);
   assert.equal(pointsForId("IF-X-1", "- Direction: Consumed\n- Uses: IF-Y-1"), 5);
@@ -28,6 +28,7 @@ test("countDeltaItems is stable and covers buckets and kinds", () => {
 
 ### ADDED
 #### REQ-AB-1: One
+- Process: Alpha (EQ)
 When x, the system SHALL do a.
 
 ##### Scenario: S
@@ -37,6 +38,7 @@ When x, the system SHALL do a.
 
 ### MODIFIED
 #### REQ-BC-1: Changed
+- Process: Beta (EQ)
 When y, the system SHALL do b.
 
 ##### Scenario: S2
@@ -75,19 +77,18 @@ legacy
   const first = countDeltaItems(delta);
   const second = countDeltaItems(delta);
   assert.deepEqual(first, second);
-  assert.equal(first.total, 4 + 4 + 4 + 7 + 5 + 4 + 0);
-  assert.equal(first.items.length, 7);
-  assert.equal(first.byKind.REQ, 12);
+  assert.equal(first.total, 4 + 4 + 7 + 5 + 4);
+  assert.equal(first.items.length, 6);
+  assert.equal(first.byKind.REQ, 0);
   assert.equal(first.byKind.DATA, 7);
   assert.equal(first.byKind.IF, 9);
   assert.equal(first.byKind.NFR, 0);
   assert.equal(first.summary.total, first.total);
-  assert.equal(first.summary.points.REQ, 12);
-  assert.equal(first.summary.itemCounts.REQ.ADDED, 1);
-  assert.equal(first.summary.itemCounts.REQ.MODIFIED, 1);
-  assert.equal(first.summary.itemCounts.REQ.REMOVED, 1);
+  assert.equal(first.summary.points.EQ, 8);
+  assert.equal(first.summary.itemCounts.EQ.ADDED, 2);
+  assert.equal(first.summary.itemCounts.EQ.MODIFIED, 0);
   assert.equal(first.summary.itemCounts.NFR.ADDED, 1);
-  assert.equal(first.summary.points.NFR, undefined);
+  assert.equal(first.summary.processUnknown.itemCounts.REMOVED, 1);
 });
 
 test("provisional NEW ids and duplicate MODIFIED dedupe", () => {
@@ -99,6 +100,7 @@ test("provisional NEW ids and duplicate MODIFIED dedupe", () => {
 
 ### ADDED
 #### REQ-INV-NEW-1: One
+- Process: One (EQ)
 When x, the system SHALL do a.
 
 ##### Scenario: S
@@ -111,6 +113,7 @@ When x, the system SHALL do a.
 
 ### MODIFIED
 #### REQ-INV-1: Twice
+- Process: Old one (EQ)
 When y, the system SHALL do b.
 
 ##### Scenario: S2
@@ -119,6 +122,7 @@ When y, the system SHALL do b.
 - **Then** t
 
 #### REQ-INV-1: duplicate
+- Process: Old one (EQ)
 When z, the system SHALL do c.
 
 ##### Scenario: S3
@@ -129,8 +133,9 @@ When z, the system SHALL do c.
   const delta = parseDeltaMarkdown(markdown, "requirements");
   const result = countDeltaItems(delta);
   assert.equal(result.total, 4 + 7 + 4);
-  assert.equal(result.summary.itemCounts.REQ.MODIFIED, 1);
-  assert.equal(result.items.filter((row) => row.id === "REQ-INV-NEW-1").length, 1);
+  assert.equal(result.summary.itemCounts.EQ.ADDED, 2);
+  assert.equal(result.items.filter((row) => row.id === "One").length, 1);
+  assert.equal(result.items.filter((row) => row.id === "Old one").length, 1);
 });
 
 test("REMOVED IF uses Direction from base branch when working tree lost it", () => {
@@ -194,6 +199,7 @@ test("same id in MODIFIED and REMOVED counts once with REMOVED precedence", () =
 
 ### MODIFIED
 #### REQ-INV-1: Change
+- Process: Invoice (EQ)
 When x, the system SHALL x.
 
 ##### Scenario: S
@@ -254,6 +260,7 @@ test("realistic multi-file issue total matches hand count", () => {
 
 ### ADDED
 #### REQ-INV-NEW-1: A
+- Process: Confirm order (EQ)
 When a, the system SHALL a.
 
 ##### Scenario: S1
@@ -262,6 +269,7 @@ When a, the system SHALL a.
 - **Then** t
 
 #### REQ-INV-NEW-2: B
+- Process: Confirm order (EQ)
 When b, the system SHALL b.
 
 ##### Scenario: S2
@@ -270,6 +278,7 @@ When b, the system SHALL b.
 - **Then** t
 
 #### REQ-INV-NEW-3: C
+- Process: Confirm order (EQ)
 When c, the system SHALL c.
 
 ##### Scenario: S3
@@ -301,8 +310,11 @@ When c, the system SHALL c.
 #### IF-OLD-1: Gone
 - reason: obsolete
 `;
-  const expected = 3 * 4 + 2 * 7 + 4 + 5 + 5;
-  assert.equal(countDeltaItems(parseDeltaMarkdown(markdown, "requirements"), ctx).total, expected);
+  const expected = 4 + 2 * 7 + 4 + 5 + 5;
+  const result = countDeltaItems(parseDeltaMarkdown(markdown, "requirements"), ctx);
+  assert.equal(result.total, expected);
+  assert.equal(result.summary.processCount, 1);
+  assert.equal(result.summary.reqCount, 3);
 });
 
 test("quick issue and missing requirements are not counted", () => {
@@ -367,6 +379,7 @@ test("fp command on invoice issue matches delta count", () => {
 
 ### ADDED
 #### REQ-FP-1: Alpha
+- Process: Alpha feature (EQ)
 When a, the system SHALL alpha.
 
 ##### Scenario: A
@@ -398,13 +411,15 @@ When a, the system SHALL alpha.
   assert.equal(run1.status, 0);
   assert.equal(run1.stdout, run2.stdout);
   assert.match(run1.stdout, /total: 20/);
-  assert.match(run1.stdout, /REQ-FP-1\tADDED/);
+  assert.match(run1.stdout, /Alpha feature\tADDED/);
 
   const json = JSON.parse(sdd(dir, ["fp", "--issue", "fp-sample", "--format", "json"]).stdout);
   assert.equal(json.total, 20);
   assert.equal(json.skipped, false);
   assert.equal(json.summary.total, 20);
-  assert.equal(json.summary.points.REQ, 4);
+  assert.equal(json.summary.points.EQ, 4);
+  assert.equal(json.summary.reqCount, 1);
+  assert.equal(json.summary.processCount, 1);
   assert.equal(json.summary.itemCounts.IF_CONSUMED.ADDED, 1);
 });
 
@@ -418,15 +433,21 @@ test("formatFpForPullRequest quick and full breakdown", () => {
 
   const baseSummary = {
     total: 20,
-    points: { DATA: 7, REQ: 4, IF_CONSUMED: 5, IF_PROVIDED: 4 },
+    points: { DATA: 7, EI: 0, EO: 0, EQ: 4, IF_CONSUMED: 5, IF_PROVIDED: 4 },
     itemCounts: {
       DATA: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
-      REQ: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+      EI: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
+      EO: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
+      EQ: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
       IF_CONSUMED: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
       IF_PROVIDED: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
       NFR: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
     },
     ifUnset: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
+    processNone: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
+    processUnknown: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
+    reqCount: 1,
+    processCount: 1,
   };
 
   const full = formatFpForPullRequest({ skipped: false, summary: baseSummary }, "en");
@@ -452,14 +473,20 @@ test("formatFpForPullRequest quick and full breakdown", () => {
     summary: {
       ...baseSummary,
       total: 11,
-      points: { DATA: 7, REQ: 4, IF_CONSUMED: 0, IF_PROVIDED: 0 },
+      points: { DATA: 7, EI: 0, EO: 0, EQ: 4, IF_CONSUMED: 0, IF_PROVIDED: 0 },
       itemCounts: {
         DATA: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
-        REQ: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
+        EI: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
+        EO: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
+        EQ: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
         IF_CONSUMED: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
         IF_PROVIDED: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
         NFR: { ADDED: 2, MODIFIED: 1, REMOVED: 0 },
       },
+      processNone: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
+      processUnknown: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
+      reqCount: 1,
+      processCount: 1,
     },
   }, "ja");
   assert.match(jaNfr, /合計 \*\*11\*\* FP/);
@@ -475,6 +502,7 @@ test("formatFpForPullRequest NFR counts from delta do not change total", () => {
 
 ### ADDED
 #### REQ-INV-NEW-1: One
+- Process: One (EQ)
 When x, the system SHALL do a.
 
 ##### Scenario: S
@@ -653,4 +681,111 @@ none
   assert.equal(afterApply.summary.points.IF_PROVIDED, 4);
   assert.equal(afterApply.summary.itemCounts.IF_PROVIDED.REMOVED, 1);
   assert.equal(sdd(dir, ["check", "--stage", "close", "--issue", "retire-if"]).status, 0);
+});
+
+test("process types use EI EO EQ weights and Process none is zero", () => {
+  const markdown = `# Requirements
+
+# Delta
+
+## /specs/a/spec.md
+
+### ADDED
+#### REQ-AB-1: Input
+- Process: Register (EI)
+When x, the system SHALL save x.
+
+##### Scenario: S
+- **Given** g
+- **When** w
+- **Then** t
+
+#### REQ-AB-2: Output
+- Process: Report (EO)
+When y, the system SHALL report y.
+
+##### Scenario: S2
+- **Given** g
+- **When** w
+- **Then** t
+
+#### REQ-AB-3: Label only
+- Process: none
+When z, the system SHALL not show z.
+
+##### Scenario: S3
+- **Given** g
+- **When** w
+- **Then** t
+`;
+  const result = countDeltaItems(parseDeltaMarkdown(markdown, "requirements"));
+  assert.equal(result.total, 4 + 5);
+  assert.equal(result.summary.processCount, 2);
+  assert.equal(result.summary.processNone.itemCounts.ADDED, 1);
+});
+
+test("MODIFIED process when name exists in base branch specs", () => {
+  const readGitAtBase = (rel) => {
+    if (rel === "docs/knowledge/specs/billing/invoice/spec.md") {
+      return `---
+---
+### REQ-LEG-1: Legacy
+- Process: Issue invoice (EO)
+When old, the system SHALL old.
+`;
+    }
+    return "";
+  };
+  const ctx = { knowledgeMap: new Map(), docsDir: "docs/knowledge", readGitAtBase };
+  const markdown = `# Requirements
+
+# Delta
+
+## /specs/billing/invoice/spec.md
+
+### ADDED
+#### REQ-INV-NEW-1: Wording
+- Process: Issue invoice (EO)
+When new, the system SHALL new.
+
+##### Scenario: S
+- **Given** g
+- **When** w
+- **Then** t
+`;
+  const result = countDeltaItems(parseDeltaMarkdown(markdown, "requirements"), ctx);
+  assert.equal(result.summary.itemCounts.EO.MODIFIED, 1);
+  assert.equal(result.summary.itemCounts.EO.ADDED, 0);
+  assert.equal(result.total, 5);
+});
+
+test("deterministic fp output for process grouping", () => {
+  const markdown = `# Requirements
+
+# Delta
+
+## /specs/x/spec.md
+
+### ADDED
+#### REQ-XY-1: a
+- Process: Shared (EQ)
+When a, the system SHALL a.
+
+##### Scenario: S1
+- **Given** g
+- **When** w
+- **Then** t
+
+#### REQ-XY-2: b
+- Process: Shared (EQ)
+When b, the system SHALL b.
+
+##### Scenario: S2
+- **Given** g
+- **When** w
+- **Then** t
+`;
+  const delta = parseDeltaMarkdown(markdown, "requirements");
+  assert.deepEqual(countDeltaItems(delta), countDeltaItems(delta));
+  assert.equal(countDeltaItems(delta).summary.processCount, 1);
 });
