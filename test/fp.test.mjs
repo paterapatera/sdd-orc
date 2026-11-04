@@ -2,12 +2,15 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { countDeltaItems, countIssueFunctionPoints, formatFpForPullRequest, formatFpReport, itemId, pointsForId } from "../src/script/fp.mjs";
+import { countDeltaItems, countIssueFunctionPoints, formatFpForPullRequest, formatFpReport, isCountableId, itemId, pointsForId } from "../src/script/fp.mjs";
 import { parseDeltaMarkdown } from "../src/script/delta.mjs";
 import { commitAll, initRepo, sdd, tempRepo, writeSteering } from "./helpers.mjs";
 
 test("itemId and pointsForId follow custom NESMA-simplified weights", () => {
   assert.equal(itemId("REQ-INV-1: Issue"), "REQ-INV-1");
+  assert.equal(isCountableId("REQ-INV-NEW-1"), true);
+  assert.equal(isCountableId("REQ-INV-1"), true);
+  assert.equal(pointsForId("REQ-INV-NEW-1", "SHALL"), 4);
   assert.equal(pointsForId("REQ-INV-1", "SHALL"), 4);
   assert.equal(pointsForId("DATA-CRN-1", "fields"), 7);
   assert.equal(pointsForId("NFR-PERF-1", "text"), 0);
@@ -83,6 +86,172 @@ legacy
   assert.equal(first.summary.itemCounts.REQ.ADDED, 1);
   assert.equal(first.summary.itemCounts.REQ.MODIFIED, 1);
   assert.equal(first.summary.itemCounts.REQ.REMOVED, 1);
+});
+
+test("provisional NEW ids and duplicate MODIFIED dedupe", () => {
+  const markdown = `# Requirements
+
+# Delta
+
+## /specs/billing/invoice/spec.md
+
+### ADDED
+#### REQ-INV-NEW-1: One
+When x, the system SHALL do a.
+
+##### Scenario: S
+- **Given** g
+- **When** w
+- **Then** t
+
+#### DATA-INV-NEW-1: Row
+- Classification: Internal
+
+### MODIFIED
+#### REQ-INV-1: Twice
+When y, the system SHALL do b.
+
+##### Scenario: S2
+- **Given** g
+- **When** w
+- **Then** t
+
+#### REQ-INV-1: duplicate
+When z, the system SHALL do c.
+
+##### Scenario: S3
+- **Given** g
+- **When** w
+- **Then** t
+`;
+  const delta = parseDeltaMarkdown(markdown, "requirements");
+  const result = countDeltaItems(delta);
+  assert.equal(result.total, 4 + 7 + 4);
+  assert.equal(result.summary.itemCounts.REQ.MODIFIED, 1);
+  assert.equal(result.items.filter((row) => row.id === "REQ-INV-NEW-1").length, 1);
+});
+
+test("REMOVED IF uses Direction from knowledge interfaces.md", () => {
+  const knowledgeMap = new Map([
+    ["docs/knowledge/specs/billing/invoice/interfaces.md", `---
+---
+# Interfaces
+
+### IF-LEG-1: Legacy API
+- Direction: Provided
+- Kind: REST API
+`],
+  ]);
+  const ctx = { knowledgeMap, docsDir: "docs/knowledge" };
+  const markdown = `# Requirements
+
+# Delta
+
+## /specs/billing/invoice/interfaces.md
+
+### REMOVED
+#### IF-LEG-1: Retire
+- reason: replaced
+`;
+  const delta = parseDeltaMarkdown(markdown, "requirements");
+  const result = countDeltaItems(delta, ctx);
+  assert.equal(result.total, 4);
+  assert.equal(result.summary.points.IF_PROVIDED, 4);
+  assert.equal(result.summary.itemCounts.IF_PROVIDED.REMOVED, 1);
+});
+
+test("IF unset is visible when Direction is missing", () => {
+  const markdown = `# Requirements
+
+# Delta
+
+## /specs/billing/invoice/interfaces.md
+
+### ADDED
+#### IF-INV-NEW-1: Broken
+- Kind: REST API
+`;
+  const result = countDeltaItems(parseDeltaMarkdown(markdown, "requirements"));
+  assert.equal(result.total, 0);
+  assert.equal(result.summary.ifUnset.itemCounts.ADDED, 1);
+  const text = formatFpReport("x", {
+    skipped: false,
+    metric: "m",
+    laterAddedNote: "",
+    summary: result.summary,
+    items: result.items,
+    total: 0,
+  }, "text");
+  assert.match(text, /IF unset/);
+});
+
+test("realistic multi-file issue total matches hand count", () => {
+  const knowledgeMap = new Map([
+    ["docs/knowledge/specs/billing/invoice/interfaces.md", `---
+---
+### IF-OLD-1: Old
+- Direction: Consumed
+- Uses: IF-EXT-9
+`],
+  ]);
+  const ctx = { knowledgeMap, docsDir: "docs/knowledge" };
+  const markdown = `# Requirements
+
+# Delta
+
+## /specs/billing/invoice/spec.md
+
+### ADDED
+#### REQ-INV-NEW-1: A
+When a, the system SHALL a.
+
+##### Scenario: S1
+- **Given** g
+- **When** w
+- **Then** t
+
+#### REQ-INV-NEW-2: B
+When b, the system SHALL b.
+
+##### Scenario: S2
+- **Given** g
+- **When** w
+- **Then** t
+
+#### REQ-INV-NEW-3: C
+When c, the system SHALL c.
+
+##### Scenario: S3
+- **Given** g
+- **When** w
+- **Then** t
+
+## /specs/billing/invoice/data.md
+
+### ADDED
+#### DATA-INV-NEW-1: D1
+- Classification: Internal
+
+#### DATA-INV-NEW-2: D2
+- Classification: Internal
+
+## /specs/billing/invoice/interfaces.md
+
+### ADDED
+#### IF-INV-NEW-1: Out
+- Direction: Provided
+- Kind: REST API
+
+#### IF-INV-NEW-2: In
+- Direction: Consumed
+- Uses: IF-EXT-1
+
+### REMOVED
+#### IF-OLD-1: Gone
+- reason: obsolete
+`;
+  const expected = 3 * 4 + 2 * 7 + 4 + 5 + 5;
+  assert.equal(countDeltaItems(parseDeltaMarkdown(markdown, "requirements"), ctx).total, expected);
 });
 
 test("quick issue and missing requirements are not counted", () => {
@@ -205,6 +374,7 @@ test("formatFpForPullRequest quick and full breakdown", () => {
         IF_CONSUMED: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
         IF_PROVIDED: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
       },
+      ifUnset: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
     },
   }, "en");
   assert.match(full, /Total \*\*20\*\* FP/);

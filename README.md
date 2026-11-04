@@ -92,7 +92,7 @@ node .agents/skills/sdd-scripts/sdd.mjs fp --issue invoice-fix --format json
 | `REQ-*` | 4 each (fixed — **not** IFPUG/NESMA EI/EO/EQ; this is a **custom** metric) |
 | `NFR-*`, steering, ADRs, structure-only delta | 0 |
 
-Counts come from **ADDED**, **MODIFIED**, and **REMOVED** items under each capability file in the issue delta (`requirements.md`, and steering parts of `design.md` / `research.md` when present). **MODIFIED** and **REMOVED** use the same fixed weight as **ADDED** (full unit per item), because NESMA enhancement rules need human judgment on changed data elements. **Quick issues** (no `requirements.md`) are skipped. Results are printed to **stdout** only so `requirements.md` stamps and base hashes stay untouched.
+Counts come from **ADDED**, **MODIFIED**, and **REMOVED** items in the merged issue delta (`requirements.md`, plus `design.md` and `research.md` when present). Paths under `/steering/` are skipped; other delta file sections in those documents are included. **MODIFIED** and **REMOVED** use the same fixed weight as **ADDED** (full unit per item), because NESMA enhancement rules need human judgment on changed data elements. **Quick issues** (no `requirements.md`) are skipped. Results are printed to **stdout** only so `requirements.md` stamps and base hashes stay untouched. **IF** items with no `Direction` in the delta (and none on the knowledge `interfaces.md` entry for **REMOVED** ids) appear as **IF unset** with 0 FP.
 
 **`/sdd-close`** runs `fp --format json` before it deletes the issue folder and adds a short **Function points** section to the pull request text it prints (total, per-kind FP, and ADDED/MODIFIED/REMOVED counts; quick issues get a one-line “not counted” note).
 

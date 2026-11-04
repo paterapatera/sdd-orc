@@ -1,7 +1,11 @@
-import { parseDeltaMarkdown, mergeDeltas } from "./delta.mjs";
+import { headingNodes, parseDeltaMarkdown, mergeDeltas } from "./delta.mjs";
+import { splitFrontmatter } from "./util.mjs";
 
 /** Custom sdd-orc metric inspired by NESMA estimated sizes; not IFPUG/NESMA-certified. */
 export const FP_METRIC_LABEL = "sdd-orc custom (NESMA estimated, simplified)";
+
+/** Confirmed (`REQ-INV-1`) and provisional (`REQ-INV-NEW-1`) requirement ids. */
+export const COUNTABLE_ID_RE = /^(REQ|IF|DATA|NFR)-[A-Z]{2,6}-(?:NEW-\d+|\d+)$/;
 
 const POINTS = {
   DATA: 7,
@@ -11,8 +15,6 @@ const POINTS = {
   NFR: 0,
 };
 
-const COUNTABLE = /^(REQ|IF|DATA|NFR)-[A-Z]{2,6}-\d+/;
-
 /** Kinds shown in pull request text from /sdd-close. */
 export const FP_PR_KINDS = ["DATA", "REQ", "IF_CONSUMED", "IF_PROVIDED"];
 
@@ -20,17 +22,8 @@ export function itemId(title) {
   return title.split(":")[0].trim();
 }
 
-export function itemKind(id, content) {
-  if (id.startsWith("DATA-")) return "DATA";
-  if (id.startsWith("REQ-")) return "REQ";
-  if (id.startsWith("NFR-")) return "NFR";
-  if (id.startsWith("IF-")) {
-    const direction = ifDirection(content);
-    if (direction === "Consumed") return "IF_CONSUMED";
-    if (direction === "Provided") return "IF_PROVIDED";
-    return "IF_UNSET";
-  }
-  return "OTHER";
+export function isCountableId(id) {
+  return COUNTABLE_ID_RE.test(id);
 }
 
 function ifDirection(content) {
@@ -39,12 +32,46 @@ function ifDirection(content) {
   return "";
 }
 
-export function pointsForId(id, content) {
+function idBlock(body, id) {
+  const node = headingNodes(body).find((item) => item.level === 3 && (item.title === id || item.title.startsWith(`${id}:`)));
+  return node ? node.full : "";
+}
+
+export function knowledgeInterfaceBody(knowledgeMap, docsDir, interfacesPath, id) {
+  if (!knowledgeMap || !interfacesPath.endsWith("/interfaces.md")) return "";
+  const rel = `${docsDir.replace(/\/+$/, "")}${interfacesPath}`;
+  const text = knowledgeMap.get(rel);
+  if (typeof text !== "string") return "";
+  return idBlock(splitFrontmatter(text).body, id);
+}
+
+function resolveIfDirection(id, content, interfacesPath, ctx) {
+  const fromDelta = ifDirection(content);
+  if (fromDelta) return fromDelta;
+  if (!id.startsWith("IF-") || !ctx?.knowledgeMap) return "";
+  const block = knowledgeInterfaceBody(ctx.knowledgeMap, ctx.docsDir, interfacesPath, id);
+  return ifDirection(block);
+}
+
+export function itemKind(id, content, interfacesPath = "", ctx = null) {
+  if (id.startsWith("DATA-")) return "DATA";
+  if (id.startsWith("REQ-")) return "REQ";
+  if (id.startsWith("NFR-")) return "NFR";
+  if (id.startsWith("IF-")) {
+    const direction = resolveIfDirection(id, content, interfacesPath, ctx);
+    if (direction === "Consumed") return "IF_CONSUMED";
+    if (direction === "Provided") return "IF_PROVIDED";
+    return "IF_UNSET";
+  }
+  return "OTHER";
+}
+
+export function pointsForId(id, content, interfacesPath = "", ctx = null) {
   if (id.startsWith("DATA-")) return POINTS.DATA;
   if (id.startsWith("REQ-")) return POINTS.REQ;
   if (id.startsWith("NFR-")) return POINTS.NFR;
   if (id.startsWith("IF-")) {
-    const direction = ifDirection(content);
+    const direction = resolveIfDirection(id, content, interfacesPath, ctx);
     if (direction === "Consumed") return POINTS.IF_CONSUMED;
     if (direction === "Provided") return POINTS.IF_PROVIDED;
     return 0;
@@ -52,22 +79,32 @@ export function pointsForId(id, content) {
   return 0;
 }
 
+function dedupeKey(filePath, bucket, id) {
+  return `${filePath}\0${bucket}\0${id}`;
+}
+
 /**
  * NESMA enhancement FP needs human judgment on changed DET/RET. We count each delta item
  * in ADDED, MODIFIED, or REMOVED at the same fixed weight for its kind (full estimated unit).
+ * Duplicate id + bucket + file entries count once (check allows them; fp dedupes).
  */
-export function countDeltaItems(delta) {
+export function countDeltaItems(delta, ctx = null) {
   const items = [];
+  const seen = new Set();
   for (const file of delta.files) {
     if (file.path.startsWith("/steering/")) continue;
     for (const bucket of ["added", "modified", "removed"]) {
       for (const entry of file[bucket]) {
         const id = itemId(entry.title);
-        if (!COUNTABLE.test(id)) continue;
-        const points = pointsForId(id, entry.content);
+        if (!isCountableId(id)) continue;
+        const key = dedupeKey(file.path, bucket.toUpperCase(), id);
+        if (seen.has(key)) continue;
+        seen.add(key);
+        const kind = itemKind(id, entry.content, file.path, ctx);
+        const points = pointsForId(id, entry.content, file.path, ctx);
         items.push({
           id,
-          kind: itemKind(id, entry.content),
+          kind,
           bucket: bucket.toUpperCase(),
           file: file.path,
           points,
@@ -88,15 +125,25 @@ export function countDeltaItems(delta) {
 export function buildFpSummary(items) {
   const itemCounts = Object.fromEntries(FP_PR_KINDS.map((kind) => [kind, { ADDED: 0, MODIFIED: 0, REMOVED: 0 }]));
   const points = Object.fromEntries(FP_PR_KINDS.map((kind) => [kind, 0]));
+  const ifUnset = { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 };
   for (const row of items) {
+    if (row.kind === "IF_UNSET") {
+      ifUnset.itemCounts[row.bucket] += 1;
+      continue;
+    }
     if (!FP_PR_KINDS.includes(row.kind)) continue;
     itemCounts[row.kind][row.bucket] += 1;
     points[row.kind] += row.points;
   }
-  return { total: items.reduce((sum, row) => sum + row.points, 0), points, itemCounts };
+  return {
+    total: items.reduce((sum, row) => sum + row.points, 0),
+    points,
+    itemCounts,
+    ifUnset,
+  };
 }
 
-export function countIssueFunctionPoints(issueFiles) {
+export function countIssueFunctionPoints(issueFiles, ctx = null) {
   const quick = !issueFiles.requirements && !issueFiles.design && !!issueFiles.task;
   if (quick || !issueFiles.requirements) {
     return {
@@ -114,7 +161,7 @@ export function countIssueFunctionPoints(issueFiles) {
   if (issueFiles.design) parts.push(parseDeltaMarkdown(issueFiles.design, "design"));
   if (issueFiles.research) parts.push(parseDeltaMarkdown(issueFiles.research, "research"));
   const delta = mergeDeltas(parts);
-  const { total, items, byKind, summary } = countDeltaItems(delta);
+  const { total, items, byKind, summary } = countDeltaItems(delta, ctx);
   return {
     skipped: false,
     reason: "",
@@ -129,6 +176,10 @@ export function countIssueFunctionPoints(issueFiles) {
 
 function countCell(counts) {
   return `A${counts.ADDED}/M${counts.MODIFIED}/R${counts.REMOVED}`;
+}
+
+function unsetItems(ifUnset) {
+  return ifUnset.itemCounts.ADDED + ifUnset.itemCounts.MODIFIED + ifUnset.itemCounts.REMOVED;
 }
 
 /** Short markdown for pull request bodies; lang is en or ja. */
@@ -157,7 +208,12 @@ export function formatFpForPullRequest(result, lang = "en") {
     ? "| 種別 | FP | ADDED/MODIFIED/REMOVED |\n|---|---|---|"
     : "| Kind | FP | ADDED/MODIFIED/REMOVED |\n|---|---|---|";
   const tableBody = rows.map((row) => `| ${row.label} | ${row.points} | ${countCell(row.counts)} |`).join("\n");
-  return `${heading}\n\n${totalLine} ${note}\n\n${tableHead}\n${tableBody}\n`;
+  const unsetLine = unsetItems(summary.ifUnset)
+    ? (lang === "ja"
+      ? `\nIF（Direction 不明）: ${countCell(summary.ifUnset.itemCounts)}（0 FP）\n`
+      : `\nIF unset (no Direction): ${countCell(summary.ifUnset.itemCounts)} (0 FP)\n`)
+    : "";
+  return `${heading}\n\n${totalLine} ${note}\n\n${tableHead}\n${tableBody}${unsetLine}\n`;
 }
 
 export function formatFpReport(issue, result, format) {
@@ -173,8 +229,10 @@ export function formatFpReport(issue, result, format) {
     `metric: ${result.metric}`,
     "rules: DATA 7; IF Consumed 5; IF Provided 4; REQ 4; NFR and steering 0; ADDED/MODIFIED/REMOVED same weight per item",
     result.laterAddedNote,
-    "",
   ];
+  const unset = unsetItems(result.summary.ifUnset);
+  if (unset) lines.push(`IF unset (no Direction): ${countCell(result.summary.ifUnset.itemCounts)} (0 FP)`);
+  lines.push("");
   for (const row of result.items) {
     lines.push(`${row.id}\t${row.bucket}\t${row.file}\t${row.points}`);
   }

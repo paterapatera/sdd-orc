@@ -6,6 +6,7 @@
 - REQ items count **4** FP each (custom rule — not split into EI/EO/EQ). DATA **7**, IF Consumed **5**, IF Provided **4**, NFR and steering **0**. Quick issues (no `requirements.md`) are skipped.
 - Document the metric in README and README.ja (junior-friendly; Japanese in です/ます style).
 - **`/sdd-close`** runs `fp --format json` before removing the issue directory and adds a short function-points section to the printed pull request body (quick issues: one line that FP is not counted).
+- Fix **`fp`** counting: provisional `-NEW-` ids, **REMOVED** IF direction from knowledge `interfaces.md`, dedupe duplicate id+bucket+file rows; report **IF unset** when Direction is missing.
 
 ## 1.1.0
 

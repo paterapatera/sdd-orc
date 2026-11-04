@@ -1896,7 +1896,8 @@ function runFp(root, config, opts) {
     return { code: 2, stdout: output(diags, opts.format), stderr: "" };
   }
   const files = readIssue(root, config, issue);
-  const result = countIssueFunctionPoints(files);
+  const knowledgeMap = loadTree(root, kdir(config));
+  const result = countIssueFunctionPoints(files, { knowledgeMap, docsDir: kdir(config) });
   return { code: 0, stdout: formatFpReport(issue, result, opts.format), stderr: "" };
 }
 

@@ -92,7 +92,7 @@ node .agents/skills/sdd-scripts/sdd.mjs fp --issue invoice-fix --format json
 | `REQ-*` | 各 4（EI/EO/EQ には分けません。**IFPUG/NESMA 準拠ではないカスタム指標**です） |
 | `NFR-*`、steering、ADR、構造だけの delta | 0 |
 
-issue の delta（主に `requirements.md`、`design.md` / `research.md` にある steering 部分もマージ）の **ADDED / MODIFIED / REMOVED** から数えます。**MODIFIED** と **REMOVED** も **ADDED** と同じ固定重み（1 項目あたり満点）にしています。NESMA の変更系カウントはデータ要素の変更数など人の判断が必要なため、機械だけで安定させる簡略ルールです。**quick issue**（`requirements.md` がない）は対象外です。結果は **stdout のみ**に出し、`requirements.md` の stamp や base ハッシュを汚しません。
+issue の delta（`requirements.md` と、あれば `design.md` / `research.md` をマージ）の **ADDED / MODIFIED / REMOVED** から数えます。`/steering/` 配下は除外し、それ以外の delta ファイル節は含めます。**MODIFIED** と **REMOVED** も **ADDED** と同じ固定重み（1 項目あたり満点）にしています。NESMA の変更系カウントはデータ要素の変更数など人の判断が必要なため、機械だけで安定させる簡略ルールです。**quick issue**（`requirements.md` がない）は対象外です。結果は **stdout のみ**に出し、`requirements.md` の stamp や base ハッシュを汚しません。delta に `Direction` がなく、**REMOVED** の IF で knowledge の `interfaces.md` からも取れない場合は **IF unset** として件数だけ示し、FP は 0 です。
 
 **`/sdd-close`** は issue フォルダを消す**前**に `fp --format json` を実行し、表示する PR 本文に短い **機能ポイント**節を足します（合計、種別ごとの FP、ADDED/MODIFIED/REMOVED の件数。quick issue は「数えない」1 行）。
 
