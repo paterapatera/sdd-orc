@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.1
+
+- Add **`sync-base`** on the bundled checker: before close merges the base branch, fetch from the remote and fast-forward the **local** `baseBranch` ref (default `main`) without checking it out. Stops when fetch fails or when local base is ahead/diverged from the remote; skips with a note when no remote exists.
+- **`/sdd-close`** (normal and re-close) runs `sync-base` before merging the base branch so `renumber`, `apply`, and `fp` see an up-to-date local base.
+- README / README.ja document why close syncs base first and update **known limits** case (1): missing or stale local base is handled on `/sdd-close`; manual `fp` without a local base can still show 0 FP lines.
+
 ## 1.2.0
 
 - Add **`fp`** command on the bundled checker: mechanical **custom function point (FP)** count per issue from the requirements delta (NESMA estimated weights). Output goes to **stdout** only (text or `--format json`); nothing is written into `requirements.md`.

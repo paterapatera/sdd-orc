@@ -2,6 +2,7 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { regenerateLessonsIndex, validateLessons, validateCloseLessons } from "./lessons.mjs";
+import { runSyncBase } from "./sync-base.mjs";
 import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, sameAfterApply, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
 import { countIssueFunctionPoints, formatFpReport } from "./fp.mjs";
@@ -1769,16 +1770,20 @@ export function runCommand(start, argv) {
   }
   const opts = parseScriptArgs(argv);
   const command = opts._[0] || "";
-  if (!command || opts.unknown || !["check", "stamp", "apply", "renumber", "index", "status", "fp"].includes(command)) {
-    return { code: 2, stdout: "Usage: sdd.mjs check|stamp|apply|renumber|index|status|fp [options]\n", stderr: "" };
+  if (!command || opts.unknown || !["check", "stamp", "apply", "renumber", "index", "status", "fp", "sync-base"].includes(command)) {
+    return { code: 2, stdout: "Usage: sdd.mjs check|stamp|apply|renumber|index|status|fp|sync-base [options]\n", stderr: "" };
   }
   const root = findRoot(start);
   if (!root) return { code: 2, stdout: "", stderr: "sdd.config.json:1: USAGE Run this command inside a repository.\n" };
   const config = readConfig(root);
-  if (command !== "check" && command !== "fp") {
+  if (command !== "check" && command !== "fp" && command !== "sync-base") {
     const setup = setupDiags(root, config);
     const blocking = setup.filter((item) => item.rule !== "SETUP_STEERING_MISSING");
     if (blocking.length) return { code: exitCode(blocking), stdout: output(blocking, opts.format), stderr: "" };
+  }
+  if (command === "sync-base") {
+    const base = opts.base || config.baseBranch || "main";
+    return runSyncBase(root, base, (cwd, args) => git(cwd, args));
   }
   if (command === "fp") return runFp(root, config, opts);
   if (command === "index") {

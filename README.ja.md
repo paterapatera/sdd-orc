@@ -2,7 +2,7 @@
 
 [English](README.md)
 
-sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、検査は各スキルがスクリプト経由で実行します。パッケージ名は `@paterapatera/sdd-orc` 1.2.0 です。Node.js 18 以降が必要です。
+sdd-orc は Cursor・Codex・Claude Code から [仕様駆動開発（SDD）](https://github.com/paterapatera/sdd-orc) を進めるためのエージェント用スキルと、共通の検査スクリプトをリポジトリに入れるパッケージです。チャットで `/sdd-init` や `/sdd-req` などのスキルを呼び出すと、エージェントが Markdown を書き、検査は各スキルがスクリプト経由で実行します。パッケージ名は `@paterapatera/sdd-orc` 1.2.1 です。Node.js 18 以降が必要です。
 
 issue の登録、プルリクエストの作成、`Closes #1` の記述は別のトラッカー連携スキルの範囲です。このパッケージはトラッカーと通信しません。
 
@@ -61,7 +61,7 @@ npx @paterapatera/sdd-orc migrate
 
 ## スクリプトと status
 
-`check` や `stamp`、`apply`、`renumber`、`index`、`status`、`fp` などは、通常の作業では各スキルが自動で実行します。人が手で叩く必要はありません。
+`check` や `stamp`、`apply`、`renumber`、`index`、`status`、`fp`、`sync-base` などは、通常の作業では各スキルが自動で実行します。人が手で叩く必要はありません。
 
 今のフェーズと、次に使うスキルを確認したいときだけ、次を実行します。
 
@@ -72,6 +72,29 @@ node .agents/skills/sdd-scripts/sdd.mjs status
 特定の issue や、開いている issue すべてを見る場合は `--issue <name>` や `--all` を付けます。
 
 実装の段階でテストを自動実行したい場合だけ、`sdd.config.json` の任意項目 `testCommand` にコマンドを書きます。
+
+## ベースブランチの同期（`sync-base`）
+
+close は設定したベースブランチ（既定 `main`）をマージし、`renumber`・`apply`・`fp` はそのブランチの**ローカル ref** を読みます。他の人が PR をマージしても、fetch するまでは `origin/main` だけが進み、ローカル `main` が古いと renumber で id が衝突したり、マージで取りこぼしたり、`git show main:…` の FP 参照がずれることがあります。
+
+**`/sdd-close`** は最初に `sync-base` を実行します。処理の流れは次のとおりです。
+
+1. ベースブランチの upstream からリモート名を決め、なければ `origin`（どちらもなければ 1 行メモを出して成功終了 — リモートのないローカル専用リポジトリ向け）。
+2. `git fetch <remote> <baseBranch>` を実行します。
+3. ローカルに `<baseBranch>` がなければ `<remote>/<baseBranch>` から作成し、遅れていれば fast-forward します（ベースブランチには checkout せず、作業ツリーも触りません）。
+4. fetch に失敗したとき、またはローカルベースにリモートにないコミットがあるとき（先行・分岐）は非ゼロで止まります。ローカルコミットを reset することはありません。
+
+```sh
+node .agents/skills/sdd-scripts/sdd.mjs sync-base
+node .agents/skills/sdd-scripts/sdd.mjs sync-base --base main
+```
+
+```mermaid
+flowchart LR
+  close["/sdd-close"] --> sync["sync-base"]
+  sync --> merge["ベースをマージ"]
+  merge --> apply["apply / renumber / fp"]
+```
 
 ## 機能ポイント（`fp`）
 
@@ -97,7 +120,7 @@ issue delta の **ADDED / MODIFIED** の各 `REQ-*` には `- Process: <名前> 
 
 issue の delta（`requirements.md` と、あれば `design.md` / `research.md` をマージ）の **ADDED / MODIFIED / REMOVED** から数えます。`/steering/` 配下は除外します。REQ **id** は capability ファイルごとに 1 回まで（**REMOVED > MODIFIED > ADDED**）。**プロセス**は `Process:` 名（前後空白は trim、連続空白は 1 つに）と型でグループ化します。**プロセスの bucket**（EI/EO/EQ 表の ADDED/MODIFIED/REMOVED）：グループ内の REQ がすべて **REMOVED** なら **REMOVED**；それ以外で **その処理のグループ内**に **MODIFIED** または **REMOVED** の REQ が 1 件でもあれば **MODIFIED**；さらに **ベースブランチ**の spec に同名プロセスがあれば **MODIFIED**（`git show` のみ。作業ツリーは見ません）；それ以外は **ADDED**。**MODIFIED** / **REMOVED** も **ADDED** と同じ満点の EI/EO/EQ 重みです。**quick issue** は対象外です。結果は **stdout のみ**です。**REMOVED** の `REQ-*` で delta に `Process` がないときは **ベースブランチ**の `spec.md` から読み、見つからなければ **不明プロセス（0 FP）** 行に載せます（REMOVED `IF-*` と同様の参照順）。**REMOVED** の `IF-*` で `Direction` がないときはベースブランチの `interfaces.md` を読みます。**MODIFIED** の `IF-*` は delta に `Direction` が必要で、なければ **IF unset**（0 FP）です。
 
-**既知の限界（REMOVED `IF-*` とプロセス参照）:** 参照に失敗したときは **`IF unset (0 FP)`** や **不明プロセス（0 FP）** の行で示します（黙って 0 にはしません）。(1) **ローカルにベースブランチがない** — 例: `git clone -b <機能ブランチ>` や、`origin/main` だけの浅い clone でローカル `main` がない。REMOVED IF は 0 FP です。`Process:` 行のない **REMOVED** の `REQ-*`（旧 spec でよくあります）は apply 後に解決できず **不明プロセス（0 FP）** 行に載ります。レポートに名前が必要なら REMOVED ブロックに `- Process:` を書いてください。ローカルにベースブランチがないとき、この issue で **ADDED** の REQ だけのプロセスは表では **MODIFIED** ではなく **ADDED** と表示されます。FP 合計は変わりません。(2) **同じブランチで前の issue が追加した IF を、後の issue が削除** — apply 後はベースブランチにその IF がないため 0 FP です。(3) **モノレポのサブディレクトリ** — git パスはリポジトリルート基準です（`renumber` と同じ）。apply 後に REMOVED IF が 0 になることがあります。(4) **apply の前** — 作業ツリーの knowledge を先に読むため、未コミットの編集で FP が変わることがあります（その状態では check が通らないため、close で出す PR 用の値は通常安定します）。
+**既知の限界（REMOVED `IF-*` とプロセス参照）:** 参照に失敗したときは **`IF unset (0 FP)`** や **不明プロセス（0 FP）** の行で示します（黙って 0 にはしません）。(1) **ローカルベースが古い・ない** — 通常の close では **`sync-base`** がマージの前にリモートからローカル `main`（または `baseBranch`）を更新します。**手で `fp` だけ**実行し、ローカルにベースブランチがない clone（例: `git clone -b <機能ブランチ>`）では、REMOVED IF が 0 FP のままだったり、`Process:` のない REMOVED REQ が **不明プロセス（0 FP）** 行に載ったりすることがあります。レポートに名前が必要なら REMOVED ブロックに `- Process:` を書いてください。ローカルにベースブランチがないとき、この issue で **ADDED** の REQ だけのプロセスは表では **MODIFIED** ではなく **ADDED** と表示されます。FP 合計は変わりません。(2) **同じブランチで前の issue が追加した IF を、後の issue が削除** — apply 後はベースブランチにその IF がないため 0 FP です。(3) **モノレポのサブディレクトリ** — git パスはリポジトリルート基準です（`renumber` と同じ）。apply 後に REMOVED IF が 0 になることがあります。(4) **apply の前** — 作業ツリーの knowledge を先に読むため、未コミットの編集で FP が変わることがあります（その状態では check が通らないため、close で出す PR 用の値は通常安定します）。
 
 **`/sdd-close`** は issue フォルダを消す**前**に `fp --format json` を実行し、表示する PR 本文に短い **機能ポイント**節を足します（合計、**DATA** / **EI** / **EO** / **EQ** / **IF** の FP と ADDED/MODIFIED/REMOVED、REQ 件数とプロセス件数、必要なら **Process: none**・**不明プロセス**・**IF unset**・**NFR** の 0 FP 行。quick issue は「数えない」1 行のみ）。
 

@@ -63,6 +63,39 @@ export function commitAll(dir, message) {
   return git(["commit", "-m", message], dir);
 }
 
+export function bareRemote(branch = "main") {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sdd-bare-"));
+  const created = git(["init", "--bare", "-b", branch], dir);
+  if (created.status !== 0) throw new Error(created.stderr);
+  return dir;
+}
+
+export function addOrigin(localDir, barePath) {
+  const remotes = git(["remote"], localDir).stdout.split("\n").map((line) => line.trim()).filter(Boolean);
+  if (!remotes.includes("origin")) git(["remote", "add", "origin", barePath], localDir);
+  else git(["remote", "set-url", "origin", barePath], localDir);
+}
+
+export function pushOrigin(localDir, branch = "main") {
+  return git(["push", "-u", "origin", branch], localDir);
+}
+
+export function cloneRepo(barePath, extraArgs = []) {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "sdd-clone-"));
+  const result = git(["clone", ...extraArgs, barePath, dir], process.cwd());
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout);
+  return dir;
+}
+
+export function prepareRepo(dir) {
+  const init = initRepo(dir);
+  if (init.status !== 0) throw new Error(init.stderr || init.stdout);
+  writeSteering(dir);
+  const indexed = sdd(dir, ["index"]);
+  if (indexed.status !== 0) throw new Error(indexed.stderr || indexed.stdout);
+  commitAll(dir, "chore: skeleton");
+}
+
 export function attachReqProcess(content, name, type = "EQ") {
   if (/^-\s+Process:/m.test(content)) return content;
   const prefix = name === "none" ? "- Process: none\n" : `- Process: ${name} (${type})\n`;
