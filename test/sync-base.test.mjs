@@ -26,6 +26,10 @@ function rev(dir, ref) {
   return git(["rev-parse", ref], dir).stdout.trim();
 }
 
+function remoteMainSha(barePath) {
+  return git(["ls-remote", barePath, "refs/heads/main"], process.cwd()).stdout.split("\t")[0].trim();
+}
+
 test("sync-base fast-forwards stale main while feature branch stays checked out", () => {
   const bare = bareRemote();
   const hub = tempRepo();
@@ -37,12 +41,12 @@ test("sync-base fast-forwards stale main while feature branch stays checked out"
   fs.writeFileSync(path.join(feature, "dirty.txt"), "keep-me\n");
   git(["update-ref", "-d", "refs/heads/main"], feature);
 
-  const upstream = tempRepo();
-  prepareRepo(upstream);
-  fs.writeFileSync(path.join(upstream, "on-main.txt"), "new\n");
-  commitAll(upstream, "feat: advance main");
-  addOrigin(upstream, bare);
-  pushOrigin(upstream);
+  git(["checkout", "main"], hub);
+  fs.writeFileSync(path.join(hub, "on-main.txt"), "new\n");
+  commitAll(hub, "feat: advance main");
+  const pushed = pushOrigin(hub);
+  assert.equal(pushed.status, 0, pushed.stderr || pushed.stdout);
+  const expectedMain = remoteMainSha(bare);
 
   const beforeHead = rev(feature, "HEAD");
   const sync = sdd(feature, ["sync-base"]);
@@ -51,7 +55,7 @@ test("sync-base fast-forwards stale main while feature branch stays checked out"
   assert.equal(rev(feature, "HEAD"), beforeHead);
   assert.equal(git(["branch", "--show-current"], feature).stdout.trim(), "feature-work");
   assert.equal(read(feature, "dirty.txt"), "keep-me\n");
-  assert.equal(rev(feature, "main"), rev(upstream, "main"));
+  assert.equal(rev(feature, "main"), expectedMain);
 });
 
 test("sync-base creates missing local main", () => {
@@ -144,21 +148,22 @@ test("sync-base uses upstream remote when configured on main", () => {
   prepareRepo(hub);
   git(["remote", "add", "upstream", upstreamBare], hub);
   git(["remote", "add", "origin", originBare], hub);
-  git(["push", "-u", "upstream", "main"], hub);
+  const initial = git(["push", "-u", "upstream", "main"], hub);
+  assert.equal(initial.status, 0, initial.stderr || initial.stdout);
 
-  const advance = tempRepo();
-  prepareRepo(advance);
+  const advance = cloneRepo(upstreamBare);
   fs.writeFileSync(path.join(advance, "via-upstream.txt"), "u\n");
   commitAll(advance, "feat: upstream advance");
-  git(["remote", "add", "upstream", upstreamBare], advance);
-  git(["push", "upstream", "main"], advance);
+  const advanced = pushOrigin(advance);
+  assert.equal(advanced.status, 0, advanced.stderr || advanced.stdout);
+  const expectedMain = remoteMainSha(upstreamBare);
 
   git(["checkout", "-b", "feature"], hub);
   const staleMain = rev(hub, "main");
+  assert.notEqual(staleMain, expectedMain);
   const sync = sdd(hub, ["sync-base"]);
   assert.equal(sync.status, 0, sync.stderr + sync.stdout);
-  assert.notEqual(rev(hub, "main"), staleMain);
-  assert.equal(rev(hub, "main"), rev(advance, "main"));
+  assert.equal(rev(hub, "main"), expectedMain);
   assert.equal(resolveFetchRemote(hub, "main", (cwd, args) => git(args, cwd)), "upstream");
 });
 

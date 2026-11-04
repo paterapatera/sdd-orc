@@ -77,7 +77,9 @@ export function addOrigin(localDir, barePath) {
 }
 
 export function pushOrigin(localDir, branch = "main") {
-  return git(["push", "-u", "origin", branch], localDir);
+  const result = git(["push", "-u", "origin", branch], localDir);
+  if (result.status !== 0) throw new Error(result.stderr || result.stdout || "git push failed");
+  return result;
 }
 
 export function cloneRepo(barePath, extraArgs = []) {
