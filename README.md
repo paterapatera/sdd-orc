@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md)
 
-**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.2.0. Node.js 18 or later.
+**sdd-orc** installs agent skills and one checker script so you can run [Specification-Driven Development (SDD)](https://github.com/paterapatera/sdd-orc) in Cursor, Codex, or Claude Code. You invoke skills such as `/sdd-init` and `/sdd-req` in chat; the agent writes Markdown and runs the checker through those skills. Package: `@paterapatera/sdd-orc` 1.2.1. Node.js 18 or later.
 
 Registering tracker issues, opening pull requests, and writing `Closes #1` belong to a separate tracker skill. This package does not talk to a tracker.
 
@@ -61,7 +61,7 @@ npx @paterapatera/sdd-orc migrate
 
 ## Script and status
 
-Skills run the bundled checker (`check`, `stamp`, `apply`, `renumber`, `index`, `status`, `fp`, and related steps) during each phase. You do not need to run those commands yourself in normal work.
+Skills run the bundled checker (`check`, `stamp`, `apply`, `renumber`, `index`, `status`, `fp`, `sync-base`, and related steps) during each phase. You do not need to run those commands yourself in normal work.
 
 To see the current phase and the next skill for your branch, run:
 
@@ -72,6 +72,29 @@ node .agents/skills/sdd-scripts/sdd.mjs status
 Add `--issue <name>` or `--all` when you want a specific issue or every open issue.
 
 If `/sdd-impl` should run your test suite automatically, set optional `testCommand` in `sdd.config.json`.
+
+## Sync base branch (`sync-base`)
+
+Close merges your configured base branch (default `main`) and runs `renumber`, `apply`, and `fp` against the **local** ref of that branch. If teammates merged pull requests, only `origin/main` moves until you fetch — a stale local `main` makes renumber pick colliding ids, merges miss commits, and `fp` base lookups (`git show main:…`) can be wrong.
+
+**`/sdd-close`** runs `sync-base` first. The command:
+
+1. Picks the remote from the base branch upstream, else `origin` if it exists, else the only remote when there is just one; with **no** remotes it prints a one-line note and exits successfully. Several remotes with no upstream stops and lists them.
+2. Runs `git fetch <remote> +refs/heads/<baseBranch>:refs/remotes/<remote>/<baseBranch>`.
+3. Creates or fast-forwards local `<baseBranch>` with `git fetch . refs/remotes/<remote>/<baseBranch>:refs/heads/<baseBranch>` — **without** checking out the base branch, so the **current** branch and its working tree stay as they are. If `<baseBranch>` is checked out in this repo or another worktree, git refuses the update and `sync-base` stops (run it from your feature branch, or `git pull --ff-only` where the base is checked out).
+4. Stops with a non-zero exit if fetch fails, or if local base has commits not on the remote (ahead or diverged). It never resets your local commits.
+
+```sh
+node .agents/skills/sdd-scripts/sdd.mjs sync-base
+node .agents/skills/sdd-scripts/sdd.mjs sync-base --base main
+```
+
+```mermaid
+flowchart LR
+  close["/sdd-close"] --> sync["sync-base"]
+  sync --> merge["merge base branch"]
+  merge --> apply["apply / renumber / fp"]
+```
 
 ## Function points (`fp`)
 
@@ -97,7 +120,7 @@ Every **ADDED** or **MODIFIED** `REQ-*` in the issue delta must include `- Proce
 
 Counts come from **ADDED**, **MODIFIED**, and **REMOVED** items in the merged issue delta (`requirements.md`, plus `design.md` and `research.md` when present). Paths under `/steering/` are skipped; other delta file sections in those documents are included. Each **requirement id** is deduped **at most once per capability file** (REMOVED > MODIFIED > ADDED); **processes** are grouped by trimmed `Process:` name and type. **Process bucket** (for the EI/EO/EQ table): **REMOVED** when every REQ in the group is REMOVED; **MODIFIED** when any REQ in that process's group is MODIFIED or REMOVED (but not all REMOVED), or the process name appears on a REQ in **base-branch** specs (`git show` only); otherwise **ADDED**. **MODIFIED** and **REMOVED** processes use the same full EI/EO/EQ weight as **ADDED**. **Quick issues** (no `requirements.md`) are skipped. Results are printed to **stdout** only. For **REMOVED** `REQ-*` without `Process` in the delta, `fp` reads the id from **base-branch** `spec.md` (same order as REMOVED `IF-*`); missing process names appear as **unknown process (0 FP)**. For **REMOVED** `IF-*`, when the delta omits `Direction`, `fp` reads **`interfaces.md` on the base branch**. **MODIFIED** `IF-*` must include `Direction` in the delta or they count as **IF unset** (0 FP).
 
-**Known limits (REMOVED `IF-*` and process lookup):** when lookup fails, output includes **`IF unset (0 FP)`** or **unknown process (0 FP)** (not a silent zero). (1) **No local base branch** — for example `git clone -b <feature>` or a shallow clone with only `origin/main` and no local `main`. REMOVED IF scores 0. A **REMOVED** `REQ-*` with no `Process:` line (common on older specs) cannot be resolved after apply and appears on the **unknown process (0 FP)** line; add `- Process:` in the REMOVED block if you need the name in the report. When the base branch is missing locally, a process whose REQs in this issue are all **ADDED** is labelled **ADDED** rather than **MODIFIED** in the table; the FP total is unchanged. (2) **Same branch, earlier issue added the IF** — a later issue removes it; after apply it is not on the base branch, so REMOVED IF scores 0. (3) **Monorepo subdirectory** — git paths are from the repository root (same as `renumber`); after apply, REMOVED IF may score 0 when the checker runs outside that layout. (4) **Before apply** — `Direction` is taken from working-tree knowledge first; uncommitted edits can change the score until you commit (close normally runs after a passing check, so printed PR totals stay stable).
+**Known limits (REMOVED `IF-*` and process lookup):** when lookup fails, output includes **`IF unset (0 FP)`** or **unknown process (0 FP)** (not a silent zero). (1) **Stale or missing local base** — `/sdd-close` runs `sync-base` first so a normal close refreshes local `main` (or your configured `baseBranch`) from the remote before merge, renumber, and `fp`. If you run **`fp` by hand** on a clone with no local base branch (for example `git clone -b <feature>`), REMOVED IF can still score 0 and REMOVED REQ without `Process:` still appears on the **unknown process (0 FP)** line; add `- Process:` in the REMOVED block if you need the name in the report. When the base branch is missing locally, a process whose REQs in this issue are all **ADDED** is labelled **ADDED** rather than **MODIFIED** in the table; the FP total is unchanged. (2) **Same branch, earlier issue added the IF** — a later issue removes it; after apply it is not on the base branch, so REMOVED IF scores 0. (3) **Monorepo subdirectory** — git paths are from the repository root (same as `renumber`); after apply, REMOVED IF may score 0 when the checker runs outside that layout. (4) **Before apply** — `Direction` is taken from working-tree knowledge first; uncommitted edits can change the score until you commit (close normally runs after a passing check, so printed PR totals stay stable).
 
 **`/sdd-close`** runs `fp --format json` before it deletes the issue folder and adds a short **Function points** section to the pull request text it prints (total; **DATA**, **EI**, **EO**, **EQ**, and **IF** rows with ADDED/MODIFIED/REMOVED process or item counts; REQ and distinct process counts; optional **Process: none**, **unknown process**, **IF unset**, and **NFR** lines at 0 FP; quick issues get a one-line “not counted” note only).
 
@@ -140,7 +163,7 @@ Steps (**agent chat** unless noted):
 1. **Agent chat:** `/sdd-init` on the base branch (creates the change summary; no branch yet).
 2. **Terminal:** `git checkout -b <name>` (same name as the issue folder init chose).
 3. **Agent chat:** `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl`; commit docs as each skill says. If docs or code drift, `/sdd-fix` then continue.
-4. **Agent chat:** `/sdd-close` merges the base branch, updates permanent docs, removes the issue folder, and prints PR title and body (does not open the PR).
+4. **Agent chat:** `/sdd-close` runs `sync-base`, merges the base branch, updates permanent docs, removes the issue folder, and prints PR title and body (does not open the PR).
 
 ### Quick (small change)
 
