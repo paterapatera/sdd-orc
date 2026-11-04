@@ -7,6 +7,7 @@
 - Document the metric in README and README.ja (junior-friendly; Japanese in です/ます style).
 - **`/sdd-close`** runs `fp --format json` before removing the issue directory and adds a short function-points section to the printed pull request body (quick issues: one line that FP is not counted).
 - Fix **`fp`** counting: provisional `-NEW-` ids, **REMOVED** IF direction from base-branch `interfaces.md` (stable after apply), dedupe duplicate rows and one id per file (REMOVED>MODIFIED>ADDED); report **IF unset** when Direction is missing.
+- README / README.ja document **known limits** when REMOVED `IF-*` lookup fails (each appears as **IF unset (0 FP)** in output).
 
 ## 1.1.0
 
