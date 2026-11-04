@@ -15,6 +15,9 @@ const POINTS = {
   NFR: 0,
 };
 
+/** When the same id appears in multiple buckets in one file, keep the highest-precedence bucket. */
+export const FP_BUCKET_PRECEDENCE = { REMOVED: 3, MODIFIED: 2, ADDED: 1 };
+
 /** Kinds shown in pull request text from /sdd-close. */
 export const FP_PR_KINDS = ["DATA", "REQ", "IF_CONSUMED", "IF_PROVIDED"];
 
@@ -37,28 +40,54 @@ function idBlock(body, id) {
   return node ? node.full : "";
 }
 
-export function knowledgeInterfaceBody(knowledgeMap, docsDir, interfacesPath, id) {
-  if (!knowledgeMap || !interfacesPath.endsWith("/interfaces.md")) return "";
-  const rel = `${docsDir.replace(/\/+$/, "")}${interfacesPath}`;
-  const text = knowledgeMap.get(rel);
+function knowledgeRel(docsDir, interfacesPath) {
+  return `${docsDir.replace(/\/+$/, "")}${interfacesPath}`;
+}
+
+export function interfaceBodyFromMarkdown(text, id) {
   if (typeof text !== "string") return "";
   return idBlock(splitFrontmatter(text).body, id);
 }
 
-function resolveIfDirection(id, content, interfacesPath, ctx) {
-  const fromDelta = ifDirection(content);
-  if (fromDelta) return fromDelta;
-  if (!id.startsWith("IF-") || !ctx?.knowledgeMap) return "";
-  const block = knowledgeInterfaceBody(ctx.knowledgeMap, ctx.docsDir, interfacesPath, id);
-  return ifDirection(block);
+export function knowledgeInterfaceBody(knowledgeMap, docsDir, interfacesPath, id) {
+  if (!knowledgeMap || !interfacesPath.endsWith("/interfaces.md")) return "";
+  const text = knowledgeMap.get(knowledgeRel(docsDir, interfacesPath));
+  return interfaceBodyFromMarkdown(text, id);
 }
 
-export function itemKind(id, content, interfacesPath = "", ctx = null) {
+function addedDirectionInDelta(delta, interfacesPath, id) {
+  if (!delta) return "";
+  const file = delta.files.find((entry) => entry.path === interfacesPath);
+  if (!file) return "";
+  const added = file.added.find((entry) => itemId(entry.title) === id);
+  return added ? ifDirection(added.content) : "";
+}
+
+/**
+ * REMOVED IF items often omit Direction. Resolve from delta body, then knowledge on the
+ * base branch (stable after apply), then ADDED in the same issue delta for same-file ids.
+ * MODIFIED IF must carry Direction in the delta or counts as unset.
+ */
+export function resolveIfDirection(id, content, interfacesPath, bucket, ctx) {
+  const fromDelta = ifDirection(content);
+  if (fromDelta) return fromDelta;
+  if (!id.startsWith("IF-") || bucket !== "REMOVED") return "";
+  let block = knowledgeInterfaceBody(ctx?.knowledgeMap, ctx?.docsDir, interfacesPath, id);
+  if (block) return ifDirection(block);
+  if (ctx?.readGitAtBase) {
+    const rel = knowledgeRel(ctx.docsDir, interfacesPath);
+    block = interfaceBodyFromMarkdown(ctx.readGitAtBase(rel), id);
+    if (block) return ifDirection(block);
+  }
+  return addedDirectionInDelta(ctx?.delta, interfacesPath, id);
+}
+
+export function itemKind(id, content, interfacesPath = "", bucket = "", ctx = null) {
   if (id.startsWith("DATA-")) return "DATA";
   if (id.startsWith("REQ-")) return "REQ";
   if (id.startsWith("NFR-")) return "NFR";
   if (id.startsWith("IF-")) {
-    const direction = resolveIfDirection(id, content, interfacesPath, ctx);
+    const direction = resolveIfDirection(id, content, interfacesPath, bucket, ctx);
     if (direction === "Consumed") return "IF_CONSUMED";
     if (direction === "Provided") return "IF_PROVIDED";
     return "IF_UNSET";
@@ -66,12 +95,12 @@ export function itemKind(id, content, interfacesPath = "", ctx = null) {
   return "OTHER";
 }
 
-export function pointsForId(id, content, interfacesPath = "", ctx = null) {
+export function pointsForId(id, content, interfacesPath = "", bucket = "", ctx = null) {
   if (id.startsWith("DATA-")) return POINTS.DATA;
   if (id.startsWith("REQ-")) return POINTS.REQ;
   if (id.startsWith("NFR-")) return POINTS.NFR;
   if (id.startsWith("IF-")) {
-    const direction = resolveIfDirection(id, content, interfacesPath, ctx);
+    const direction = resolveIfDirection(id, content, interfacesPath, bucket, ctx);
     if (direction === "Consumed") return POINTS.IF_CONSUMED;
     if (direction === "Provided") return POINTS.IF_PROVIDED;
     return 0;
@@ -79,39 +108,37 @@ export function pointsForId(id, content, interfacesPath = "", ctx = null) {
   return 0;
 }
 
-function dedupeKey(filePath, bucket, id) {
-  return `${filePath}\0${bucket}\0${id}`;
-}
-
 /**
  * NESMA enhancement FP needs human judgment on changed DET/RET. We count each delta item
- * in ADDED, MODIFIED, or REMOVED at the same fixed weight for its kind (full estimated unit).
- * Duplicate id + bucket + file entries count once (check allows them; fp dedupes).
+ * at the same fixed weight for its kind. Each id is counted at most once per capability file;
+ * duplicate rows in the same bucket are ignored; cross-bucket duplicates keep REMOVED >
+ * MODIFIED > ADDED.
  */
 export function countDeltaItems(delta, ctx = null) {
-  const items = [];
-  const seen = new Set();
+  const seenInBucket = new Set();
+  const byFileId = new Map();
   for (const file of delta.files) {
     if (file.path.startsWith("/steering/")) continue;
     for (const bucket of ["added", "modified", "removed"]) {
+      const bucketUpper = bucket.toUpperCase();
       for (const entry of file[bucket]) {
         const id = itemId(entry.title);
         if (!isCountableId(id)) continue;
-        const key = dedupeKey(file.path, bucket.toUpperCase(), id);
-        if (seen.has(key)) continue;
-        seen.add(key);
-        const kind = itemKind(id, entry.content, file.path, ctx);
-        const points = pointsForId(id, entry.content, file.path, ctx);
-        items.push({
-          id,
-          kind,
-          bucket: bucket.toUpperCase(),
-          file: file.path,
-          points,
-        });
+        const bucketDup = `${file.path}\0${bucketUpper}\0${id}`;
+        if (seenInBucket.has(bucketDup)) continue;
+        seenInBucket.add(bucketDup);
+        const kind = itemKind(id, entry.content, file.path, bucketUpper, ctx);
+        const points = pointsForId(id, entry.content, file.path, bucketUpper, ctx);
+        const row = { id, kind, bucket: bucketUpper, file: file.path, points };
+        const fileIdKey = `${file.path}\0${id}`;
+        const existing = byFileId.get(fileIdKey);
+        if (!existing || FP_BUCKET_PRECEDENCE[bucketUpper] > FP_BUCKET_PRECEDENCE[existing.bucket]) {
+          byFileId.set(fileIdKey, row);
+        }
       }
     }
   }
+  const items = [...byFileId.values()];
   items.sort((left, right) => left.file.localeCompare(right.file) || left.bucket.localeCompare(right.bucket) || left.id.localeCompare(right.id));
   const total = items.reduce((sum, row) => sum + row.points, 0);
   const byKind = { REQ: 0, DATA: 0, IF: 0, NFR: 0 };
@@ -161,7 +188,8 @@ export function countIssueFunctionPoints(issueFiles, ctx = null) {
   if (issueFiles.design) parts.push(parseDeltaMarkdown(issueFiles.design, "design"));
   if (issueFiles.research) parts.push(parseDeltaMarkdown(issueFiles.research, "research"));
   const delta = mergeDeltas(parts);
-  const { total, items, byKind, summary } = countDeltaItems(delta, ctx);
+  const mergedCtx = ctx ? { ...ctx, delta } : { delta };
+  const { total, items, byKind, summary } = countDeltaItems(delta, mergedCtx);
   return {
     skipped: false,
     reason: "",
@@ -227,7 +255,7 @@ export function formatFpReport(issue, result, format) {
     `issue: ${issue}`,
     `total: ${result.total}`,
     `metric: ${result.metric}`,
-    "rules: DATA 7; IF Consumed 5; IF Provided 4; REQ 4; NFR and steering 0; ADDED/MODIFIED/REMOVED same weight per item",
+    "rules: DATA 7; IF Consumed 5; IF Provided 4; REQ 4; NFR and steering 0; one id per file (REMOVED>MODIFIED>ADDED)",
     result.laterAddedNote,
   ];
   const unset = unsetItems(result.summary.ifUnset);

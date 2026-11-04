@@ -4,7 +4,7 @@ import path from "node:path";
 import { test } from "node:test";
 import { countDeltaItems, countIssueFunctionPoints, formatFpForPullRequest, formatFpReport, isCountableId, itemId, pointsForId } from "../src/script/fp.mjs";
 import { parseDeltaMarkdown } from "../src/script/delta.mjs";
-import { commitAll, initRepo, sdd, tempRepo, writeSteering } from "./helpers.mjs";
+import { commitAll, git, initRepo, sdd, tempRepo, writeInvoiceIssue, writeSteering } from "./helpers.mjs";
 
 test("itemId and pointsForId follow custom NESMA-simplified weights", () => {
   assert.equal(itemId("REQ-INV-1: Issue"), "REQ-INV-1");
@@ -131,18 +131,19 @@ When z, the system SHALL do c.
   assert.equal(result.items.filter((row) => row.id === "REQ-INV-NEW-1").length, 1);
 });
 
-test("REMOVED IF uses Direction from knowledge interfaces.md", () => {
-  const knowledgeMap = new Map([
-    ["docs/knowledge/specs/billing/invoice/interfaces.md", `---
+test("REMOVED IF uses Direction from base branch when working tree lost it", () => {
+  const readGitAtBase = (rel) => {
+    if (rel === "docs/knowledge/specs/billing/invoice/interfaces.md") {
+      return `---
 ---
-# Interfaces
-
 ### IF-LEG-1: Legacy API
 - Direction: Provided
 - Kind: REST API
-`],
-  ]);
-  const ctx = { knowledgeMap, docsDir: "docs/knowledge" };
+`;
+    }
+    return null;
+  };
+  const ctx = { knowledgeMap: new Map(), docsDir: "docs/knowledge", readGitAtBase };
   const markdown = `# Requirements
 
 # Delta
@@ -154,10 +155,58 @@ test("REMOVED IF uses Direction from knowledge interfaces.md", () => {
 - reason: replaced
 `;
   const delta = parseDeltaMarkdown(markdown, "requirements");
-  const result = countDeltaItems(delta, ctx);
+  const result = countDeltaItems(delta, { ...ctx, delta });
   assert.equal(result.total, 4);
   assert.equal(result.summary.points.IF_PROVIDED, 4);
   assert.equal(result.summary.itemCounts.IF_PROVIDED.REMOVED, 1);
+});
+
+test("MODIFIED IF without Direction in delta stays unset (no base lookup)", () => {
+  const readGitAtBase = () => `### IF-XX-1: X\n- Direction: Provided\n- Kind: REST API\n`;
+  const markdown = `# Requirements
+
+# Delta
+
+## /specs/billing/invoice/interfaces.md
+
+### MODIFIED
+#### IF-XX-1: Change
+- change: wording
+`;
+  const result = countDeltaItems(parseDeltaMarkdown(markdown, "requirements"), {
+    knowledgeMap: new Map(),
+    docsDir: "docs/knowledge",
+    readGitAtBase,
+    delta: parseDeltaMarkdown(markdown, "requirements"),
+  });
+  assert.equal(result.total, 0);
+  assert.equal(result.summary.ifUnset.itemCounts.MODIFIED, 1);
+});
+
+test("same id in MODIFIED and REMOVED counts once with REMOVED precedence", () => {
+  const markdown = `# Requirements
+
+# Delta
+
+## /specs/billing/invoice/spec.md
+
+### MODIFIED
+#### REQ-INV-1: Change
+When x, the system SHALL x.
+
+##### Scenario: S
+- **Given** g
+- **When** w
+- **Then** t
+
+### REMOVED
+#### REQ-INV-1: Drop
+- reason: gone
+`;
+  const result = countDeltaItems(parseDeltaMarkdown(markdown, "requirements"));
+  assert.equal(result.total, 4);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].bucket, "REMOVED");
 });
 
 test("IF unset is visible when Direction is missing", () => {
@@ -384,4 +433,158 @@ test("formatFpForPullRequest quick and full breakdown", () => {
 test("formatFpReport skipped text", () => {
   const text = formatFpReport("q", { skipped: true, reason: "quick_issue", metric: "m" }, "text");
   assert.match(text, /skipped: quick_issue/);
+});
+
+test("fp after apply still scores REMOVED IF like close ordering", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  writeSteering(dir);
+  assert.equal(sdd(dir, ["index"]).status, 0);
+  commitAll(dir, "chore: skeleton");
+  writeInvoiceIssue(dir);
+  const requirements = path.join(dir, "docs/issues/invoice-reissue/requirements.md");
+  let text = fs.readFileSync(requirements, "utf8");
+  text = text.replace("no change: no contract", "changed");
+  fs.writeFileSync(requirements, `${text}
+## /specs/billing/invoice/interfaces.md
+
+### METADATA
+- title: Invoice API
+- description: Contract
+- tags: [billing]
+
+### SECTIONS
+#### Purpose
+Invoice API.
+
+### ADDED
+#### IF-INV-NEW-1: Issue invoice API
+- Kind: REST API
+- Direction: Provided
+- Counterpart: External: Billing
+- Compatibility: compatible
+
+The system SHALL expose invoice issue.
+`);
+  const design = fs.readFileSync(path.join(dir, "docs/issues/invoice-reissue/design.md"), "utf8");
+  fs.writeFileSync(
+    path.join(dir, "docs/issues/invoice-reissue/design.md"),
+    design.replace(
+      "| REQ-INV-NEW-1 | InvoiceService | Integration |",
+      "| REQ-INV-NEW-1 | InvoiceService | Integration |\n| IF-INV-NEW-1 | InvoiceService | Contract |",
+    ),
+  );
+  const task = fs.readFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), "utf8");
+  fs.writeFileSync(
+    path.join(dir, "docs/issues/invoice-reissue/task.md"),
+    task.replace("Requirements: REQ-INV-NEW-1", "Requirements: REQ-INV-NEW-1, IF-INV-NEW-1"),
+  );
+  commitAll(dir, "docs: add interface");
+  assert.equal(sdd(dir, ["apply", "--issue", "invoice-reissue"]).status, 0);
+  assert.match(fs.readFileSync(path.join(dir, "docs/knowledge/specs/billing/invoice/interfaces.md"), "utf8"), /IF-INV-1/);
+  commitAll(dir, "docs: apply interface on main");
+  git(["checkout", "-b", "retire-if"], dir);
+
+  const issue = path.join(dir, "docs/issues/retire-if");
+  fs.mkdirSync(issue, { recursive: true });
+  fs.writeFileSync(path.join(issue, "proposal.md"), `# Retire invoice API
+
+## Why
+- Background: UI replaces API
+- Affected: Integrators
+- Outcome: API removed
+
+## What Changes
+- Remove invoice API interface
+
+## Impact
+- Type: feat
+- Capabilities:
+  - Changed: /specs/billing/invoice
+- Steering: none
+- Decisions: none
+- Code: src/invoice
+
+## Out of Scope
+- REQ changes
+`);
+  fs.writeFileSync(path.join(issue, "requirements.md"), `# Requirements
+
+## Context
+- Actors: Integrator
+- Current behavior: IF-INV-1
+- Assumptions:
+  - UI only
+
+## Open Questions
+
+# Delta
+
+## Coverage
+| capability | spec.md | interfaces.md | data.md | quality.md |
+|---|---|---|---|---|
+| /specs/billing/invoice | no change: UI only | changed | no change: no persisted data | no change: no quality target |
+
+## /specs/billing/invoice/interfaces.md
+
+### REMOVED
+#### IF-INV-1: Retire API
+- reason: replaced by UI
+`);
+  fs.writeFileSync(path.join(issue, "design.md"), `# Design
+
+## Overview
+Remove API contract.
+
+## Requirements Traceability
+| ID | Components | Test Level |
+|---|---|---|
+| IF-INV-1 | InvoiceService | Contract |
+
+## Components and Interfaces
+### InvoiceService
+- Location: src/invoice/ (modified)
+- Responsibility: Invoice
+- Depends on: none
+- Provides: none
+
+## Data Model
+none
+
+## Error Handling
+none
+
+## Testing Strategy
+| Test Level | Runs on | Notes |
+|---|---|---|
+| Contract | Local | API removal |
+
+## Migration
+none
+`);
+  fs.writeFileSync(path.join(issue, "task.md"), `# Tasks
+
+- [x] 1. Remove API (P)
+  - 1.1 Drop contract
+    - Requirements: IF-INV-1
+  - 1.2 Remove tests
+    - Requirements: IF-INV-1
+`);
+  commitAll(dir, "docs: retire if proposal");
+  assert.equal(sdd(dir, ["stamp", "--issue", "retire-if"]).status, 0);
+  assert.equal(sdd(dir, ["check", "--issue", "retire-if"]).status, 0);
+
+  const beforeApply = JSON.parse(sdd(dir, ["fp", "--issue", "retire-if", "--format", "json"]).stdout);
+  assert.equal(beforeApply.summary.points.IF_PROVIDED, 4);
+
+  assert.equal(sdd(dir, ["apply", "--issue", "retire-if"]).status, 0);
+  const ifacePath = path.join(dir, "docs/knowledge/specs/billing/invoice/interfaces.md");
+  if (fs.existsSync(ifacePath)) {
+    assert.doesNotMatch(fs.readFileSync(ifacePath, "utf8"), /### IF-INV-1/);
+  }
+
+  const afterApply = JSON.parse(sdd(dir, ["fp", "--issue", "retire-if", "--format", "json"]).stdout);
+  assert.equal(afterApply.summary.points.IF_PROVIDED, 4);
+  assert.equal(afterApply.summary.itemCounts.IF_PROVIDED.REMOVED, 1);
+  assert.equal(sdd(dir, ["check", "--stage", "close", "--issue", "retire-if"]).status, 0);
 });

@@ -1896,8 +1896,11 @@ function runFp(root, config, opts) {
     return { code: 2, stdout: output(diags, opts.format), stderr: "" };
   }
   const files = readIssue(root, config, issue);
-  const knowledgeMap = loadTree(root, kdir(config));
-  const result = countIssueFunctionPoints(files, { knowledgeMap, docsDir: kdir(config) });
+  const docsDir = kdir(config);
+  const baseBranch = config.baseBranch || "main";
+  const knowledgeMap = loadTree(root, docsDir);
+  const readGitAtBase = (rel) => gitFile(root, baseBranch, rel);
+  const result = countIssueFunctionPoints(files, { knowledgeMap, docsDir, readGitAtBase });
   return { code: 0, stdout: formatFpReport(issue, result, opts.format), stderr: "" };
 }
 
