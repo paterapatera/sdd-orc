@@ -1889,7 +1889,7 @@ function issueStatus(root, config, issue) {
   const type = proposalType(files.proposal);
   const quick = !files.requirements && !files.design && !!files.task;
   if (!files.proposal) return { issue, onBranch, phase: "init", nextSkill: "sdd-init", detail: "proposal.md is missing" };
-  if (quick) return { issue, onBranch, phase: "quick", nextSkill: "sdd-close", detail: "Quick issue ready to close" };
+  if (quick) return { issue, onBranch, phase: "quick", nextSkill: "sdd-pr", detail: "Quick issue ready for pull request text; run /sdd-close after review approval" };
   if (type === "docs" && !files.requirements) return { issue, onBranch, phase: "reverse", nextSkill: "sdd-reverse", detail: "Docs-only reverse issue" };
   if (!files.requirements) {
     return { issue, onBranch, phase: "proposal", nextSkill: proposalQuick(files.proposal) ? "sdd-quick" : "sdd-req", detail: "Proposal written" };
@@ -1905,7 +1905,7 @@ function issueStatus(root, config, issue) {
   if (pendingHuman.length) {
     return { issue, onBranch, phase: "manual", nextSkill: "sdd-impl", detail: `Human verification pending: ${pendingHuman.map((item) => item.id).join(", ")}` };
   }
-  return { issue, onBranch, phase: "ready", nextSkill: "sdd-close", detail: "Ready to close" };
+  return { issue, onBranch, phase: "ready", nextSkill: "sdd-pr", detail: "Ready for pull request text; run /sdd-close after review approval" };
 }
 
 function listIssues(root, config) {
@@ -1925,11 +1925,23 @@ function runFp(root, config, opts) {
     const diags = [diag(`${config.docsDir}/issues/${issue}`, 1, "ISSUE_NOT_FOUND", "The issue directory does not exist")];
     return { code: 2, stdout: output(diags, opts.format), stderr: "" };
   }
+  const baseBranch = config.baseBranch || "main";
+  let baseRev = "";
+  if (opts.base) {
+    const verified = git(root, ["rev-parse", "--verify", opts.base]);
+    if (verified.status !== 0) {
+      const diags = [diag(String(opts.base), 1, "USAGE", `Base ref ${opts.base} does not exist`)];
+      return { code: 2, stdout: output(diags, opts.format), stderr: "" };
+    }
+    baseRev = verified.stdout.trim();
+  } else {
+    const verified = git(root, ["rev-parse", "--verify", baseBranch]);
+    baseRev = verified.status === 0 ? verified.stdout.trim() : "";
+  }
+  const readGitAtBase = baseRev ? (rel) => gitFile(root, baseRev, rel) : () => null;
   const files = readIssue(root, config, issue);
   const docsDir = kdir(config);
-  const baseBranch = config.baseBranch || "main";
   const knowledgeMap = loadTree(root, docsDir);
-  const readGitAtBase = (rel) => gitFile(root, baseBranch, rel);
   const result = countIssueFunctionPoints(files, { knowledgeMap, docsDir, readGitAtBase });
   return { code: 0, stdout: formatFpReport(issue, result, opts.format), stderr: "" };
 }

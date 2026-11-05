@@ -531,6 +531,32 @@ test("formatFpReport skipped text", () => {
   assert.match(text, /skipped: quick_issue/);
 });
 
+test("fp --base uses the given ref for process bucket labels", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  writeSteering(dir);
+  assert.equal(sdd(dir, ["index"]).status, 0);
+  commitAll(dir, "chore: skeleton");
+  git(["checkout", "-b", "invoice-reissue"], dir);
+  writeInvoiceIssue(dir);
+  commitAll(dir, "docs: proposal");
+  assert.equal(sdd(dir, ["stamp", "--issue", "invoice-reissue"]).status, 0);
+  const beforeApply = git(["rev-parse", "HEAD"], dir).stdout.trim();
+  const atBeforeApply = JSON.parse(sdd(dir, ["fp", "--issue", "invoice-reissue", "--format", "json", "--base", beforeApply]).stdout);
+  assert.equal(atBeforeApply.summary.itemCounts.EO.ADDED, 1);
+  assert.equal(atBeforeApply.summary.itemCounts.EO.MODIFIED, 0);
+  assert.equal(sdd(dir, ["apply", "--issue", "invoice-reissue"]).status, 0);
+  commitAll(dir, "docs: apply on branch");
+  git(["checkout", "main"], dir);
+  git(["merge", "invoice-reissue", "-m", "merge invoice"], dir);
+  git(["checkout", "invoice-reissue"], dir);
+  const atMain = JSON.parse(sdd(dir, ["fp", "--issue", "invoice-reissue", "--format", "json"]).stdout);
+  assert.equal(atMain.summary.itemCounts.EO.MODIFIED, 1);
+  assert.equal(atMain.summary.itemCounts.EO.ADDED, 0);
+  const atOldBase = JSON.parse(sdd(dir, ["fp", "--issue", "invoice-reissue", "--format", "json", "--base", beforeApply]).stdout);
+  assert.equal(atOldBase.summary.itemCounts.EO.ADDED, 1);
+});
+
 test("fp after apply still scores REMOVED IF like close ordering", () => {
   const dir = tempRepo();
   assert.equal(initRepo(dir).status, 0);

@@ -22,6 +22,8 @@ Refer to requirement ids only in test names and comments. Commit the checked wor
 
 Before reporting completion, run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --stage impl --issue <feature>`. It runs `testCommand` from `sdd.config.json` when set, checks that automated test files reference each non-Manual traceability id, and reports unchecked implementation tasks separately from human Manual verification (notes, not failures). Do not check Manual verification majors automatically.
 
+When every non-Manual major is checked and that check passes, ask whether to continue with **`/sdd-pr`** to print the pull request title and body. Do not run **`/sdd-pr`** unless the user agrees.
+
 If steering does not match the code and the difference is outside this issue, finish the implementation and recommend `/sdd-steering`.
 
 ## Issue feedback (`feedback.md`)
