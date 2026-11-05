@@ -167,7 +167,7 @@ Steps (**agent chat** unless noted):
 2. **Terminal:** `git checkout -b <name>` (same name as the issue folder init chose).
 3. **Agent chat:** `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl`; commit docs as each skill says. If docs or code drift, `/sdd-fix` then continue.
 4. **Agent chat:** `/sdd-pr` runs `sync-base`, then prints pull request title and body (including function points). **You** open the pull request and get review. Fix review findings with `/sdd-fix` on the same branch while the issue directory still exists. If you **`/sdd-fix`** or merge the base during review, rerun **`/sdd-pr`** and update the **Function points** section in the pull request body.
-5. **Agent chat:** After approval, `/sdd-close` runs `sync-base`, merges the base branch, updates permanent docs, compares function points, removes the issue folder, and commits. **Terminal:** push the close commit to the **same** pull request; a human merges. You do not need a full re-review after close — close only lands the delta in permanent docs, renumbers ids, and deletes the issue directory; CI `check` covers the result. **After close**, further changes are a new issue.
+5. **Agent chat:** After approval, `/sdd-close` runs `sync-base`, merges the base branch, updates permanent docs, prints the current **Function points** section for you to paste into the pull request body if it differs from `/sdd-pr`, removes the issue folder, and commits. **Terminal:** push the close commit to the **same** pull request; a human merges. You do not need a full re-review after close — close only lands the delta in permanent docs, renumbers ids, and deletes the issue directory; CI `check` covers the result. **After close**, further changes are a new issue.
 
 ### Quick (small change)
 
