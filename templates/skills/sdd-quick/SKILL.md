@@ -15,7 +15,7 @@ Allowed work is a defect fix back to specified behavior, an internal defect, a r
 
 For `Type: fix`, the first minor item is a regression test that fails before the fix and passes after it. Add Manual verification only when a person must look. Implement majors in order. Retry a failing test twice, then stop. If implementation discovers a stopping condition, leave the edits uncommitted and report the condition, the switch to `/sdd-req` then `/sdd-design` then `/sdd-task`, and a revised Impact.
 
-When the work is done, commit `proposal.md`, `task.md`, and the implementation together with the proposal type. Stage named paths only.
+When the work is done, commit `proposal.md`, `task.md`, and the implementation together with the proposal type. Stage named paths only. Ask whether to continue with **`/sdd-pr`** to print the pull request title and body. Do not run **`/sdd-pr`** unless the user agrees.
 
 ## Issue feedback (`feedback.md`)
 

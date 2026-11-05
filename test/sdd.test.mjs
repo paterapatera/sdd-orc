@@ -59,6 +59,8 @@ test("init, update, and migrate install one shared script", () => {
   assert.match(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /not counted.*quick issues/i);
   assert.match(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /summary\.itemCounts\.NFR/);
   assert.doesNotMatch(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /ready-to-send agent chat line/i);
+  assert.match(read(dir, ".agents/skills/sdd-impl/SKILL.md"), /Do not run \*\*`\/sdd-pr`\*\* unless the user agrees/);
+  assert.match(read(dir, ".agents/skills/sdd-quick/SKILL.md"), /Do not run \*\*`\/sdd-pr`\*\* unless the user agrees/);
   assert.doesNotMatch(read(dir, ".agents/skills/sdd-close/SKILL.md"), /ready-to-send agent chat line/i);
   assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /check --scope knowledge/);
   assert.match(read(dir, ".agents/skills/sdd-lessons/SKILL.md"), /A 未判断の候補/);

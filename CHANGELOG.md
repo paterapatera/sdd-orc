@@ -6,6 +6,7 @@
 - **`/sdd-close`:** no longer prints pull request title or narrative body. Before deleting the issue directory, runs `fp --format json` against the post-merge base and prints the current **Function points** section for the user to paste when it differs from `/sdd-pr`.
 - **`fp`:** optional `--base <ref>` counts against a given base ref.
 - README / README.ja document the flow: implement → `/sdd-pr` → open PR → review → `/sdd-fix` → `/sdd-close` → push close commit to the same PR → human merge.
+- **`/sdd-impl`** and **`/sdd-quick`** ask whether to run **`/sdd-pr`** after implementation; they do not invoke it automatically.
 
 ## 1.2.2
 
