@@ -297,17 +297,6 @@ export function formatFpForPullRequest(result, lang = "en") {
   return `${heading}\n\n${totalLine}\n\n${tableHead}\n${tableBody}${metaLine}${unsetLine}${noneLine}${unknownLine}${nfrLine}\n`;
 }
 
-export function formatCloseFpCompare(pre, post, lang = "en") {
-  const preSection = formatFpForPullRequest(pre, lang);
-  const postSection = formatFpForPullRequest(post, lang);
-  if (preSection === postSection) {
-    return lang === "ja"
-      ? "機能ポイントに変更はありません。PR 本文の更新は不要です。\n"
-      : "Function points unchanged; no pull request body update needed.\n";
-  }
-  return `\`\`\`markdown\n${postSection.trimEnd()}\n\`\`\`\n`;
-}
-
 export function formatFpReport(issue, result, format) {
   if (format === "json") {
     return `${JSON.stringify({ issue, ...result }, null, 2)}\n`;

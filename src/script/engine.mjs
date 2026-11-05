@@ -5,7 +5,7 @@ import { regenerateLessonsIndex, validateLessons, validateCloseLessons } from ".
 import { runSyncBase } from "./sync-base.mjs";
 import { ADR_H2, CHARACTERISTICS, CLASSIFICATIONS, DIRECTIONS, EARS, FORMAT_VERSION, KINDS, LOCKED_SECTIONS, MANAGED_TYPES, PROVISIONAL_RE, REQUIRED_STEERING, SPEC_H2, STEERING_H2, TEST_LEVELS, VERIFICATIONS, baseHash, compareTerms, diag, formatDiagnostics, freshIdPattern, isKebabTag, joinDoc, kebab, localDate, normalizeForHash, parseListValue, renderFrontmatter, sameAfterApply, shiftHeadings, splitFrontmatter, stripCodeFences } from "./util.mjs";
 import { deltaIsEmpty, headingNodes, mergeDeltas, parseDeltaMarkdown, requirementSentence, scenarioBlocks, shallProblem } from "./delta.mjs";
-import { countIssueFunctionPoints, formatCloseFpCompare, formatFpReport } from "./fp.mjs";
+import { countIssueFunctionPoints, formatFpReport } from "./fp.mjs";
 import { normalizeProcessName, parseProcessField } from "./process.mjs";
 
 const SPEC_FILES = ["spec.md", "interfaces.md", "data.md", "quality.md"];
@@ -1889,7 +1889,7 @@ function issueStatus(root, config, issue) {
   const type = proposalType(files.proposal);
   const quick = !files.requirements && !files.design && !!files.task;
   if (!files.proposal) return { issue, onBranch, phase: "init", nextSkill: "sdd-init", detail: "proposal.md is missing" };
-  if (quick) return { issue, onBranch, phase: "quick", nextSkill: "sdd-pr", detail: "Quick issue ready for pull request text" };
+  if (quick) return { issue, onBranch, phase: "quick", nextSkill: "sdd-pr", detail: "Quick issue ready for pull request text; run /sdd-close after review approval" };
   if (type === "docs" && !files.requirements) return { issue, onBranch, phase: "reverse", nextSkill: "sdd-reverse", detail: "Docs-only reverse issue" };
   if (!files.requirements) {
     return { issue, onBranch, phase: "proposal", nextSkill: proposalQuick(files.proposal) ? "sdd-quick" : "sdd-req", detail: "Proposal written" };
@@ -1905,39 +1905,13 @@ function issueStatus(root, config, issue) {
   if (pendingHuman.length) {
     return { issue, onBranch, phase: "manual", nextSkill: "sdd-impl", detail: `Human verification pending: ${pendingHuman.map((item) => item.id).join(", ")}` };
   }
-  return { issue, onBranch, phase: "ready", nextSkill: "sdd-pr", detail: "Ready for pull request text" };
+  return { issue, onBranch, phase: "ready", nextSkill: "sdd-pr", detail: "Ready for pull request text; run /sdd-close after review approval" };
 }
 
 function listIssues(root, config) {
   const dir = path.join(root, config.docsDir, "issues");
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).filter((entry) => entry.isDirectory()).map((entry) => entry.name).sort();
-}
-
-function resolvePreCloseFpBase(root, baseBranch) {
-  const parents = git(root, ["rev-list", "--parents", "-n", "1", "HEAD"]);
-  if (parents.status === 0) {
-    const parts = parents.stdout.trim().split(/\s+/);
-    if (parts.length >= 3) {
-      const firstParent = parts[1];
-      const secondParent = parts[2];
-      const onBase = git(root, ["merge-base", "--is-ancestor", secondParent, baseBranch]);
-      if (onBase.status === 0) {
-        const mb = git(root, ["merge-base", firstParent, secondParent]);
-        if (mb.status === 0) return mb.stdout.trim();
-      }
-    }
-  }
-  const mb = git(root, ["merge-base", "HEAD", baseBranch]);
-  return mb.status === 0 ? mb.stdout.trim() : baseBranch;
-}
-
-function countIssueFpAtBase(root, config, issue, baseRef) {
-  const files = readIssue(root, config, issue);
-  const docsDir = kdir(config);
-  const knowledgeMap = loadTree(root, docsDir);
-  const readGitAtBase = (rel) => gitFile(root, baseRef, rel);
-  return countIssueFunctionPoints(files, { knowledgeMap, docsDir, readGitAtBase });
 }
 
 function runFp(root, config, opts) {
@@ -1952,18 +1926,6 @@ function runFp(root, config, opts) {
     return { code: 2, stdout: output(diags, opts.format), stderr: "" };
   }
   const baseBranch = config.baseBranch || "main";
-  const lang = config.lang || "en";
-  if (opts.format === "compare-close") {
-    const preBase = resolvePreCloseFpBase(root, baseBranch);
-    const mergedBaseRev = git(root, ["rev-parse", "--verify", baseBranch]);
-    if (mergedBaseRev.status !== 0) {
-      const diags = [diag(baseBranch, 1, "USAGE", `Base branch ${baseBranch} does not exist`)];
-      return { code: 2, stdout: output(diags, opts.format), stderr: "" };
-    }
-    const pre = countIssueFpAtBase(root, config, issue, preBase);
-    const post = countIssueFpAtBase(root, config, issue, mergedBaseRev.stdout.trim());
-    return { code: 0, stdout: formatCloseFpCompare(pre, post, lang), stderr: "" };
-  }
   let baseRev = "";
   if (opts.base) {
     const verified = git(root, ["rev-parse", "--verify", opts.base]);

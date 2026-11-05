@@ -49,9 +49,12 @@ test("init, update, and migrate install one shared script", () => {
   assert.match(read(dir, ".claude/skills/sdd-close/SKILL.md"), /bun \.agents\/skills\/sdd-scripts\/sdd\.mjs/);
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-lessons/SKILL.md")), true);
   assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Record these lesson entries/i);
-  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /compare-close/);
-  assert.doesNotMatch(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Print only the pull request title/i);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /fp --issue <feature> --format json/);
+  assert.match(read(dir, ".agents/skills/sdd-close/SKILL.md"), /Function points section differs/);
+  assert.doesNotMatch(read(dir, ".agents/skills/sdd-close/SKILL.md"), /compare-close/);
   assert.equal(fs.existsSync(path.join(dir, ".agents/skills/sdd-pr/SKILL.md")), true);
+  assert.match(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /sync-base/);
+  assert.match(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /check --issue <feature>/);
   assert.match(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /fp --issue <feature> --format json/);
   assert.match(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /not counted.*quick issues/i);
   assert.match(read(dir, ".agents/skills/sdd-pr/SKILL.md"), /summary\.itemCounts\.NFR/);
@@ -965,6 +968,7 @@ test("status lists phase and next skill", () => {
   fs.writeFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), fs.readFileSync(path.join(dir, "docs/issues/invoice-reissue/task.md"), "utf8").replaceAll("- [ ]", "- [x]"));
   const ready = sdd(dir, ["status"]);
   assert.match(ready.stdout, /\/sdd-pr/);
+  assert.match(ready.stdout, /\/sdd-close after review approval/);
   const all = sdd(dir, ["status", "--all", "--format", "json"]);
   const parsed = JSON.parse(all.stdout);
   assert.ok(parsed.issues.some((item) => item.issue === "invoice-reissue"));

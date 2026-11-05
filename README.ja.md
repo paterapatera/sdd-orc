@@ -120,9 +120,9 @@ issue delta の **ADDED / MODIFIED** の各 `REQ-*` には `- Process: <名前> 
 
 issue の delta（`requirements.md` と、あれば `design.md` / `research.md` をマージ）の **ADDED / MODIFIED / REMOVED** から数えます。`/steering/` 配下は除外します。REQ **id** は capability ファイルごとに 1 回まで（**REMOVED > MODIFIED > ADDED**）。**プロセス**は `Process:` 名（前後空白は trim、連続空白は 1 つに）と型でグループ化します。**プロセスの bucket**（EI/EO/EQ 表の ADDED/MODIFIED/REMOVED）：グループ内の REQ がすべて **REMOVED** なら **REMOVED**；それ以外で **その処理のグループ内**に **MODIFIED** または **REMOVED** の REQ が 1 件でもあれば **MODIFIED**；さらに **ベースブランチ**の spec に同名プロセスがあれば **MODIFIED**（`git show` のみ。作業ツリーは見ません）；それ以外は **ADDED**。**MODIFIED** / **REMOVED** も **ADDED** と同じ満点の EI/EO/EQ 重みです。**quick issue** は対象外です。結果は **stdout のみ**です。**REMOVED** の `REQ-*` で delta に `Process` がないときは **ベースブランチ**の `spec.md` から読み、見つからなければ **不明プロセス（0 FP）** 行に載せます（REMOVED `IF-*` と同様の参照順）。**REMOVED** の `IF-*` で `Direction` がないときはベースブランチの `interfaces.md` を読みます。**MODIFIED** の `IF-*` は delta に `Direction` が必要で、なければ **IF unset**（0 FP）です。
 
-**既知の限界（REMOVED `IF-*` とプロセス参照）:** 参照に失敗したときは **`IF unset (0 FP)`** や **不明プロセス（0 FP）** の行で示します（黙って 0 にはしません）。(1) **ローカルベースが古い・ない** — 通常の close では **`sync-base`** がマージの前にリモートからローカル `main`（または `baseBranch`）を更新します。**手で `fp` だけ**実行し、ローカルにベースブランチがない clone（例: `git clone -b <機能ブランチ>`）では、REMOVED IF が 0 FP のままだったり、`Process:` のない REMOVED REQ が **不明プロセス（0 FP）** 行に載ったりすることがあります。レポートに名前が必要なら REMOVED ブロックに `- Process:` を書いてください。ローカルにベースブランチがないとき、この issue で **ADDED** の REQ だけのプロセスは表では **MODIFIED** ではなく **ADDED** と表示されます。FP 合計は変わりません。(2) **同じブランチで前の issue が追加した IF を、後の issue が削除** — apply 後はベースブランチにその IF がないため 0 FP です。(3) **モノレポのサブディレクトリ** — git パスはリポジトリルート基準です（`renumber` と同じ）。apply 後に REMOVED IF が 0 になることがあります。(4) **apply の前** — 作業ツリーの knowledge を先に読むため、未コミットの編集で FP が変わることがあります（その状態では check が通らないため、PR 用の FP は通常安定します）。
+**既知の限界（REMOVED `IF-*` とプロセス参照）:** 参照に失敗したときは **`IF unset (0 FP)`** や **不明プロセス（0 FP）** の行で示します（黙って 0 にはしません）。(1) **ローカルベースが古い・ない** — **`/sdd-pr`** と **`/sdd-close`** は **`sync-base`** を先に実行し、`fp` が最新のローカル `main`（または `baseBranch`）を読んでから数えます。**手で `fp` だけ**実行し、ローカルにベースブランチがない clone（例: `git clone -b <機能ブランチ>`）では、REMOVED IF が 0 FP のままだったり、`Process:` のない REMOVED REQ が **不明プロセス（0 FP）** 行に載ったりすることがあります。レポートに名前が必要なら REMOVED ブロックに `- Process:` を書いてください。ローカルにベースブランチがないとき、この issue で **ADDED** の REQ だけのプロセスは表では **MODIFIED** ではなく **ADDED** と表示されます。FP 合計は変わりません。(2) **同じブランチで前の issue が追加した IF を、後の issue が削除** — apply 後はベースブランチにその IF がないため 0 FP です。(3) **モノレポのサブディレクトリ** — git パスはリポジトリルート基準です（`renumber` と同じ）。apply 後に REMOVED IF が 0 になることがあります。(4) **apply の前** — 作業ツリーの knowledge を先に読むため、未コミットの編集で FP が変わることがあります（その状態では check が通らないため、PR 用の FP は通常安定します）。
 
-**`--base <ref>`** で指定した ref をベースに数えられます（close が更新されたベースをマージする前の merge-base など）。**`/sdd-pr`** は PR 本文の **機能ポイント**節用に `fp --format json` を実行します（合計、**DATA** / **EI** / **EO** / **EQ** / **IF** の FP と ADDED/MODIFIED/REMOVED、REQ 件数とプロセス件数、必要なら **Process: none**・**不明プロセス**・**IF unset**・**NFR** の 0 FP 行。quick issue は「数えない」1 行のみ）。**`/sdd-close`** は issue フォルダを消す**前**に **`fp --format compare-close`** を実行し、レビュー中にベースが動いてラベルだけ変わったときは PR 本文に貼る **機能ポイント**節を出し、変わらなければ更新不要の 1 行だけ出します。
+**`--base <ref>`** で手動実行時にベース ref を指定できます。**`/sdd-pr`** は **`sync-base`** のあと `fp --format json` を実行し、表示する PR 本文の **機能ポイント**節に使います（合計、**DATA** / **EI** / **EO** / **EQ** / **IF** の FP と ADDED/MODIFIED/REMOVED、REQ 件数とプロセス件数、必要なら **Process: none**・**不明プロセス**・**IF unset**・**NFR** の 0 FP 行。quick issue は「数えない」1 行のみ）。レビュー中に **`/sdd-fix`** したりベースをマージしたら、**`/sdd-pr`** をやり直し、PR 本文の **機能ポイント**節を更新してください。**`/sdd-close`** はベースをマージしたあと `fp --format json` を実行し、**`/sdd-pr`** の表示と違うときに PR 本文へ貼る **機能ポイント**節を出します。
 
 ## 同梱スキル
 
@@ -166,7 +166,7 @@ flowchart LR
 1. **エージェントチャット:** ベースブランチで `/sdd-init`（変更の概要を作成。ブランチはまだ作らない）。
 2. **ターミナル:** `git checkout -b <name>`（init が決めた issue フォルダ名と同じ）。
 3. **エージェントチャット:** `/sdd-req` → `/sdd-design` → `/sdd-task` → `/sdd-impl`。各スキルの指示どおりコミットする。ずれたら `/sdd-fix` してから続ける。
-4. **エージェントチャット:** `/sdd-pr` で PR 用のタイトルと本文（機能ポイント含む）を表示する。**人が** PR を開きレビューする。指摘は issue フォルダが残っているうちに `/sdd-fix` で直す。
+4. **エージェントチャット:** `/sdd-pr` で `sync-base` のあと PR 用のタイトルと本文（機能ポイント含む）を表示する。**人が** PR を開きレビューする。指摘は issue フォルダが残っているうちに `/sdd-fix` で直す。レビュー中に **`/sdd-fix`** したりベースをマージしたら、**`/sdd-pr`** をやり直し、PR 本文の **機能ポイント**節を更新する。
 5. **エージェントチャット:** 承認後 `/sdd-close` で `sync-base`、ベースのマージ、恒久ドキュメント更新、機能ポイントの比較、issue フォルダ削除、コミット。**ターミナル:** close コミットを**同じ** PR に push し、人がマージする。close 後の再レビューは不要です — close は delta を恒久ドキュメントに載せ、id を振り直し、issue フォルダを消すだけで、CI の `check` が結果を見ます。**close のあと**の変更は新しい issue です。
 
 ### 小さな変更（quick）
@@ -225,7 +225,7 @@ flowchart LR
 | `/sdd-steering` の Resync | 差分を 1 件ずつ承認・却下・保留 |
 | `/sdd-impl` | タスク一覧の手動確認項目を実施（自動ではチェックしない） |
 | `/sdd-pr` | PR 用タイトルと本文のコピー（実装後・close 前） |
-| `/sdd-close` | マージ競合の解消、仕様コードの変更確認（求められた場合）、**教訓の記録の確認**、close が出した機能ポイント節の貼り替え |
+| `/sdd-close` | マージ競合の解消、仕様コードの変更確認（求められた場合）、**教訓の記録の確認**、close が出した **機能ポイント**ブロックを `/sdd-pr` と違うときに貼り替え |
 | `/sdd-lessons` | **リード:** 教訓の採用・却下・保留・昇格、`/sdd-init` 案の表示（steering は直接編集しない） |
 
 Quick は質問しません。`/sdd-task` も質問しません。

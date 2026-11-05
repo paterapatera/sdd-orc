@@ -2,9 +2,9 @@
 
 ## 1.2.3
 
-- **`/sdd-pr`:** new skill prints pull request title and body (including the **Function points** section from `fp --format json`) after implementation, while the issue directory still exists. Does not push, open a PR, or modify files.
-- **`/sdd-close`:** no longer prints pull request title or body. Before deleting the issue directory, runs `fp --format compare-close` to detect function-point label changes when the merged base moved during review; prints either one unchanged line or a replacement **Function points** section for the user to paste into the PR body.
-- **`fp`:** optional `--base <ref>` counts against a given base ref; `--format compare-close` compares pre-merge-base vs current base for close.
+- **`/sdd-pr`:** new skill runs `sync-base`, then prints pull request title and body (including the **Function points** section from `fp --format json`) after implementation, while the issue directory still exists. Does not push, open a PR, or modify files. Rerun after `/sdd-fix` or a base merge during review.
+- **`/sdd-close`:** no longer prints pull request title or narrative body. Before deleting the issue directory, runs `fp --format json` against the post-merge base and prints the current **Function points** section for the user to paste when it differs from `/sdd-pr`.
+- **`fp`:** optional `--base <ref>` counts against a given base ref.
 - README / README.ja document the flow: implement → `/sdd-pr` → open PR → review → `/sdd-fix` → `/sdd-close` → push close commit to the same PR → human merge.
 
 ## 1.2.2

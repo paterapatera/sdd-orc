@@ -173,8 +173,7 @@ step("check close (pre-apply)", () => sdd(dir, ["check", "--stage", "close", "--
 const applied = step("apply", () => sdd(dir, ["apply", "--issue", "announcement-register"]));
 assert.equal(applied.status, 0, applied.stdout);
 step("check close (post-apply)", () => sdd(dir, ["check", "--stage", "close", "--issue", "announcement-register"]));
-const compare = step("fp compare-close", () => sdd(dir, ["fp", "--issue", "announcement-register", "--format", "compare-close"]));
-assert.match(compare.stdout, /機能ポイントに変更はありません|Function points unchanged/);
+step("fp json (post-merge base)", () => sdd(dir, ["fp", "--issue", "announcement-register", "--format", "json"]));
 fs.rmSync(issue, { recursive: true, force: true });
 commitAll(dir, "docs: close issue dir");
 step("check close allow-missing", () => sdd(dir, ["check", "--stage", "close", "--allow-missing"]));

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
 import { test } from "node:test";
-import { countDeltaItems, countIssueFunctionPoints, formatCloseFpCompare, formatFpForPullRequest, formatFpReport, isCountableId, itemId, pointsForId } from "../src/script/fp.mjs";
+import { countDeltaItems, countIssueFunctionPoints, formatFpForPullRequest, formatFpReport, isCountableId, itemId, pointsForId } from "../src/script/fp.mjs";
 import { parseDeltaMarkdown } from "../src/script/delta.mjs";
 import { commitAll, git, initRepo, sdd, tempRepo, writeInvoiceIssue, writeSteering, attachReqProcess } from "./helpers.mjs";
 
@@ -531,32 +531,6 @@ test("formatFpReport skipped text", () => {
   assert.match(text, /skipped: quick_issue/);
 });
 
-test("formatCloseFpCompare unchanged and changed paths", () => {
-  const summary = {
-    total: 4,
-    points: { DATA: 0, EI: 0, EO: 0, EQ: 4, IF_CONSUMED: 0, IF_PROVIDED: 0 },
-    itemCounts: {
-      DATA: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
-      EI: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
-      EO: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
-      EQ: { ADDED: 1, MODIFIED: 0, REMOVED: 0 },
-      IF_CONSUMED: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
-      IF_PROVIDED: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
-      NFR: { ADDED: 0, MODIFIED: 0, REMOVED: 0 },
-    },
-    ifUnset: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
-    processNone: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
-    processUnknown: { itemCounts: { ADDED: 0, MODIFIED: 0, REMOVED: 0 }, points: 0 },
-    reqCount: 1,
-    processCount: 1,
-  };
-  const pre = { skipped: false, summary };
-  const post = { skipped: false, summary: { ...summary, itemCounts: { ...summary.itemCounts, EQ: { ADDED: 0, MODIFIED: 1, REMOVED: 0 } } } };
-  assert.match(formatCloseFpCompare(pre, pre, "en"), /Function points unchanged/);
-  assert.match(formatCloseFpCompare(pre, post, "en"), /^```markdown\n## Function points/);
-  assert.match(formatCloseFpCompare(pre, post, "en"), /\| EQ \| 4 \| A0\/M1\/R0/);
-});
-
 test("fp --base uses the given ref for process bucket labels", () => {
   const dir = tempRepo();
   assert.equal(initRepo(dir).status, 0);
@@ -581,34 +555,6 @@ test("fp --base uses the given ref for process bucket labels", () => {
   assert.equal(atMain.summary.itemCounts.EO.ADDED, 0);
   const atOldBase = JSON.parse(sdd(dir, ["fp", "--issue", "invoice-reissue", "--format", "json", "--base", beforeApply]).stdout);
   assert.equal(atOldBase.summary.itemCounts.EO.ADDED, 1);
-});
-
-test("fp compare-close unchanged and changed after base moves", () => {
-  const dir = tempRepo();
-  assert.equal(initRepo(dir).status, 0);
-  writeSteering(dir);
-  assert.equal(sdd(dir, ["index"]).status, 0);
-  commitAll(dir, "chore: skeleton");
-  git(["checkout", "-b", "invoice-reissue"], dir);
-  writeInvoiceIssue(dir);
-  commitAll(dir, "docs: proposal");
-  assert.equal(sdd(dir, ["stamp", "--issue", "invoice-reissue"]).status, 0);
-  const unchanged = sdd(dir, ["fp", "--issue", "invoice-reissue", "--format", "compare-close"]);
-  assert.equal(unchanged.status, 0);
-  assert.match(unchanged.stdout, /Function points unchanged/);
-
-  git(["checkout", "main"], dir);
-  writeInvoiceIssue(dir);
-  commitAll(dir, "docs: proposal on main");
-  assert.equal(sdd(dir, ["apply", "--issue", "invoice-reissue"]).status, 0);
-  commitAll(dir, "docs: apply on main");
-  git(["checkout", "invoice-reissue"], dir);
-  const merge = git(["merge", "main", "-m", "merge main", "-X", "ours"], dir);
-  assert.equal(merge.status, 0, merge.stderr || merge.stdout);
-  const changed = sdd(dir, ["fp", "--issue", "invoice-reissue", "--format", "compare-close"]);
-  assert.equal(changed.status, 0);
-  assert.match(changed.stdout, /^```markdown\n## Function points/);
-  assert.match(changed.stdout, /\| EO \| 5 \| A0\/M1\/R0/);
 });
 
 test("fp after apply still scores REMOVED IF like close ordering", () => {
