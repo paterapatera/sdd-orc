@@ -2,6 +2,7 @@
 
 ## 1.2.4
 
+- README / README.ja: junior-friendly clarifications (delta, EI/EO/EQ, lesson statuses and A–D groups, Occurrence log / Review closes / Last reviewed, scored choices, Resync, re-close, renumber code collision).
 - Add lesson **Target** `team-process` for human team operating rules outside steering, config, code, and sdd-orc (for example recording spec-related decisions in the backlog). `check` validates the new target.
 - **`/sdd-lessons`:** on adopt for `team-process`, print a short team-rule proposal for the lead to agree in the team's usual place; do not print `/sdd-init` or edit steering. Document all four targets in the skill and README / README.ja.
 - **`/sdd-close`:** document `team-process` in the Target list.

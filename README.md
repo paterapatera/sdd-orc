@@ -57,7 +57,7 @@ npx @paterapatera/sdd-orc update
 npx @paterapatera/sdd-orc migrate
 ```
 
-`update` refreshes skills and the script; it does not edit `knowledge/`. **Upgrading to 1.2.0:** add `- Process:` lines to every **ADDED** and **MODIFIED** `REQ-*` in open issue deltas before `check` passes again. `migrate` is for future format changes; format version 1 has nothing to convert.
+`update` refreshes skills and the script; it does not edit `knowledge/`. In this guide, **delta** means the **ADDED**, **MODIFIED**, and **REMOVED** sections in the issue folder under `docs/issues/<name>/` (for example in `requirements.md`). **Upgrading to 1.2.0:** add `- Process:` lines to every **ADDED** and **MODIFIED** `REQ-*` in open issue deltas before `check` passes again. `migrate` is for future format changes; format version 1 has nothing to convert.
 
 ## Script and status
 
@@ -116,7 +116,7 @@ node .agents/skills/sdd-scripts/sdd.mjs fp --issue invoice-fix --format json
 | `Process: none` on a REQ | 0 (REQ still listed in output) |
 | `NFR-*`, steering, ADRs, structure-only delta | 0 |
 
-Every **ADDED** or **MODIFIED** `REQ-*` in the issue delta must include `- Process: <name> (EI|EO|EQ)` or `- Process: none`. Several requirements may share one name; **`fp` counts that process once**. Example: three REQs all tagged `- Process: Confirm order (EQ)` count as **one EQ = 4 FP**, not 12.
+Every **ADDED** or **MODIFIED** `REQ-*` in the issue delta must include `- Process: <name> (EI|EO|EQ)` or `- Process: none`. Pick the type from what the process does: **EI** = input that changes stored data or behavior; **EO** = output that includes calculation or derived data; **EQ** = simple retrieval or display (same rules as `/sdd-req`). Several requirements may share one name; **`fp` counts that process once**. Example: three REQs all tagged `- Process: Confirm order (EQ)` count as **one EQ = 4 FP**, not 12.
 
 Counts come from **ADDED**, **MODIFIED**, and **REMOVED** items in the merged issue delta (`requirements.md`, plus `design.md` and `research.md` when present). Paths under `/steering/` are skipped; other delta file sections in those documents are included. Each **requirement id** is deduped **at most once per capability file** (REMOVED > MODIFIED > ADDED); **processes** are grouped by trimmed `Process:` name and type. **Process bucket** (for the EI/EO/EQ table): **REMOVED** when every REQ in the group is REMOVED; **MODIFIED** when any REQ in that process's group is MODIFIED or REMOVED (but not all REMOVED), or the process name appears on a REQ in **base-branch** specs (`git show` only); otherwise **ADDED**. **MODIFIED** and **REMOVED** processes use the same full EI/EO/EQ weight as **ADDED**. **Quick issues** (no `requirements.md`) are skipped. Results are printed to **stdout** only. For **REMOVED** `REQ-*` without `Process` in the delta, `fp` reads the id from **base-branch** `spec.md` (same order as REMOVED `IF-*`); missing process names appear as **unknown process (0 FP)**. For **REMOVED** `IF-*`, when the delta omits `Direction`, `fp` reads **`interfaces.md` on the base branch**. **MODIFIED** `IF-*` must include `Direction` in the delta or they count as **IF unset** (0 FP).
 
@@ -201,9 +201,9 @@ Optional pattern when you track work in GitHub Issues (this package does not cre
 
 ## Lessons, close, and review
 
-While you work, skills may append short notes to `docs/issues/<name>/feedback.md` on the branch (you do not edit this for daily spec work). Keep those commits on the branch so notes are not lost before close. At **`/sdd-close`**, the agent reads those notes and **records** updates under `docs/knowledge/lessons/`: what went wrong, why, and a candidate policy. New lessons start as **`candidate`**. Recurrences add dated **Occurrence log** lines (no issue folder names). Lessons you reviewed without a new recurrence get a **Review closes** date. Before the issue folder is removed, the agent asks a **short factual** question (“record these lesson entries?”) and writes `- Lessons:` lines in `feedback.md` for check. Close does **not** adopt policies into steering, change lesson status, or print `/sdd-init`.
+While you work, skills may append short notes to `docs/issues/<name>/feedback.md` on the branch (you do not edit this for daily spec work). Keep those commits on the branch so notes are not lost before close. At **`/sdd-close`**, the agent reads those notes and **records** updates under `docs/knowledge/lessons/`: what went wrong, why, and a candidate policy. New lessons start as **`candidate`**. **Occurrence log** = dated lines for when the problem actually happened (no issue folder names). **Review closes** = dates of closes that touched the lesson’s area when the policy held and no new occurrence was logged. **Last reviewed** = date of the lead’s last **`/sdd-lessons`** decision on that lesson (empty until then). Before the issue folder is removed, the agent asks a **short factual** question (“record these lesson entries?”) and writes `- Lessons:` lines in `feedback.md` for check. Close does **not** adopt policies into steering, change lesson status, or print `/sdd-init`.
 
-A **lead** runs **`/sdd-lessons`** on a schedule (for example `/sdd-lessons review this month's lessons`) to adopt (`trial`), reject, hold, or promote lessons (`effective` / `ineffective`). Each lesson **`Target`** says where the policy should live:
+A **lead** runs **`/sdd-lessons`** on a schedule (for example `/sdd-lessons review this month's lessons`). Outcomes: **adopt** → status **`trial`**; **reject** → **`rejected`**; **effective** → policy worked; **ineffective** → policy did not work; **hold** → status unchanged, only **Last reviewed** updated. Each lesson **`Target`** says where the policy should live:
 
 | Target | Meaning |
 | --- | --- |
@@ -212,9 +212,9 @@ A **lead** runs **`/sdd-lessons`** on a schedule (for example `/sdd-lessons revi
 | `sdd-orc-skill` | Change sdd-orc skills or the checker script. |
 | `team-process` | A human team rule outside steering, config, code, and sdd-orc (for example record spec decisions in the backlog). On adopt, `/sdd-lessons` prints a short team-rule proposal to agree elsewhere — not `/sdd-init`. |
 
-On adopt, steering and config lessons print **`/sdd-init ...`** for a **new issue**; sdd-orc-skill lessons print a change proposal for sdd-orc. Review lists each lesson in at most one of four groups: **A** never-judged candidates, **B** held or rejected candidates with a new recurrence, **C** trials with enough **Review closes** strictly after the latest log and at least one close strictly after **Last reviewed** (same calendar day does not count), **D** trials or effectives that recurred (**D** wins over **C** when both apply; see the skill for exact rules). Lessons are never deleted; status lives in `lessons/`. Work skills read **steering** only, not lesson pages. Plain `check` may regenerate `lessons/index.md` when lesson pages change and prints a short note so you can commit the diff.
+On adopt, steering and config lessons print **`/sdd-init ...`** for a **new issue**; sdd-orc-skill lessons print a change proposal for sdd-orc. **`/sdd-lessons`** shows each lesson in **exactly one** of groups **A–D** (date and count rules are in the skill): **A** — not yet judged; **B** — recurred after hold or reject; **C** — on trial and ready to judge effective; **D** — recurred after trial or effective. Lessons are never deleted; status lives in `lessons/`. Work skills read **steering** only, not lesson pages. Plain `check` may regenerate `lessons/index.md` when lesson pages change and prints a short note so you can commit the diff.
 
-If you **re-close** after merging the base branch and the same lesson file conflicted, keep the stricter status: rejected beats ineffective, then effective, trial, and candidate; keep the Reason from the winning rejected or ineffective side.
+**Re-close** is when the branch already has a normal close, the issue folder is gone, you merged the base branch again, and you run **`/sdd-close`** in re-close mode (no feedback pass). If the same lesson file conflicted during that merge, keep the stricter status: rejected beats ineffective, then effective, trial, and candidate; keep the Reason from the winning rejected or ineffective side.
 
 ```mermaid
 flowchart LR
@@ -230,12 +230,12 @@ flowchart LR
 | Skill | You |
 |---|---|
 | `/sdd-init` | Up to 3 questions about purpose, what changes, and what is out of scope |
-| `/sdd-req`, `/sdd-design`, `/sdd-reverse`, `/sdd-fix` | Up to 5 scored choices per round |
-| `/sdd-steering` Resync | Accept, reject, or defer each reported item |
+| `/sdd-req`, `/sdd-design`, `/sdd-reverse`, `/sdd-fix` | Up to 5 scored choices per round; each option is prefixed `[1]`–`[5]` where **5 is best** and the score is the agent’s recommendation (safety, then fit, then effort) |
+| `/sdd-steering` Resync | When `steering/` already exists, run **`/sdd-steering`** again to compare docs to the code and accept, reject, or defer each reported difference |
 | `/sdd-impl` | Complete manual verification tasks in the task list (not auto-checked) |
 | `/sdd-pr` | Copy pull request title and body (after implementation, before close) |
-| `/sdd-close` | Resolve merge conflicts; confirm renamed spec codes if prompted; **confirm lesson records**; paste the **Function points** block from close when it differs from `/sdd-pr` |
-| `/sdd-lessons` | **Lead:** adopt, reject, hold, or promote lessons; copy adoption follow-ups (`/sdd-init`, sdd-orc change, or team rule — does not edit steering) |
+| `/sdd-close` | Resolve merge conflicts; if **renumber** stops on a capability **code** collision with the base branch, confirm the new code prefix it proposes; **confirm lesson records**; paste the **Function points** block from close when it differs from `/sdd-pr` |
+| `/sdd-lessons` | **Lead:** adopt, reject, hold, mark effective, or mark ineffective; copy adoption follow-ups (`/sdd-init`, sdd-orc change, or team rule — does not edit steering) |
 
 Quick path asks no questions. `/sdd-task` asks no questions.
 
