@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.2.4
+
+- Add lesson **Target** `team-process` for human team operating rules outside steering, config, code, and sdd-orc (for example recording spec-related decisions in the backlog). `check` validates the new target.
+- **`/sdd-lessons`:** on adopt for `team-process`, print a short team-rule proposal for the lead to agree in the team's usual place; do not print `/sdd-init` or edit steering. Document all four targets in the skill and README / README.ja.
+- **`/sdd-close`:** document `team-process` in the Target list.
+
 ## 1.2.3
 
 - **`/sdd-pr`:** new skill runs `sync-base`, then prints pull request title and body (including the **Function points** section from `fp --format json`) after implementation, while the issue directory still exists. Does not push, open a PR, or modify files. Rerun after `/sdd-fix` or a base merge during review.

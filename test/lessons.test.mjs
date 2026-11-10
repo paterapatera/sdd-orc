@@ -9,6 +9,7 @@ import {
   validateCloseLessons,
   TRIAL_TO_EFFECTIVE_ISSUE_COUNT,
   parseLastReviewedDate,
+  LESSON_TARGETS,
 } from "../src/script/lessons.mjs";
 
 function read(dir, rel) {
@@ -78,6 +79,23 @@ test("update and migrate add lessons index on older installs", () => {
   assert.equal(migrated.status, 0);
   assert.match(migrated.stdout, /lessons\/index/);
   assert.match(read(dir, "docs/knowledge/lessons/index.md"), /Lessons/);
+});
+
+test("LESSON_TARGETS includes team-process", () => {
+  assert.deepEqual(LESSON_TARGETS, ["steering", "config-or-code", "sdd-orc-skill", "team-process"]);
+});
+
+test("check accepts team-process as lesson Target", () => {
+  const dir = tempRepo();
+  assert.equal(initRepo(dir).status, 0);
+  writeSteering(dir);
+  const body = sampleLesson("backlog-spec-decision").replace(
+    "## Target\n\nsteering",
+    "## Target\n\nteam-process",
+  );
+  fs.writeFileSync(path.join(dir, "docs/knowledge/lessons/backlog-spec-decision.md"), body);
+  const result = sdd(dir, ["check"]);
+  assert.equal(result.status, 0, result.stdout);
 });
 
 test("check validates lesson pages and index", () => {
