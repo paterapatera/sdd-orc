@@ -2,7 +2,7 @@ import path from "node:path";
 import { diag } from "./util.mjs";
 
 export const LESSON_STATUSES = ["candidate", "trial", "effective", "ineffective", "rejected"];
-export const LESSON_TARGETS = ["steering", "config-or-code", "sdd-orc-skill"];
+export const LESSON_TARGETS = ["steering", "config-or-code", "sdd-orc-skill", "team-process"];
 export const LESSON_SECTIONS = ["What happened", "Why", "Policy", "Occurrences", "Occurrence log", "Review closes", "Last reviewed", "Status", "Reason", "Target"];
 const LAST_REVIEWED_DATE = /^\d{4}-\d{2}-\d{2}$/;
 export const TRIAL_TO_EFFECTIVE_ISSUE_COUNT = 3;

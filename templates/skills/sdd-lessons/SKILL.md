@@ -11,7 +11,7 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
 **Audience:** a lead (tech lead, EM, or designated owner), on any cadence (weekly, monthly, or ad hoc). Juniors use **`/sdd-close`** to record only; this skill decides policy adoption.
 
-**Scope:** read and write **`__SDD_KNOWLEDGE_DIR__/lessons/`** only (pages and index). Never edit specs, decisions, steering, or issue directories. Never apply steering changes here — adoption prints a **`/sdd-init ...`** chat line for the person to start a **new issue**.
+**Scope:** read and write **`__SDD_KNOWLEDGE_DIR__/lessons/`** only (pages and index). Never edit specs, decisions, steering, or issue directories. Never apply steering changes here — adoption for most targets prints a follow-up for the person to run in a **new issue** or outside the repo (see **Targets** below; `team-process` is different).
 
 **Branch:** use a docs branch name that is **not** an issue folder name (for example `docs-lessons-review-2026-11`), or stay on the current branch. Commit as `docs: <description>` in `__SDD_LANG__` on that branch when finished. Do not push or open a pull request from this skill.
 
@@ -50,14 +50,34 @@ Run `__SDD_RUNTIME__ __SDD_SCRIPT__ check --scope setup` first. Stop unless it p
 
    See **Example review output** below.
 
-3. **After the lead’s reply**, show a **short summary** (before writing files): Status, Reason, Last reviewed, and every **`/sdd-init`** line you will print. Proceed when clear.
+3. **After the lead’s reply**, show a **short summary** (before writing files): Status, Reason, Last reviewed, and every adoption follow-up you will print (`/sdd-init`, sdd-orc-skill proposal, or team rule proposal). Proceed when clear.
 
    Apply decisions and **Last reviewed** (today’s date, or the latest **Occurrence log** date reviewed in this session, whichever is **later**):
    - **Hold** (any group): update Last reviewed only; no Status change. A **hold** in **A** or **B** sets Last reviewed so a **later** recurrence (new log after that date) lists the lesson in **B**, not **A**. A **hold** in **C** sets Last reviewed so the lesson stays off the list until close adds a **Review closes** date **after** that Last reviewed (then **C** can apply again if the count rule is still met).
    - **Reject (A/B):** Status `rejected`, **Reason** required, **Target unchanged**, Last reviewed as above (later recurrence → **B** if still `rejected` or back to `candidate` only if you changed status — normally **B** for `rejected` with new log).
-   - **Adopt (A/B):** Status `trial`, confirm **Target**, Last reviewed as above; print `/sdd-init` or sdd-orc-skill text when Target requires it (same Impact shape as `/sdd-init`).
+   - **Adopt (A/B):** Status `trial`, confirm **Target**, Last reviewed as above; print the follow-up for that Target (see **Targets** below). Do not edit steering in this skill.
    - **Effective (C):** Status `effective`, empty Reason, Last reviewed as above.
    - **Ineffective (D):** Status `ineffective`, **Reason** required, Occurrence log unchanged, Last reviewed as above.
+
+### Targets
+
+Each lesson **`## Target`** is where the policy must eventually live. Close sets a provisional Target; the lead may correct it on adopt.
+
+| Target | Meaning | On adopt (A/B) |
+| --- | --- | --- |
+| `steering` | Belongs in `__SDD_KNOWLEDGE_DIR__/steering/` (AI-read product and engineering context). | One **`/sdd-init ...`** chat line with the usual Impact shape; Steering lists the files to change. |
+| `config-or-code` | Enforced in repo config or application code (not steering prose alone). | One **`/sdd-init ...`** chat line; Impact **Code** describes what to change. |
+| `sdd-orc-skill` | Enforced by changing this project's sdd-orc skills or the bundled checker. | Short proposal to open an sdd-orc change (which skill or checker rule). No steering edit here. |
+| `team-process` | A **human team** rule or operating procedure **outside** steering, config, code, and sdd-orc (for example: record spec-related decisions in the backlog before requirements work; reviewer checklists; who must approve what). Not something agents enforce by editing docs in this repo. | A short **team rule proposal** (see below). **Do not** print **`/sdd-init`** and **do not** edit steering. |
+
+**Team rule proposal** (`team-process` only, after adopt): a few lines in `__SDD_LANG__` for the lead to copy into the team's usual place (chat, meeting notes, team wiki, tracker how-we-work doc — whatever the team already uses). Use the lesson **Policy** as the rule text; optional one-line **Why**. Do not invent new statuses, files, or approval workflows beyond what the lesson already states.
+
+```markdown
+Team rule (propose to the team):
+
+- Rule: <Policy sentence from the lesson>
+- Why: <optional one line from Why>
+```
 
 4. Write only changed lesson pages under `__SDD_KNOWLEDGE_DIR__/lessons/`. Regenerate the index: `__SDD_RUNTIME__ __SDD_SCRIPT__ index`.
 

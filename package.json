@@ -1,6 +1,6 @@
 {
   "name": "@paterapatera/sdd-orc",
-  "version": "1.2.3",
+  "version": "1.2.4",
   "description": "Install SDD skills for Cursor, Codex, and Claude Code",
   "bin": {
     "sdd-orc": "./src/cli.mjs"
